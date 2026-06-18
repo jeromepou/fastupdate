@@ -164,14 +164,16 @@ textarea{resize:vertical}
 .tbl-wrap{background:#fff;border:1px solid var(--g200);border-radius:var(--rlg);overflow:hidden;box-shadow:var(--sh);overflow-x:auto}
 
 /* THE FAST TABLE — matches original exactly */
-table.fast-tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:480px}
-.fast-tbl td{border:1px solid #999;padding:7px 10px;vertical-align:top}
+table.fast-tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:480px;table-layout:fixed}
+.fast-tbl td{border:1px solid #999;padding:7px 10px;vertical-align:top;word-wrap:break-word;overflow-wrap:break-word}
 .fast-tbl .thr td{background:#3a6e3a;color:#fff;font-weight:700;font-size:13px;padding:8px 10px}
-.fast-tbl .lbl{background:#f0f2eb;font-weight:600;width:185px;color:var(--g800)}
-.fast-tbl .upd-lbl{background:#fefce8;font-weight:600;width:185px;color:var(--g800)}
-.fast-tbl .part-hdr{background:#d8e4d8;font-weight:700;font-size:12px;color:var(--g800)}
-/* 4-column rows (Model/SN — Registry) */
-.fast-tbl .lbl-s{background:#f0f2eb;font-weight:600;width:120px;color:var(--g800);font-size:12px}
+.fast-tbl .lbl{background:#f0f2eb;font-weight:600;width:25%;color:var(--g800)}
+.fast-tbl .upd-lbl{background:#fefce8;font-weight:600;width:25%;color:var(--g800)}
+.fast-tbl .part-hdr{background:#d8e4d8;font-weight:700;font-size:12px;color:var(--g800);width:20%}
+/* Parts table: all 5 columns equal width */
+.fast-tbl .part-row-cell{width:20%}
+/* 4-column rows (Model/SN — Registry, FAR — RTS/Assist, etc.) — each of the 4 cells is 25% */
+.fast-tbl .lbl-s{background:#f0f2eb;font-weight:600;width:25%;color:var(--g800);font-size:12px}
 
 /* MODAL */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center}
@@ -202,7 +204,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 
 @media(max-width:600px){
   header h1{font-size:13px}
-  .fast-tbl .lbl{width:110px}
   .part-fields{grid-template-columns:1fr 1fr}
 }
 </style>
@@ -1176,18 +1177,17 @@ function generate(){
   const items=getItems(),pocs=getPocSlots(),parts=getParts(),updates=getUpdatesData();
 
   // Email subject
-  const condSummary=items.map(it=>it.label.toUpperCase()).join(' / ')||'UPDATE';
-  document.getElementById('email-subject').textContent=`UPDATE // ${wo} // ${model} ${sn} // ${reg} // ${loc} // ${condSummary}`;
+  document.getElementById('email-subject').textContent=`UPDATE // ${wo} // ${model} ${sn} // ${reg} // ${loc} //`;
 
   // Condition rows
   const condRows=items.length>0
-    ? items.map((it,i)=>`<tr><td class="lbl">${i===0?'<b>Condition</b>':''}</td><td>${it.num}-${it.label.toUpperCase()}</td></tr>`).join('')
-    : `<tr><td class="lbl"><b>Condition</b></td><td>—</td></tr>`;
+    ? `<tr><td class="lbl"><b>Condition</b></td><td colspan="3">${items.map(it=>`${it.num}-${it.label.toUpperCase()}`).join('<br>')}</td></tr>`
+    : `<tr><td class="lbl"><b>Condition</b></td><td colspan="3">—</td></tr>`;
 
   // Update rows
   let updRows='';
   if(!updates.length){
-    updRows=`<tr><td class="upd-lbl"><b>Update</b></td><td>—</td></tr>`;
+    updRows=`<tr><td class="upd-lbl"><b>Update</b></td><td colspan="3">—</td></tr>`;
   } else {
     updates.forEach((upd,di)=>{
       const lbl=di===0?'<b>Update</b>':'';
@@ -1202,33 +1202,33 @@ function generate(){
         content+='<br>';
       });
       if(upd.freeText) content+=`<span style="color:#444">${upd.freeText}</span><br>`;
-      updRows+=`<tr><td class="upd-lbl" style="${bg}">${lbl}</td><td>${content}</td></tr>`;
+      updRows+=`<tr><td class="upd-lbl" style="${bg}">${lbl}</td><td colspan="3">${content}</td></tr>`;
     });
   }
 
   // Parts
   const hasParts=parts.some(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on);
   const partsRows=hasParts
-    ? parts.filter(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on).map(p=>`<tr><td>${p.nom}</td><td>${p.pn_off}</td><td>${p.sn_off}</td><td>${p.pn_on}</td><td>${p.sn_on}</td></tr>`).join('')
+    ? parts.filter(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on).map(p=>`<tr><td class="part-row-cell">${p.nom}</td><td class="part-row-cell">${p.pn_off}</td><td class="part-row-cell">${p.sn_off}</td><td class="part-row-cell">${p.pn_on}</td><td class="part-row-cell">${p.sn_on}</td></tr>`).join('')
     : `<tr><td colspan="5" style="color:#aaa;font-style:italic">No parts replaced</td></tr>`;
 
   // POC rows
   const pocRows=pocs.length>0
-    ? pocs.map((p,i)=>`${i>0?`<tr class="thr"><td colspan="2"><b>Onsite Support FAST POC ${i+1}</b></td></tr>`:''}
-      <tr><td class="lbl"><b>Name</b></td><td>${p.name||'—'}</td></tr>
-      <tr><td class="lbl"><b>Cell</b></td><td>${p.tel||'—'}</td></tr>
-      <tr><td class="lbl"><b>Email</b></td><td>${p.email||'—'}</td></tr>
-      <tr><td class="lbl"><b>Team</b></td><td>${p.team||'—'}</td></tr>`).join('')
-    : `<tr><td class="lbl"><b>Name</b></td><td>—</td></tr><tr><td class="lbl"><b>Cell</b></td><td>—</td></tr><tr><td class="lbl"><b>Email</b></td><td>—</td></tr><tr><td class="lbl"><b>Team</b></td><td>—</td></tr>`;
+    ? `<tr><td class="lbl"><b>Name</b></td><td colspan="3">${pocs.map(p=>p.name||'—').join(' / ')}</td></tr>
+      <tr><td class="lbl"><b>Cell</b></td><td colspan="3">${pocs.map(p=>p.tel||'—').join(' / ')}</td></tr>
+      <tr><td class="lbl"><b>Email</b></td><td colspan="3">${pocs.map(p=>p.email||'—').join(' / ')}</td></tr>
+      <tr><td class="lbl"><b>Team</b></td><td colspan="3">${pocs.map(p=>p.team||'—').join(' / ')}</td></tr>`
+    : `<tr><td class="lbl"><b>Name</b></td><td colspan="3">—</td></tr><tr><td class="lbl"><b>Cell</b></td><td colspan="3">—</td></tr><tr><td class="lbl"><b>Email</b></td><td colspan="3">—</td></tr><tr><td class="lbl"><b>Team</b></td><td colspan="3">—</td></tr>`;
 
   // ── THE TABLE — exact FAST email format ──
   // Note: "Model and S/N" and "A/C Registry" are on the SAME row in 4 columns
   document.getElementById('tbl-out').innerHTML=`
   <table class="fast-tbl" id="gen-tbl">
-    <tr class="thr"><td colspan="2"><b>WORK ORDER #: ${wo}</b></td></tr>
+    <colgroup><col style="width:25%"><col style="width:25%"><col style="width:25%"><col style="width:25%"></colgroup>
+    <tr class="thr"><td colspan="4"><b>WORK ORDER #: ${wo}</b></td></tr>
     ${condRows}
     ${updRows}
-    <tr><td class="lbl"><b>Additional Info<br>(Constraints)</b></td><td>${info||'—'}</td></tr>
+    <tr><td class="lbl"><b>Additional Info<br>(Constraints)</b></td><td colspan="3">${info||'—'}</td></tr>
     <tr>
       <td class="lbl"><b>Estimated RTS:</b></td><td>${erts||'—'}</td>
       <td class="lbl"><b>Next Flight:</b></td><td>${nxt||'—'}</td>
@@ -1245,16 +1245,16 @@ function generate(){
       <td class="lbl"><b>Model and S/N:</b></td><td>${model} / ${sn}</td>
       <td class="lbl"><b>A/C Registry:</b></td><td>${reg||'—'}</td>
     </tr>
-    <tr class="thr"><td colspan="5"><b>Parts</b></td></tr>
-    <tr><td class="part-hdr"><b>Nomenclature</b></td><td class="part-hdr"><b>PN OFF</b></td><td class="part-hdr"><b>SN OFF</b></td><td class="part-hdr"><b>PN ON</b></td><td class="part-hdr"><b>SN ON</b></td></tr>
+    <tr class="thr"><td colspan="4"><b>Parts</b></td></tr>
+    <tr><td class="part-hdr" style="width:20%"><b>Nomenclature</b></td><td class="part-hdr" style="width:20%"><b>PN OFF</b></td><td class="part-hdr" style="width:20%"><b>SN OFF</b></td><td class="part-hdr" style="width:20%"><b>PN ON</b></td><td class="part-hdr" style="width:20%"><b>SN ON</b></td></tr>
     ${partsRows}
-    <tr class="thr"><td colspan="2"><b>Onsite Support FAST POC</b></td></tr>
+    <tr class="thr"><td colspan="4"><b>Onsite Support FAST POC</b></td></tr>
     ${pocRows}
-    <tr class="thr"><td colspan="2"><b>Customer Info</b></td></tr>
-    <tr><td class="lbl"><b>Name :</b></td><td>${cName||'—'}</td></tr>
-    <tr><td class="lbl"><b>Phone:</b></td><td>${cTel||'—'}</td></tr>
-    <tr><td class="lbl"><b>Email</b></td><td>${cEmail||'—'}</td></tr>
-    <tr><td class="lbl"><b>A/C LOCATION:</b></td><td>${loc||'—'}</td></tr>
+    <tr class="thr"><td colspan="4"><b>Customer Info</b></td></tr>
+    <tr><td class="lbl"><b>Name :</b></td><td colspan="3">${cName||'—'}</td></tr>
+    <tr><td class="lbl"><b>Phone:</b></td><td colspan="3">${cTel||'—'}</td></tr>
+    <tr><td class="lbl"><b>Email</b></td><td colspan="3">${cEmail||'—'}</td></tr>
+    <tr><td class="lbl"><b>A/C LOCATION:</b></td><td colspan="3">${loc||'—'}</td></tr>
   </table>`;
 
   document.getElementById('output-section').style.display='block';
