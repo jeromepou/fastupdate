@@ -161,17 +161,17 @@ textarea{resize:vertical}
 .copy-btn{display:flex;align-items:center;gap:6px;padding:7px 16px;border-radius:var(--r);background:#fff;border:1px solid var(--g200);font-size:13px;font-weight:600;cursor:pointer;color:var(--g800)}
 .copy-btn:hover{background:var(--g100)}
 .copy-btn.copied{background:var(--gl);color:var(--gd);border-color:var(--gb)}
-.tbl-wrap{background:#fff;border:1px solid var(--g200);border-radius:var(--rlg);overflow:hidden;box-shadow:var(--sh);overflow-x:auto}
+.tbl-wrap{background:#fff;border:1px solid var(--g200);border-radius:var(--rlg);overflow-x:scroll;overflow-y:hidden;box-shadow:var(--sh);-webkit-overflow-scrolling:touch}
 
 /* THE FAST TABLE — matches original exactly */
-table.fast-tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:750px;table-layout:fixed}
+table.fast-tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:700px;table-layout:fixed}
 .fast-tbl td{border:1px solid #999;padding:7px 10px;vertical-align:top;word-wrap:break-word;overflow-wrap:break-word}
 .fast-tbl .thr td{background:#3a6e3a;color:#fff;font-weight:700;font-size:13px;padding:8px 10px}
 .fast-tbl .lbl{background:#f0f2eb;font-weight:600;width:25%;color:var(--g800)}
 .fast-tbl .upd-lbl{background:#fefce8;font-weight:600;width:25%;color:var(--g800)}
-.fast-tbl .part-hdr{background:#d8e4d8;font-weight:700;font-size:12px;color:var(--g800);width:20%}
+.fast-tbl .part-hdr{background:#d8e4d8;font-weight:700;font-size:12px;color:var(--g800);width:18%}
 /* Parts table: all 5 columns equal width */
-.fast-tbl .part-row-cell{width:20%}
+.fast-tbl .part-row-cell{width:18%}
 /* 4-column rows (Model/SN — Registry, FAR — RTS/Assist, etc.) — each of the 4 cells is 25% */
 .fast-tbl .lbl-s{background:#f0f2eb;font-weight:600;width:25%;color:var(--g800);font-size:12px}
 
@@ -220,7 +220,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </header>
 
-<!-- LOGIN SCREEN -->
 <div class="main" id="login-screen">
   <div class="login-screen">
     <div class="login-box">
@@ -233,10 +232,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
-<!-- MAIN APP (hidden until login) -->
 <div class="main" id="app-screen" style="display:none">
 
-<!-- MY PROFILE BAR -->
 <div class="eng-bar" id="eng-bar">
   <div>
     <div class="eng-name" id="eng-bar-name">—</div>
@@ -246,7 +243,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <button class="btn danger" onclick="confirmDeleteProfile()">🗑 Delete profile</button>
 </div>
 
-<!-- PROJECTS -->
 <div class="proj-panel">
   <div class="proj-panel-head">
     <h3>📁 My projects (chantiers)</h3>
@@ -255,7 +251,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="proj-list" id="proj-list"></div>
 </div>
 
-<!-- GOOGLE AUTH -->
 <div class="auth-banner">
   <div style="font-size:20px">🔐</div>
   <div class="auth-banner-text">
@@ -266,7 +261,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <button class="btn danger" id="btn-signout" onclick="signOutGoogle()" style="display:none">Sign out</button>
 </div>
 
-<!-- STEP 1 -->
 <div class="card">
   <div class="card-head"><span class="step-badge">STEP 1</span><h2>Upload RFS PDF — optional, auto-fills fields</h2></div>
   <div class="card-body">
@@ -281,7 +275,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
-<!-- STEP 2 -->
 <div class="card">
   <div class="card-head"><span class="step-badge">STEP 2</span><h2>Aircraft & order details</h2></div>
   <div class="card-body">
@@ -304,7 +297,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
-<!-- STEP 3 -->
 <div class="card">
   <div class="card-head"><span class="step-badge">STEP 3</span><h2>Condition — work items</h2></div>
   <div class="card-body">
@@ -313,12 +305,12 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
-<!-- STEP 4 -->
 <div class="card">
   <div class="card-head">
     <span class="step-badge">STEP 4</span>
     <h2>Daily updates</h2>
-    <button class="btn" onclick="addYesterdayUpdate()" style="margin-left:auto">+ Yesterday's update</button>
+    <button class="btn" onclick="addDayBeforeUpdate()" style="margin-left:auto">+ Day before yesterday</button>
+    <button class="btn" onclick="addYesterdayUpdate()">+ Yesterday's update</button>
     <button class="btn primary" onclick="addTodayUpdate()">+ Today's update</button>
 </div>
   <div class="card-body">
@@ -328,7 +320,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
-<!-- PARTS -->
 <div class="card">
   <div class="card-head"><span class="step-badge">PARTS</span><h2>Parts replaced (optional)</h2></div>
   <div class="card-body">
@@ -337,7 +328,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
-<!-- STEP 5 -->
 <div class="card">
   <div class="card-head"><span class="step-badge">STEP 5</span><h2>Closing details</h2></div>
   <div class="card-body">
@@ -351,7 +341,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
-<!-- STEP 6 — POC selection from global engineer profiles -->
 <div class="card">
   <div class="card-head">
     <span class="step-badge">STEP 6</span>
@@ -380,7 +369,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <button class="btn danger" onclick="markRTS()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:700">✅ Mark A/C RTS</button>
 </div>
 
-<!-- OUTPUT -->
 <div id="output-section" class="output-section" style="display:none">
   <hr/>
   <div class="email-subject-box">
@@ -398,10 +386,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="tbl-wrap"><div id="tbl-out"></div></div>
 </div>
 
-</div><!-- /app-screen -->
-
-<!-- ══ MODAL: New profile ══ -->
-<div class="modal-bg" id="modal-new-profile">
+</div><div class="modal-bg" id="modal-new-profile">
   <div class="modal">
     <h3>Create my profile</h3>
     <p style="font-size:13px;color:var(--g600);margin-bottom:12px">Your profile stores your projects in this browser. Set a PIN to protect it.</p>
@@ -417,7 +402,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
-<!-- ══ MODAL: PIN unlock ══ -->
 <div class="modal-bg" id="modal-pin">
   <div class="modal" style="max-width:340px;text-align:center">
     <h3 id="modal-pin-title">Enter PIN</h3>
@@ -430,7 +414,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
-<!-- ══ MODAL: Edit profile ══ -->
 <div class="modal-bg" id="modal-edit-profile">
   <div class="modal">
     <h3>Edit my profile</h3>
@@ -446,7 +429,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
-<!-- ══ MODAL: Manage engineer profiles (Settings) ══ -->
 <div class="modal-bg" id="modal-eng-profiles">
   <div class="modal" style="max-width:560px">
     <h3>⚙️ Engineer profiles</h3>
@@ -468,7 +450,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
-<!-- ══ MODAL: RTS ══ -->
 <div class="modal-bg" id="modal-rts">
   <div class="modal">
     <h3>Mark A/C as RTS?</h3>
@@ -480,7 +461,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
-<!-- ══ MODAL: HELP ══ -->
 <div class="modal-bg" id="modal-help">
   <div class="modal" style="max-width:600px">
     <h3>✈ FAST Update Generator — Help</h3>
@@ -975,7 +955,7 @@ function renderPocSlotSelects(){
 function buildEngOptions(selectedId=''){
   const profs=getEngProfiles();
   let html='<option value="">— Select engineer —</option>';
-  profs.forEach(p=>{html+=`<option value="${p.id}" ${p.id===selectedId?'selected':''}>${p.name}${p.team?' ('+p.team+')':''}</option>`;});
+  projs.forEach(p=>{html+=`<option value="${p.id}" ${p.id===selectedId?'selected':''}>${p.name}${p.team?' ('+p.team+')':''}</option>`;});
   html+='<option value="__manage__">⚙️ Manage engineer profiles…</option>';
   return html;
 }
@@ -1043,7 +1023,7 @@ function addTodayUpdate(){
   autosave();
 }
 
- function addYesterdayUpdate(){
+function addYesterdayUpdate(){
   const y=new Date();y.setDate(y.getDate()-1);
   const label=y.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
   if(getUpdatesData().find(u=>u.date===label)){setStatus('idle',"Yesterday's update already exists — scroll down to edit it.");return;}
@@ -1053,15 +1033,38 @@ function addTodayUpdate(){
   autosave();
 } 
   
+function addDayBeforeUpdate(){
+  const y=new Date();y.setDate(y.getDate()-2);
+  const label=y.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  if(getUpdatesData().find(u=>u.date===label)){setStatus('idle',"This day's update already exists — scroll down to edit it.");return;}
+  const uc=document.getElementById('updates-container');
+  const ph=uc.querySelector('p');if(ph)ph.remove();
+  renderUpdateBlock({id:'upd_'+Date.now(),date:label,isRTS:false,freeText:'',itemUpdates:[]});
+  autosave();
+}
+
+function getLastCarriedOutMap(){
+  const all=getUpdatesData();
+  const map={};
+  all.forEach(u=>{
+    u.itemUpdates.forEach(iu=>{
+      if(iu.checked&&iu.status==='done') map[iu.num]={checked:true,status:'done',detail:''};
+    });
+  });
+  return map;
+}
+
 function renderUpdateBlock(upd){
   const uc=document.getElementById('updates-container');
   const items=getItems();
+  const isNewBlock=!(upd.itemUpdates&&upd.itemUpdates.length);
+  const carriedForward=isNewBlock?getLastCarriedOutMap():{};
   const d=document.createElement('div');d.className='update-day';d.id=upd.id;d.dataset.date=upd.date;
 
   // Per-item update blocks — CHECKBOX to select which items were worked on today
   const itemsHtml=items.length>0?items.map((it,i)=>{
-    const saved=(upd.itemUpdates||[]).find(u=>u.num===(i+1))||{};
-    const checked=saved.checked||((upd.itemUpdates||[]).find(u=>u.num===(i+1)))?'checked':'';
+    const saved=(upd.itemUpdates||[]).find(u=>u.num===(i+1))||(carriedForward[i+1]||{});
+    const checked=saved.checked||((upd.itemUpdates||[]).find(u=>u.num===(i+1))||carriedForward[i+1])?'checked':'';
     const statusOpts=['pending','done','waiting','na'].map(v=>{
       const L={pending:'⏳ In progress',done:'✅ Carried out',waiting:'⚠️ Waiting',na:'— N/A'};
       return `<option value="${v}" ${(saved.status||'pending')===v?'selected':''}>${L[v]}</option>`;
@@ -1257,7 +1260,7 @@ function generate(){
       <td class="lbl"><b>A/C Registry:</b></td><td>${reg||'—'}</td>
     </tr>
     <tr class="thr"><td colspan="4"><b>Parts</b></td></tr>
-    <tr><td class="part-hdr" style="width:20%"><b>Nomenclature</b></td><td class="part-hdr" style="width:20%"><b>PN OFF</b></td><td class="part-hdr" style="width:20%"><b>SN OFF</b></td><td class="part-hdr" style="width:20%"><b>PN ON</b></td><td class="part-hdr" style="width:20%"><b>SN ON</b></td></tr>
+    <tr><td class="part-hdr" style="width:18%"><b>Nomenclature</b></td><td class="part-hdr" style="width:18%"><b>PN OFF</b></td><td class="part-hdr" style="width:18%"><b>SN OFF</b></td><td class="part-hdr" style="width:18%"><b>PN ON</b></td><td class="part-hdr" style="width:18%"><b>SN ON</b></td></tr>
     ${partsRows}
     <tr class="thr"><td colspan="4"><b>Onsite Support FAST POC</b></td></tr>
     ${pocRows}
