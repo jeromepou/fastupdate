@@ -4,7 +4,6 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>FAST Update Generator</title>
-<link rel="manifest" href="#" id="pwa-manifest"/>
 <meta name="theme-color" content="#2d5a2d"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -22,7 +21,7 @@
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--g100);color:var(--g900);font-size:14px;line-height:1.5;min-height:100vh}
 header{background:var(--gd);color:#fff;padding:0 1.25rem;display:flex;align-items:center;gap:10px;height:54px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.15)}
 header h1{font-size:15px;font-weight:600;flex:1}
-.hdr-right{display:flex;align-items:center;gap:8px}
+.hdr-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .hdr-right button{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:var(--r);padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer}
 .hdr-right button:hover{background:rgba(255,255,255,.25)}
 .main{max-width:920px;margin:0 auto;padding:1.25rem 1rem 5rem}
@@ -47,29 +46,29 @@ header h1{font-size:15px;font-weight:600;flex:1}
 .btn-rm{background:none;border:none;cursor:pointer;color:var(--g400);font-size:18px;padding:0 2px;line-height:1;flex-shrink:0;transition:color .15s;margin-top:6px}
 .btn-rm:hover{color:var(--red)}
 
-/* LOGIN SCREEN */
-.login-screen{min-height:80vh;display:flex;align-items:center;justify-content:center}
-.login-box{background:#fff;border-radius:var(--rlg);border:1px solid var(--g200);box-shadow:var(--sh);padding:2rem;width:100%;max-width:420px;text-align:center}
-.login-box h2{font-size:18px;font-weight:700;color:var(--gd);margin-bottom:.5rem}
-.login-box p{font-size:13px;color:var(--g600);margin-bottom:1.5rem}
+/* AUTH / LOGIN SCREEN */
+.auth-screen{min-height:80vh;display:flex;align-items:center;justify-content:center}
+.auth-box{background:#fff;border-radius:var(--rlg);border:1px solid var(--g200);box-shadow:var(--sh);padding:2rem;width:100%;max-width:420px;text-align:center}
+.auth-box h2{font-size:18px;font-weight:700;color:var(--gd);margin-bottom:.5rem}
+.auth-box p{font-size:13px;color:var(--g600);margin-bottom:1.5rem}
+.auth-tabs{display:flex;gap:0;margin-bottom:1.5rem;border:1px solid var(--g200);border-radius:var(--r);overflow:hidden}
+.auth-tab{flex:1;padding:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;border:none;color:var(--g600);transition:background .15s}
+.auth-tab.active{background:var(--gd);color:#fff}
 .profile-picker{display:flex;flex-direction:column;gap:8px;margin-bottom:1rem;max-height:300px;overflow-y:auto;padding-right:4px}
-.profile-btn{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--g200);border-radius:var(--r);cursor:pointer;background:#fff;transition:background .15s;text-align:left}
+.profile-btn{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--g200);border-radius:var(--r);cursor:pointer;background:#fff;transition:background .15s;text-align:left;width:100%}
 .profile-btn:hover{background:var(--gl);border-color:var(--gb)}
 .profile-btn .pb-avatar{width:32px;height:32px;border-radius:50%;background:var(--gd);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
 .profile-btn .pb-info{flex:1}
 .profile-btn .pb-name{font-size:13px;font-weight:600;color:var(--g900)}
 .profile-btn .pb-sub{font-size:11px;color:var(--g600)}
-.profile-btn .pb-lock{font-size:16px;color:var(--g400)}
-
-/* ENG BAR */
-.eng-bar{background:#fff;border:1px solid var(--g200);border-radius:var(--rlg);padding:.9rem 1.25rem;margin-bottom:1rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:var(--sh)}
-.eng-bar .eng-name{font-size:14px;font-weight:700;color:var(--gd);flex:1}
-.eng-bar .eng-sub{font-size:12px;color:var(--g600)}
 
 /* PROJ PANEL */
 .proj-panel{background:#fff;border:1px solid var(--g200);border-radius:var(--rlg);margin-bottom:1rem;box-shadow:var(--sh);overflow:hidden}
-.proj-panel-head{background:var(--g50);border-bottom:1px solid var(--g200);padding:10px 1.25rem;display:flex;align-items:center;gap:10px}
+.proj-panel-head{background:var(--g50);border-bottom:1px solid var(--g200);padding:10px 1.25rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .proj-panel-head h3{font-size:13px;font-weight:700;color:var(--g800);flex:1}
+.proj-tabs{display:flex;gap:6px;margin:0 8px}
+.proj-tab{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--g200);background:#fff;color:var(--g600)}
+.proj-tab.active{background:var(--gd);color:#fff;border-color:var(--gd)}
 .proj-list{padding:8px;display:flex;flex-direction:column;gap:5px}
 .proj-item{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--g200);border-radius:var(--r);cursor:pointer;transition:background .15s}
 .proj-item:hover{background:var(--gl);border-color:var(--gb)}
@@ -80,14 +79,14 @@ header h1{font-size:15px;font-weight:600;flex:1}
 .proj-item-date{font-size:10px;color:var(--g400);white-space:nowrap}
 .proj-empty{padding:1.5rem;text-align:center;color:var(--g400);font-size:13px}
 
-/* AUTH BANNER */
-.auth-banner{background:var(--bl);border:1px solid #b8d0e8;border-radius:var(--rlg);padding:.9rem 1.25rem;margin-bottom:1rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.auth-banner-text{flex:1;min-width:160px}
-.auth-banner-text strong{color:var(--blue);display:block;font-size:13px;margin-bottom:2px}
-.auth-banner-text small{font-size:12px;color:var(--g600)}
-.abadge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px}
-.abadge.ok{background:#e8f5e9;border:1px solid #a5d6a7;color:#2e7d32}
-.abadge.ko{background:var(--rl);border:1px solid #e8b8a0;color:var(--red)}
+/* ENG BAR */
+.eng-bar{background:#fff;border:1px solid var(--g200);border-radius:var(--rlg);padding:.9rem 1.25rem;margin-bottom:1rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:var(--sh)}
+.eng-bar .eng-name{font-size:14px;font-weight:700;color:var(--gd);flex:1}
+.eng-bar .eng-sub{font-size:12px;color:var(--g600)}
+.sync-indicator{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600}
+.sync-ok{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7}
+.sync-pending{background:var(--al);color:var(--amb);border:1px solid #d4b800}
+.sync-err{background:var(--rl);color:var(--red);border:1px solid #e8b8a0}
 
 /* FORM */
 .grid{display:grid;gap:10px}
@@ -122,7 +121,6 @@ textarea{resize:vertical}
 .item-fields{flex:1;display:flex;flex-direction:column;gap:6px}
 .item-label-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .item-label-row input{flex:1;min-width:120px}
-.item-label-row select{width:155px;flex-shrink:0;font-size:12px}
 
 /* DAILY UPDATES */
 .update-day{background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:8px;overflow:hidden}
@@ -143,7 +141,7 @@ textarea{resize:vertical}
 .part-fields .fg label{font-size:9px}
 .part-fields input{font-size:12px;padding:5px 8px}
 
-/* STEP 6 POC */
+/* POC */
 .poc-block{background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:10px 12px;margin-bottom:8px}
 .poc-block-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .poc-block-head span{font-size:12px;font-weight:700;color:var(--gd);flex:1}
@@ -154,7 +152,7 @@ textarea{resize:vertical}
 .subj-lbl{font-size:11px;font-weight:700;color:var(--amb);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
 .subj-txt{font-size:13px;font-weight:600;color:var(--g900);flex:1;word-break:break-all}
 
-/* OUTPUT TABLE */
+/* OUTPUT */
 .output-section{margin-top:1.5rem}
 .output-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px}
 .output-head h3{font-size:13px;font-weight:700;color:var(--g800);text-transform:uppercase;letter-spacing:.05em}
@@ -162,8 +160,6 @@ textarea{resize:vertical}
 .copy-btn:hover{background:var(--g100)}
 .copy-btn.copied{background:var(--gl);color:var(--gd);border-color:var(--gb)}
 .tbl-wrap{background:#fff;border:1px solid var(--g200);border-radius:var(--rlg);overflow-x:scroll;overflow-y:hidden;box-shadow:var(--sh);-webkit-overflow-scrolling:touch}
-
-/* THE FAST TABLE */
 table.fast-tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:600px}
 .fast-tbl td{border:1px solid #999;padding:7px 10px;vertical-align:top;word-wrap:break-word;overflow-wrap:break-word}
 .fast-tbl .thr td{background:#3a6e3a;color:#fff;font-weight:700;font-size:13px;padding:8px 10px}
@@ -184,18 +180,27 @@ table.fast-tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:600p
 .help-section p,.help-section li{font-size:13px;color:var(--g800);line-height:1.6}
 .help-section ul,.help-section ol{padding-left:1.25rem}
 .help-section li{margin-bottom:4px}
-.install-os{background:var(--gl);border:1px solid var(--gb);border-radius:var(--r);padding:10px 12px;margin-bottom:8px}
-.install-os h5{font-size:12px;font-weight:700;color:var(--gd);margin-bottom:6px}
 
 /* TAGS */
 .tag-rts{display:inline-block;background:var(--gl);border:1px solid var(--gb);color:var(--gd);border-radius:20px;font-size:10px;font-weight:700;padding:1px 8px}
 .tag-open{display:inline-block;background:var(--al);border:1px solid #d4b800;color:var(--amb);border-radius:20px;font-size:10px;font-weight:700;padding:1px 8px}
+.tag-arch{display:inline-block;background:var(--bl);border:1px solid #b8d0e8;color:var(--blue);border-radius:20px;font-size:10px;font-weight:700;padding:1px 8px}
 
 /* MISC */
 .spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:rot .7s linear infinite;flex-shrink:0}
 @keyframes rot{to{transform:rotate(360deg)}}
 hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 .action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:.5rem}
+.err-msg{font-size:12px;color:var(--red);min-height:18px;margin-top:4px}
+
+/* GOOGLE GEMINI AUTH BANNER */
+.gemini-banner{background:var(--bl);border:1px solid #b8d0e8;border-radius:var(--rlg);padding:.9rem 1.25rem;margin-bottom:1rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:var(--sh)}
+.gemini-banner-text{flex:1;min-width:160px}
+.gemini-banner-text strong{color:var(--blue);display:block;font-size:13px;margin-bottom:2px}
+.gemini-banner-text small{font-size:12px;color:var(--g600)}
+.abadge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px}
+.abadge.ok{background:#e8f5e9;border:1px solid #a5d6a7;color:#2e7d32}
+.abadge.ko{background:var(--rl);border:1px solid #e8b8a0;color:var(--red)}
 
 @media(max-width:600px){
   header h1{font-size:13px}
@@ -210,52 +215,95 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <h1>FAST Update Generator</h1>
   <div class="hdr-right">
     <span id="hdr-profile-name" style="font-size:12px;opacity:.8"></span>
+    <span id="sync-badge" class="sync-indicator sync-ok" style="display:none">☁️ Synced</span>
     <button onclick="logout()" id="btn-logout" style="display:none">↩ Switch user</button>
     <button onclick="openModal('modal-help')">❓ Help</button>
   </div>
 </header>
 
+<!-- ═══════════════════════════════════════════
+     AUTH SCREEN
+════════════════════════════════════════════ -->
 <div class="main" id="login-screen">
-  <div class="login-screen">
-    <div class="login-box">
+  <div class="auth-screen">
+    <div class="auth-box">
       <div style="font-size:48px;margin-bottom:.5rem">✈</div>
       <h2>FAST Update Generator</h2>
-      <p>Select your name and enter your PIN to access your projects.</p>
-      <div class="profile-picker" id="profile-picker"></div>
-      <div style="margin-top:20px;padding-top:15px;border-top:1px solid var(--g200)">
-        <button class="btn" style="width:100%;justify-content:center" onclick="promptAdminPin()">⚙️ Manage Team (Admin)</button>
+      <p id="auth-subtitle">Sign in to access your projects.</p>
+
+      <!-- Engineer login: pick name then PIN -->
+      <div id="view-picker">
+        <div class="profile-picker" id="profile-picker">
+          <p style="font-size:13px;color:var(--g400);text-align:center;padding:.5rem 0">
+            <span class="spin" style="vertical-align:middle"></span> Loading team…
+          </p>
+        </div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--g200)">
+          <button class="btn" style="width:100%;justify-content:center" onclick="showAdminLogin()">⚙️ Admin access</button>
+        </div>
       </div>
+
+      <!-- PIN entry -->
+      <div id="view-pin" style="display:none">
+        <p style="font-size:13px;color:var(--g600);margin-bottom:12px" id="pin-subtitle">Enter your 4-digit PIN</p>
+        <input type="password" id="pin-input" placeholder="• • • •" maxlength="4"
+          style="text-align:center;font-size:22px;letter-spacing:.4em;width:100%;margin-bottom:8px"
+          oninput="userPinInput()"/>
+        <div class="err-msg" id="pin-error"></div>
+        <button class="btn" style="width:100%;justify-content:center;margin-top:8px" onclick="showPicker()">← Back</button>
+      </div>
+
+      <!-- Admin login -->
+      <div id="view-admin-login" style="display:none">
+        <p style="font-size:13px;color:var(--g600);margin-bottom:12px">Admin — Enter your credentials</p>
+        <div class="fg" style="margin-bottom:8px;text-align:left"><label>Email</label><input type="email" id="admin-email-input" placeholder="admin@example.com"/></div>
+        <div class="fg" style="margin-bottom:8px;text-align:left"><label>Password</label><input type="password" id="admin-pass-input" placeholder="Password"/></div>
+        <div class="err-msg" id="admin-login-error"></div>
+        <button class="btn primary" style="width:100%;justify-content:center;margin-top:8px" onclick="adminEmailLogin()">Sign in as Admin</button>
+        <button class="btn" style="width:100%;justify-content:center;margin-top:6px" onclick="showPicker()">← Back</button>
+      </div>
+
     </div>
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════
+     APP SCREEN
+════════════════════════════════════════════ -->
 <div class="main" id="app-screen" style="display:none">
 
-<div class="eng-bar" id="eng-bar">
-  <div>
+<div class="eng-bar">
+  <div style="flex:1">
     <div class="eng-name" id="eng-bar-name">—</div>
     <div class="eng-sub" id="eng-bar-sub">—</div>
   </div>
 </div>
 
+<!-- Projects panel -->
 <div class="proj-panel">
   <div class="proj-panel-head">
-    <h3>📁 My projects (chantiers)</h3>
-    <button class="btn primary" onclick="newProject()">+ New project</button>
+    <h3>📁 My projects</h3>
+    <div class="proj-tabs">
+      <button class="proj-tab active" id="tab-active" onclick="switchProjTab('active')">Active</button>
+      <button class="proj-tab" id="tab-archive" onclick="switchProjTab('archive')">📦 Archives</button>
+    </div>
+    <button class="btn primary" onclick="newProject()">+ New</button>
   </div>
   <div class="proj-list" id="proj-list"></div>
 </div>
 
-<div class="auth-banner">
+<!-- Gemini PDF banner -->
+<div class="gemini-banner">
   <div style="font-size:20px">🔐</div>
-  <div class="auth-banner-text">
+  <div class="gemini-banner-text">
     <strong>Google account <span id="auth-badge" class="abadge ko">Not connected</span></strong>
     <small>Sign in with Google to enable free PDF extraction via Gemini</small>
   </div>
   <div id="gsi-btn-container"></div>
-  <button class="btn danger" id="btn-signout" onclick="signOutGoogle()" style="display:none">Sign out</button>
+  <button class="btn danger" id="btn-signout-google" onclick="signOutGoogle()" style="display:none">Sign out</button>
 </div>
 
+<!-- STEP 1 -->
 <div class="card">
   <div class="card-head"><span class="step-badge">STEP 1</span><h2>Upload RFS PDF — optional</h2></div>
   <div class="card-body">
@@ -270,6 +318,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
+<!-- STEP 2 -->
 <div class="card">
   <div class="card-head"><span class="step-badge">STEP 2</span><h2>Aircraft & order details</h2></div>
   <div class="card-body">
@@ -292,6 +341,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
+<!-- STEP 3 -->
 <div class="card">
   <div class="card-head"><span class="step-badge">STEP 3</span><h2>Condition — work items</h2></div>
   <div class="card-body">
@@ -300,21 +350,23 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
+<!-- STEP 4 -->
 <div class="card">
   <div class="card-head">
     <span class="step-badge">STEP 4</span>
     <h2>Daily updates</h2>
-    <button class="btn" onclick="addDayBeforeUpdate()" style="margin-left:auto">+ Day before yesterday</button>
+    <button class="btn" onclick="addDayBeforeUpdate()" style="margin-left:auto">+ Day before</button>
     <button class="btn" onclick="addYesterdayUpdate()">+ Yesterday</button>
     <button class="btn primary" onclick="addTodayUpdate()">+ Today</button>
-</div>
+  </div>
   <div class="card-body">
     <div id="updates-container">
-      <p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet — click "+ Today's update"</p>
+      <p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet — click "+ Today"</p>
     </div>
   </div>
 </div>
 
+<!-- PARTS -->
 <div class="card">
   <div class="card-head"><span class="step-badge">PARTS</span><h2>Parts replaced (optional)</h2></div>
   <div class="card-body">
@@ -323,6 +375,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
+<!-- STEP 5 -->
 <div class="card">
   <div class="card-head"><span class="step-badge">STEP 5</span><h2>Closing details</h2></div>
   <div class="card-body">
@@ -336,19 +389,17 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
+<!-- STEP 6 -->
 <div class="card">
   <div class="card-head">
     <span class="step-badge">STEP 6</span>
-    <h2>Onsite FAST engineers &amp; customer</h2>
+    <h2>Onsite FAST engineers & customer</h2>
     <button class="btn" onclick="addColleagueSlot()" id="btn-add-poc" style="margin-left:auto">+ Add Colleague</button>
   </div>
   <div class="card-body">
-    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">You are automatically assigned as the Lead Engineer. Add colleagues if they are assisting you.</p>
-    
+    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">You are automatically assigned as Lead Engineer. Add colleagues if assisting.</p>
     <div id="poc-me-container" class="poc-block me"></div>
-    
     <div id="poc-colleagues-container"></div>
-    
     <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--g200)">
       <div style="font-size:12px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Customer info</div>
       <div class="grid g2">
@@ -365,7 +416,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
     Generate FAST Update table
   </button>
-  <button class="btn danger" onclick="markRTS()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:700">✅ Mark A/C RTS</button>
+  <button class="btn danger" id="btn-mark-rts" onclick="markRTS()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:700">✅ Mark A/C RTS</button>
 </div>
 
 <div id="output-section" class="output-section" style="display:none">
@@ -385,56 +436,39 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="tbl-wrap"><div id="tbl-out"></div></div>
 </div>
 
-</div><div class="modal-bg" id="modal-admin-auth">
-  <div class="modal" style="max-width:340px;text-align:center">
-    <h3 id="admin-pin-title">Admin Access</h3>
-    <p style="font-size:13px;color:var(--g600);margin-bottom:12px" id="admin-pin-sub">Enter Master PIN</p>
-    <input type="password" id="admin-pin-input" placeholder="• • • •" maxlength="4" style="text-align:center;font-size:22px;letter-spacing:.4em;width:100%;margin-bottom:8px" oninput="adminPinInput()"/>
-    <div id="admin-pin-error" style="font-size:12px;color:var(--red);min-height:18px"></div>
-    <div class="modal-btns" style="justify-content:center">
-      <button class="btn" onclick="closeModal('modal-admin-auth')">Cancel</button>
-    </div>
-  </div>
-</div>
+</div><!-- /app-screen -->
 
+<!-- ═══════════════════════════════════
+     ADMIN PANEL MODAL
+════════════════════════════════════ -->
 <div class="modal-bg" id="modal-manage-team">
-  <div class="modal" style="max-width:560px">
+  <div class="modal" style="max-width:580px">
     <h3>👥 Manage Team (Admin)</h3>
-    <p style="font-size:13px;color:var(--g600);margin-bottom:12px">Create and manage engineer profiles. Each engineer needs a 4-digit PIN to log into their projects.</p>
-    <div id="team-list" style="max-height:250px;overflow-y:auto;margin-bottom:12px;padding-right:4px"></div>
+    <p style="font-size:13px;color:var(--g600);margin-bottom:12px">Create and manage engineer profiles. Each engineer needs a 4-digit PIN to log in.</p>
+    <div id="team-list" style="max-height:260px;overflow-y:auto;margin-bottom:12px;padding-right:4px"></div>
     <div style="padding-top:12px;border-top:1px solid var(--g200)">
       <div style="font-size:12px;font-weight:700;color:var(--g800);margin-bottom:8px">Add Team Member</div>
       <div class="grid g2">
-        <div class="fg"><label>Name</label><input type="text" id="nt_name" placeholder="Full name"/></div>
+        <div class="fg"><label>Full Name</label><input type="text" id="nt_name" placeholder="Full name"/></div>
         <div class="fg"><label>User PIN (4 digits)</label><input type="password" id="nt_pin" placeholder="e.g. 1234" maxlength="4" style="letter-spacing:.3em"/></div>
         <div class="fg"><label>Phone</label><input type="text" id="nt_phone" placeholder="Cell"/></div>
         <div class="fg"><label>Email</label><input type="email" id="nt_email" placeholder="Email"/></div>
         <div class="fg"><label>Team</label><input type="text" id="nt_team" placeholder="e.g. FAST EMEA"/></div>
       </div>
+      <div class="err-msg" id="nt-error"></div>
       <button class="btn primary" onclick="addTeamMember()" style="margin-top:8px">+ Create Engineer</button>
     </div>
     <div class="modal-btns">
-      <button class="btn primary" onclick="closeManageTeam()">Done</button>
+      <button class="btn primary" onclick="closeModal('modal-manage-team')">Done</button>
     </div>
   </div>
 </div>
 
-<div class="modal-bg" id="modal-pin">
-  <div class="modal" style="max-width:340px;text-align:center">
-    <h3 id="modal-pin-title">Enter PIN</h3>
-    <p style="font-size:13px;color:var(--g600);margin-bottom:12px" id="modal-pin-sub">Enter your 4-digit PIN to continue.</p>
-    <input type="password" id="pin-input" placeholder="• • • •" maxlength="4" style="text-align:center;font-size:22px;letter-spacing:.4em;width:100%;margin-bottom:8px" oninput="userPinInput()"/>
-    <div id="pin-error" style="font-size:12px;color:var(--red);min-height:18px"></div>
-    <div class="modal-btns" style="justify-content:center">
-      <button class="btn" onclick="closeModal('modal-pin')">Cancel</button>
-    </div>
-  </div>
-</div>
-
+<!-- RTS MODAL -->
 <div class="modal-bg" id="modal-rts">
   <div class="modal">
-    <h3>Mark A/C as RTS?</h3>
-    <p style="font-size:13px;color:var(--g600);margin-bottom:1rem">The project will be marked RTS.</p>
+    <h3 id="modal-rts-title">Mark A/C as RTS?</h3>
+    <p style="font-size:13px;color:var(--g600);margin-bottom:1rem" id="modal-rts-sub">The project will be archived.</p>
     <div class="modal-btns">
       <button class="btn" onclick="closeModal('modal-rts')">Cancel</button>
       <button class="btn primary" onclick="confirmRTS()">Confirm RTS</button>
@@ -442,411 +476,438 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
+<!-- HELP MODAL -->
 <div class="modal-bg" id="modal-help">
   <div class="modal" style="max-width:600px">
     <h3>✈ FAST Update Generator — Help</h3>
     <div class="help-section">
       <h4>🗂 How it works</h4>
       <ol>
-        <li><strong>Admin setup:</strong> Click "Manage Team", set a Master PIN, and create profiles for all your engineers (Name + PIN personnel).</li>
-        <li><strong>Login:</strong> An engineer clicks his name and enters his PIN.</li>
-        <li><strong>Step 6:</strong> L'ingénieur connecté est automatiquement le "Lead Engineer". Il peut ajouter des collègues via le menu déroulant si besoin.</li>
-        <li><strong>Generate:</strong> The exact FAST table is created. SN ON and layouts are fully responsive.</li>
+        <li><strong>Admin setup:</strong> Click "Admin access" on the login screen. Sign in with your admin email/password (created in Firebase console). Then open "Manage Team" to create engineer profiles with PIN.</li>
+        <li><strong>Engineer login:</strong> Click your name → enter your 4-digit PIN.</li>
+        <li><strong>Cloud sync:</strong> All data is saved to Firebase in real time — accessible from any device anywhere.</li>
+        <li><strong>RTS projects:</strong> Mark a project RTS to move it to Archives — always accessible but separate from active projects.</li>
       </ol>
     </div>
     <div class="help-section">
-      <h4>💾 Data storage</h4>
-      <p>All data is stored locally in your browser (localStorage). Nothing is sent to any server.</p>
+      <h4>🔒 Security</h4>
+      <p>Data is stored in Firebase Realtime Database with authentication. Only verified users (admin + engineers via PIN) can access data. All traffic is encrypted (HTTPS).</p>
     </div>
     <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-help')">Close</button></div>
   </div>
 </div>
 
-<script>
-// ══════════════════════════════════════
-//  PWA & INIT
-// ══════════════════════════════════════
-(function(){
-  const m={name:'FAST Update',short_name:'FAST',start_url:'./',display:'standalone',background_color:'#f1f3f5',theme_color:'#2d5a2d',icons:[{src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%232d5a2d"/><text y=".9em" font-size="80" x="10">✈</text></svg>',sizes:'192x192',type:'image/svg+xml'}]};
-  const b=new Blob([JSON.stringify(m)],{type:'application/json'});
-  document.getElementById('pwa-manifest').href=URL.createObjectURL(b);
-})();
-
-const GCID='624747295284-rpktnnbk5kugn7jhero0e267soidb2oj.apps.googleusercontent.com';
-const GSCOPE='https://www.googleapis.com/auth/generative-language.retriever https://www.googleapis.com/auth/cloud-platform';
-let tokenClient=null,gToken=null,gTokenExp=0;
-(function(){const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=s.defer=true;document.head.appendChild(s);})();
-window.addEventListener('load',()=>{let t=0;const tr=()=>{if(window.google?.accounts?.oauth2)initGA();else if(t++<40)setTimeout(tr,150);};tr();});
-function initGA(){tokenClient=google.accounts.oauth2.initTokenClient({client_id:GCID,scope:GSCOPE,callback:(r)=>{if(r?.access_token){gToken=r.access_token;gTokenExp=Date.now()+((r.expires_in||3500)*1000)-30000;updateAuthUI(true);setStatus('done','✓ Connected to Google.');}},error_callback:()=>setStatus('err','Google sign-in cancelled.')});renderGBtn();}
-function renderGBtn(){const c=document.getElementById('gsi-btn-container');c.innerHTML='';const b=document.createElement('button');b.className='btn primary';b.innerHTML='🔵 Sign in with Google';b.onclick=()=>tokenClient?.requestAccessToken({});c.appendChild(b);}
-function ensureGToken(){if(gToken&&Date.now()<gTokenExp)return true;tokenClient?.requestAccessToken({prompt:'consent'});return false;}
-function signOutGoogle(){if(gToken&&window.google?.accounts?.oauth2?.revoke)google.accounts.oauth2.revoke(gToken,()=>{});gToken=null;gTokenExp=0;updateAuthUI(false);}
-function updateAuthUI(ok){document.getElementById('auth-badge').textContent=ok?'Connected':'Not connected';document.getElementById('auth-badge').className='abadge '+(ok?'ok':'ko');document.getElementById('btn-signout').style.display=ok?'':'none';document.getElementById('gsi-btn-container').style.display=ok?'none':'';}
+<!-- ═══════════════════════════════════
+     FIREBASE SDK (CDN — no npm needed)
+════════════════════════════════════ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/11.9.0/firebase-auth.js";
+import { getDatabase, ref, set, get, update, remove, onValue, child }
+  from "https://www.gstatic.com/firebasejs/11.9.0/firebase-database.js";
 
 // ══════════════════════════════════════
-//  STORAGE & TEAM LOGIC
+//  FIREBASE CONFIG
 // ══════════════════════════════════════
-const LS={get:k=>{try{return JSON.parse(localStorage.getItem(k))}catch{return null}},set:(k,v)=>localStorage.setItem(k,JSON.stringify(v)),del:k=>localStorage.removeItem(k)};
-function hashPin(pin){let h=5381;for(let i=0;i<pin.length;i++)h=((h<<5)+h)+pin.charCodeAt(i);return(h>>>0).toString(16);}
+const firebaseConfig = {
+  apiKey: "AIzaSyA5PS5Dy-RJJTC71DX2wiBm83yl4D98cFI",
+  authDomain: "fast-update-46079.firebaseapp.com",
+  databaseURL: "https://fast-update-46079-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "fast-update-46079",
+  storageBucket: "fast-update-46079.firebasestorage.app",
+  messagingSenderId: "178536566816",
+  appId: "1:178536566816:web:e1c2b103fc198a94d72c45"
+};
 
-const TEAM_KEY='fast_profiles'; // Reusing key for backward compatibility, now acts as global team roster
-const getTeam=()=>LS.get(TEAM_KEY)||[];
-const saveTeam=a=>LS.set(TEAM_KEY,a);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
 
-let curProfile=null;
-let curProj=null;
-let pdfB64=null;
-let itemCount=0,partCount=0,colleagueSlotCount=0;
-let pendingUserToLogin=null;
+// ══════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════
+let curProfile = null;   // engineer profile object (from DB)
+let curProj = null;      // current project ID string
+let isAdmin = false;
+let pdfB64 = null;
+let itemCount = 0, partCount = 0, colleagueSlotCount = 0;
+let pendingUserToLogin = null;
+let saveTimer = null;
+let projTab = 'active';  // 'active' | 'archive'
 
-window.addEventListener('DOMContentLoaded',()=>{
-  const lastId=LS.get('fast_last_profile');
-  renderLoginScreen();
-  if(lastId){
-    const p=getTeam().find(x=>x.id===lastId);
-    if(p) promptUserPin(p);
+// Gemini / Google OAuth
+const GCID = '624747295284-rpktnnbk5kugn7jhero0e267soidb2oj.apps.googleusercontent.com';
+const GSCOPE = 'https://www.googleapis.com/auth/generative-language.retriever https://www.googleapis.com/auth/cloud-platform';
+let tokenClient = null, gToken = null, gTokenExp = 0;
+
+// ══════════════════════════════════════
+//  EXPOSE GLOBALS (HTML onclick needs these)
+// ══════════════════════════════════════
+const G = window;
+
+// ══════════════════════════════════════
+//  FIREBASE AUTH STATE
+// ══════════════════════════════════════
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    // Signed in via email — check if admin
+    const snap = await get(ref(db, 'admins/' + user.uid));
+    isAdmin = snap.exists();
+    if (isAdmin) {
+      showAdminPanel();
+    }
   }
 });
 
 // ══════════════════════════════════════
-//  ADMIN: MANAGE TEAM
+//  LOGIN SCREEN VIEWS
 // ══════════════════════════════════════
-function promptAdminPin(){
-  const adminPin=LS.get('fast_admin_pin');
-  document.getElementById('admin-pin-title').textContent=adminPin?'Admin Access':'Set Admin PIN';
-  document.getElementById('admin-pin-sub').textContent=adminPin?'Enter Master PIN to manage team.':'Create a 4-digit Master PIN to secure Admin access.';
-  document.getElementById('admin-pin-input').value='';
-  document.getElementById('admin-pin-error').textContent='';
-  openModal('modal-admin-auth');
-  setTimeout(()=>document.getElementById('admin-pin-input').focus(),100);
-}
+G.showPicker = function() {
+  document.getElementById('view-picker').style.display = '';
+  document.getElementById('view-pin').style.display = 'none';
+  document.getElementById('view-admin-login').style.display = 'none';
+  loadTeamForPicker();
+};
 
-function adminPinInput(){
-  const val=document.getElementById('admin-pin-input').value;
-  if(val.length===4){
-    const stored=LS.get('fast_admin_pin');
-    if(!stored){
-      LS.set('fast_admin_pin',hashPin(val));
-      closeModal('modal-admin-auth');
-      openManageTeam();
-    }else{
-      if(hashPin(val)===stored){
-        closeModal('modal-admin-auth');
-        openManageTeam();
-      }else{
-        document.getElementById('admin-pin-error').textContent='❌ Incorrect Master PIN.';
-        document.getElementById('admin-pin-input').value='';
-      }
+G.showAdminLogin = function() {
+  document.getElementById('view-picker').style.display = 'none';
+  document.getElementById('view-pin').style.display = 'none';
+  document.getElementById('view-admin-login').style.display = '';
+  document.getElementById('admin-login-error').textContent = '';
+  setTimeout(() => document.getElementById('admin-email-input').focus(), 100);
+};
+
+async function loadTeamForPicker() {
+  const picker = document.getElementById('profile-picker');
+  picker.innerHTML = '<p style="font-size:13px;color:var(--g400);text-align:center;padding:.5rem 0"><span class="spin" style="vertical-align:middle"></span> Loading…</p>';
+  try {
+    const snap = await get(ref(db, 'team'));
+    if (!snap.exists()) {
+      picker.innerHTML = '<p style="font-size:13px;color:var(--g400);text-align:center;padding:.5rem 0">No engineers yet — contact your admin.</p>';
+      return;
     }
+    const team = Object.values(snap.val());
+    picker.innerHTML = '';
+    team.forEach(p => {
+      const btn = document.createElement('button');
+      btn.className = 'profile-btn';
+      const initials = (p.name || '?').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+      const projCount = Object.keys(p.projects || {}).length;
+      btn.innerHTML = `<div class="pb-avatar">${initials}</div>
+        <div class="pb-info">
+          <div class="pb-name">${p.name}</div>
+          <div class="pb-sub">${p.team || ''}${p.team && projCount ? ' · ' : ''}${projCount} project${projCount !== 1 ? 's' : ''}</div>
+        </div>
+        <div style="font-size:16px;color:var(--g400)">🔒</div>`;
+      btn.onclick = () => showPinEntry(p);
+      picker.appendChild(btn);
+    });
+  } catch(e) {
+    picker.innerHTML = `<p style="font-size:13px;color:var(--red);text-align:center;padding:.5rem 0">Error loading team: ${e.message}</p>`;
   }
 }
 
-function openManageTeam(){
-  renderTeamAdminList();
-  openModal('modal-manage-team');
+function showPinEntry(profile) {
+  pendingUserToLogin = profile;
+  document.getElementById('view-picker').style.display = 'none';
+  document.getElementById('view-pin').style.display = '';
+  document.getElementById('pin-subtitle').textContent = `Enter PIN for: ${profile.name}`;
+  document.getElementById('pin-input').value = '';
+  document.getElementById('pin-error').textContent = '';
+  setTimeout(() => document.getElementById('pin-input').focus(), 100);
 }
 
-function renderTeamAdminList(){
-  const list=document.getElementById('team-list');
-  const team=getTeam();
-  if(!team.length){list.innerHTML='<p style="font-size:13px;color:var(--g400)">No engineers created yet. Add one below.</p>';return;}
-  list.innerHTML=team.map((p,i)=>`
+G.userPinInput = function() {
+  const val = document.getElementById('pin-input').value;
+  if (val.length === 4) {
+    if (!pendingUserToLogin) return;
+    if (hashPin(val) !== pendingUserToLogin.pinHash) {
+      document.getElementById('pin-error').textContent = '❌ Incorrect PIN.';
+      document.getElementById('pin-input').value = '';
+    } else {
+      loginAs(pendingUserToLogin);
+    }
+  }
+};
+
+G.adminEmailLogin = async function() {
+  const email = document.getElementById('admin-email-input').value.trim();
+  const pass = document.getElementById('admin-pass-input').value;
+  document.getElementById('admin-login-error').textContent = '';
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+    // onAuthStateChanged will handle the rest
+  } catch(e) {
+    document.getElementById('admin-login-error').textContent = '❌ ' + (e.code === 'auth/invalid-credential' ? 'Invalid email or password.' : e.message);
+  }
+};
+
+async function showAdminPanel() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = '';
+  document.getElementById('hdr-profile-name').textContent = '⚙️ Admin';
+  document.getElementById('btn-logout').style.display = '';
+  document.getElementById('eng-bar-name').textContent = '⚙️ Admin Panel';
+  document.getElementById('eng-bar-sub').textContent = auth.currentUser?.email || '';
+  renderProjList();
+  openModal('modal-manage-team');
+  renderTeamAdminList();
+}
+
+function loginAs(profile) {
+  curProfile = profile;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = '';
+  document.getElementById('hdr-profile-name').textContent = profile.name;
+  document.getElementById('btn-logout').style.display = '';
+  document.getElementById('eng-bar-name').textContent = profile.name;
+  document.getElementById('eng-bar-sub').textContent = [profile.team, profile.email, profile.phone].filter(Boolean).join(' · ');
+  document.getElementById('sync-badge').style.display = '';
+  renderProjList();
+  renderStep6Me();
+}
+
+G.logout = async function() {
+  curProfile = null; curProj = null; pendingUserToLogin = null; isAdmin = false;
+  document.getElementById('poc-colleagues-container').innerHTML = ''; colleagueSlotCount = 0;
+  document.getElementById('sync-badge').style.display = 'none';
+  document.getElementById('btn-logout').style.display = 'none';
+  document.getElementById('hdr-profile-name').textContent = '';
+  if (auth.currentUser) await signOut(auth);
+  document.getElementById('app-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = '';
+  showPicker();
+};
+
+// ══════════════════════════════════════
+//  ADMIN: MANAGE TEAM
+// ══════════════════════════════════════
+async function renderTeamAdminList() {
+  const list = document.getElementById('team-list');
+  list.innerHTML = '<p style="font-size:13px;color:var(--g400)"><span class="spin" style="vertical-align:middle"></span> Loading…</p>';
+  const snap = await get(ref(db, 'team'));
+  if (!snap.exists()) {
+    list.innerHTML = '<p style="font-size:13px;color:var(--g400)">No engineers yet. Add one below.</p>';
+    return;
+  }
+  const team = snap.val();
+  list.innerHTML = Object.entries(team).map(([id, p]) => `
     <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:6px">
       <div style="flex:1">
         <div style="font-weight:700;font-size:13px">${p.name}</div>
-        <div style="font-size:11px;color:var(--g600)">${[p.team,p.email,p.phone].filter(Boolean).join(' · ')}</div>
+        <div style="font-size:11px;color:var(--g600)">${[p.team, p.email, p.phone].filter(Boolean).join(' · ')}</div>
       </div>
-      <button class="btn danger" onclick="deleteTeamMember('${p.id}')" style="padding:4px 8px;font-size:11px">🗑</button>
+      <button class="btn danger" onclick="deleteTeamMember('${id}')" style="padding:4px 8px;font-size:11px">🗑</button>
     </div>`).join('');
 }
 
-function addTeamMember(){
-  const name=document.getElementById('nt_name').value.trim();
-  const pin=document.getElementById('nt_pin').value.trim();
-  if(!name){alert('Name required.');return;}
-  if(pin.length!==4||!/^\d{4}$/.test(pin)){alert('User PIN must be exactly 4 digits.');return;}
-  
-  const team=getTeam();
-  team.push({
-    id:'prof_'+Date.now(),
-    name,
-    email:document.getElementById('nt_email').value.trim(),
-    team:document.getElementById('nt_team').value.trim(),
-    phone:document.getElementById('nt_phone').value.trim(),
-    pinHash:hashPin(pin),
-    projects:[] // initialize empty projects array
-  });
-  saveTeam(team);
-  
-  ['nt_name','nt_email','nt_team','nt_phone','nt_pin'].forEach(id=>document.getElementById(id).value='');
+G.addTeamMember = async function() {
+  const name = document.getElementById('nt_name').value.trim();
+  const pin = document.getElementById('nt_pin').value.trim();
+  const errEl = document.getElementById('nt-error');
+  errEl.textContent = '';
+  if (!name) { errEl.textContent = 'Name required.'; return; }
+  if (!/^\d{4}$/.test(pin)) { errEl.textContent = 'PIN must be exactly 4 digits.'; return; }
+  const id = 'prof_' + Date.now();
+  const member = {
+    id, name,
+    email: document.getElementById('nt_email').value.trim(),
+    team: document.getElementById('nt_team').value.trim(),
+    phone: document.getElementById('nt_phone').value.trim(),
+    pinHash: hashPin(pin),
+    projects: {}
+  };
+  await set(ref(db, 'team/' + id), member);
+  ['nt_name','nt_email','nt_team','nt_phone','nt_pin'].forEach(i => document.getElementById(i).value = '');
   renderTeamAdminList();
-}
+};
 
-function deleteTeamMember(id){
-  if(!confirm('Delete this engineer profile permanently?')) return;
-  saveTeam(getTeam().filter(p=>p.id!==id));
+G.deleteTeamMember = async function(id) {
+  if (!confirm('Delete this engineer? Their projects will be deleted too.')) return;
+  await remove(ref(db, 'team/' + id));
   renderTeamAdminList();
-}
-
-function closeManageTeam(){
-  closeModal('modal-manage-team');
-  renderLoginScreen();
-}
+};
 
 // ══════════════════════════════════════
-//  USER LOGIN
+//  PROJECTS
 // ══════════════════════════════════════
-function renderLoginScreen(){
-  document.getElementById('login-screen').style.display='';
-  document.getElementById('app-screen').style.display='none';
-  document.getElementById('btn-logout').style.display='none';
-  document.getElementById('hdr-profile-name').textContent='';
-  const picker=document.getElementById('profile-picker');
-  const team=getTeam();
-  picker.innerHTML='';
-  if(!team.length){
-    picker.innerHTML='<p style="font-size:13px;color:var(--g400);text-align:center;padding:.5rem 0">Team is empty. Click "Manage Team" below to create profiles.</p>';
+G.switchProjTab = function(tab) {
+  projTab = tab;
+  document.getElementById('tab-active').classList.toggle('active', tab === 'active');
+  document.getElementById('tab-archive').classList.toggle('active', tab === 'archive');
+  renderProjList();
+};
+
+async function renderProjList() {
+  const list = document.getElementById('proj-list');
+  list.innerHTML = '<div class="proj-empty"><span class="spin" style="vertical-align:middle"></span> Loading…</div>';
+
+  let projsObj = {};
+  if (curProfile) {
+    const snap = await get(ref(db, 'team/' + curProfile.id + '/projects'));
+    if (snap.exists()) projsObj = snap.val();
+  } else if (isAdmin) {
+    list.innerHTML = '<div class="proj-empty">Select an engineer to view their projects.</div>';
     return;
   }
-  team.forEach(p=>{
-    const btn=document.createElement('button');
-    btn.className='profile-btn';
-    const initials=(p.name||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
-    const projs=(p.projects||[]).length;
-    btn.innerHTML=`<div class="pb-avatar">${initials}</div><div class="pb-info"><div class="pb-name">${p.name}</div><div class="pb-sub">${p.team||''}${p.team&&projs?' · ':''}${projs} project${projs!==1?'s':''}</div></div><div class="pb-lock">🔒</div>`;
-    btn.onclick=()=>promptUserPin(p);
-    picker.appendChild(btn);
-  });
-}
 
-function promptUserPin(profile){
-  pendingUserToLogin=profile;
-  document.getElementById('modal-pin-title').textContent=`Unlock: ${profile.name}`;
-  document.getElementById('pin-input').value='';
-  document.getElementById('pin-error').textContent='';
-  openModal('modal-pin');
-  setTimeout(()=>document.getElementById('pin-input').focus(),100);
-}
-
-function userPinInput(){
-  const val=document.getElementById('pin-input').value;
-  if(val.length===4){
-    if(!pendingUserToLogin) return;
-    // Refresh user from DB in case it was edited
-    const p=getTeam().find(x=>x.id===pendingUserToLogin.id);
-    if(hashPin(val)!==p.pinHash){
-      document.getElementById('pin-error').textContent='❌ Incorrect PIN.';
-      document.getElementById('pin-input').value='';
-    }else{
-      closeModal('modal-pin');
-      loginAs(p);
-    }
+  const all = Object.values(projsObj);
+  const filtered = all.filter(p => projTab === 'archive' ? p.rts : !p.rts);
+  if (!filtered.length) {
+    list.innerHTML = `<div class="proj-empty">${projTab === 'archive' ? 'No archived projects.' : 'No active projects — create one or upload a PDF.'}</div>`;
+    return;
   }
-}
-
-function loginAs(profile){
-  curProfile=profile;
-  LS.set('fast_last_profile',profile.id);
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('app-screen').style.display='';
-  document.getElementById('hdr-profile-name').textContent=profile.name;
-  document.getElementById('btn-logout').style.display='';
-  document.getElementById('eng-bar-name').textContent=profile.name;
-  document.getElementById('eng-bar-sub').textContent=[profile.team,profile.email,profile.phone].filter(Boolean).join(' · ');
-  
-  renderProjList();
-  renderStep6Me(); // Auto-inject the user into Step 6
-}
-
-function logout(){
-  curProfile=null; curProj=null; pendingUserToLogin=null;
-  LS.del('fast_last_profile');
-  document.getElementById('poc-colleagues-container').innerHTML='';colleagueSlotCount=0;
-  renderLoginScreen();
-}
-
-// ══════════════════════════════════════
-//  PROJECTS CRUD
-// ══════════════════════════════════════
-function getProjs(){return(curProfile?(getTeam().find(p=>p.id===curProfile.id)||{}).projects:[]) || [];}
-function saveProj(proj){
-  const team=getTeam(); const p=team.find(x=>x.id===curProfile.id); if(!p) return;
-  if(!p.projects)p.projects=[];
-  const i=p.projects.findIndex(x=>x.id===proj.id);
-  if(i>=0)p.projects[i]=proj; else p.projects.push(proj);
-  saveTeam(team); curProfile=p;
-}
-function delProj(pid){
-  const team=getTeam(); const p=team.find(x=>x.id===curProfile.id); if(!p||!p.projects) return;
-  p.projects=p.projects.filter(x=>x.id!==pid); saveTeam(team); curProfile=p;
-}
-
-function renderProjList(){
-  const projs=getProjs(); const list=document.getElementById('proj-list');
-  if(!projs.length){list.innerHTML='<div class="proj-empty">No projects yet — upload a PDF or create one manually.</div>';return;}
-  const sorted=[...projs].sort((a,b)=>{if(a.rts&&!b.rts)return 1;if(!a.rts&&b.rts)return -1;return(b.updatedAt||0)-(a.updatedAt||0);});
-  list.innerHTML='';
-  sorted.forEach(proj=>{
-    const div=document.createElement('div');div.className='proj-item'+(proj.id===curProj?' active':'');
-    const ds=new Date(proj.updatedAt||proj.createdAt).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});
-    div.innerHTML=`<div class="proj-item-info"><div class="proj-item-wo">${proj.wo||'(no WO)'} ${proj.rts?'<span class="tag-rts">RTS ✓</span>':'<span class="tag-open">OPEN</span>'}</div><div class="proj-item-sub">${[proj.model,proj.sn,proj.reg,proj.loc].filter(Boolean).join(' · ')}</div></div><div class="proj-item-date">${ds}</div><button class="btn danger" onclick="event.stopPropagation();deleteProjUI('${proj.id}')" style="padding:4px 8px;font-size:11px">🗑</button>`;
-    div.onclick=()=>loadProject(proj.id); list.appendChild(div);
+  const sorted = [...filtered].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  list.innerHTML = '';
+  sorted.forEach(proj => {
+    const div = document.createElement('div');
+    div.className = 'proj-item' + (proj.id === curProj ? ' active' : '');
+    const ds = new Date(proj.updatedAt || proj.createdAt).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'2-digit'});
+    div.innerHTML = `
+      <div class="proj-item-info">
+        <div class="proj-item-wo">${proj.wo||'(no WO)'} ${proj.rts ? '<span class="tag-arch">RTS ✓</span>' : '<span class="tag-open">OPEN</span>'}</div>
+        <div class="proj-item-sub">${[proj.model, proj.sn, proj.reg, proj.loc].filter(Boolean).join(' · ')}</div>
+      </div>
+      <div class="proj-item-date">${ds}</div>
+      <button class="btn danger" onclick="event.stopPropagation();deleteProjUI('${proj.id}')" style="padding:4px 8px;font-size:11px">🗑</button>`;
+    div.onclick = () => loadProject(proj.id);
+    list.appendChild(div);
   });
 }
 
-function newProject(){curProj=null;clearForm();renderProjList();window.scrollTo({top:0,behavior:'smooth'});}
+G.newProject = function() {
+  curProj = null; clearForm(); renderProjList();
+  window.scrollTo({top:0, behavior:'smooth'});
+};
 
-function loadProject(pid){
-  const proj=getProjs().find(p=>p.id===pid); if(!proj) return;
-  curProj=pid; fillFromProj(proj); renderProjList();
-  window.scrollTo({top:document.querySelector('.card').offsetTop-70,behavior:'smooth'});
-}
+G.loadProject = async function(pid) {
+  const snap = await get(ref(db, 'team/' + curProfile.id + '/projects/' + pid));
+  if (!snap.exists()) return;
+  curProj = pid;
+  fillFromProj(snap.val());
+  renderProjList();
+  window.scrollTo({top: document.querySelector('.card')?.offsetTop - 70 || 0, behavior:'smooth'});
+};
 
-function deleteProjUI(pid){
-  const proj=getProjs().find(p=>p.id===pid); if(!proj) return;
-  if(!confirm(`Delete project "${proj.wo||'(no WO)'}"?`)) return;
-  delProj(pid); if(curProj===pid){curProj=null;clearForm();} renderProjList();
-}
+G.deleteProjUI = async function(pid) {
+  const snap = await get(ref(db, 'team/' + curProfile.id + '/projects/' + pid));
+  const wo = snap.exists() ? (snap.val().wo || '(no WO)') : pid;
+  if (!confirm(`Delete project "${wo}"?`)) return;
+  await remove(ref(db, 'team/' + curProfile.id + '/projects/' + pid));
+  if (curProj === pid) { curProj = null; clearForm(); }
+  renderProjList();
+};
 
-function gatherData(){
+function gatherData() {
   return {
-    wo:gv('f_wo'),model:gv('f_model'),sn:gv('f_sn'),reg:gv('f_reg'),loc:gv('f_loc'),
-    rts_assist:gv('f_rts_assist'),far:gv('f_far'),country:gv('f_country'),fbo:gv('f_fbo'),po:gv('f_po'),
-    erts:gv('f_erts'),nxt:gv('f_nxt'),retdate:gv('f_retdate'),rettime:gv('f_rettime'),info:gv('f_info'),
-    cust_name:gv('f_cust_name'),cust_tel:gv('f_cust_tel'),cust_email:gv('f_cust_email'),
-    items:getItems(),parts:getParts(),colleagues:getColleagueSlots(),updates:getUpdatesData()
+    wo: gv('f_wo'), model: gv('f_model'), sn: gv('f_sn'), reg: gv('f_reg'), loc: gv('f_loc'),
+    rts_assist: gv('f_rts_assist'), far: gv('f_far'), country: gv('f_country'), fbo: gv('f_fbo'), po: gv('f_po'),
+    erts: gv('f_erts'), nxt: gv('f_nxt'), retdate: gv('f_retdate'), rettime: gv('f_rettime'), info: gv('f_info'),
+    cust_name: gv('f_cust_name'), cust_tel: gv('f_cust_tel'), cust_email: gv('f_cust_email'),
+    leadEngId: document.getElementById('lead-eng-sel')?.value || '',  // ← nouveau
+    items: getItems(), parts: getParts(), colleagues: getColleagueSlots(), updates: getUpdatesData()
   };
 }
 
-function autosave(){
-  if(!curProfile) return;
-  const d=gatherData(); if(!d.wo&&!d.model&&!d.sn) return;
-  if(!curProj) curProj='proj_'+Date.now();
-  const projs=getProjs(); const ex=projs.find(p=>p.id===curProj);
-  saveProj({...(ex||{}),id:curProj,createdAt:ex?.createdAt||Date.now(),updatedAt:Date.now(),rts:ex?.rts||false,...d});
-  renderProjList();
+G.autosave = function() {
+  if (!curProfile) return;
+  setSyncBadge('pending');
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(doSave, 1200);
+};
+
+async function doSave() {
+  if (!curProfile) return;
+  const d = gatherData();
+  if (!d.wo && !d.model && !d.sn) return;
+  if (!curProj) curProj = 'proj_' + Date.now();
+  // Read existing to preserve rts flag
+  const existing = (await get(ref(db, 'team/' + curProfile.id + '/projects/' + curProj))).val() || {};
+  const toSave = {
+    ...existing, id: curProj,
+    createdAt: existing.createdAt || Date.now(),
+    updatedAt: Date.now(),
+    rts: existing.rts || false,
+    ...d
+  };
+  try {
+    await set(ref(db, 'team/' + curProfile.id + '/projects/' + curProj), toSave);
+    setSyncBadge('ok');
+    renderProjList();
+  } catch(e) {
+    setSyncBadge('err');
+    console.error('Save error:', e);
+  }
 }
 
-const gv=id=>document.getElementById(id)?.value||'';
-const sv=(id,v)=>{const e=document.getElementById(id);if(e&&v!=null)e.value=v;};
+function setSyncBadge(state) {
+  const b = document.getElementById('sync-badge');
+  b.className = 'sync-indicator ' + (state === 'ok' ? 'sync-ok' : state === 'pending' ? 'sync-pending' : 'sync-err');
+  b.textContent = state === 'ok' ? '☁️ Synced' : state === 'pending' ? '⏳ Saving…' : '❌ Sync error';
+}
 
-function fillFromProj(proj){
-  sv('f_wo',proj.wo);sv('f_model',proj.model);sv('f_sn',proj.sn);sv('f_reg',proj.reg);sv('f_loc',proj.loc);
-  sv('f_rts_assist',proj.rts_assist||'RTS');sv('f_far',proj.far);sv('f_country',proj.country);sv('f_fbo',proj.fbo);sv('f_po',proj.po);
-  sv('f_erts',proj.erts||'');sv('f_nxt',proj.nxt||'');sv('f_retdate',proj.retdate||'');sv('f_rettime',proj.rettime||'');sv('f_info',proj.info||'');
-  sv('f_cust_name',proj.cust_name||'');sv('f_cust_tel',proj.cust_tel||'');sv('f_cust_email',proj.cust_email||'');
-  document.getElementById('items-container').innerHTML='';itemCount=0;
-  (proj.items||[]).forEach(it=>addItem(it.label,it.status));
-  document.getElementById('parts-container').innerHTML='';partCount=0;
-  (proj.parts||[]).forEach(p=>addPart(p.nom,p.pn_off,p.sn_off,p.pn_on,p.sn_on));
-  
+// ══════════════════════════════════════
+//  FORM FILL / CLEAR
+// ══════════════════════════════════════
+const gv = id => document.getElementById(id)?.value || '';
+const sv = (id, v) => { const e = document.getElementById(id); if (e && v != null) e.value = v; };
+
+function fillFromProj(proj) {
+  sv('f_wo', proj.wo); sv('f_model', proj.model); sv('f_sn', proj.sn); sv('f_reg', proj.reg); sv('f_loc', proj.loc);
+  sv('f_rts_assist', proj.rts_assist || 'RTS'); sv('f_far', proj.far); sv('f_country', proj.country); sv('f_fbo', proj.fbo); sv('f_po', proj.po);
+  sv('f_erts', proj.erts || ''); sv('f_nxt', proj.nxt || ''); sv('f_retdate', proj.retdate || ''); sv('f_rettime', proj.rettime || ''); sv('f_info', proj.info || '');
+  sv('f_cust_name', proj.cust_name || ''); sv('f_cust_tel', proj.cust_tel || ''); sv('f_cust_email', proj.cust_email || '');
+
+  document.getElementById('items-container').innerHTML = ''; itemCount = 0;
+  // items can be array or object (Firebase)
+  const items = Array.isArray(proj.items) ? proj.items : Object.values(proj.items || {});
+  items.forEach(it => addItem(it.label));
+
+  document.getElementById('parts-container').innerHTML = ''; partCount = 0;
+  const parts = Array.isArray(proj.parts) ? proj.parts : Object.values(proj.parts || {});
+  parts.forEach(p => addPart(p.nom, p.pn_off, p.sn_off, p.pn_on, p.sn_on));
+
   renderStep6Me();
-  document.getElementById('poc-colleagues-container').innerHTML='';colleagueSlotCount=0;
-  if((proj.colleagues||[]).length>0) proj.colleagues.forEach(c=>addColleagueSlot(c.id));
-  
-  document.getElementById('updates-container').innerHTML='';
-  (proj.updates||[]).forEach(u=>renderUpdateBlock(u));
-  if(!(proj.updates||[]).length) document.getElementById('updates-container').innerHTML='<p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet</p>';
-  document.getElementById('output-section').style.display='none';
+  // Restore lead engineer selection
+  if (proj.leadEngId) {
+    setTimeout(() => {
+      const sel = document.getElementById('lead-eng-sel');
+      if (sel) { sel.value = proj.leadEngId; displayLeadEngInfo(proj.leadEngId); }
+    }, 300);
+  }
+  document.getElementById('poc-colleagues-container').innerHTML = ''; colleagueSlotCount = 0;
+  const cols = Array.isArray(proj.colleagues) ? proj.colleagues : Object.values(proj.colleagues || {});
+  cols.forEach(c => addColleagueSlot(c.id));
+
+  document.getElementById('updates-container').innerHTML = '';
+  const updates = Array.isArray(proj.updates) ? proj.updates : Object.values(proj.updates || {});
+  if (updates.length) updates.forEach(u => renderUpdateBlock(u));
+  else document.getElementById('updates-container').innerHTML = '<p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet</p>';
+
+  document.getElementById('output-section').style.display = 'none';
 }
 
-function clearForm(){
-  ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_cust_name','f_cust_tel','f_cust_email'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
-  document.getElementById('f_rts_assist').value='RTS';
-  document.getElementById('items-container').innerHTML='';itemCount=0;
-  document.getElementById('parts-container').innerHTML='';partCount=0;
-  
+function clearForm() {
+  ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_cust_name','f_cust_tel','f_cust_email']
+    .forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
+  document.getElementById('f_rts_assist').value = 'RTS';
+  document.getElementById('items-container').innerHTML = ''; itemCount = 0;
+  document.getElementById('parts-container').innerHTML = ''; partCount = 0;
   renderStep6Me();
-  document.getElementById('poc-colleagues-container').innerHTML='';colleagueSlotCount=0;
-  
-  document.getElementById('updates-container').innerHTML='<p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet</p>';
-  document.getElementById('output-section').style.display='none';
+  document.getElementById('poc-colleagues-container').innerHTML = ''; colleagueSlotCount = 0;
+  document.getElementById('updates-container').innerHTML = '<p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet</p>';
+  document.getElementById('output-section').style.display = 'none';
 }
 
 // ══════════════════════════════════════
-//  STEP 6: TEAM POC (Lead + Colleagues)
+//  WORK ITEMS  ← CORRECTED (no status select)
 // ══════════════════════════════════════
-function renderStep6Me(){
-  if(!curProfile) return;
-  const me=document.getElementById('poc-me-container');
-  me.innerHTML=`
-    <div class="poc-block-head">
-      <span style="color:var(--gd)">👨‍🔧 Lead Engineer (You)</span>
-    </div>
-    <div style="font-size:13px;color:var(--g900)">
-      <b>${curProfile.name}</b>${curProfile.team?' · '+curProfile.team:''}<br>
-      ${curProfile.phone?'📱 '+curProfile.phone+'<br>':''}
-      ${curProfile.email?'✉️ '+curProfile.email:''}
-    </div>`;
-}
-
-function buildColleagueOptions(selectedId=''){
-  const team=getTeam().filter(p=>p.id!==curProfile.id); // Exclude self
-  let html='<option value="">— Select colleague —</option>';
-  team.forEach(p=>{html+=`<option value="${p.id}" ${p.id===selectedId?'selected':''}>${p.name}${p.team?' ('+p.team+')':''}</option>`;});
-  return html;
-}
-
-function addColleagueSlot(colleagueId=''){
-  if(colleagueSlotCount>=2){alert('Maximum 2 additional colleagues per project.');return;}
-  colleagueSlotCount++;
-  const c=document.getElementById('poc-colleagues-container');const d=document.createElement('div');
-  d.className='poc-block colleague-slot';d.id='coll-slot-'+colleagueSlotCount;
-  d.innerHTML=`<div class="poc-block-head">
-    <span>Assist Engineer</span>
-    <button class="btn danger" onclick="removeColleagueSlot('${d.id}')" style="padding:4px 8px;font-size:11px">Remove</button>
-  </div>
-  <select class="coll-sel" style="margin-bottom:8px" onchange="onColleagueSelect(this)">${buildColleagueOptions(colleagueId)}</select>
-  <div class="coll-info" style="font-size:12px;color:var(--g600)"></div>`;
-  c.appendChild(d);
-  document.getElementById('btn-add-poc').style.display=colleagueSlotCount>=2?'none':'';
-  if(colleagueId) displayColleagueInfo(d.querySelector('.coll-info'),colleagueId);
-}
-
-function onColleagueSelect(sel){
-  const block=sel.closest('.poc-block');
-  displayColleagueInfo(block.querySelector('.coll-info'),sel.value);
-  autosave();
-}
-
-function displayColleagueInfo(el,id){
-  if(!id){el.innerHTML='';return;}
-  const p=getTeam().find(x=>x.id===id);
-  if(!p){el.innerHTML='';return;}
-  el.innerHTML=`<b>${p.name}</b>${p.team?' · '+p.team:''}${p.phone?'<br>📱 '+p.phone:''}${p.email?'<br>✉️ '+p.email:''}`;
-}
-
-function removeColleagueSlot(id){
-  const el=document.getElementById(id);if(el)el.remove();colleagueSlotCount--;
-  document.getElementById('btn-add-poc').style.display='';
-  autosave();
-}
-
-function getColleagueSlots(){
-  return Array.from(document.querySelectorAll('.colleague-slot')).map(b=>{
-    const sel=b.querySelector('.coll-sel');
-    const id=sel?.value||'';
-    const p=getTeam().find(x=>x.id===id);
-    return p?{id:p.id,name:p.name,tel:p.phone,email:p.email,team:p.team}:null;
-  }).filter(Boolean);
-}
-
-function getAllPocsData(){
-  // Returns [Me, Colleague1, Colleague2]
-  const pocs=[];
-  if(curProfile) pocs.push({name:curProfile.name,tel:curProfile.phone,email:curProfile.email,team:curProfile.team});
-  pocs.push(...getColleagueSlots());
-  return pocs;
-}
-
-// ══════════════════════════════════════
-//  WORK ITEMS & UPDATES
-// ══════════════════════════════════════
-function addItem(label=''){
+G.addItem = function(label = '') {
   itemCount++;
-  const c=document.getElementById('items-container');
-  const d=document.createElement('div');d.className='item-row';d.id='item-'+itemCount;
-  d.innerHTML=`<span class="item-num">${itemCount}</span>
+  const c = document.getElementById('items-container');
+  const d = document.createElement('div'); d.className = 'item-row'; d.id = 'item-' + itemCount;
+  d.innerHTML = `<span class="item-num">${itemCount}</span>
     <div class="item-fields">
       <div class="item-label-row">
         <input type="text" value="${label.replace(/"/g,'&quot;')}" placeholder="Work item description" oninput="autosave()"/>
@@ -854,41 +915,65 @@ function addItem(label=''){
     </div>
     <button class="btn-rm" onclick="this.parentElement.remove();autosave()">×</button>`;
   c.appendChild(d);
+};
+
+function getItems() {
+  return Array.from(document.querySelectorAll('.item-row')).map((r, i) => ({
+    num: i + 1, label: r.querySelector('input').value
+  }));
 }
 
-function getItems(){return Array.from(document.querySelectorAll('.item-row')).map((r,i)=>({num:i+1,label:r.querySelector('input').value}));}
+// ══════════════════════════════════════
+//  DAILY UPDATES
+// ══════════════════════════════════════
+function todayLabel() { return new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}); }
 
-function todayLabel(){return new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});}
-function addTodayUpdate(){const t=todayLabel();if(getUpdatesData().find(u=>u.date===t)){setStatus('idle',"Today's update already exists.");return;} createUpdateBlock(t);}
-function addYesterdayUpdate(){const y=new Date();y.setDate(y.getDate()-1);const t=y.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});if(getUpdatesData().find(u=>u.date===t)){setStatus('idle',"Yesterday's update already exists.");return;} createUpdateBlock(t);} 
-function addDayBeforeUpdate(){const y=new Date();y.setDate(y.getDate()-2);const t=y.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});if(getUpdatesData().find(u=>u.date===t)){setStatus('idle',"This day's update already exists.");return;} createUpdateBlock(t);}
+G.addTodayUpdate = function() {
+  const t = todayLabel();
+  if (getUpdatesData().find(u => u.date === t)) { setStatus('idle',"Today's update already exists."); return; }
+  createUpdateBlock(t);
+};
+G.addYesterdayUpdate = function() {
+  const y = new Date(); y.setDate(y.getDate()-1);
+  const t = y.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  if (getUpdatesData().find(u => u.date === t)) { setStatus('idle',"Yesterday's update already exists."); return; }
+  createUpdateBlock(t);
+};
+G.addDayBeforeUpdate = function() {
+  const y = new Date(); y.setDate(y.getDate()-2);
+  const t = y.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  if (getUpdatesData().find(u => u.date === t)) { setStatus('idle',"This day's update already exists."); return; }
+  createUpdateBlock(t);
+};
 
-function createUpdateBlock(label){
-  const ph=document.getElementById('updates-container').querySelector('p');if(ph)ph.remove();
-  renderUpdateBlock({id:'upd_'+Date.now(),date:label,isRTS:false,freeText:'',itemUpdates:[]});
-  autosave();
+function createUpdateBlock(label) {
+  const ph = document.getElementById('updates-container').querySelector('p'); if(ph) ph.remove();
+  renderUpdateBlock({id:'upd_'+Date.now(), date:label, isRTS:false, freeText:'', itemUpdates:[]});
+  G.autosave();
 }
 
-function getLastCarriedOutMap(){
-  const all=getUpdatesData();const map={};
-  all.forEach(u=>{u.itemUpdates.forEach(iu=>{if(iu.checked&&iu.status==='done')map[iu.num]={checked:true,status:'done',detail:''};});});
-  return map;
-}
+function renderUpdateBlock(upd) {
+  const uc = document.getElementById('updates-container');
+  const items = getItems();
+  const isNewBlock = !(upd.itemUpdates && (Array.isArray(upd.itemUpdates) ? upd.itemUpdates.length : Object.keys(upd.itemUpdates).length));
+  const d = document.createElement('div'); d.className = 'update-day'; d.id = upd.id; d.dataset.date = upd.date;
 
-function renderUpdateBlock(upd){
-  const uc=document.getElementById('updates-container');
-  const items=getItems();
-  const isNewBlock=!(upd.itemUpdates&&upd.itemUpdates.length);
-  const carriedForward=isNewBlock?getLastCarriedOutMap():{};
-  const d=document.createElement('div');d.className='update-day';d.id=upd.id;d.dataset.date=upd.date;
+  const itemUpdatesArr = Array.isArray(upd.itemUpdates) ? upd.itemUpdates : Object.values(upd.itemUpdates || {});
 
-  const itemsHtml=items.length>0?items.map((it,i)=>{
-    const saved=(upd.itemUpdates||[]).find(u=>u.num===(i+1))||(carriedForward[i+1]||{});
-    const checked=saved.checked||((upd.itemUpdates||[]).find(u=>u.num===(i+1))||carriedForward[i+1])?'checked':'';
-    const statusOpts=['pending','done','waiting','na'].map(v=>{
-      const L={pending:'⏳ In progress',done:'✅ Carried out',waiting:'⚠️ Waiting',na:'— N/A'};
-      return `<option value="${v}" ${(saved.status||'pending')===v?'selected':''}>${L[v]}</option>`;
-    }).join('');
+  const itemsHtml = items.length > 0 ? items.map((it, i) => {
+    const saved = itemUpdatesArr.find(u => u.num === (i+1)) || {};
+    const checked = saved.checked ? 'checked' : '';
+    const statusOpts = ['','done','waiting_parts','mel','cancelled','pending'].map(v => {
+    const L = {
+      '':'— (no status)',
+      done:'✅ Carried out',
+      waiting_parts:'⏳ Waiting for part(s)',
+      mel:'📋 Item MEL\'d',
+      cancelled:'❌ Cancelled by customer',
+      pending:'🔧 In progress'
+    };
+    return `<option value="${v}" ${(saved.status||'')===v?'selected':''}>${L[v]}</option>`;
+  }).join('');
     return `<div class="upd-item-block" data-item-num="${i+1}">
       <div class="upd-item-header">
         <div class="upd-item-chk">
@@ -897,14 +982,15 @@ function renderUpdateBlock(upd){
         </div>
         <select class="upd-status-sel" onchange="autosave()">${statusOpts}</select>
       </div>
-      <textarea class="upd-detail" placeholder="Describe what was done for this item today (optional)…" oninput="autosave()">${saved.detail||''}</textarea>
+      <textarea class="upd-detail" placeholder="Describe what was done today (optional)…" oninput="autosave()">${saved.detail||''}</textarea>
     </div>`;
-  }).join(''):'<p style="font-size:12px;color:var(--g400)">Add work items in Step 3 first.</p>';
+  }).join('') : '<p style="font-size:12px;color:var(--g400)">Add work items in Step 3 first.</p>';
 
-  d.innerHTML=`<div class="update-day-head">
+  d.innerHTML = `<div class="update-day-head">
     <span class="update-day-date">📅 ${upd.date}</span>
     <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--gd);text-transform:none;letter-spacing:0;cursor:pointer">
-      <input type="checkbox" ${upd.isRTS?'checked':''} id="rts_${d.id}" onchange="autosave()" style="width:auto"/> ✅ A/C RTS this day
+      <input type="checkbox" ${upd.isRTS?'checked':''} id="rts_${d.id}" onchange="autosave()" style="width:auto"/>
+      <span id="rts-lbl_${d.id}"></span>
     </label>
     <button class="btn danger" onclick="removeUpdateBlock('${d.id}')" style="padding:4px 8px;font-size:11px">🗑</button>
   </div>
@@ -916,18 +1002,51 @@ function renderUpdateBlock(upd){
     </div>
   </div>`;
   uc.appendChild(d);
+  // Update RTS label based on RTS/Assist selection
+  function updateRtsLabel(blockId) {
+    const isAssist = gv('f_rts_assist') === 'Assist';
+    const lbl = document.getElementById('rts-lbl_' + blockId);
+    if (lbl) lbl.textContent = isAssist ? '🤝 Assistance provided' : '✅ A/C RTS this day';
+  }
+  updateRtsLabel(d.id);
+  document.getElementById('f_rts_assist').addEventListener('change', () => updateRtsLabel(d.id));
 }
 
-function onUpdChk(chk){const block=chk.closest('.upd-item-block');const sel=block.querySelector('.upd-status-sel');const ta=block.querySelector('.upd-detail');if(!chk.checked){sel.value='pending';ta.value='';}autosave();}
-function removeUpdateBlock(id){const el=document.getElementById(id);if(el)el.remove();const uc=document.getElementById('updates-container');if(!uc.querySelector('.update-day'))uc.innerHTML='<p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet</p>';autosave();}
-function getUpdatesData(){return Array.from(document.querySelectorAll('.update-day')).map(block=>{return{id:block.id,date:block.dataset.date,isRTS:block.querySelector('[id^="rts_"]')?.checked||false,freeText:block.querySelector('.upd-free-global')?.value||'',itemUpdates:Array.from(block.querySelectorAll('.upd-item-block')).map((ib,i)=>({num:parseInt(ib.dataset.itemNum||i+1),checked:ib.querySelector('input[type=checkbox]')?.checked||false,status:ib.querySelector('.upd-status-sel')?.value||'pending',detail:ib.querySelector('.upd-detail')?.value||''}))};});}
+G.onUpdChk = function(chk) {
+  const block = chk.closest('.upd-item-block');
+  const sel = block.querySelector('.upd-status-sel');
+  const ta = block.querySelector('.upd-detail');
+  if (!chk.checked) { sel.value = 'pending'; ta.value = ''; }
+  G.autosave();
+};
+G.removeUpdateBlock = function(id) {
+  const el = document.getElementById(id); if(el) el.remove();
+  const uc = document.getElementById('updates-container');
+  if (!uc.querySelector('.update-day')) uc.innerHTML = '<p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet</p>';
+  G.autosave();
+};
+function getUpdatesData() {
+  return Array.from(document.querySelectorAll('.update-day')).map(block => ({
+    id: block.id, date: block.dataset.date,
+    isRTS: block.querySelector('[id^="rts_"]')?.checked || false,
+    freeText: block.querySelector('.upd-free-global')?.value || '',
+    itemUpdates: Array.from(block.querySelectorAll('.upd-item-block')).map((ib, i) => ({
+      num: parseInt(ib.dataset.itemNum || i+1),
+      checked: ib.querySelector('input[type=checkbox]')?.checked || false,
+      status: ib.querySelector('.upd-status-sel')?.value || 'pending',
+      detail: ib.querySelector('.upd-detail')?.value || ''
+    }))
+  }));
+}
 
 // ══════════════════════════════════════
 //  PARTS
 // ══════════════════════════════════════
-function addPart(nom='',pn_off='',sn_off='',pn_on='',sn_on=''){
-  partCount++;const c=document.getElementById('parts-container');const d=document.createElement('div');d.className='part-row';d.id='part-'+partCount;
-  d.innerHTML=`<div class="part-fields">
+G.addPart = function(nom='',pn_off='',sn_off='',pn_on='',sn_on='') {
+  partCount++;
+  const c = document.getElementById('parts-container');
+  const d = document.createElement('div'); d.className = 'part-row'; d.id = 'part-'+partCount;
+  d.innerHTML = `<div class="part-fields">
     <div class="fg"><label>Nomenclature</label><input type="text" class="p-nom" value="${nom}" oninput="autosave()"/></div>
     <div class="fg"><label>PN OFF</label><input type="text" class="p-pnoff" value="${pn_off}" oninput="onPnOffInput(this)"/></div>
     <div class="fg"><label>SN OFF</label><input type="text" class="p-snoff" value="${sn_off}" oninput="autosave()"/></div>
@@ -935,56 +1054,219 @@ function addPart(nom='',pn_off='',sn_off='',pn_on='',sn_on=''){
     <div class="fg"><label>SN ON</label><input type="text" class="p-snon" value="${sn_on}" oninput="autosave()"/></div>
   </div><button class="btn-rm" onclick="this.parentElement.remove();autosave()" style="margin-top:18px">×</button>`;
   c.appendChild(d);
+};
+G.onPnOffInput = function(el) {
+  const pnOn = el.closest('.part-row').querySelector('.p-pnon');
+  if (!pnOn.dataset.manualEdit) pnOn.value = el.value;
+  G.autosave();
+};
+document.addEventListener('input', e => { if(e.target.classList.contains('p-pnon')) e.target.dataset.manualEdit = '1'; });
+function getParts() {
+  return Array.from(document.querySelectorAll('.part-row')).map(r => ({
+    nom: r.querySelector('.p-nom').value, pn_off: r.querySelector('.p-pnoff').value,
+    sn_off: r.querySelector('.p-snoff').value, pn_on: r.querySelector('.p-pnon').value,
+    sn_on: r.querySelector('.p-snon').value
+  }));
 }
-function onPnOffInput(el){const pnOn=el.closest('.part-row').querySelector('.p-pnon');if(!pnOn.dataset.manualEdit)pnOn.value=el.value;autosave();}
-document.addEventListener('input',e=>{if(e.target.classList.contains('p-pnon')&&!e.target.dataset.pnoffFill)e.target.dataset.manualEdit='1';});
-function getParts(){return Array.from(document.querySelectorAll('.part-row')).map(r=>({nom:r.querySelector('.p-nom').value,pn_off:r.querySelector('.p-pnoff').value,sn_off:r.querySelector('.p-snoff').value,pn_on:r.querySelector('.p-pnon').value,sn_on:r.querySelector('.p-snon').value}));}
+
+// ══════════════════════════════════════
+//  STEP 6 — TEAM POC
+// ══════════════════════════════════════
+async function renderStep6Me() {
+  if (!curProfile) return;
+  const snap = await get(ref(db, 'team'));
+  const team = snap.exists() ? Object.values(snap.val()) : [];
+  const othersOpts = ['<option value="">— Assign lead engineer —</option>',
+    ...team.map(p => `<option value="${p.id}">${p.name}${p.team?' ('+p.team+')':''}</option>`)
+  ].join('');
+
+  document.getElementById('poc-me-container').innerHTML = `
+    <div class="poc-block-head"><span>👨‍🔧 Lead Engineer</span></div>
+    <select id="lead-eng-sel" style="margin-bottom:8px" onchange="onLeadEngChange(this)">${othersOpts}</select>
+    <div id="lead-eng-info" style="font-size:12px;color:var(--g600)"></div>`;
+
+  // Si c'est un ingénieur (pas admin OPS), on le pré-sélectionne
+  const selfSnap = await get(ref(db, 'team/' + curProfile.id));
+  if (selfSnap.exists()) {
+    document.getElementById('lead-eng-sel').value = curProfile.id;
+    displayLeadEngInfo(curProfile.id);
+  }
+}
+
+G.onLeadEngChange = async function(sel) {
+  displayLeadEngInfo(sel.value);
+  G.autosave();
+};
+
+async function displayLeadEngInfo(id) {
+  const el = document.getElementById('lead-eng-info');
+  if (!id || !el) { if(el) el.innerHTML=''; return; }
+  const snap = await get(ref(db, 'team/'+id));
+  if (!snap.exists()) { el.innerHTML=''; return; }
+  const p = snap.val();
+  el.innerHTML = `<b>${p.name}</b>${p.team?' · '+p.team:''}${p.phone?'<br>📱 '+p.phone:''}${p.email?'<br>✉️ '+p.email:''}`;
+}
+
+async function buildColleagueOptions(selectedId='') {
+  const snap = await get(ref(db, 'team'));
+  let html = '<option value="">— Select colleague —</option>';
+  if (snap.exists()) {
+    Object.values(snap.val()).filter(p => p.id !== curProfile?.id).forEach(p => {
+      html += `<option value="${p.id}" ${p.id===selectedId?'selected':''}>${p.name}${p.team?' ('+p.team+')':''}</option>`;
+    });
+  }
+  return html;
+}
+
+G.addColleagueSlot = async function(colleagueId='') {
+  if (colleagueSlotCount >= 2) { alert('Maximum 2 additional colleagues.'); return; }
+  colleagueSlotCount++;
+  const c = document.getElementById('poc-colleagues-container');
+  const d = document.createElement('div'); d.className = 'poc-block colleague-slot'; d.id = 'coll-slot-'+colleagueSlotCount;
+  d.innerHTML = `<div class="poc-block-head">
+    <span>Assist Engineer</span>
+    <button class="btn danger" onclick="removeColleagueSlot('${d.id}')" style="padding:4px 8px;font-size:11px">Remove</button>
+  </div>
+  <select class="coll-sel" style="margin-bottom:8px" onchange="onColleagueSelect(this)"><option>Loading…</option></select>
+  <div class="coll-info" style="font-size:12px;color:var(--g600)"></div>`;
+  c.appendChild(d);
+  document.getElementById('btn-add-poc').style.display = colleagueSlotCount >= 2 ? 'none' : '';
+  const opts = await buildColleagueOptions(colleagueId);
+  d.querySelector('.coll-sel').innerHTML = opts;
+  if (colleagueId) displayColleagueInfo(d.querySelector('.coll-info'), colleagueId);
+};
+
+G.onColleagueSelect = async function(sel) {
+  const block = sel.closest('.poc-block');
+  displayColleagueInfo(block.querySelector('.coll-info'), sel.value);
+  G.autosave();
+};
+
+async function displayColleagueInfo(el, id) {
+  if (!id) { el.innerHTML = ''; return; }
+  const snap = await get(ref(db, 'team/'+id));
+  if (!snap.exists()) { el.innerHTML = ''; return; }
+  const p = snap.val();
+  el.innerHTML = `<b>${p.name}</b>${p.team?' · '+p.team:''}${p.phone?'<br>📱 '+p.phone:''}${p.email?'<br>✉️ '+p.email:''}`;
+}
+
+G.removeColleagueSlot = function(id) {
+  const el = document.getElementById(id); if(el) el.remove(); colleagueSlotCount--;
+  document.getElementById('btn-add-poc').style.display = '';
+  G.autosave();
+};
+
+function getColleagueSlots() {
+  return Array.from(document.querySelectorAll('.colleague-slot')).map(b => {
+    const id = b.querySelector('.coll-sel')?.value || '';
+    // We store minimal info — actual info fetched from DB
+    return id ? { id } : null;
+  }).filter(Boolean);
+}
+
+async function getAllPocsData() {
+  const pocs = [];
+  const leadId = document.getElementById('lead-eng-sel')?.value;
+  if (leadId) {
+    const snap = await get(ref(db, 'team/'+leadId));
+    if (snap.exists()) { const p=snap.val(); pocs.push({name:p.name,tel:p.phone,email:p.email,team:p.team}); }
+  } else if (curProfile) {
+    pocs.push({name:curProfile.name,tel:curProfile.phone,email:curProfile.email,team:curProfile.team});
+  }
+  for (const slot of Array.from(document.querySelectorAll('.colleague-slot'))) {
+    const id = slot.querySelector('.coll-sel')?.value;
+    if (id) {
+      const snap = await get(ref(db, 'team/'+id));
+      if (snap.exists()) { const p=snap.val(); pocs.push({name:p.name,tel:p.phone,email:p.email,team:p.team}); }
+    }
+  }
+  return pocs;
+}
 
 // ══════════════════════════════════════
 //  PDF EXTRACT (GEMINI)
 // ══════════════════════════════════════
+(function() {
+  const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = s.defer = true; document.head.appendChild(s);
+})();
+window.addEventListener('load', () => { let t=0; const tr=()=>{ if(window.google?.accounts?.oauth2) initGA(); else if(t++<40) setTimeout(tr,150); }; tr(); });
+function initGA() {
+  tokenClient = google.accounts.oauth2.initTokenClient({client_id:GCID, scope:GSCOPE,
+    callback:(r)=>{ if(r?.access_token){gToken=r.access_token;gTokenExp=Date.now()+((r.expires_in||3500)*1000)-30000;updateAuthUI(true);setStatus('done','✓ Connected to Google.');} },
+    error_callback:()=>setStatus('err','Google sign-in cancelled.')});
+  renderGBtn();
+}
+function renderGBtn() {
+  const c = document.getElementById('gsi-btn-container'); c.innerHTML='';
+  const b = document.createElement('button'); b.className='btn primary'; b.innerHTML='🔵 Sign in with Google'; b.onclick=()=>tokenClient?.requestAccessToken({});
+  c.appendChild(b);
+}
+function ensureGToken() { if(gToken&&Date.now()<gTokenExp) return true; tokenClient?.requestAccessToken({prompt:'consent'}); return false; }
+G.signOutGoogle = function() { if(gToken&&window.google?.accounts?.oauth2?.revoke) google.accounts.oauth2.revoke(gToken,()=>{}); gToken=null;gTokenExp=0;updateAuthUI(false); };
+function updateAuthUI(ok) {
+  document.getElementById('auth-badge').textContent=ok?'Connected':'Not connected';
+  document.getElementById('auth-badge').className='abadge '+(ok?'ok':'ko');
+  document.getElementById('btn-signout-google').style.display=ok?'':'none';
+  document.getElementById('gsi-btn-container').style.display=ok?'none':'';
+}
+
 const dropZone=document.getElementById('drop-zone');const fileInput=document.getElementById('file-input');const extractBtn=document.getElementById('extract-btn');
-fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadFile(fileInput.files[0]);});
-dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('over');});dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('over'));
-dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('over');const f=e.dataTransfer.files[0];if(f&&f.type==='application/pdf')loadFile(f);else setStatus('err','Only PDF files are accepted.');});
-function loadFile(f){setStatus('idle',`<b>${f.name}</b> ready — click Extract`);document.getElementById('drop-label').textContent=f.name;const r=new FileReader();r.onload=()=>{pdfB64=r.result.split(',')[1];extractBtn.disabled=false;};r.readAsDataURL(f);}
+fileInput.addEventListener('change',()=>{ if(fileInput.files[0]) loadFile(fileInput.files[0]); });
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('over');});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('over'));
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('over');const f=e.dataTransfer.files[0];if(f&&f.type==='application/pdf')loadFile(f);else setStatus('err','Only PDF files.');});
+function loadFile(f) { setStatus('idle',`<b>${f.name}</b> ready — click Extract`);document.getElementById('drop-label').textContent=f.name;const r=new FileReader();r.onload=()=>{pdfB64=r.result.split(',')[1];extractBtn.disabled=false;};r.readAsDataURL(f); }
 function setStatus(type,msg){const el=document.getElementById('status');el.className='status s-'+type;document.getElementById('status-txt').innerHTML=msg;}
 
-async function extractPDF(){
+G.extractPDF = async function() {
   if(!pdfB64){setStatus('err','No PDF loaded.');return;}
   if(!ensureGToken()){setStatus('idle','Please sign in with Google first.');return;}
   extractBtn.disabled=true;setStatus('load','<span class="spin"></span> Sending PDF to Gemini…');
-  const prompt=`Extract all fields from this Gulfstream RFS PDF. Reply ONLY with valid JSON, no markdown.
-{"work_order":"","model":"e.g. GVIII-G700","serial_number":"","registration":"","location":"ICAO","rts_assist":"RTS or Assist","far_certification":"","country":"","fbo":"","po_number":"","customer_name":"UPPERCASE","customer_phone":"","customer_email":"","estimated_rts":"","next_flight":"UNKWN if unknown","constraints":"","work_items":[{"label":"UPPERCASE","status":"pending"}]}`;
-  try{
+  const prompt=`Extract all fields from this Gulfstream RFS PDF. Reply ONLY with valid JSON, no markdown.\n{"work_order":"","model":"e.g. GVIII-G700","serial_number":"","registration":"","location":"ICAO","rts_assist":"RTS or Assist","far_certification":"","country":"","fbo":"","po_number":"","customer_name":"UPPERCASE","customer_phone":"","customer_email":"","estimated_rts":"","next_flight":"UNKWN if unknown","constraints":"","work_items":[{"label":"UPPERCASE"}]}`;
+  try {
     const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${gToken}`},body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:'application/pdf',data:pdfB64}},{text:prompt}]}],generationConfig:{temperature:0,maxOutputTokens:1500}})});
     const data=await res.json();
-    if(!res.ok){if(res.status===401){gToken=null;updateAuthUI(false);throw new Error('Session expired. Sign in again.');}throw new Error(data.error?.message||'API error '+res.status);}
+    if(!res.ok){if(res.status===401){gToken=null;updateAuthUI(false);throw new Error('Session expired.');}throw new Error(data.error?.message||'API error '+res.status);}
     const raw=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
     const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
     sv('f_wo',parsed.work_order);sv('f_model',parsed.model);sv('f_sn',parsed.serial_number);sv('f_reg',parsed.registration);
     sv('f_loc',parsed.location);sv('f_far',parsed.far_certification);sv('f_country',parsed.country);sv('f_fbo',parsed.fbo);sv('f_po',parsed.po_number||'');
-    sv('f_erts',parsed.estimated_rts||'');sv('f_nxt',parsed.next_flight||'UNKWN');sv('f_info',parsed.constraints||'');
+    sv('f_erts',parsed.estimated_rts||'');sv('f_nxt',parsed.next_flight||'UNKWN');// constraints volontairement non importées depuis la RFS
     sv('f_cust_name',parsed.customer_name||'');sv('f_cust_tel',parsed.customer_phone||'');sv('f_cust_email',parsed.customer_email||'');
     if(parsed.rts_assist) document.getElementById('f_rts_assist').value=parsed.rts_assist.toLowerCase().includes('assist')?'Assist':'RTS';
     document.getElementById('items-container').innerHTML='';itemCount=0;
-    (parsed.work_items||[]).forEach(it=>addItem(it.label,'pending'));
-    autosave();setStatus('done',`✓ ${(parsed.work_items||[]).length} item(s) extracted.`);
+    (parsed.work_items||[]).forEach(it=>G.addItem(it.label));
+    G.autosave();setStatus('done',`✓ ${(parsed.work_items||[]).length} item(s) extracted.`);
   }catch(e){setStatus('err','Error: '+e.message);}finally{extractBtn.disabled=false;}
-}
+};
 
 // ══════════════════════════════════════
 //  GENERATE TABLE
 // ══════════════════════════════════════
-const SL={done:'CARRIED OUT',pending:'IN PROGRESS',waiting:'WAITING',na:'N/A'};
-const SC={done:'#2d6a2d',pending:'#7a5a00',waiting:'#8a2e00',na:'#555'};
+const SL={
+  done:'CARRIED OUT',
+  waiting_parts:'WAITING FOR PART(S)',
+  mel:"ITEM MEL'D",
+  cancelled:'CANCELLED BY CUSTOMER',
+  pending:'IN PROGRESS',
+  '':''
+};
+const SC={
+  done:'#2d6a2d',
+  waiting_parts:'#7a5a00',
+  mel:'#1a4a7a',
+  cancelled:'#8a2e00',
+  pending:'#555',
+  '':'#aaa'
+};
 
-function generate(){
-  autosave();
+G.generate = async function() {
+  G.autosave();
   const wo=gv('f_wo'),model=gv('f_model'),sn=gv('f_sn'),reg=gv('f_reg'),loc=gv('f_loc');
   const rtsA=gv('f_rts_assist'),far=gv('f_far'),erts=gv('f_erts'),nxt=gv('f_nxt'),retdate=gv('f_retdate'),rettime=gv('f_rettime'),info=gv('f_info');
   const cName=gv('f_cust_name'),cTel=gv('f_cust_tel'),cEmail=gv('f_cust_email');
-  const items=getItems(),pocs=getAllPocsData(),parts=getParts(),updates=getUpdatesData();
+  const items=getItems(), parts=getParts(), updates=getUpdatesData();
+  const pocs=await getAllPocsData();
 
   document.getElementById('email-subject').textContent=`UPDATE // ${wo} // ${model} ${sn} // ${reg} // ${loc} //`;
 
@@ -1007,59 +1289,44 @@ function generate(){
     });
   }
 
-  // 100% BULLETPROOF HTML EMAIL TRICK: Nested table for 5 columns inside a 4-column parent row.
   const hasParts=parts.some(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on);
-  const partsHtml = `
-    <table style="width:100%;border-collapse:collapse;table-layout:fixed;margin:0;padding:0;border:none;">
+  const partsHtml=`<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin:0;padding:0;border:none;">
+    <tr>
+      <td style="width:20%;border:1px solid #999;border-top:none;border-left:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">Nomenclature</td>
+      <td style="width:20%;border:1px solid #999;border-top:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">PN OFF</td>
+      <td style="width:20%;border:1px solid #999;border-top:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">SN OFF</td>
+      <td style="width:20%;border:1px solid #999;border-top:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">PN ON</td>
+      <td style="width:20%;border:1px solid #999;border-top:none;border-right:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">SN ON</td>
+    </tr>
+    ${hasParts?parts.filter(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on).map(p=>`
       <tr>
-        <td style="width:20%;border:1px solid #999;border-top:none;border-left:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">Nomenclature</td>
-        <td style="width:20%;border:1px solid #999;border-top:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">PN OFF</td>
-        <td style="width:20%;border:1px solid #999;border-top:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">SN OFF</td>
-        <td style="width:20%;border:1px solid #999;border-top:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">PN ON</td>
-        <td style="width:20%;border:1px solid #999;border-top:none;border-right:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">SN ON</td>
-      </tr>
-      ${hasParts ? parts.filter(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on).map(p=>`
-        <tr>
-          <td style="border:1px solid #999;border-bottom:none;border-left:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.nom}</td>
-          <td style="border:1px solid #999;border-bottom:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.pn_off}</td>
-          <td style="border:1px solid #999;border-bottom:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.sn_off}</td>
-          <td style="border:1px solid #999;border-bottom:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.pn_on}</td>
-          <td style="border:1px solid #999;border-bottom:none;border-right:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.sn_on}</td>
-        </tr>`).join('') : `<tr><td colspan="5" style="border:none;padding:6px;color:#aaa;font-style:italic;text-align:center">No parts replaced</td></tr>`}
-    </table>`;
+        <td style="border:1px solid #999;border-bottom:none;border-left:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.nom}</td>
+        <td style="border:1px solid #999;border-bottom:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.pn_off}</td>
+        <td style="border:1px solid #999;border-bottom:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.sn_off}</td>
+        <td style="border:1px solid #999;border-bottom:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.pn_on}</td>
+        <td style="border:1px solid #999;border-bottom:none;border-right:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.sn_on}</td>
+      </tr>`).join(''):`<tr><td colspan="5" style="border:none;padding:6px;color:#aaa;font-style:italic;text-align:center">No parts replaced</td></tr>`}
+  </table>`;
 
   const pocRows=pocs.length>0
-    ? `<tr><td class="lbl"><b>Name</b></td><td colspan="3">${pocs.map(p=>p.name||'—').join(' / ')}</td></tr>
+    ?`<tr><td class="lbl"><b>Name</b></td><td colspan="3">${pocs.map(p=>p.name||'—').join(' / ')}</td></tr>
       <tr><td class="lbl"><b>Cell</b></td><td colspan="3">${pocs.map(p=>p.tel||'—').join(' / ')}</td></tr>
       <tr><td class="lbl"><b>Email</b></td><td colspan="3">${pocs.map(p=>p.email||'—').join(' / ')}</td></tr>
       <tr><td class="lbl"><b>Team</b></td><td colspan="3">${pocs.map(p=>p.team||'—').join(' / ')}</td></tr>`
-    : `<tr><td class="lbl"><b>Name</b></td><td colspan="3">—</td></tr><tr><td class="lbl"><b>Cell</b></td><td colspan="3">—</td></tr><tr><td class="lbl"><b>Email</b></td><td colspan="3">—</td></tr><tr><td class="lbl"><b>Team</b></td><td colspan="3">—</td></tr>`;
+    :`<tr><td class="lbl"><b>Name</b></td><td colspan="3">—</td></tr><tr><td class="lbl"><b>Cell</b></td><td colspan="3">—</td></tr><tr><td class="lbl"><b>Email</b></td><td colspan="3">—</td></tr><tr><td class="lbl"><b>Team</b></td><td colspan="3">—</td></tr>`;
 
   document.getElementById('tbl-out').innerHTML=`
   <table class="fast-tbl" id="gen-tbl">
     <colgroup><col style="width:25%"><col style="width:25%"><col style="width:25%"><col style="width:25%"></colgroup>
     <tr class="thr"><td colspan="4"><b>WORK ORDER #: ${wo}</b></td></tr>
-    ${condRows}
-    ${updRows}
-    <tr><td class="lbl"><b>Additional Info<br>(Constraints)</b></td><td colspan="3">${info||'—'}</td></tr>
-    <tr>
-      <td class="lbl"><b>Estimated RTS:</b></td><td>${erts||'—'}</td>
-      <td class="lbl"><b>Next Flight:</b></td><td>${nxt||'—'}</td>
-    </tr>
-    <tr>
-      <td class="lbl"><b>Return Date:</b></td><td>${retdate||'—'}</td>
-      <td class="lbl"><b>Return Time</b></td><td>${rettime||'—'}</td>
-    </tr>
-    <tr>
-      <td class="lbl"><b>FAR</b></td><td>${far||'—'}</td>
-      <td class="lbl"><b>RTS/Assist</b></td><td>${rtsA}</td>
-    </tr>
-    <tr>
-      <td class="lbl"><b>Model and S/N:</b></td><td>${model} / ${sn}</td>
-      <td class="lbl"><b>A/C Registry:</b></td><td>${reg||'—'}</td>
-    </tr>
+    ${condRows}${updRows}
+    <tr><td class="lbl"><b>Additional Info (Constraints)</b></td><td colspan="3">${info||'—'}</td></tr>
+    <tr><td class="lbl"><b>Estimated RTS:</b></td><td>${erts||'—'}</td><td class="lbl"><b>Next Flight:</b></td><td>${nxt||'—'}</td></tr>
+    <tr><td class="lbl"><b>Return Date:</b></td><td>${retdate||'—'}</td><td class="lbl"><b>Return Time</b></td><td>${rettime||'—'}</td></tr>
+    <tr><td class="lbl"><b>FAR</b></td><td>${far||'—'}</td><td class="lbl"><b>RTS/Assist</b></td><td>${rtsA}</td></tr>
+    <tr><td class="lbl"><b>Model and S/N:</b></td><td>${model} / ${sn}</td><td class="lbl"><b>A/C Registry:</b></td><td>${reg||'—'}</td></tr>
     <tr class="thr"><td colspan="4"><b>Parts</b></td></tr>
-    <tr><td colspan="4" style="padding:0; border:none;">${partsHtml}</td></tr>
+    <tr><td colspan="4" style="padding:0;border:none;">${partsHtml}</td></tr>
     <tr class="thr"><td colspan="4"><b>Onsite Support FAST POC</b></td></tr>
     ${pocRows}
     <tr class="thr"><td colspan="4"><b>Customer Info</b></td></tr>
@@ -1071,9 +1338,9 @@ function generate(){
 
   document.getElementById('output-section').style.display='block';
   document.getElementById('output-section').scrollIntoView({behavior:'smooth'});
-}
+};
 
-function copyTable(){
+G.copyTable = function() {
   const tbl=document.getElementById('gen-tbl');if(!tbl)return;
   const range=document.createRange();range.selectNode(tbl);
   const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
@@ -1081,14 +1348,42 @@ function copyTable(){
   const btn=document.getElementById('copy-btn');btn.classList.add('copied');
   btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
   setTimeout(()=>{btn.classList.remove('copied');btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy table`;},2500);
-}
+};
+G.copySubject = function() { navigator.clipboard.writeText(document.getElementById('email-subject')?.textContent||'').catch(()=>{}); setStatus('done','✓ Email subject copied!'); };
+G.markRTS = function() {
+  const isAssist = gv('f_rts_assist') === 'Assist';
+  document.getElementById('modal-rts-title').textContent = isAssist ? 'Mark Assistance as Provided?' : 'Mark A/C as RTS?';
+  document.getElementById('modal-rts-sub').textContent = isAssist ? 'The project will be archived — assistance provided.' : 'The project will be archived as RTS.';
+  document.getElementById('btn-mark-rts').textContent = isAssist ? '🤝 Assistance Provided' : '✅ Mark A/C RTS';
+  openModal('modal-rts');
+};
+G.confirmRTS = async function() {
+  if(!curProj||!curProfile){closeModal('modal-rts');return;}
+  await doSave();
+  await update(ref(db,'team/'+curProfile.id+'/projects/'+curProj),{rts:true,updatedAt:Date.now()});
+  closeModal('modal-rts');
+  setStatus('done','✅ Project archived as RTS.');
+  curProj=null; clearForm();
+  projTab='archive'; G.switchProjTab('archive');
+};
 
-function copySubject(){navigator.clipboard.writeText(document.getElementById('email-subject')?.textContent||'').catch(()=>{});setStatus('done','✓ Email subject copied!');}
-function markRTS(){openModal('modal-rts');}
-function confirmRTS(){if(!curProj||!curProfile){closeModal('modal-rts');return;} autosave();const p=getProjs().find(x=>x.id===curProj);if(p){p.rts=true;p.updatedAt=Date.now();saveProj(p);} renderProjList();closeModal('modal-rts');setStatus('done','✅ Project marked RTS.');}
-function openModal(id){document.getElementById(id).classList.add('open');}
-function closeModal(id){document.getElementById(id).classList.remove('open');}
+G.openModal = function(id){document.getElementById(id).classList.add('open');};
+G.closeModal = function(id){document.getElementById(id).classList.remove('open');};
 document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+// ══════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════
+function hashPin(pin){let h=5381;for(let i=0;i<pin.length;i++)h=((h<<5)+h)+pin.charCodeAt(i);return(h>>>0).toString(16);}
+
+document.getElementById('f_rts_assist').addEventListener('change', () => {
+  const isAssist = gv('f_rts_assist') === 'Assist';
+  const btn = document.getElementById('btn-mark-rts');
+  if (btn) btn.textContent = isAssist ? '🤝 Assistance Provided' : '✅ Mark A/C RTS';
+});
+  
+// Init: load picker
+showPicker();
 
 </script>
 </body>
