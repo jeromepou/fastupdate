@@ -15,47 +15,59 @@
   --red:#8a2e00;--rl:#fdf0eb;--blue:#1a4a7a;--bl:#e8f0f8;
   --amb:#7a5a00;--al:#fef9e7;
   --g50:#f8f9fa;--g100:#f1f3f5;--g200:#e9ecef;--g400:#adb5bd;
-  --g600:#6c757d;--g800:#343a40;--g900:#212529;--w:#fff;
+  --g600:#6c757d;--g800:#343a40;--g900:#212529;
   --r:8px;--rlg:12px;--sh:0 1px 3px rgba(0,0,0,.08);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--g100);color:var(--g900);font-size:14px;line-height:1.5;min-height:100vh}
-
-/* HEADER */
 header{background:var(--gd);color:#fff;padding:0 1.25rem;display:flex;align-items:center;gap:10px;height:54px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.15)}
 header h1{font-size:15px;font-weight:600;flex:1}
 .hdr-right{display:flex;align-items:center;gap:8px}
-.hdr-right button{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:var(--r);padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s}
+.hdr-right button{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:var(--r);padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer}
 .hdr-right button:hover{background:rgba(255,255,255,.25)}
-
-/* LAYOUT */
 .main{max-width:920px;margin:0 auto;padding:1.25rem 1rem 5rem}
 
 /* CARDS */
-.card{background:var(--w);border-radius:var(--rlg);border:1px solid var(--g200);box-shadow:var(--sh);margin-bottom:1rem;overflow:hidden}
+.card{background:#fff;border-radius:var(--rlg);border:1px solid var(--g200);box-shadow:var(--sh);margin-bottom:1rem;overflow:hidden}
 .card-head{padding:10px 1.25rem;border-bottom:1px solid var(--g200);display:flex;align-items:center;gap:10px;background:var(--g50)}
 .step-badge{background:var(--gd);color:#fff;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;letter-spacing:.03em;white-space:nowrap}
 .card-head h2{font-size:13px;font-weight:600;color:var(--g800);flex:1}
 .card-body{padding:1.25rem}
 
 /* BUTTONS */
-.btn{padding:7px 13px;border-radius:var(--r);font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--g200);background:var(--w);color:var(--g800);display:inline-flex;align-items:center;gap:5px;transition:background .15s;white-space:nowrap}
+.btn{padding:7px 13px;border-radius:var(--r);font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--g200);background:#fff;color:var(--g800);display:inline-flex;align-items:center;gap:5px;transition:background .15s;white-space:nowrap}
 .btn:hover{background:var(--g100)}
 .btn.primary{background:var(--gd);color:#fff;border-color:var(--gd)}
 .btn.primary:hover{background:var(--gm)}
 .btn.danger{color:var(--red);border-color:#e8b8a0}
 .btn.danger:hover{background:var(--rl)}
-.btn.amber{background:var(--al);color:var(--amb);border-color:#d4b800}
-.btn.amber:hover{background:#fef3b0}
-.btn.full{width:100%;justify-content:center;padding:11px;font-size:14px;font-weight:700}
 .btn.xl{padding:12px 20px;font-size:14px;font-weight:700;border-radius:var(--rlg)}
+.btn-add{background:none;border:1px dashed var(--g400);border-radius:var(--r);cursor:pointer;font-size:12px;color:var(--g600);padding:6px 14px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;transition:border-color .15s,color .15s;margin-top:4px}
+.btn-add:hover{border-color:var(--gm);color:var(--gm)}
+.btn-rm{background:none;border:none;cursor:pointer;color:var(--g400);font-size:18px;padding:0 2px;line-height:1;flex-shrink:0;transition:color .15s;margin-top:6px}
+.btn-rm:hover{color:var(--red)}
+
+/* LOGIN SCREEN */
+.login-screen{min-height:80vh;display:flex;align-items:center;justify-content:center}
+.login-box{background:#fff;border-radius:var(--rlg);border:1px solid var(--g200);box-shadow:var(--sh);padding:2rem;width:100%;max-width:420px;text-align:center}
+.login-box h2{font-size:18px;font-weight:700;color:var(--gd);margin-bottom:.5rem}
+.login-box p{font-size:13px;color:var(--g600);margin-bottom:1.5rem}
+.profile-picker{display:flex;flex-direction:column;gap:8px;margin-bottom:1rem}
+.profile-btn{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--g200);border-radius:var(--r);cursor:pointer;background:#fff;transition:background .15s;text-align:left}
+.profile-btn:hover{background:var(--gl);border-color:var(--gb)}
+.profile-btn .pb-avatar{width:32px;height:32px;border-radius:50%;background:var(--gd);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
+.profile-btn .pb-info{flex:1}
+.profile-btn .pb-name{font-size:13px;font-weight:600;color:var(--g900)}
+.profile-btn .pb-sub{font-size:11px;color:var(--g600)}
+.profile-btn .pb-lock{font-size:16px;color:var(--g400)}
 
 /* ENG BAR */
-.eng-bar{background:var(--w);border:1px solid var(--g200);border-radius:var(--rlg);padding:.9rem 1.25rem;margin-bottom:1rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:var(--sh)}
-.eng-bar label{font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.eng-bar{background:#fff;border:1px solid var(--g200);border-radius:var(--rlg);padding:.9rem 1.25rem;margin-bottom:1rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:var(--sh)}
+.eng-bar .eng-name{font-size:14px;font-weight:700;color:var(--gd);flex:1}
+.eng-bar .eng-sub{font-size:12px;color:var(--g600)}
 
 /* PROJ PANEL */
-.proj-panel{background:var(--w);border:1px solid var(--g200);border-radius:var(--rlg);margin-bottom:1rem;box-shadow:var(--sh);overflow:hidden}
+.proj-panel{background:#fff;border:1px solid var(--g200);border-radius:var(--rlg);margin-bottom:1rem;box-shadow:var(--sh);overflow:hidden}
 .proj-panel-head{background:var(--g50);border-bottom:1px solid var(--g200);padding:10px 1.25rem;display:flex;align-items:center;gap:10px}
 .proj-panel-head h3{font-size:13px;font-weight:700;color:var(--g800);flex:1}
 .proj-list{padding:8px;display:flex;flex-direction:column;gap:5px}
@@ -68,13 +80,22 @@ header h1{font-size:15px;font-weight:600;flex:1}
 .proj-item-date{font-size:10px;color:var(--g400);white-space:nowrap}
 .proj-empty{padding:1.5rem;text-align:center;color:var(--g400);font-size:13px}
 
+/* AUTH BANNER */
+.auth-banner{background:var(--bl);border:1px solid #b8d0e8;border-radius:var(--rlg);padding:.9rem 1.25rem;margin-bottom:1rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.auth-banner-text{flex:1;min-width:160px}
+.auth-banner-text strong{color:var(--blue);display:block;font-size:13px;margin-bottom:2px}
+.auth-banner-text small{font-size:12px;color:var(--g600)}
+.abadge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px}
+.abadge.ok{background:#e8f5e9;border:1px solid #a5d6a7;color:#2e7d32}
+.abadge.ko{background:var(--rl);border:1px solid #e8b8a0;color:var(--red)}
+
 /* FORM */
 .grid{display:grid;gap:10px}
 .g2{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
 .g3{grid-template-columns:repeat(auto-fit,minmax(145px,1fr))}
 .fg{display:flex;flex-direction:column;gap:3px}
 label{font-size:11px;font-weight:600;color:var(--g600);text-transform:uppercase;letter-spacing:.04em}
-input[type=text],input[type=email],textarea,select{padding:7px 10px;border:1px solid var(--g200);border-radius:var(--r);font-size:13px;font-family:inherit;color:var(--g900);background:#fff;transition:border-color .15s;width:100%}
+input[type=text],input[type=email],input[type=password],textarea,select{padding:7px 10px;border:1px solid var(--g200);border-radius:var(--r);font-size:13px;font-family:inherit;color:var(--g900);background:#fff;transition:border-color .15s;width:100%}
 input:focus,textarea:focus,select:focus{outline:2px solid var(--gm);border-color:var(--gm)}
 textarea{resize:vertical}
 
@@ -84,7 +105,7 @@ textarea{resize:vertical}
 .drop-zone p{color:var(--g600);font-size:13px}
 .drop-zone small{font-size:11px;color:var(--g400)}
 #file-input{display:none}
-.extract-btn{width:100%;margin-top:10px;padding:10px;background:var(--gd);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s}
+.extract-btn{width:100%;margin-top:10px;padding:10px;background:var(--gd);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
 .extract-btn:hover:not(:disabled){background:var(--gm)}
 .extract-btn:disabled{opacity:.4;cursor:not-allowed}
 
@@ -95,37 +116,27 @@ textarea{resize:vertical}
 .s-done{background:var(--gl);color:var(--gd);border:1px solid var(--gb)}
 .s-err{background:var(--rl);color:var(--red);border:1px solid #e8b8a0}
 
-/* AUTH BANNER */
-.auth-banner{background:var(--bl);border:1px solid #b8d0e8;border-radius:var(--rlg);padding:.9rem 1.25rem;margin-bottom:1rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.auth-banner-text{flex:1;min-width:160px}
-.auth-banner-text strong{color:var(--blue);display:block;font-size:13px;margin-bottom:2px}
-.auth-banner-text small{font-size:12px;color:var(--g600)}
-.abadge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px}
-.abadge.ok{background:#e8f5e9;border:1px solid #a5d6a7;color:#2e7d32}
-.abadge.ko{background:var(--rl);border:1px solid #e8b8a0;color:var(--red)}
-
-/* WORK ITEMS (Step 3 — Condition) */
+/* WORK ITEMS */
 .item-row{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:6px}
 .item-num{font-size:11px;font-weight:700;color:var(--g400);min-width:18px;text-align:center;padding-top:9px;flex-shrink:0}
 .item-fields{flex:1;display:flex;flex-direction:column;gap:6px}
 .item-label-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .item-label-row input{flex:1;min-width:120px}
 .item-label-row select{width:155px;flex-shrink:0;font-size:12px}
-.btn-rm{background:none;border:none;cursor:pointer;color:var(--g400);font-size:18px;padding:0 2px;line-height:1;flex-shrink:0;transition:color .15s;margin-top:6px}
-.btn-rm:hover{color:var(--red)}
-.btn-add{background:none;border:1px dashed var(--g400);border-radius:var(--r);cursor:pointer;font-size:12px;color:var(--g600);padding:6px 14px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;transition:border-color .15s,color .15s;margin-top:4px}
-.btn-add:hover{border-color:var(--gm);color:var(--gm)}
 
-/* DAILY UPDATES (Step 4) */
+/* DAILY UPDATES */
 .update-day{background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:8px;overflow:hidden}
 .update-day-head{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--gl);border-bottom:1px solid var(--gb)}
 .update-day-date{font-size:12px;font-weight:700;color:var(--gd);flex:1}
-.update-day-body{padding:10px 12px;display:flex;flex-direction:column;gap:10px}
-/* Per-item update sub-block */
+.update-day-body{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+/* Per-item update */
 .upd-item-block{background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:8px 10px}
-.upd-item-header{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
-.upd-item-header .item-lbl{font-size:12px;font-weight:600;flex:1;color:var(--g800)}
-.upd-item-header select{width:155px;flex-shrink:0;font-size:12px}
+.upd-item-header{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap}
+.upd-item-chk{display:flex;align-items:center;gap:6px;flex:1}
+.upd-item-chk input[type=checkbox]{width:auto;flex-shrink:0;cursor:pointer}
+.upd-item-chk label{font-size:12px;font-weight:600;color:var(--g800);text-transform:none;letter-spacing:0;cursor:pointer;line-height:1.4}
+.upd-status-sel{width:155px;flex-shrink:0;font-size:12px}
+.upd-detail{font-size:12px;min-height:44px;margin-top:5px}
 
 /* PARTS */
 .part-row{background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:6px;padding:8px 10px;display:flex;gap:8px;align-items:flex-start}
@@ -133,54 +144,49 @@ textarea{resize:vertical}
 .part-fields .fg label{font-size:9px}
 .part-fields input{font-size:12px;padding:5px 8px}
 
-/* POC BLOCK */
+/* STEP 6 POC */
 .poc-block{background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:10px 12px;margin-bottom:8px}
 .poc-block-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .poc-block-head span{font-size:12px;font-weight:700;color:var(--gd);flex:1}
 
-/* ACTION ROW */
-.action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:.5rem}
-
 /* EMAIL SUBJECT */
 .email-subject-box{background:var(--al);border:1px solid #d4b800;border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
-.email-subject-box .subj-lbl{font-size:11px;font-weight:700;color:var(--amb);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
-.email-subject-box .subj-txt{font-size:13px;font-weight:600;color:var(--g900);flex:1;word-break:break-all}
+.subj-lbl{font-size:11px;font-weight:700;color:var(--amb);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.subj-txt{font-size:13px;font-weight:600;color:var(--g900);flex:1;word-break:break-all}
 
-/* OUTPUT TABLE — exact FAST email format */
+/* OUTPUT TABLE */
 .output-section{margin-top:1.5rem}
 .output-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px}
 .output-head h3{font-size:13px;font-weight:700;color:var(--g800);text-transform:uppercase;letter-spacing:.05em}
-.copy-btn{display:flex;align-items:center;gap:6px;padding:7px 16px;border-radius:var(--r);background:#fff;border:1px solid var(--g200);font-size:13px;font-weight:600;cursor:pointer;color:var(--g800);transition:background .15s}
+.copy-btn{display:flex;align-items:center;gap:6px;padding:7px 16px;border-radius:var(--r);background:#fff;border:1px solid var(--g200);font-size:13px;font-weight:600;cursor:pointer;color:var(--g800)}
 .copy-btn:hover{background:var(--g100)}
 .copy-btn.copied{background:var(--gl);color:var(--gd);border-color:var(--gb)}
 .tbl-wrap{background:#fff;border:1px solid var(--g200);border-radius:var(--rlg);overflow:hidden;box-shadow:var(--sh);overflow-x:auto}
 
-/* THE TABLE — replicates exactly the original FAST email */
+/* THE FAST TABLE — matches original exactly */
 table.fast-tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:480px}
-.fast-tbl td,.fast-tbl th{border:1px solid #999;padding:7px 10px;vertical-align:top}
+.fast-tbl td{border:1px solid #999;padding:7px 10px;vertical-align:top}
 .fast-tbl .thr td{background:#3a6e3a;color:#fff;font-weight:700;font-size:13px;padding:8px 10px}
-/* Label column: fixed ~190px, light gray bg */
-.fast-tbl .lbl{background:#f0f2eb;font-weight:600;width:190px;color:var(--g800)}
-/* Update label column: same but yellow tint */
-.fast-tbl .upd-lbl{background:#fefce8;font-weight:600;width:190px;color:var(--g800)}
-/* Parts header row */
+.fast-tbl .lbl{background:#f0f2eb;font-weight:600;width:185px;color:var(--g800)}
+.fast-tbl .upd-lbl{background:#fefce8;font-weight:600;width:185px;color:var(--g800)}
 .fast-tbl .part-hdr{background:#d8e4d8;font-weight:700;font-size:12px;color:var(--g800)}
+/* 4-column rows (Model/SN — Registry) */
+.fast-tbl .lbl-s{background:#f0f2eb;font-weight:600;width:120px;color:var(--g800);font-size:12px}
 
 /* MODAL */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center}
 .modal-bg.open{display:flex}
 .modal{background:#fff;border-radius:var(--rlg);padding:1.5rem;width:100%;max-width:500px;box-shadow:0 8px 32px rgba(0,0,0,.2);margin:1rem;max-height:90vh;overflow-y:auto}
-.modal h3{font-size:15px;font-weight:700;margin-bottom:1rem;color:var(--g900)}
+.modal h3{font-size:15px;font-weight:700;margin-bottom:1rem}
 .modal .fg{margin-bottom:10px}
 .modal-btns{display:flex;gap:8px;margin-top:1rem;justify-content:flex-end}
 
-/* HELP MODAL */
+/* HELP */
 .help-section{margin-bottom:1.25rem}
-.help-section h4{font-size:13px;font-weight:700;color:var(--gd);margin-bottom:.5rem;display:flex;align-items:center;gap:6px}
+.help-section h4{font-size:13px;font-weight:700;color:var(--gd);margin-bottom:.5rem}
 .help-section p,.help-section li{font-size:13px;color:var(--g800);line-height:1.6}
 .help-section ul,.help-section ol{padding-left:1.25rem}
 .help-section li{margin-bottom:4px}
-.help-code{background:var(--g100);border:1px solid var(--g200);border-radius:var(--r);padding:6px 10px;font-family:monospace;font-size:12px;margin-top:4px}
 .install-os{background:var(--gl);border:1px solid var(--gb);border-radius:var(--r);padding:10px 12px;margin-bottom:8px}
 .install-os h5{font-size:12px;font-weight:700;color:var(--gd);margin-bottom:6px}
 
@@ -192,12 +198,12 @@ table.fast-tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:480p
 .spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:rot .7s linear infinite;flex-shrink:0}
 @keyframes rot{to{transform:rotate(360deg)}}
 hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
+.action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:.5rem}
 
 @media(max-width:600px){
   header h1{font-size:13px}
-  .fast-tbl .lbl,.fast-tbl .upd-lbl{width:110px}
+  .fast-tbl .lbl{width:110px}
   .part-fields{grid-template-columns:1fr 1fr}
-  .item-label-row select{width:100%}
 }
 </style>
 </head>
@@ -207,24 +213,40 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
   <h1>FAST Update Generator</h1>
   <div class="hdr-right">
+    <span id="hdr-profile-name" style="font-size:12px;opacity:.8"></span>
+    <button onclick="logout()" id="btn-logout" style="display:none">↩ Switch profile</button>
     <button onclick="openModal('modal-help')">❓ Help</button>
   </div>
 </header>
 
-<div class="main">
-
-<!-- ══ ENGINEER SELECTOR ══ -->
-<div class="eng-bar">
-  <label>👤 My profile</label>
-  <select id="eng-select" onchange="switchEngineer()" style="flex:1;min-width:150px">
-    <option value="">— Select or create my profile —</option>
-  </select>
-  <button class="btn primary" onclick="openNewEngModal()">+ New profile</button>
-  <button class="btn danger" onclick="deleteEngineer()" id="btn-del-eng" style="display:none">🗑</button>
+<!-- LOGIN SCREEN -->
+<div class="main" id="login-screen">
+  <div class="login-screen">
+    <div class="login-box">
+      <div style="font-size:48px;margin-bottom:.5rem">✈</div>
+      <h2>FAST Update Generator</h2>
+      <p>Select your profile to continue, or create a new one.</p>
+      <div class="profile-picker" id="profile-picker"></div>
+      <button class="btn primary" style="width:100%;justify-content:center;padding:10px" onclick="openModal('modal-new-profile')">+ Create new profile</button>
+    </div>
+  </div>
 </div>
 
-<!-- ══ PROJECTS ══ -->
-<div class="proj-panel" id="proj-panel" style="display:none">
+<!-- MAIN APP (hidden until login) -->
+<div class="main" id="app-screen" style="display:none">
+
+<!-- MY PROFILE BAR -->
+<div class="eng-bar" id="eng-bar">
+  <div>
+    <div class="eng-name" id="eng-bar-name">—</div>
+    <div class="eng-sub" id="eng-bar-sub">—</div>
+  </div>
+  <button class="btn" onclick="openModal('modal-edit-profile')">✏️ Edit profile</button>
+  <button class="btn danger" onclick="confirmDeleteProfile()">🗑 Delete profile</button>
+</div>
+
+<!-- PROJECTS -->
+<div class="proj-panel">
   <div class="proj-panel-head">
     <h3>📁 My projects (chantiers)</h3>
     <button class="btn primary" onclick="newProject()">+ New project</button>
@@ -232,7 +254,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="proj-list" id="proj-list"></div>
 </div>
 
-<!-- ══ GOOGLE AUTH ══ -->
+<!-- GOOGLE AUTH -->
 <div class="auth-banner">
   <div style="font-size:20px">🔐</div>
   <div class="auth-banner-text">
@@ -243,14 +265,14 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <button class="btn danger" id="btn-signout" onclick="signOutGoogle()" style="display:none">Sign out</button>
 </div>
 
-<!-- ══ STEP 1: PDF ══ -->
+<!-- STEP 1 -->
 <div class="card">
   <div class="card-head"><span class="step-badge">STEP 1</span><h2>Upload RFS PDF — optional, auto-fills fields</h2></div>
   <div class="card-body">
     <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--gm);margin-bottom:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><polyline points="9 15 12 12 15 15"/></svg>
       <p id="drop-label">Drag & drop or click to select the RFS PDF</p>
-      <small>Gulfstream RFS format · PDF only · or fill fields manually below</small>
+      <small>Gulfstream RFS · PDF only · or fill fields manually below</small>
       <input type="file" id="file-input" accept="application/pdf"/>
     </div>
     <button class="extract-btn" id="extract-btn" onclick="extractPDF()" disabled>Extract data from PDF</button>
@@ -258,7 +280,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
-<!-- ══ STEP 2: Aircraft ══ -->
+<!-- STEP 2 -->
 <div class="card">
   <div class="card-head"><span class="step-badge">STEP 2</span><h2>Aircraft & order details</h2></div>
   <div class="card-body">
@@ -281,7 +303,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
-<!-- ══ STEP 3: Condition ══ -->
+<!-- STEP 3 -->
 <div class="card">
   <div class="card-head"><span class="step-badge">STEP 3</span><h2>Condition — work items</h2></div>
   <div class="card-body">
@@ -290,7 +312,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
-<!-- ══ STEP 4: Daily Updates ══ -->
+<!-- STEP 4 -->
 <div class="card">
   <div class="card-head">
     <span class="step-badge">STEP 4</span>
@@ -299,12 +321,12 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
   <div class="card-body">
     <div id="updates-container">
-      <p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet — click "+ Today's update" to start</p>
+      <p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet — click "+ Today's update"</p>
     </div>
   </div>
 </div>
 
-<!-- ══ PARTS ══ -->
+<!-- PARTS -->
 <div class="card">
   <div class="card-head"><span class="step-badge">PARTS</span><h2>Parts replaced (optional)</h2></div>
   <div class="card-body">
@@ -313,13 +335,13 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
-<!-- ══ STEP 5: Closing ══ -->
+<!-- STEP 5 -->
 <div class="card">
   <div class="card-head"><span class="step-badge">STEP 5</span><h2>Closing details</h2></div>
   <div class="card-body">
     <div class="grid g2" style="margin-bottom:10px">
-      <div class="fg"><label>Estimated RTS</label><input type="text" id="f_erts" placeholder="e.g. 20 Jun 26" oninput="autosave()"/></div>
-      <div class="fg"><label>Next Flight</label><input type="text" id="f_nxt" placeholder="e.g. UNKWN" oninput="autosave()"/></div>
+      <div class="fg"><label>Estimated RTS</label><input type="text" id="f_erts" placeholder="e.g. JUN 18/26" oninput="autosave()"/></div>
+      <div class="fg"><label>Next Flight</label><input type="text" id="f_nxt" placeholder="e.g. 19JUN26" oninput="autosave()"/></div>
       <div class="fg"><label>Return Date</label><input type="text" id="f_retdate" placeholder="e.g. JUN19/26" oninput="autosave()"/></div>
       <div class="fg"><label>Return Time</label><input type="text" id="f_rettime" placeholder="e.g. 14:00 UTC" oninput="autosave()"/></div>
     </div>
@@ -327,23 +349,17 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
-<!-- ══ STEP 6: POC + Customer ══ -->
+<!-- STEP 6 — POC selection from global engineer profiles -->
 <div class="card">
   <div class="card-head">
     <span class="step-badge">STEP 6</span>
     <h2>Onsite FAST engineers &amp; customer</h2>
-    <button class="btn primary" onclick="addPocBlock()" id="btn-add-poc" style="margin-left:auto">+ Add engineer</button>
+    <button class="btn primary" onclick="addPocSlot()" id="btn-add-poc" style="margin-left:auto">+ Add engineer</button>
   </div>
   <div class="card-body">
-    <!-- Saved profiles bar -->
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
-      <select id="poc-profile-select" style="flex:1;min-width:160px"><option value="">— Load saved engineer profile —</option></select>
-      <button class="btn" onclick="loadPocProfile()">Load</button>
-      <button class="btn primary" onclick="savePocProfile()">💾 Save profile</button>
-    </div>
-    <div id="poc-blocks-container"></div>
-    <!-- Customer -->
-    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--g200)">
+    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">Select the engineers present onsite. Manage engineer profiles in <b>Settings → Engineer profiles</b>.</p>
+    <div id="poc-slots-container"></div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--g200)">
       <div style="font-size:12px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Customer info</div>
       <div class="grid g2">
         <div class="fg"><label>Name</label><input type="text" id="f_cust_name" oninput="autosave()"/></div>
@@ -354,7 +370,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
-<!-- ══ ACTIONS ══ -->
 <div class="action-row">
   <button class="btn primary xl" onclick="generate()" style="flex:2">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
@@ -363,7 +378,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <button class="btn danger" onclick="markRTS()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:700">✅ Mark A/C RTS</button>
 </div>
 
-<!-- ══ OUTPUT ══ -->
+<!-- OUTPUT -->
 <div id="output-section" class="output-section" style="display:none">
   <hr/>
   <div class="email-subject-box">
@@ -381,30 +396,72 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="tbl-wrap"><div id="tbl-out"></div></div>
 </div>
 
-</div><!-- /main -->
+</div><!-- /app-screen -->
 
-<!-- ══ MODAL: New engineer ══ -->
-<div class="modal-bg" id="modal-eng">
+<!-- ══ MODAL: New profile ══ -->
+<div class="modal-bg" id="modal-new-profile">
   <div class="modal">
     <h3>Create my profile</h3>
-    <p style="font-size:13px;color:var(--g600);margin-bottom:12px">Your profile stores your projects (chantiers) in this browser. Enter your name as you'd like it to appear.</p>
-    <div class="fg"><label>Your name</label><input type="text" id="m_eng_name" placeholder="e.g. Jeremy Couchet"/></div>
+    <p style="font-size:13px;color:var(--g600);margin-bottom:12px">Your profile stores your projects in this browser. Set a PIN to protect it.</p>
+    <div class="fg"><label>Your name</label><input type="text" id="np_name" placeholder="e.g. Jeremy Couchet"/></div>
+    <div class="fg"><label>Email (optional)</label><input type="email" id="np_email" placeholder="e.g. jcouchet@headstart.com"/></div>
+    <div class="fg"><label>Team (optional)</label><input type="text" id="np_team" placeholder="e.g. FAST EMEA"/></div>
+    <div class="fg"><label>Phone (optional)</label><input type="text" id="np_phone" placeholder="e.g. +33 778 380567"/></div>
+    <div class="fg"><label>PIN (4 digits)</label><input type="password" id="np_pin" placeholder="e.g. 1234" maxlength="4" style="letter-spacing:.3em"/></div>
     <div class="modal-btns">
-      <button class="btn" onclick="closeModal('modal-eng')">Cancel</button>
-      <button class="btn primary" onclick="createEngineer()">Create</button>
+      <button class="btn" onclick="closeModal('modal-new-profile')">Cancel</button>
+      <button class="btn primary" onclick="createProfile()">Create</button>
     </div>
   </div>
 </div>
 
-<!-- ══ MODAL: Save POC profile ══ -->
-<div class="modal-bg" id="modal-poc">
+<!-- ══ MODAL: PIN unlock ══ -->
+<div class="modal-bg" id="modal-pin">
+  <div class="modal" style="max-width:340px;text-align:center">
+    <h3 id="modal-pin-title">Enter PIN</h3>
+    <p style="font-size:13px;color:var(--g600);margin-bottom:12px" id="modal-pin-sub">Enter your 4-digit PIN to continue.</p>
+    <input type="password" id="pin-input" placeholder="• • • •" maxlength="4" style="text-align:center;font-size:22px;letter-spacing:.4em;width:100%;margin-bottom:8px" oninput="pinInput()"/>
+    <div id="pin-error" style="font-size:12px;color:var(--red);min-height:18px"></div>
+    <div class="modal-btns" style="justify-content:center">
+      <button class="btn" onclick="closeModal('modal-pin')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Edit profile ══ -->
+<div class="modal-bg" id="modal-edit-profile">
   <div class="modal">
-    <h3>Save engineer profile</h3>
-    <p style="font-size:13px;color:var(--g600);margin-bottom:12px">Save the first engineer block as a reusable profile (name, phone, email, team).</p>
-    <div class="fg"><label>Profile name</label><input type="text" id="m_poc_name" placeholder="e.g. Jeremy C. – FAST EMEA"/></div>
+    <h3>Edit my profile</h3>
+    <div class="fg"><label>Name</label><input type="text" id="ep_name"/></div>
+    <div class="fg"><label>Email</label><input type="email" id="ep_email"/></div>
+    <div class="fg"><label>Team</label><input type="text" id="ep_team"/></div>
+    <div class="fg"><label>Phone</label><input type="text" id="ep_phone"/></div>
+    <div class="fg"><label>New PIN (leave blank to keep current)</label><input type="password" id="ep_pin" placeholder="Enter new PIN" maxlength="4" style="letter-spacing:.3em"/></div>
     <div class="modal-btns">
-      <button class="btn" onclick="closeModal('modal-poc')">Cancel</button>
-      <button class="btn primary" onclick="confirmSavePoc()">Save</button>
+      <button class="btn" onclick="closeModal('modal-edit-profile')">Cancel</button>
+      <button class="btn primary" onclick="saveEditProfile()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Manage engineer profiles (Settings) ══ -->
+<div class="modal-bg" id="modal-eng-profiles">
+  <div class="modal" style="max-width:560px">
+    <h3>⚙️ Engineer profiles</h3>
+    <p style="font-size:13px;color:var(--g600);margin-bottom:12px">These are the FAST engineers available for selection in Step 6 of any project.</p>
+    <div id="eng-profiles-list"></div>
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--g200)">
+      <div style="font-size:12px;font-weight:700;color:var(--g800);margin-bottom:8px">Add new engineer profile</div>
+      <div class="grid g2">
+        <div class="fg"><label>Name</label><input type="text" id="nep_name" placeholder="Full name"/></div>
+        <div class="fg"><label>Phone</label><input type="text" id="nep_phone" placeholder="Cell"/></div>
+        <div class="fg"><label>Email</label><input type="email" id="nep_email" placeholder="Email"/></div>
+        <div class="fg"><label>Team</label><input type="text" id="nep_team" placeholder="e.g. FAST EMEA"/></div>
+      </div>
+      <button class="btn primary" onclick="addEngProfile()" style="margin-top:8px">+ Add engineer</button>
+    </div>
+    <div class="modal-btns">
+      <button class="btn primary" onclick="closeModal('modal-eng-profiles')">Done</button>
     </div>
   </div>
 </div>
@@ -413,7 +470,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 <div class="modal-bg" id="modal-rts">
   <div class="modal">
     <h3>Mark A/C as RTS?</h3>
-    <p style="font-size:13px;color:var(--g600);margin-bottom:1rem">The project will be marked RTS. It stays visible but moves to the bottom of the list.</p>
+    <p style="font-size:13px;color:var(--g600);margin-bottom:1rem">The project will be marked RTS.</p>
     <div class="modal-btns">
       <button class="btn" onclick="closeModal('modal-rts')">Cancel</button>
       <button class="btn primary" onclick="confirmRTS()">Confirm RTS</button>
@@ -425,101 +482,85 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 <div class="modal-bg" id="modal-help">
   <div class="modal" style="max-width:600px">
     <h3>✈ FAST Update Generator — Help</h3>
-
     <div class="help-section">
       <h4>🗂 How it works</h4>
       <ol>
-        <li><strong>Create your profile</strong> (top bar) — this is just your name as the engineer using the app. All your chantiers (projects) are stored under your profile in this browser.</li>
-        <li><strong>Create a project</strong> — click "+ New project" or upload an RFS PDF to auto-fill. Each project = one work order / chantier.</li>
-        <li><strong>Step 3 Condition</strong> — add the work items from the RFS. These are fixed for the duration of the chantier.</li>
-        <li><strong>Step 4 Daily updates</strong> — every day, click "+ Today's update". For each work item, select its status and write a free-text description of what was done. You can also add a global free text at the bottom of the day.</li>
-        <li><strong>Step 6</strong> — add the onsite FAST engineers. Up to 3 engineers can be listed. Save their profiles for reuse across projects.</li>
-        <li><strong>Generate</strong> — click the green button. The table is built automatically in the exact FAST email format.</li>
-        <li><strong>Copy &amp; paste</strong> the table directly into your email client. Copy the subject line separately.</li>
-        <li><strong>Mark A/C RTS</strong> when the chantier is done. The project is archived but stays accessible.</li>
+        <li><strong>Create your profile</strong> (login screen) — your name, team, phone, email + a 4-digit PIN. This is YOUR profile as the app user. All your projects are stored here.</li>
+        <li><strong>Engineer profiles</strong> (⚙️ Settings → Engineer profiles) — add all the FAST engineers you work with. These are reusable across all your projects.</li>
+        <li><strong>Step 3 Condition</strong> — add the work items from the RFS. These stay fixed throughout the chantier.</li>
+        <li><strong>Step 4 Daily updates</strong> — every day, click "+ Today's update". For each work item, check the box, set its status, and write what was done. Add a global note at the bottom.</li>
+        <li><strong>Step 6</strong> — select the engineers onsite from your saved profiles. Their info fills automatically.</li>
+        <li><strong>Generate</strong> → table in the exact FAST email format → Copy → Paste into email.</li>
+        <li><strong>Mark A/C RTS</strong> when done. The project is archived.</li>
       </ol>
     </div>
-
     <div class="help-section">
       <h4>💾 Data storage</h4>
-      <p>All data is stored <strong>locally in your browser</strong> (localStorage). Nothing is sent to any server. Works offline once opened. If you clear your browser data, your projects will be lost — consider exporting the HTML file as a backup.</p>
+      <p>All data is stored locally in your browser (localStorage). Nothing is sent to any server. PIN protects your profile from casual access but is not bank-grade security.</p>
     </div>
-
-    <div class="help-section">
-      <h4>🔐 PDF extraction (Gemini)</h4>
-      <p>Sign in with Google (free) to enable auto-extraction from RFS PDFs using Google Gemini. Your Google account is used only to authenticate with the Gemini API — no data is stored.</p>
-    </div>
-
     <div class="help-section">
       <h4>📱 Install on phone (PWA)</h4>
       <div class="install-os">
         <h5>🤖 Android (Chrome)</h5>
         <ol>
-          <li>Open the HTML file in Chrome</li>
-          <li>Tap the ⋮ menu (top right)</li>
-          <li>Tap <strong>"Add to Home screen"</strong></li>
-          <li>Confirm — the app appears on your home screen like a native app</li>
+          <li>Open this file in Chrome</li>
+          <li>Tap ⋮ menu → <strong>"Add to Home screen"</strong></li>
+          <li>Confirm — app appears on your home screen</li>
         </ol>
       </div>
       <div class="install-os">
         <h5>🍎 iPhone / iPad (Safari)</h5>
         <ol>
-          <li>Open the HTML file in <strong>Safari</strong> (not Chrome)</li>
-          <li>Tap the <strong>Share</strong> button (box with arrow at bottom)</li>
-          <li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
-          <li>Tap <strong>Add</strong> — the app appears on your home screen</li>
+          <li>Open in <strong>Safari</strong></li>
+          <li>Tap Share (□↑) → <strong>"Add to Home Screen"</strong></li>
+          <li>Tap Add</li>
         </ol>
-        <p style="font-size:12px;color:var(--g600);margin-top:6px">⚠ On iPhone, the file must be served via a web server or opened from a cloud link (not a local file path) for the PWA install option to appear.</p>
+        <p style="font-size:12px;color:var(--g600);margin-top:4px">⚠ Must be served from a web server or cloud link on iOS.</p>
       </div>
     </div>
-
-    <div class="modal-btns">
-      <button class="btn primary" onclick="closeModal('modal-help')">Close</button>
-    </div>
+    <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-help')">Close</button></div>
   </div>
 </div>
 
 <script>
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════
 //  PWA
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════
 (function(){
   const m={name:'FAST Update Generator',short_name:'FAST Update',start_url:'./',display:'standalone',background_color:'#f1f3f5',theme_color:'#2d5a2d',icons:[{src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%232d5a2d"/><text y=".9em" font-size="80" x="10">✈</text></svg>',sizes:'192x192',type:'image/svg+xml'}]};
   const b=new Blob([JSON.stringify(m)],{type:'application/json'});
   document.getElementById('pwa-manifest').href=URL.createObjectURL(b);
 })();
 if('serviceWorker' in navigator){
-  const sw=`self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>clients.claim());self.addEventListener('fetch',e=>e.respondWith(caches.open('fast-v2').then(c=>c.match(e.request).then(r=>r||fetch(e.request).then(res=>{c.put(e.request,res.clone());return res;})))));`;
-  const b=new Blob([sw],{type:'application/javascript'});
-  navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});
+  const sw=`self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>clients.claim());self.addEventListener('fetch',e=>e.respondWith(caches.open('fast-v3').then(c=>c.match(e.request).then(r=>r||fetch(e.request).then(res=>{c.put(e.request,res.clone());return res;})))));`;
+  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});
 }
 
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════
 //  GOOGLE AUTH
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════
 const GCID='624747295284-rpktnnbk5kugn7jhero0e267soidb2oj.apps.googleusercontent.com';
 const GSCOPE='https://www.googleapis.com/auth/generative-language.retriever https://www.googleapis.com/auth/cloud-platform';
 let tokenClient=null,gToken=null,gTokenExp=0;
 
+(function(){const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=s.defer=true;document.head.appendChild(s);})();
 window.addEventListener('load',()=>{
-  let tries=0; const t=()=>{ if(window.google?.accounts?.oauth2) initGA(); else if(tries++<40) setTimeout(t,150); }; t();
+  let t=0; const tr=()=>{ if(window.google?.accounts?.oauth2) initGA(); else if(t++<40) setTimeout(tr,150); }; tr();
 });
-
 function initGA(){
   tokenClient=google.accounts.oauth2.initTokenClient({
     client_id:GCID,scope:GSCOPE,
-    callback:(r)=>{ if(r?.access_token){gToken=r.access_token;gTokenExp=Date.now()+((r.expires_in||3500)*1000)-30000;updateAuthUI(true);setStatus('done','✓ Connected to Google — PDF extraction ready.');} },
+    callback:(r)=>{if(r?.access_token){gToken=r.access_token;gTokenExp=Date.now()+((r.expires_in||3500)*1000)-30000;updateAuthUI(true);setStatus('done','✓ Connected to Google — PDF extraction ready.');}},
     error_callback:()=>setStatus('err','Google sign-in cancelled.')
   });
   renderGBtn();
 }
 function renderGBtn(){
-  const c=document.getElementById('gsi-btn-container'); c.innerHTML='';
-  const b=document.createElement('button'); b.className='btn primary'; b.innerHTML='🔵 Sign in with Google'; b.onclick=()=>tokenClient?.requestAccessToken({});
-  c.appendChild(b);
+  const c=document.getElementById('gsi-btn-container');c.innerHTML='';
+  const b=document.createElement('button');b.className='btn primary';b.innerHTML='🔵 Sign in with Google';b.onclick=()=>tokenClient?.requestAccessToken({});c.appendChild(b);
 }
-function ensureGToken(){ if(gToken&&Date.now()<gTokenExp) return true; tokenClient?.requestAccessToken({prompt:'consent'}); return false; }
-function signOutGoogle(){ if(gToken&&window.google?.accounts?.oauth2?.revoke) google.accounts.oauth2.revoke(gToken,()=>{}); gToken=null;gTokenExp=0; updateAuthUI(false); }
+function ensureGToken(){if(gToken&&Date.now()<gTokenExp)return true;tokenClient?.requestAccessToken({prompt:'consent'});return false;}
+function signOutGoogle(){if(gToken&&window.google?.accounts?.oauth2?.revoke)google.accounts.oauth2.revoke(gToken,()=>{});gToken=null;gTokenExp=0;updateAuthUI(false);}
 function updateAuthUI(ok){
   document.getElementById('auth-badge').textContent=ok?'Connected':'Not connected';
   document.getElementById('auth-badge').className='abadge '+(ok?'ok':'ko');
@@ -527,109 +568,284 @@ function updateAuthUI(ok){
   document.getElementById('gsi-btn-container').style.display=ok?'none':'';
 }
 
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════
 //  STORAGE
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════
 const LS={
   get:k=>{try{return JSON.parse(localStorage.getItem(k))}catch{return null}},
   set:(k,v)=>localStorage.setItem(k,JSON.stringify(v)),
   del:k=>localStorage.removeItem(k)
 };
-const EK='fast_engineers';
-const getEngs=()=>LS.get(EK)||[];
-const saveEngs=a=>LS.set(EK,a);
-const getProjs=eid=>(getEngs().find(e=>e.id===eid)||{}).projects||[];
-function saveProj(eid,proj){
-  const engs=getEngs(); const e=engs.find(e=>e.id===eid); if(!e) return;
-  if(!e.projects)e.projects=[];
-  const i=e.projects.findIndex(p=>p.id===proj.id);
-  if(i>=0)e.projects[i]=proj; else e.projects.push(proj);
-  saveEngs(engs);
-}
-function delProj(eid,pid){
-  const engs=getEngs(); const e=engs.find(e=>e.id===eid); if(!e||!e.projects) return;
-  e.projects=e.projects.filter(p=>p.id!==pid); saveEngs(engs);
-}
-const getPocProfs=eid=>LS.get('fast_poc_'+eid)||[];
-const savePocProfs=(eid,a)=>LS.set('fast_poc_'+eid,a);
 
-// ══════════════════════════════════════════════
-//  STATE
-// ══════════════════════════════════════════════
-let curEng=null,curProj=null,pdfB64=null;
-let itemCount=0,partCount=0,pocCount=0;
+// ══════════════════════════════════════
+//  PROFILES (users of the app)
+// ══════════════════════════════════════
+// Structure: [{id, name, email, team, phone, pinHash, projects:[]}]
+const PK='fast_profiles';
+const getProfiles=()=>LS.get(PK)||[];
+const saveProfiles=a=>LS.set(PK,a);
+
+// Engineer profiles (globally shared — not per user)
+const EK='fast_eng_profiles';
+const getEngProfiles=()=>LS.get(EK)||[];
+const saveEngProfiles=a=>LS.set(EK,a);
+
+function hashPin(pin){
+  // Simple hash (djb2) — not cryptographic but sufficient for this use
+  let h=5381; for(let i=0;i<pin.length;i++) h=((h<<5)+h)+pin.charCodeAt(i);
+  return (h>>>0).toString(16);
+}
+
+// ══════════════════════════════════════
+//  AUTH STATE
+// ══════════════════════════════════════
+let curProfile=null; // profile object
+let curProj=null;    // project id
+let pdfB64=null;
+let itemCount=0,partCount=0,pocSlotCount=0;
+
+// Pending PIN action
+let pendingPinAction=null; // {type:'login'|'delete'|'edit', profileId, callback}
 
 window.addEventListener('DOMContentLoaded',()=>{
-  renderEngSel();
-  const last=LS.get('fast_last_eng');
-  if(last){ document.getElementById('eng-select').value=last; if(document.getElementById('eng-select').value===last){curEng=last;showEngUI();} }
-  addPocBlock(); // one empty block by default
+  const lastId=LS.get('fast_last_profile');
+  renderLoginScreen();
+  if(lastId){
+    const profiles=getProfiles();
+    const p=profiles.find(p=>p.id===lastId);
+    if(p) promptPin(p,'login');
+  }
 });
 
-// ══════════════════════════════════════════════
-//  ENGINEER
-// ══════════════════════════════════════════════
-function renderEngSel(){
-  const sel=document.getElementById('eng-select');
-  sel.innerHTML='<option value="">— Select or create my profile —</option>';
-  getEngs().forEach(e=>{const o=document.createElement('option');o.value=e.id;o.textContent=e.name;sel.appendChild(o);});
-  if(curEng) sel.value=curEng;
-}
-function switchEngineer(){
-  const sel=document.getElementById('eng-select'); curEng=sel.value||null; curProj=null; LS.set('fast_last_eng',curEng);
-  if(curEng) showEngUI(); else {document.getElementById('proj-panel').style.display='none';document.getElementById('btn-del-eng').style.display='none';clearForm();}
-}
-function showEngUI(){
-  document.getElementById('proj-panel').style.display='';
-  document.getElementById('btn-del-eng').style.display='';
-  renderProjList(); renderPocProfSel();
-}
-function openNewEngModal(){document.getElementById('m_eng_name').value='';openModal('modal-eng');setTimeout(()=>document.getElementById('m_eng_name').focus(),100);}
-function createEngineer(){
-  const name=document.getElementById('m_eng_name').value.trim(); if(!name) return;
-  const id='eng_'+Date.now(); const engs=getEngs();
-  engs.push({id,name,projects:[]}); saveEngs(engs);
-  renderEngSel(); document.getElementById('eng-select').value=id; curEng=id; LS.set('fast_last_eng',id); showEngUI(); closeModal('modal-eng');
-}
-function deleteEngineer(){
-  if(!curEng) return; const engs=getEngs(); const e=engs.find(e=>e.id===curEng); if(!e) return;
-  if(!confirm(`Delete profile "${e.name}" and ALL projects?`)) return;
-  saveEngs(engs.filter(e=>e.id!==curEng)); curEng=null; curProj=null;
-  renderEngSel(); document.getElementById('proj-panel').style.display='none'; document.getElementById('btn-del-eng').style.display='none'; clearForm();
+function renderLoginScreen(){
+  document.getElementById('login-screen').style.display='';
+  document.getElementById('app-screen').style.display='none';
+  document.getElementById('btn-logout').style.display='none';
+  document.getElementById('hdr-profile-name').textContent='';
+  const picker=document.getElementById('profile-picker');
+  const profiles=getProfiles();
+  picker.innerHTML='';
+  if(!profiles.length){
+    picker.innerHTML='<p style="font-size:13px;color:var(--g400);text-align:center;padding:.5rem 0">No profiles yet — create one below.</p>';
+    return;
+  }
+  profiles.forEach(p=>{
+    const btn=document.createElement('button');
+    btn.className='profile-btn';
+    const initials=(p.name||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+    const projs=(p.projects||[]).length;
+    btn.innerHTML=`<div class="pb-avatar">${initials}</div><div class="pb-info"><div class="pb-name">${p.name}</div><div class="pb-sub">${p.team||''}${p.team&&projs?' · ':''}${projs} project${projs!==1?'s':''}</div></div><div class="pb-lock">🔒</div>`;
+    btn.onclick=()=>promptPin(p,'login');
+    picker.appendChild(btn);
+  });
 }
 
-// ══════════════════════════════════════════════
+function promptPin(profile, type, callback){
+  pendingPinAction={type, profileId:profile.id, callback};
+  document.getElementById('modal-pin-title').textContent=type==='delete'?`Delete profile "${profile.name}"`:`Unlock: ${profile.name}`;
+  document.getElementById('modal-pin-sub').textContent='Enter your 4-digit PIN to continue.';
+  document.getElementById('pin-input').value='';
+  document.getElementById('pin-error').textContent='';
+  openModal('modal-pin');
+  setTimeout(()=>document.getElementById('pin-input').focus(),100);
+}
+
+function pinInput(){
+  const val=document.getElementById('pin-input').value;
+  if(val.length===4) verifyPin(val);
+}
+
+function verifyPin(pin){
+  const action=pendingPinAction; if(!action) return;
+  const profiles=getProfiles();
+  const profile=profiles.find(p=>p.id===action.profileId); if(!profile) return;
+  if(hashPin(pin)!==profile.pinHash){
+    document.getElementById('pin-error').textContent='❌ Incorrect PIN — try again.';
+    document.getElementById('pin-input').value='';
+    return;
+  }
+  closeModal('modal-pin');
+  if(action.type==='login') loginAs(profile);
+  else if(action.type==='delete') deleteProfile(profile.id);
+  else if(action.type==='edit'){
+    openEditProfileModal(profile);
+  }
+  else if(action.callback) action.callback(profile);
+}
+
+function loginAs(profile){
+  curProfile=profile;
+  LS.set('fast_last_profile',profile.id);
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app-screen').style.display='';
+  document.getElementById('hdr-profile-name').textContent=profile.name;
+  document.getElementById('btn-logout').style.display='';
+  document.getElementById('eng-bar-name').textContent=profile.name;
+  document.getElementById('eng-bar-sub').textContent=[profile.team,profile.email,profile.phone].filter(Boolean).join(' · ');
+  renderProjList();
+  renderPocSlotSelects();
+  addPocSlot(); // start with one empty slot
+}
+
+function logout(){
+  curProfile=null; curProj=null;
+  document.getElementById('poc-slots-container').innerHTML='';pocSlotCount=0;
+  renderLoginScreen();
+}
+
+// ══════════════════════════════════════
+//  PROFILE CRUD
+// ══════════════════════════════════════
+function createProfile(){
+  const name=document.getElementById('np_name').value.trim();
+  const pin=document.getElementById('np_pin').value.trim();
+  if(!name){alert('Please enter your name.');return;}
+  if(pin.length!==4||!/^\d{4}$/.test(pin)){alert('PIN must be exactly 4 digits.');return;}
+  const profile={
+    id:'prof_'+Date.now(),
+    name,
+    email:document.getElementById('np_email').value.trim(),
+    team:document.getElementById('np_team').value.trim(),
+    phone:document.getElementById('np_phone').value.trim(),
+    pinHash:hashPin(pin),
+    projects:[]
+  };
+  const profiles=getProfiles(); profiles.push(profile); saveProfiles(profiles);
+  closeModal('modal-new-profile');
+  renderLoginScreen();
+  loginAs(profile);
+}
+
+function openEditProfileModal(profile){
+  document.getElementById('ep_name').value=profile.name||'';
+  document.getElementById('ep_email').value=profile.email||'';
+  document.getElementById('ep_team').value=profile.team||'';
+  document.getElementById('ep_phone').value=profile.phone||'';
+  document.getElementById('ep_pin').value='';
+  openModal('modal-edit-profile');
+}
+
+function saveEditProfile(){
+  if(!curProfile) return;
+  const profiles=getProfiles(); const p=profiles.find(x=>x.id===curProfile.id); if(!p) return;
+  p.name=document.getElementById('ep_name').value.trim()||p.name;
+  p.email=document.getElementById('ep_email').value.trim();
+  p.team=document.getElementById('ep_team').value.trim();
+  p.phone=document.getElementById('ep_phone').value.trim();
+  const newPin=document.getElementById('ep_pin').value.trim();
+  if(newPin){if(!/^\d{4}$/.test(newPin)){alert('PIN must be 4 digits.');return;} p.pinHash=hashPin(newPin);}
+  saveProfiles(profiles);
+  curProfile=p;
+  document.getElementById('eng-bar-name').textContent=p.name;
+  document.getElementById('eng-bar-sub').textContent=[p.team,p.email,p.phone].filter(Boolean).join(' · ');
+  document.getElementById('hdr-profile-name').textContent=p.name;
+  closeModal('modal-edit-profile');
+}
+
+function confirmDeleteProfile(){
+  if(!curProfile) return;
+  promptPin(curProfile,'delete');
+}
+function deleteProfile(pid){
+  const profiles=getProfiles().filter(p=>p.id!==pid); saveProfiles(profiles);
+  if(LS.get('fast_last_profile')===pid) LS.del('fast_last_profile');
+  curProfile=null; curProj=null;
+  renderLoginScreen();
+}
+
+// ══════════════════════════════════════
+//  ENGINEER PROFILES (for Step 6)
+// ══════════════════════════════════════
+function openEngProfilesModal(){
+  renderEngProfilesList();
+  openModal('modal-eng-profiles');
+}
+
+function renderEngProfilesList(){
+  const list=document.getElementById('eng-profiles-list');
+  const profiles=getEngProfiles();
+  if(!profiles.length){list.innerHTML='<p style="font-size:13px;color:var(--g400);margin-bottom:8px">No engineer profiles yet.</p>';return;}
+  list.innerHTML=profiles.map((p,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:6px">
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:13px">${p.name}</div>
+        <div style="font-size:11px;color:var(--g600)">${[p.team,p.email,p.phone].filter(Boolean).join(' · ')}</div>
+      </div>
+      <button class="btn danger" onclick="deleteEngProfile(${i})" style="padding:4px 8px;font-size:11px">🗑</button>
+    </div>`).join('');
+}
+
+function addEngProfile(){
+  const name=document.getElementById('nep_name').value.trim(); if(!name){alert('Name required.');return;}
+  const profiles=getEngProfiles();
+  profiles.push({
+    id:'ep_'+Date.now(),
+    name,
+    email:document.getElementById('nep_email').value.trim(),
+    team:document.getElementById('nep_team').value.trim(),
+    phone:document.getElementById('nep_phone').value.trim()
+  });
+  saveEngProfiles(profiles);
+  ['nep_name','nep_email','nep_team','nep_phone'].forEach(id=>document.getElementById(id).value='');
+  renderEngProfilesList();
+  renderPocSlotSelects();
+}
+
+function deleteEngProfile(idx){
+  if(!confirm('Delete this engineer profile?')) return;
+  const profiles=getEngProfiles(); profiles.splice(idx,1); saveEngProfiles(profiles);
+  renderEngProfilesList(); renderPocSlotSelects();
+}
+
+// ══════════════════════════════════════
 //  PROJECTS
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════
+function getProjs(){return(curProfile?(getProfiles().find(p=>p.id===curProfile.id)||{}).projects:[]) || [];}
+function saveProj(proj){
+  const profiles=getProfiles(); const p=profiles.find(x=>x.id===curProfile.id); if(!p) return;
+  if(!p.projects)p.projects=[];
+  const i=p.projects.findIndex(x=>x.id===proj.id);
+  if(i>=0)p.projects[i]=proj; else p.projects.push(proj);
+  saveProfiles(profiles);
+  curProfile=p;
+}
+function delProj(pid){
+  const profiles=getProfiles(); const p=profiles.find(x=>x.id===curProfile.id); if(!p||!p.projects) return;
+  p.projects=p.projects.filter(x=>x.id!==pid); saveProfiles(profiles); curProfile=p;
+}
+
 function renderProjList(){
-  if(!curEng) return;
-  const projs=getProjs(curEng); const list=document.getElementById('proj-list');
+  const projs=getProjs(); const list=document.getElementById('proj-list');
   if(!projs.length){list.innerHTML='<div class="proj-empty">No projects yet — upload a PDF or create one manually.</div>';return;}
-  const sorted=[...projs].sort((a,b)=>{ if(a.rts&&!b.rts)return 1; if(!a.rts&&b.rts)return -1; return (b.updatedAt||0)-(a.updatedAt||0); });
+  const sorted=[...projs].sort((a,b)=>{if(a.rts&&!b.rts)return 1;if(!a.rts&&b.rts)return -1;return(b.updatedAt||0)-(a.updatedAt||0);});
   list.innerHTML='';
   sorted.forEach(proj=>{
-    const div=document.createElement('div'); div.className='proj-item'+(proj.id===curProj?' active':'');
-    const d=new Date(proj.updatedAt||proj.createdAt); const ds=d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});
+    const div=document.createElement('div');div.className='proj-item'+(proj.id===curProj?' active':'');
+    const ds=new Date(proj.updatedAt||proj.createdAt).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});
     div.innerHTML=`<div class="proj-item-info"><div class="proj-item-wo">${proj.wo||'(no WO)'} ${proj.rts?'<span class="tag-rts">RTS ✓</span>':'<span class="tag-open">OPEN</span>'}</div><div class="proj-item-sub">${[proj.model,proj.sn,proj.reg,proj.loc].filter(Boolean).join(' · ')}</div></div><div class="proj-item-date">${ds}</div><button class="btn danger" onclick="event.stopPropagation();deleteProjUI('${proj.id}')" style="padding:4px 8px;font-size:11px">🗑</button>`;
     div.onclick=()=>loadProject(proj.id); list.appendChild(div);
   });
 }
-function newProject(){if(!curEng){alert('Select your profile first.');return;}curProj=null;clearForm();renderProjList();window.scrollTo({top:0,behavior:'smooth'});}
+
+function newProject(){curProj=null;clearForm();renderProjList();window.scrollTo({top:0,behavior:'smooth'});}
+
 function loadProject(pid){
-  const proj=getProjs(curEng).find(p=>p.id===pid); if(!proj) return;
+  const proj=getProjs().find(p=>p.id===pid); if(!proj) return;
   curProj=pid; fillFromProj(proj); renderProjList();
   window.scrollTo({top:document.querySelector('.card').offsetTop-70,behavior:'smooth'});
 }
+
 function deleteProjUI(pid){
-  const proj=getProjs(curEng).find(p=>p.id===pid); if(!proj) return;
+  const proj=getProjs().find(p=>p.id===pid); if(!proj) return;
   if(!confirm(`Delete project "${proj.wo||'(no WO)'}"?`)) return;
-  delProj(curEng,pid); if(curProj===pid){curProj=null;clearForm();} renderProjList();
+  delProj(pid); if(curProj===pid){curProj=null;clearForm();} renderProjList();
 }
 
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════
 //  FORM DATA
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════
 const gv=id=>document.getElementById(id)?.value||'';
+const sv=(id,v)=>{const e=document.getElementById(id);if(e&&v!=null)e.value=v;};
 
 function gatherData(){
   return {
@@ -637,18 +853,19 @@ function gatherData(){
     rts_assist:gv('f_rts_assist'),far:gv('f_far'),country:gv('f_country'),fbo:gv('f_fbo'),po:gv('f_po'),
     erts:gv('f_erts'),nxt:gv('f_nxt'),retdate:gv('f_retdate'),rettime:gv('f_rettime'),info:gv('f_info'),
     cust_name:gv('f_cust_name'),cust_tel:gv('f_cust_tel'),cust_email:gv('f_cust_email'),
-    items:getItems(), parts:getParts(), pocs:getPocs(), updates:getUpdatesData()
+    items:getItems(),parts:getParts(),pocSlots:getPocSlots(),updates:getUpdatesData()
   };
 }
+
 function autosave(){
-  if(!curEng) return;
+  if(!curProfile) return;
   const d=gatherData(); if(!d.wo&&!d.model&&!d.sn) return;
   if(!curProj) curProj='proj_'+Date.now();
-  const projs=getProjs(curEng); const ex=projs.find(p=>p.id===curProj);
-  saveProj(curEng,{...(ex||{}),id:curProj,createdAt:ex?.createdAt||Date.now(),updatedAt:Date.now(),rts:ex?.rts||false,...d});
+  const projs=getProjs(); const ex=projs.find(p=>p.id===curProj);
+  saveProj({...(ex||{}),id:curProj,createdAt:ex?.createdAt||Date.now(),updatedAt:Date.now(),rts:ex?.rts||false,...d});
   renderProjList();
 }
-function sv(id,v){const e=document.getElementById(id);if(e&&v!=null)e.value=v;}
+
 function fillFromProj(proj){
   sv('f_wo',proj.wo);sv('f_model',proj.model);sv('f_sn',proj.sn);sv('f_reg',proj.reg);sv('f_loc',proj.loc);
   sv('f_rts_assist',proj.rts_assist||'RTS');sv('f_far',proj.far);sv('f_country',proj.country);sv('f_fbo',proj.fbo);sv('f_po',proj.po);
@@ -658,32 +875,33 @@ function fillFromProj(proj){
   (proj.items||[]).forEach(it=>addItem(it.label,it.status));
   document.getElementById('parts-container').innerHTML='';partCount=0;
   (proj.parts||[]).forEach(p=>addPart(p.nom,p.pn_off,p.sn_off,p.pn_on,p.sn_on));
-  document.getElementById('poc-blocks-container').innerHTML='';pocCount=0;
-  if((proj.pocs||[]).length>0) proj.pocs.forEach(p=>addPocBlock(p.name,p.tel,p.email,p.team));
-  else addPocBlock();
+  document.getElementById('poc-slots-container').innerHTML='';pocSlotCount=0;
+  if((proj.pocSlots||[]).length>0) proj.pocSlots.forEach(s=>addPocSlot(s.engId));
+  else addPocSlot();
   document.getElementById('updates-container').innerHTML='';
   (proj.updates||[]).forEach(u=>renderUpdateBlock(u));
   if(!(proj.updates||[]).length) document.getElementById('updates-container').innerHTML='<p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet</p>';
   document.getElementById('output-section').style.display='none';
 }
+
 function clearForm(){
   ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po',
    'f_erts','f_nxt','f_retdate','f_rettime','f_info','f_cust_name','f_cust_tel','f_cust_email'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('f_rts_assist').value='RTS';
   document.getElementById('items-container').innerHTML='';itemCount=0;
   document.getElementById('parts-container').innerHTML='';partCount=0;
-  document.getElementById('poc-blocks-container').innerHTML='';pocCount=0;addPocBlock();
+  document.getElementById('poc-slots-container').innerHTML='';pocSlotCount=0;addPocSlot();
   document.getElementById('updates-container').innerHTML='<p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet</p>';
   document.getElementById('output-section').style.display='none';
 }
 
-// ══════════════════════════════════════════════
-//  WORK ITEMS (Step 3)
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════
+//  WORK ITEMS
+// ══════════════════════════════════════
 function addItem(label='',status='pending'){
   itemCount++;
   const c=document.getElementById('items-container');
-  const d=document.createElement('div'); d.className='item-row'; d.id='item-'+itemCount;
+  const d=document.createElement('div');d.className='item-row';d.id='item-'+itemCount;
   d.innerHTML=`<span class="item-num">${itemCount}</span>
     <div class="item-fields">
       <div class="item-label-row">
@@ -699,45 +917,126 @@ function addItem(label='',status='pending'){
     <button class="btn-rm" onclick="this.parentElement.remove();autosave()">×</button>`;
   c.appendChild(d);
 }
+
 function getItems(){
   return Array.from(document.querySelectorAll('.item-row')).map((r,i)=>({
     num:i+1,label:r.querySelector('input').value,status:r.querySelector('select').value
   }));
 }
 
-// ══════════════════════════════════════════════
-//  PARTS
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════
+//  PARTS — PN OFF → PN ON auto-copy
+// ══════════════════════════════════════
 function addPart(nom='',pn_off='',sn_off='',pn_on='',sn_on=''){
   partCount++;
-  const c=document.getElementById('parts-container'); const d=document.createElement('div');
-  d.className='part-row'; d.id='part-'+partCount;
+  const c=document.getElementById('parts-container');const d=document.createElement('div');
+  d.className='part-row';d.id='part-'+partCount;
   d.innerHTML=`<div class="part-fields">
-    <div class="fg"><label>Nomenclature</label><input type="text" value="${nom}" placeholder="e.g. FCC com 2A" oninput="autosave()"/></div>
-    <div class="fg"><label>PN OFF</label><input type="text" value="${pn_off}" oninput="autosave()"/></div>
-    <div class="fg"><label>SN OFF</label><input type="text" value="${sn_off}" oninput="autosave()"/></div>
-    <div class="fg"><label>PN ON</label><input type="text" value="${pn_on}" oninput="autosave()"/></div>
-    <div class="fg"><label>SN ON</label><input type="text" value="${sn_on}" oninput="autosave()"/></div>
+    <div class="fg"><label>Nomenclature</label><input type="text" class="p-nom" value="${nom}" placeholder="e.g. FCC com 2A" oninput="autosave()"/></div>
+    <div class="fg"><label>PN OFF</label><input type="text" class="p-pnoff" value="${pn_off}" oninput="onPnOffInput(this)"/></div>
+    <div class="fg"><label>SN OFF</label><input type="text" class="p-snoff" value="${sn_off}" oninput="autosave()"/></div>
+    <div class="fg"><label>PN ON</label><input type="text" class="p-pnon" value="${pn_on}" placeholder="auto-fills from PN OFF" oninput="autosave()"/></div>
+    <div class="fg"><label>SN ON</label><input type="text" class="p-snon" value="${sn_on}" oninput="autosave()"/></div>
   </div>
   <button class="btn-rm" onclick="this.parentElement.remove();autosave()" style="margin-top:18px">×</button>`;
   c.appendChild(d);
 }
+
+function onPnOffInput(el){
+  const row=el.closest('.part-row');
+  const pnOn=row.querySelector('.p-pnon');
+  // Auto-fill PN ON only if it's empty or was auto-filled (user hasn't manually edited it)
+  if(!pnOn.dataset.manualEdit) pnOn.value=el.value;
+  autosave();
+}
+// Mark PN ON as manually edited if user types in it
+document.addEventListener('input',e=>{if(e.target.classList.contains('p-pnon')&&!e.target.dataset.pnoffFill) e.target.dataset.manualEdit='1';});
+
 function getParts(){
-  return Array.from(document.querySelectorAll('.part-row')).map(r=>{
-    const i=r.querySelectorAll('input'); return {nom:i[0].value,pn_off:i[1].value,sn_off:i[2].value,pn_on:i[3].value,sn_on:i[4].value};
+  return Array.from(document.querySelectorAll('.part-row')).map(r=>({
+    nom:r.querySelector('.p-nom').value,pn_off:r.querySelector('.p-pnoff').value,
+    sn_off:r.querySelector('.p-snoff').value,pn_on:r.querySelector('.p-pnon').value,sn_on:r.querySelector('.p-snon').value
+  }));
+}
+
+// ══════════════════════════════════════
+//  STEP 6 — POC slots (dropdown from engineer profiles)
+// ══════════════════════════════════════
+function renderPocSlotSelects(){
+  // Re-render all select options without destroying existing selections
+  document.querySelectorAll('.poc-eng-select').forEach(sel=>{
+    const curVal=sel.value;
+    sel.innerHTML=buildEngOptions(curVal);
   });
 }
 
-// ══════════════════════════════════════════════
-//  DAILY UPDATES (Step 4)
-// ══════════════════════════════════════════════
+function buildEngOptions(selectedId=''){
+  const profs=getEngProfiles();
+  let html='<option value="">— Select engineer —</option>';
+  profs.forEach(p=>{html+=`<option value="${p.id}" ${p.id===selectedId?'selected':''}>${p.name}${p.team?' ('+p.team+')':''}</option>`;});
+  html+='<option value="__manage__">⚙️ Manage engineer profiles…</option>';
+  return html;
+}
+
+function addPocSlot(engId=''){
+  if(pocSlotCount>=3){alert('Maximum 3 engineers per project.');return;}
+  pocSlotCount++;
+  const c=document.getElementById('poc-slots-container');const d=document.createElement('div');
+  d.className='poc-block';d.id='poc-slot-'+pocSlotCount;
+  d.innerHTML=`<div class="poc-block-head">
+    <span>Engineer ${pocSlotCount}</span>
+    <button class="btn danger" onclick="removePocSlot('poc-slot-${pocSlotCount}')" style="padding:4px 8px;font-size:11px">Remove</button>
+  </div>
+  <select class="poc-eng-select" style="margin-bottom:8px" onchange="onPocSelectChange(this)">${buildEngOptions(engId)}</select>
+  <div class="poc-info-display" style="font-size:12px;color:var(--g600)"></div>`;
+  c.appendChild(d);
+  document.getElementById('btn-add-poc').style.display=pocSlotCount>=3?'none':'';
+  if(engId) displayPocInfo(d.querySelector('.poc-info-display'),engId);
+}
+
+function onPocSelectChange(sel){
+  if(sel.value==='__manage__'){
+    sel.value='';
+    openEngProfilesModal();
+    return;
+  }
+  const block=sel.closest('.poc-block');
+  displayPocInfo(block.querySelector('.poc-info-display'),sel.value);
+  autosave();
+}
+
+function displayPocInfo(el,engId){
+  if(!engId){el.innerHTML='';return;}
+  const p=getEngProfiles().find(x=>x.id===engId);
+  if(!p){el.innerHTML='';return;}
+  el.innerHTML=`<b>${p.name}</b>${p.team?' · '+p.team:''}${p.phone?'<br>📱 '+p.phone:''}${p.email?'<br>✉️ '+p.email:''}`;
+}
+
+function removePocSlot(id){
+  const el=document.getElementById(id);if(el)el.remove();pocSlotCount--;
+  document.getElementById('btn-add-poc').style.display='';
+  autosave();
+}
+
+function getPocSlots(){
+  return Array.from(document.querySelectorAll('.poc-block')).map(b=>{
+    const sel=b.querySelector('.poc-eng-select');
+    const engId=sel?.value||'';
+    const p=getEngProfiles().find(x=>x.id===engId);
+    return {engId,name:p?.name||'',tel:p?.phone||'',email:p?.email||'',team:p?.team||''};
+  }).filter(s=>s.engId&&s.engId!=='__manage__');
+}
+
+// ══════════════════════════════════════
+//  DAILY UPDATES
+// ══════════════════════════════════════
 function todayLabel(){return new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});}
 
 function addTodayUpdate(){
   const today=todayLabel();
-  if(getUpdatesData().find(u=>u.date===today)){setStatus('idle','Today\'s update already exists — scroll to edit it.');return;}
+  if(getUpdatesData().find(u=>u.date===today)){setStatus('idle',"Today's update already exists — scroll down to edit it.");return;}
   const uc=document.getElementById('updates-container');
-  const ph=uc.querySelector('p'); if(ph) ph.remove();
+  const ph=uc.querySelector('p');if(ph)ph.remove();
   renderUpdateBlock({id:'upd_'+Date.now(),date:today,isRTS:false,freeText:'',itemUpdates:[]});
   autosave();
 }
@@ -745,44 +1044,56 @@ function addTodayUpdate(){
 function renderUpdateBlock(upd){
   const uc=document.getElementById('updates-container');
   const items=getItems();
-  const d=document.createElement('div'); d.className='update-day'; d.id=upd.id; d.dataset.date=upd.date;
+  const d=document.createElement('div');d.className='update-day';d.id=upd.id;d.dataset.date=upd.date;
 
-  // Build per-item update blocks
-  const itemsHtml=items.map((it,i)=>{
+  // Per-item update blocks — CHECKBOX to select which items were worked on today
+  const itemsHtml=items.length>0?items.map((it,i)=>{
     const saved=(upd.itemUpdates||[]).find(u=>u.num===(i+1))||{};
+    const checked=saved.checked||((upd.itemUpdates||[]).find(u=>u.num===(i+1)))?'checked':'';
     const statusOpts=['pending','done','waiting','na'].map(v=>{
       const L={pending:'⏳ In progress',done:'✅ Carried out',waiting:'⚠️ Waiting',na:'— N/A'};
       return `<option value="${v}" ${(saved.status||'pending')===v?'selected':''}>${L[v]}</option>`;
     }).join('');
     return `<div class="upd-item-block" data-item-num="${i+1}">
       <div class="upd-item-header">
-        <span class="item-lbl">${it.num} — ${it.label||'(no description)'}</span>
+        <div class="upd-item-chk">
+          <input type="checkbox" id="uchk_${upd.id}_${i}" ${checked} onchange="onUpdChk(this)" style="width:auto"/>
+          <label for="uchk_${upd.id}_${i}">${it.num} — ${it.label||'(no description)'}</label>
+        </div>
         <select class="upd-status-sel" onchange="autosave()">${statusOpts}</select>
       </div>
-      <textarea class="upd-detail" style="min-height:52px;font-size:12px" placeholder="Describe what was done for this item today (optional)…" oninput="autosave()">${saved.detail||''}</textarea>
+      <textarea class="upd-detail" placeholder="Describe what was done for this item today (optional)…" oninput="autosave()">${saved.detail||''}</textarea>
     </div>`;
-  }).join('')||'<p style="font-size:12px;color:var(--g400)">No work items in Step 3 yet — add them first.</p>';
-
-  const rtsChecked=upd.isRTS?'checked':'';
+  }).join(''):'<p style="font-size:12px;color:var(--g400)">Add work items in Step 3 first.</p>';
 
   d.innerHTML=`<div class="update-day-head">
     <span class="update-day-date">📅 ${upd.date}</span>
     <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--gd);text-transform:none;letter-spacing:0;cursor:pointer">
-      <input type="checkbox" ${rtsChecked} id="rts_${d.id}" onchange="autosave()" style="width:auto"/> ✅ A/C RTS this day
+      <input type="checkbox" ${upd.isRTS?'checked':''} id="rts_${d.id}" onchange="autosave()" style="width:auto"/> ✅ A/C RTS this day
     </label>
     <button class="btn danger" onclick="removeUpdateBlock('${d.id}')" style="padding:4px 8px;font-size:11px">🗑</button>
   </div>
   <div class="update-day-body">
     ${itemsHtml}
-    <div class="fg"><label style="text-transform:none;font-size:11px;font-weight:600;letter-spacing:0">Global free text for this day (optional)</label>
-      <textarea class="upd-free-global" style="min-height:48px" placeholder="e.g. Will travel tomorrow, waiting for parts…" oninput="autosave()">${upd.freeText||''}</textarea>
+    <div class="fg">
+      <label style="text-transform:none;font-size:11px;font-weight:600;letter-spacing:0">Global note for this day (optional)</label>
+      <textarea class="upd-free-global" style="min-height:44px" placeholder="e.g. Will travel tomorrow, waiting for parts…" oninput="autosave()">${upd.freeText||''}</textarea>
     </div>
   </div>`;
   uc.appendChild(d);
 }
 
+function onUpdChk(chk){
+  // When unchecked, clear status and detail
+  const block=chk.closest('.upd-item-block');
+  const sel=block.querySelector('.upd-status-sel');
+  const ta=block.querySelector('.upd-detail');
+  if(!chk.checked){sel.value='pending';ta.value='';}
+  autosave();
+}
+
 function removeUpdateBlock(id){
-  const el=document.getElementById(id); if(el) el.remove();
+  const el=document.getElementById(id);if(el)el.remove();
   const uc=document.getElementById('updates-container');
   if(!uc.querySelector('.update-day')) uc.innerHTML='<p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet</p>';
   autosave();
@@ -794,89 +1105,22 @@ function getUpdatesData(){
     const isRTS=block.querySelector('[id^="rts_"]')?.checked||false;
     const freeText=block.querySelector('.upd-free-global')?.value||'';
     const itemBlocks=block.querySelectorAll('.upd-item-block');
-    const itemUpdates=Array.from(itemBlocks).map((ib,i)=>({
-      num:parseInt(ib.dataset.itemNum||i+1),
-      status:ib.querySelector('.upd-status-sel')?.value||'pending',
-      detail:ib.querySelector('.upd-detail')?.value||''
-    }));
+    const itemUpdates=Array.from(itemBlocks).map((ib,i)=>{
+      const chk=ib.querySelector('input[type=checkbox]');
+      return {
+        num:parseInt(ib.dataset.itemNum||i+1),
+        checked:chk?.checked||false,
+        status:ib.querySelector('.upd-status-sel')?.value||'pending',
+        detail:ib.querySelector('.upd-detail')?.value||''
+      };
+    });
     return {id:block.id,date,isRTS,freeText,itemUpdates};
   });
 }
 
-// ══════════════════════════════════════════════
-//  POC BLOCKS (Step 6)
-// ══════════════════════════════════════════════
-function addPocBlock(name='',tel='',email='',team=''){
-  if(pocCount>=3){alert('Maximum 3 engineers per project.');return;}
-  pocCount++;
-  const c=document.getElementById('poc-blocks-container'); const d=document.createElement('div');
-  d.className='poc-block'; d.id='poc-'+pocCount;
-  const idx=pocCount;
-  d.innerHTML=`<div class="poc-block-head">
-    <span>Engineer ${idx}</span>
-    <button class="btn danger" onclick="removePocBlock('poc-${idx}')" style="padding:4px 8px;font-size:11px">Remove</button>
-  </div>
-  <div class="grid g2">
-    <div class="fg"><label>Name</label><input type="text" class="poc-name" value="${name}" oninput="autosave()"/></div>
-    <div class="fg"><label>Cell</label><input type="text" class="poc-tel" value="${tel}" oninput="autosave()"/></div>
-    <div class="fg"><label>Email</label><input type="email" class="poc-email" value="${email}" oninput="autosave()"/></div>
-    <div class="fg"><label>Team</label><input type="text" class="poc-team" value="${team}" oninput="autosave()"/></div>
-  </div>`;
-  c.appendChild(d);
-  document.getElementById('btn-add-poc').style.display=pocCount>=3?'none':'';
-}
-function removePocBlock(id){
-  const el=document.getElementById(id); if(el) el.remove(); pocCount--;
-  document.getElementById('btn-add-poc').style.display='';
-  autosave();
-}
-function getPocs(){
-  return Array.from(document.querySelectorAll('.poc-block')).map(b=>({
-    name:b.querySelector('.poc-name').value, tel:b.querySelector('.poc-tel').value,
-    email:b.querySelector('.poc-email').value, team:b.querySelector('.poc-team').value
-  })).filter(p=>p.name||p.email);
-}
-
-// ══════════════════════════════════════════════
-//  POC PROFILES
-// ══════════════════════════════════════════════
-function renderPocProfSel(){
-  if(!curEng) return;
-  const sel=document.getElementById('poc-profile-select');
-  sel.innerHTML='<option value="">— Load saved engineer profile —</option>';
-  getPocProfs(curEng).forEach((p,i)=>{const o=document.createElement('option');o.value=i;o.textContent=p.profileName;sel.appendChild(o);});
-}
-function loadPocProfile(){
-  const sel=document.getElementById('poc-profile-select'); if(!sel.value) return;
-  const p=getPocProfs(curEng)[parseInt(sel.value)]; if(!p) return;
-  const first=document.querySelector('.poc-block');
-  if(!first){addPocBlock(p.poc_name,p.poc_tel,p.poc_email,p.poc_team);return;}
-  first.querySelector('.poc-name').value=p.poc_name||'';
-  first.querySelector('.poc-tel').value=p.poc_tel||'';
-  first.querySelector('.poc-email').value=p.poc_email||'';
-  first.querySelector('.poc-team').value=p.poc_team||'';
-  autosave();
-}
-function savePocProfile(){
-  if(!curEng){alert('Select your profile first.');return;}
-  const first=document.querySelector('.poc-block'); if(!first) return;
-  document.getElementById('m_poc_name').value=(first.querySelector('.poc-name').value||'')+' – FAST';
-  openModal('modal-poc'); setTimeout(()=>document.getElementById('m_poc_name').focus(),100);
-}
-function confirmSavePoc(){
-  const profileName=document.getElementById('m_poc_name').value.trim(); if(!profileName) return;
-  const first=document.querySelector('.poc-block'); if(!first) return;
-  const profiles=getPocProfs(curEng);
-  const entry={profileName,poc_name:first.querySelector('.poc-name').value,poc_tel:first.querySelector('.poc-tel').value,poc_email:first.querySelector('.poc-email').value,poc_team:first.querySelector('.poc-team').value};
-  const idx=profiles.findIndex(p=>p.profileName===profileName);
-  if(idx>=0)profiles[idx]=entry; else profiles.push(entry);
-  savePocProfs(curEng,profiles); renderPocProfSel(); closeModal('modal-poc');
-  setStatus('done',`✓ Profile "${profileName}" saved.`);
-}
-
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════
 //  PDF EXTRACTION
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════
 const dropZone=document.getElementById('drop-zone');
 const fileInput=document.getElementById('file-input');
 const extractBtn=document.getElementById('extract-btn');
@@ -884,131 +1128,91 @@ fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadFile(fileInpu
 dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('over');});
 dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('over'));
 dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('over');const f=e.dataTransfer.files[0];if(f&&f.type==='application/pdf')loadFile(f);else setStatus('err','Only PDF files are accepted.');});
-
-function loadFile(f){
-  setStatus('idle',`<b>${f.name}</b> ready — click "Extract data from PDF"`);
-  document.getElementById('drop-label').textContent=f.name;
-  const r=new FileReader();r.onload=()=>{pdfB64=r.result.split(',')[1];extractBtn.disabled=false;};r.readAsDataURL(f);
-}
-function setStatus(type,msg){
-  const el=document.getElementById('status');el.className='status s-'+type;document.getElementById('status-txt').innerHTML=msg;
-}
+function loadFile(f){setStatus('idle',`<b>${f.name}</b> ready — click Extract`);document.getElementById('drop-label').textContent=f.name;const r=new FileReader();r.onload=()=>{pdfB64=r.result.split(',')[1];extractBtn.disabled=false;};r.readAsDataURL(f);}
+function setStatus(type,msg){const el=document.getElementById('status');el.className='status s-'+type;document.getElementById('status-txt').innerHTML=msg;}
 
 async function extractPDF(){
   if(!pdfB64){setStatus('err','No PDF loaded.');return;}
-  if(!ensureGToken()){setStatus('idle','Please sign in with Google first, then click Extract again.');return;}
+  if(!ensureGToken()){setStatus('idle','Please sign in with Google first.');return;}
   extractBtn.disabled=true;
-  setStatus('load','<span class="spin"></span> Sending PDF to Gemini — extracting RFS fields…');
-  const prompt=`You are an aviation document parser. Extract all fields from this Gulfstream RFS PDF.
-Reply ONLY with a valid JSON object — no markdown, no backticks, no explanation.
-
-{
-  "work_order": "WO number",
-  "model": "aircraft model full e.g. GVIII-G700",
-  "serial_number": "serial number",
-  "registration": "registration e.g. T7-MINT",
-  "location": "ICAO code from Airport Dispatched To field",
-  "rts_assist": "exactly RTS or Assist from RFS Type field",
-  "far_certification": "certification e.g. EASA or FAR 91.409(f)(3)",
-  "country": "country of registry",
-  "fbo": "support location FBO name",
-  "po_number": "PO number or empty string",
-  "customer_name": "contact name UPPERCASE",
-  "customer_phone": "contact phone",
-  "customer_email": "contact email",
-  "estimated_rts": "estimated RTS date or empty",
-  "next_flight": "next flight or UNKWN",
-  "constraints": "notes/constraints or empty",
-  "work_items": [{"label": "ITEM DESCRIPTION IN UPPERCASE", "status": "pending"}]
-}
-
-Rules:
-- rts_assist: exactly "RTS" or "Assist"
-- work_items: every item from WO Items section, status always "pending"
-- Do NOT extract POC fields
-- Return ONLY the JSON`;
+  setStatus('load','<span class="spin"></span> Sending PDF to Gemini…');
+  const prompt=`Extract all fields from this Gulfstream RFS PDF. Reply ONLY with valid JSON, no markdown.
+{"work_order":"","model":"e.g. GVIII-G700","serial_number":"","registration":"","location":"ICAO","rts_assist":"RTS or Assist","far_certification":"","country":"","fbo":"","po_number":"","customer_name":"UPPERCASE","customer_phone":"","customer_email":"","estimated_rts":"","next_flight":"UNKWN if unknown","constraints":"","work_items":[{"label":"UPPERCASE","status":"pending"}]}`;
   try{
     const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':`Bearer ${gToken}`},
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${gToken}`},
       body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:'application/pdf',data:pdfB64}},{text:prompt}]}],generationConfig:{temperature:0,maxOutputTokens:1500}})
     });
     const data=await res.json();
-    if(!res.ok){if(res.status===401){gToken=null;updateAuthUI(false);throw new Error('Google session expired. Please sign in again.');}throw new Error(data.error?.message||'API error '+res.status);}
+    if(!res.ok){if(res.status===401){gToken=null;updateAuthUI(false);throw new Error('Session expired. Sign in again.');}throw new Error(data.error?.message||'API error '+res.status);}
     const raw=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
     if(!raw) throw new Error('Empty response from Gemini.');
     const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
-    fillFromExtract(parsed);
-    setStatus('done',`✓ ${(parsed.work_items||[]).length} work item(s) extracted. POC fields left empty.`);
+    sv('f_wo',parsed.work_order);sv('f_model',parsed.model);sv('f_sn',parsed.serial_number);sv('f_reg',parsed.registration);
+    sv('f_loc',parsed.location);sv('f_far',parsed.far_certification);sv('f_country',parsed.country);sv('f_fbo',parsed.fbo);sv('f_po',parsed.po_number||'');
+    sv('f_erts',parsed.estimated_rts||'');sv('f_nxt',parsed.next_flight||'UNKWN');sv('f_info',parsed.constraints||'');
+    sv('f_cust_name',parsed.customer_name||'');sv('f_cust_tel',parsed.customer_phone||'');sv('f_cust_email',parsed.customer_email||'');
+    if(parsed.rts_assist) document.getElementById('f_rts_assist').value=parsed.rts_assist.toLowerCase().includes('assist')?'Assist':'RTS';
+    document.getElementById('items-container').innerHTML='';itemCount=0;
+    (parsed.work_items||[]).forEach(it=>addItem(it.label,'pending'));
+    autosave();
+    setStatus('done',`✓ ${(parsed.work_items||[]).length} item(s) extracted.`);
   }catch(e){setStatus('err','Error: '+e.message);}
   finally{extractBtn.disabled=false;}
 }
-function fillFromExtract(d){
-  sv('f_wo',d.work_order);sv('f_model',d.model);sv('f_sn',d.serial_number);sv('f_reg',d.registration);
-  sv('f_loc',d.location);sv('f_far',d.far_certification);sv('f_country',d.country);sv('f_fbo',d.fbo);sv('f_po',d.po_number||'');
-  sv('f_erts',d.estimated_rts||'');sv('f_nxt',d.next_flight||'UNKWN');sv('f_info',d.constraints||'');
-  sv('f_cust_name',d.customer_name||'');sv('f_cust_tel',d.customer_phone||'');sv('f_cust_email',d.customer_email||'');
-  if(d.rts_assist) document.getElementById('f_rts_assist').value=d.rts_assist.toLowerCase().includes('assist')?'Assist':'RTS';
-  document.getElementById('items-container').innerHTML='';itemCount=0;
-  (d.work_items||[]).forEach(it=>addItem(it.label,'pending'));
-  document.getElementById('poc-blocks-container').innerHTML='';pocCount=0;addPocBlock();
-  autosave();
-}
 
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════
 //  GENERATE TABLE
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════
 const SL={done:'CARRIED OUT',pending:'IN PROGRESS',waiting:'WAITING',na:'N/A'};
 const SC={done:'#2d6a2d',pending:'#7a5a00',waiting:'#8a2e00',na:'#555'};
 
 function generate(){
   autosave();
   const wo=gv('f_wo'),model=gv('f_model'),sn=gv('f_sn'),reg=gv('f_reg'),loc=gv('f_loc');
-  const rtsA=gv('f_rts_assist'),far=gv('f_far'),country=gv('f_country');
+  const rtsA=gv('f_rts_assist'),far=gv('f_far');
   const erts=gv('f_erts'),nxt=gv('f_nxt'),retdate=gv('f_retdate'),rettime=gv('f_rettime'),info=gv('f_info');
   const cName=gv('f_cust_name'),cTel=gv('f_cust_tel'),cEmail=gv('f_cust_email');
-  const items=getItems(),pocs=getPocs(),parts=getParts(),updates=getUpdatesData();
+  const items=getItems(),pocs=getPocSlots(),parts=getParts(),updates=getUpdatesData();
 
-  // Email subject — format: UPDATE // WO // MODEL SN // REG // LOC // CONDITION_SUMMARY
+  // Email subject
   const condSummary=items.map(it=>it.label.toUpperCase()).join(' / ')||'UPDATE';
-  const subj=`UPDATE // ${wo} // ${model} ${sn} // ${reg} // ${loc} // ${condSummary}`;
-  document.getElementById('email-subject').textContent=subj;
+  document.getElementById('email-subject').textContent=`UPDATE // ${wo} // ${model} ${sn} // ${reg} // ${loc} // ${condSummary}`;
 
-  // ── Condition rows ──
+  // Condition rows
   const condRows=items.length>0
     ? items.map((it,i)=>`<tr><td class="lbl">${i===0?'<b>Condition</b>':''}</td><td>${it.num}-${it.label.toUpperCase()}</td></tr>`).join('')
     : `<tr><td class="lbl"><b>Condition</b></td><td>—</td></tr>`;
 
-  // ── Update rows — one block per day ──
+  // Update rows
   let updRows='';
   if(!updates.length){
     updRows=`<tr><td class="upd-lbl"><b>Update</b></td><td>—</td></tr>`;
   } else {
     updates.forEach((upd,di)=>{
-      const lblTd=`<td class="upd-lbl" style="${di>0?'background:#fffff8':''}">${di===0?'<b>Update</b>':''}</td>`;
+      const lbl=di===0?'<b>Update</b>':'';
+      const bg=di>0?'background:#fffff8':'';
       let content=`<b>${upd.date}</b><br>`;
-      if(upd.isRTS) content+=`<span style="display:inline-block;background:#2d5a2d;color:white;font-size:11px;font-weight:700;padding:1px 10px;border-radius:20px;margin-bottom:3px">A/C RTS</span><br>`;
-      upd.itemUpdates.forEach(iu=>{
+      if(upd.isRTS) content+=`<span style="display:inline-block;background:#2d5a2d;color:#fff;font-size:11px;font-weight:700;padding:1px 10px;border-radius:20px;margin-bottom:3px">A/C RTS</span><br>`;
+      upd.itemUpdates.filter(u=>u.checked).forEach(iu=>{
         const it=items.find(x=>x.num===iu.num);
-        const lbl=it?`${iu.num}-${it.label.toUpperCase()}`:`Item ${iu.num}`;
-        const stLbl=SL[iu.status]||iu.status||'';
-        const stCol=SC[iu.status]||'#555';
-        content+=`${lbl} — <span style="color:${stCol};font-weight:700">${stLbl}</span>`;
+        const lbl2=it?`${iu.num}-${it.label.toUpperCase()}`:`Item ${iu.num}`;
+        content+=`${lbl2} — <span style="color:${SC[iu.status]||'#555'};font-weight:700">${SL[iu.status]||iu.status}</span>`;
         if(iu.detail) content+=`<br><span style="color:#444;font-size:12px">${iu.detail}</span>`;
         content+='<br>';
       });
       if(upd.freeText) content+=`<span style="color:#444">${upd.freeText}</span><br>`;
-      updRows+=`<tr>${lblTd}<td>${content}</td></tr>`;
+      updRows+=`<tr><td class="upd-lbl" style="${bg}">${lbl}</td><td>${content}</td></tr>`;
     });
   }
 
-  // ── Parts ──
+  // Parts
   const hasParts=parts.some(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on);
   const partsRows=hasParts
     ? parts.filter(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on).map(p=>`<tr><td>${p.nom}</td><td>${p.pn_off}</td><td>${p.sn_off}</td><td>${p.pn_on}</td><td>${p.sn_on}</td></tr>`).join('')
     : `<tr><td colspan="5" style="color:#aaa;font-style:italic">No parts replaced</td></tr>`;
 
-  // ── POC rows ──
+  // POC rows
   const pocRows=pocs.length>0
     ? pocs.map((p,i)=>`${i>0?`<tr class="thr"><td colspan="2"><b>Onsite Support FAST POC ${i+1}</b></td></tr>`:''}
       <tr><td class="lbl"><b>Name</b></td><td>${p.name||'—'}</td></tr>
@@ -1017,30 +1221,40 @@ function generate(){
       <tr><td class="lbl"><b>Team</b></td><td>${p.team||'—'}</td></tr>`).join('')
     : `<tr><td class="lbl"><b>Name</b></td><td>—</td></tr><tr><td class="lbl"><b>Cell</b></td><td>—</td></tr><tr><td class="lbl"><b>Email</b></td><td>—</td></tr><tr><td class="lbl"><b>Team</b></td><td>—</td></tr>`;
 
+  // ── THE TABLE — exact FAST email format ──
+  // Note: "Model and S/N" and "A/C Registry" are on the SAME row in 4 columns
   document.getElementById('tbl-out').innerHTML=`
   <table class="fast-tbl" id="gen-tbl">
     <tr class="thr"><td colspan="2"><b>WORK ORDER #: ${wo}</b></td></tr>
     ${condRows}
     ${updRows}
     <tr><td class="lbl"><b>Additional Info<br>(Constraints)</b></td><td>${info||'—'}</td></tr>
-    <tr><td class="lbl"><b>Estimated RTS</b></td><td>${erts||'—'}</td></tr>
-    <tr><td class="lbl"><b>Next Flight</b></td><td>${nxt||'—'}</td></tr>
-    <tr><td class="lbl"><b>Return Date</b></td><td>${retdate||'—'}</td></tr>
-    <tr><td class="lbl"><b>Return Time</b></td><td>${rettime||'—'}</td></tr>
-    <tr><td class="lbl"><b>FAR</b></td><td>${far||'—'}</td></tr>
-    <tr><td class="lbl"><b>RTS/Assist</b></td><td>${rtsA}</td></tr>
-    <tr><td class="lbl"><b>Model and S/N</b></td><td>${model} / ${sn}</td></tr>
-    <tr><td class="lbl"><b>A/C Registry</b></td><td>${reg||'—'}</td></tr>
-    <tr class="thr"><td colspan="2"><b>Parts</b></td></tr>
+    <tr>
+      <td class="lbl"><b>Estimated RTS:</b></td><td>${erts||'—'}</td>
+      <td class="lbl"><b>Next Flight:</b></td><td>${nxt||'—'}</td>
+    </tr>
+    <tr>
+      <td class="lbl"><b>Return Date:</b></td><td>${retdate||'—'}</td>
+      <td class="lbl"><b>Return Time</b></td><td>${rettime||'—'}</td>
+    </tr>
+    <tr>
+      <td class="lbl"><b>FAR</b></td><td>${far||'—'}</td>
+      <td class="lbl"><b>RTS/Assist</b></td><td>${rtsA}</td>
+    </tr>
+    <tr>
+      <td class="lbl"><b>Model and S/N:</b></td><td>${model} / ${sn}</td>
+      <td class="lbl"><b>A/C Registry:</b></td><td>${reg||'—'}</td>
+    </tr>
+    <tr class="thr"><td colspan="5"><b>Parts</b></td></tr>
     <tr><td class="part-hdr"><b>Nomenclature</b></td><td class="part-hdr"><b>PN OFF</b></td><td class="part-hdr"><b>SN OFF</b></td><td class="part-hdr"><b>PN ON</b></td><td class="part-hdr"><b>SN ON</b></td></tr>
     ${partsRows}
     <tr class="thr"><td colspan="2"><b>Onsite Support FAST POC</b></td></tr>
     ${pocRows}
     <tr class="thr"><td colspan="2"><b>Customer Info</b></td></tr>
-    <tr><td class="lbl"><b>Name</b></td><td>${cName||'—'}</td></tr>
-    <tr><td class="lbl"><b>Phone</b></td><td>${cTel||'—'}</td></tr>
+    <tr><td class="lbl"><b>Name :</b></td><td>${cName||'—'}</td></tr>
+    <tr><td class="lbl"><b>Phone:</b></td><td>${cTel||'—'}</td></tr>
     <tr><td class="lbl"><b>Email</b></td><td>${cEmail||'—'}</td></tr>
-    <tr><td class="lbl"><b>A/C Location</b></td><td>${loc||'—'}</td></tr>
+    <tr><td class="lbl"><b>A/C LOCATION:</b></td><td>${loc||'—'}</td></tr>
   </table>`;
 
   document.getElementById('output-section').style.display='block';
@@ -1048,42 +1262,38 @@ function generate(){
 }
 
 function copyTable(){
-  const tbl=document.getElementById('gen-tbl'); if(!tbl) return;
-  const range=document.createRange(); range.selectNode(tbl);
-  const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
-  document.execCommand('copy'); sel.removeAllRanges();
-  const btn=document.getElementById('copy-btn'); btn.classList.add('copied');
+  const tbl=document.getElementById('gen-tbl');if(!tbl)return;
+  const range=document.createRange();range.selectNode(tbl);
+  const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
+  document.execCommand('copy');sel.removeAllRanges();
+  const btn=document.getElementById('copy-btn');btn.classList.add('copied');
   btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
   setTimeout(()=>{btn.classList.remove('copied');btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy table`;},2500);
 }
+
 function copySubject(){
-  const txt=document.getElementById('email-subject')?.textContent||'';
-  navigator.clipboard.writeText(txt).catch(()=>{});
+  navigator.clipboard.writeText(document.getElementById('email-subject')?.textContent||'').catch(()=>{});
   setStatus('done','✓ Email subject copied!');
 }
 
-// ══════════════════════════════════════════════
-//  RTS
-// ══════════════════════════════════════════════
+// RTS
 function markRTS(){openModal('modal-rts');}
 function confirmRTS(){
-  if(!curProj||!curEng){closeModal('modal-rts');return;}
-  autosave(); const projs=getProjs(curEng); const proj=projs.find(p=>p.id===curProj);
-  if(proj){proj.rts=true;proj.updatedAt=Date.now();saveProj(curEng,proj);}
-  renderProjList(); closeModal('modal-rts'); setStatus('done','✅ Project marked RTS and saved.');
+  if(!curProj||!curProfile){closeModal('modal-rts');return;}
+  autosave();const projs=getProjs();const proj=projs.find(p=>p.id===curProj);
+  if(proj){proj.rts=true;proj.updatedAt=Date.now();saveProj(proj);}
+  renderProjList();closeModal('modal-rts');setStatus('done','✅ Project marked RTS.');
 }
 
-// ══════════════════════════════════════════════
-//  MODALS
-// ══════════════════════════════════════════════
+// MODALS
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 
-// ══════════════════════════════════════════════
-//  GOOGLE GSI SCRIPT
-// ══════════════════════════════════════════════
-(function(){const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=true;s.defer=true;document.head.appendChild(s);})();
+// Settings button in header (engineer profiles)
+document.querySelector('.hdr-right').insertAdjacentHTML('afterbegin','<button onclick="openEngProfilesModal()" id="btn-settings" style="display:none">⚙️ Settings</button>');
+// Show settings button only when logged in
+const origLoginAs=loginAs;
 </script>
 </body>
 </html>
