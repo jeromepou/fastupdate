@@ -164,14 +164,13 @@ textarea{resize:vertical}
 .tbl-wrap{background:#fff;border:1px solid var(--g200);border-radius:var(--rlg);overflow-x:scroll;overflow-y:hidden;box-shadow:var(--sh);-webkit-overflow-scrolling:touch}
 
 /* THE FAST TABLE — matches original exactly */
-table.fast-tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:700px;table-layout:fixed}
+table.fast-tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:480px;table-layout:fixed}
 .fast-tbl td{border:1px solid #999;padding:7px 10px;vertical-align:top;word-wrap:break-word;overflow-wrap:break-word}
 .fast-tbl .thr td{background:#3a6e3a;color:#fff;font-weight:700;font-size:13px;padding:8px 10px}
 .fast-tbl .lbl{background:#f0f2eb;font-weight:600;width:25%;color:var(--g800)}
 .fast-tbl .upd-lbl{background:#fefce8;font-weight:600;width:25%;color:var(--g800)}
-.fast-tbl .part-hdr{background:#d8e4d8;font-weight:700;font-size:12px;color:var(--g800);width:18%}
-/* Parts table: all 5 columns equal width */
-.fast-tbl .part-row-cell{width:18%}
+.fast-tbl .part-hdr{background:#d8e4d8;font-weight:700;font-size:11px;color:var(--g800);width:20%;padding:6px 4px}
+.fast-tbl .part-row-cell{width:20%;padding:6px 4px;font-size:12px}
 /* 4-column rows (Model/SN — Registry, FAR — RTS/Assist, etc.) — each of the 4 cells is 25% */
 .fast-tbl .lbl-s{background:#f0f2eb;font-weight:600;width:25%;color:var(--g800);font-size:12px}
 
@@ -955,7 +954,7 @@ function renderPocSlotSelects(){
 function buildEngOptions(selectedId=''){
   const profs=getEngProfiles();
   let html='<option value="">— Select engineer —</option>';
-  projs.forEach(p=>{html+=`<option value="${p.id}" ${p.id===selectedId?'selected':''}>${p.name}${p.team?' ('+p.team+')':''}</option>`;});
+  profs.forEach(p=>{html+=`<option value="${p.id}" ${p.id===selectedId?'selected':''}>${p.name}${p.team?' ('+p.team+')':''}</option>`;});
   html+='<option value="__manage__">⚙️ Manage engineer profiles…</option>';
   return html;
 }
