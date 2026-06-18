@@ -245,6 +245,20 @@ textarea { min-height: 70px; resize: vertical; }
 }
 .btn-add:hover { border-color: var(--green-mid); color: var(--green-mid); }
 
+/* ── PARTS ── */
+.part-row {
+  display: flex; gap: 8px; align-items: flex-start;
+  padding: 8px 10px;
+  background: var(--gray-50); border: 1px solid var(--gray-200);
+  border-radius: var(--radius); margin-bottom: 6px;
+}
+.part-fields { flex: 1; display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr; gap: 6px; }
+.part-fields input { font-size: 12px; padding: 7px 8px; }
+.part-fields label { display: block; font-size: 9px; margin-bottom: 2px; }
+@media (max-width: 700px) {
+  .part-fields { grid-template-columns: 1fr 1fr; }
+}
+
 /* ── POC PROFILES ── */
 .poc-profile-bar {
   display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap;
@@ -430,6 +444,18 @@ hr { border: none; border-top: 1px solid var(--gray-200); margin: 1.5rem 0; }
   </div>
 </div>
 
+<!-- STEP 3.5 : Parts -->
+<div class="card">
+  <div class="card-head"><span class="step-badge">PARTS</span><h2>Parts replaced (optional)</h2></div>
+  <div class="card-body">
+    <div id="parts-container"></div>
+    <button class="btn-add" onclick="addPart()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add part
+    </button>
+  </div>
+</div>
+
 <!-- STEP 4 : Closing -->
 <div class="card">
   <div class="card-head"><span class="step-badge">STEP 4</span><h2>Closing details</h2></div>
@@ -437,6 +463,10 @@ hr { border: none; border-top: 1px solid var(--gray-200); margin: 1.5rem 0; }
     <div class="grid g2" style="margin-bottom:12px">
       <div class="fg"><label>Estimated RTS</label><input type="text" id="f_erts" placeholder="e.g. 20 June 26" oninput="autosave()" /></div>
       <div class="fg"><label>Next Flight</label><input type="text" id="f_nxt" placeholder="e.g. ASAP" oninput="autosave()" /></div>
+    </div>
+    <div class="grid g2" style="margin-bottom:12px">
+      <div class="fg"><label>Return Date</label><input type="text" id="f_retdate" placeholder="e.g. 22 June 26" oninput="autosave()" /></div>
+      <div class="fg"><label>Return Time</label><input type="text" id="f_rettime" placeholder="e.g. 14:00 UTC" oninput="autosave()" /></div>
     </div>
     <div class="fg"><label>Additional Info / Constraints</label><textarea id="f_info" placeholder="e.g. WAITING ON SHIPPING DETAILS..." oninput="autosave()"></textarea></div>
   </div>
