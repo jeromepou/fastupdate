@@ -164,7 +164,7 @@ textarea{resize:vertical}
 .tbl-wrap{background:#fff;border:1px solid var(--g200);border-radius:var(--rlg);overflow:hidden;box-shadow:var(--sh);overflow-x:auto}
 
 /* THE FAST TABLE — matches original exactly */
-table.fast-tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:480px;table-layout:fixed}
+table.fast-tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:750px;table-layout:fixed}
 .fast-tbl td{border:1px solid #999;padding:7px 10px;vertical-align:top;word-wrap:break-word;overflow-wrap:break-word}
 .fast-tbl .thr td{background:#3a6e3a;color:#fff;font-weight:700;font-size:13px;padding:8px 10px}
 .fast-tbl .lbl{background:#f0f2eb;font-weight:600;width:25%;color:var(--g800)}
@@ -318,8 +318,9 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="card-head">
     <span class="step-badge">STEP 4</span>
     <h2>Daily updates</h2>
-    <button class="btn primary" onclick="addTodayUpdate()" style="margin-left:auto">+ Today's update</button>
-  </div>
+    <button class="btn" onclick="addYesterdayUpdate()" style="margin-left:auto">+ Yesterday's update</button>
+    <button class="btn primary" onclick="addTodayUpdate()">+ Today's update</button>
+</div>
   <div class="card-body">
     <div id="updates-container">
       <p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet — click "+ Today's update"</p>
@@ -1042,6 +1043,16 @@ function addTodayUpdate(){
   autosave();
 }
 
+ function addYesterdayUpdate(){
+  const y=new Date();y.setDate(y.getDate()-1);
+  const label=y.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  if(getUpdatesData().find(u=>u.date===label)){setStatus('idle',"Yesterday's update already exists — scroll down to edit it.");return;}
+  const uc=document.getElementById('updates-container');
+  const ph=uc.querySelector('p');if(ph)ph.remove();
+  renderUpdateBlock({id:'upd_'+Date.now(),date:label,isRTS:false,freeText:'',itemUpdates:[]});
+  autosave();
+} 
+  
 function renderUpdateBlock(upd){
   const uc=document.getElementById('updates-container');
   const items=getItems();
