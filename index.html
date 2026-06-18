@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>FAST Update Generator</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root {
   --green-dark: #2d5a2d;
@@ -121,8 +122,8 @@ header .hdr-right span { font-size: 12px; opacity: 0.65; }
 .proj-item-date { font-size: 10px; color: var(--gray-400); white-space: nowrap; }
 .proj-empty { padding: 1.5rem; text-align: center; color: var(--gray-400); font-size: 13px; }
 
-/* ── API KEY ── */
-.api-banner {
+/* ── GOOGLE AUTH BANNER ── */
+.auth-banner {
   background: var(--blue-light);
   border: 1px solid #b8d0e8;
   border-radius: var(--radius-lg);
@@ -133,21 +134,17 @@ header .hdr-right span { font-size: 12px; opacity: 0.65; }
   gap: 12px;
   flex-wrap: wrap;
 }
-.api-banner-text { flex: 1; min-width: 200px; }
-.api-banner-text strong { color: var(--blue); display: block; font-size: 13px; margin-bottom: 2px; }
-.api-banner-text small { font-size: 12px; color: var(--gray-600); }
-.api-free-badge {
+.auth-banner-text { flex: 1; min-width: 200px; }
+.auth-banner-text strong { color: var(--blue); display: block; font-size: 13px; margin-bottom: 2px; }
+.auth-banner-text small { font-size: 12px; color: var(--gray-600); }
+.auth-status-badge {
   display: inline-flex; align-items: center; gap: 4px;
-  background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32;
   font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px;
   letter-spacing: .04em; margin-left: 6px;
 }
-.api-banner input {
-  flex: 1; min-width: 200px; font-family: monospace; font-size: 13px;
-  padding: 8px 12px; border: 1px solid #b8d0e8; border-radius: var(--radius);
-  background: white;
-}
-.api-banner input:focus { outline: 2px solid var(--blue); }
+.auth-status-badge.connected { background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32; }
+.auth-status-badge.disconnected { background: #fdf0eb; border: 1px solid #e8b8a0; color: var(--red); }
+#gsi-btn-container { flex-shrink: 0; }
 
 /* ── CARD ── */
 .card {
@@ -366,14 +363,15 @@ hr { border: none; border-top: 1px solid var(--gray-200); margin: 1.5rem 0; }
   <div class="proj-list" id="proj-list"></div>
 </div>
 
-<!-- API KEY -->
-<div class="api-banner">
-  <div style="font-size:20px">🔑</div>
-  <div class="api-banner-text">
-    <strong>Google Gemini API Key <span class="api-free-badge">✦ GRATUIT</span></strong>
-    <small>Clé gratuite sur <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--blue)">aistudio.google.com</a> — reste dans ton navigateur</small>
+<!-- GOOGLE OAUTH AUTH -->
+<div class="auth-banner">
+  <div style="font-size:20px">🔐</div>
+  <div class="auth-banner-text">
+    <strong>Google account <span id="auth-badge" class="auth-status-badge disconnected">Not connected</span></strong>
+    <small>Sign in with Google to enable PDF extraction via Gemini — stays in your browser, free of charge</small>
   </div>
-  <input type="password" id="api-key" placeholder="AIza…" autocomplete="off" oninput="saveApiKey()" />
+  <div id="gsi-btn-container"></div>
+  <button class="btn-sm danger" id="btn-signout" onclick="signOutGoogle()" style="display:none">Sign out</button>
 </div>
 
 <!-- STEP 1 : PDF -->
@@ -540,6 +538,18 @@ hr { border: none; border-top: 1px solid var(--gray-200); margin: 1.5rem 0; }
 
 <script>
 // ════════════════════════════════════════════
+//  GOOGLE OAUTH CONFIG
+// ════════════════════════════════════════════
+// Client ID created in Google Cloud Console (project fast-update-v2)
+const GOOGLE_CLIENT_ID = '624747295284-rpktnnbk5kugn7jhero0e267soidb2oj.apps.googleusercontent.com';
+// Scope needed to call the Generative Language API (Gemini) via OAuth
+const GOOGLE_SCOPE = 'https://www.googleapis.com/auth/generative-language.retriever https://www.googleapis.com/auth/cloud-platform';
+
+let tokenClient = null;
+let googleAccessToken = null; // short-lived OAuth access token (~1h)
+let googleTokenExpiresAt = 0;
+
+// ════════════════════════════════════════════
 //  STATE
 // ════════════════════════════════════════════
 let currentEngineer = null; // engineer id
@@ -559,7 +569,6 @@ function engKey(eid)     { return `fast_eng_${eid}`; }
 function projKey(eid,pid){ return `fast_proj_${eid}_${pid}`; }
 function pocKey(eid)     { return `fast_poc_${eid}`; }
 const ENGINEERS_KEY = 'fast_engineers';
-const API_KEY_KEY   = 'fast_apikey';
 
 function getEngineers() { return LS.get(ENGINEERS_KEY) || []; }
 function saveEngineers(arr) { LS.set(ENGINEERS_KEY, arr); }
@@ -596,13 +605,111 @@ function savePocProfiles(eid, arr) {
 }
 
 // ════════════════════════════════════════════
+//  GOOGLE SIGN-IN (OAuth via Google Identity Services)
+// ════════════════════════════════════════════
+window.addEventListener('load', () => {
+  // GIS script may load slightly after window 'load'; poll briefly
+  let tries = 0;
+  const tryInit = () => {
+    if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+      initGoogleAuth();
+    } else if (tries < 40) {
+      tries++;
+      setTimeout(tryInit, 150);
+    }
+  };
+  tryInit();
+});
+
+function initGoogleAuth() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: GOOGLE_SCOPE,
+    callback: (tokenResponse) => {
+      if (tokenResponse && tokenResponse.access_token) {
+        googleAccessToken = tokenResponse.access_token;
+        // expires_in is in seconds; keep a small safety margin
+        const expiresInMs = (tokenResponse.expires_in || 3500) * 1000;
+        googleTokenExpiresAt = Date.now() + expiresInMs - 30000;
+        LS.set('fast_google_token_meta', { connected: true });
+        updateAuthUI(true);
+        setStatus('done', '✓ Connected to Google — you can now extract PDFs.');
+      }
+    },
+    error_callback: (err) => {
+      console.error('Google OAuth error', err);
+      setStatus('err', 'Google sign-in failed or was cancelled.');
+    }
+  });
+
+  renderGoogleButton();
+
+  // restore "was connected" UI hint (token itself never persists across reloads)
+  const meta = LS.get('fast_google_token_meta');
+  if (meta && meta.connected) {
+    // We don't have a live token after reload — user must click sign-in again.
+    updateAuthUI(false);
+  }
+}
+
+function renderGoogleButton() {
+  const container = document.getElementById('gsi-btn-container');
+  container.innerHTML = '';
+  const btn = document.createElement('button');
+  btn.className = 'btn-sm primary';
+  btn.id = 'btn-google-signin';
+  btn.innerHTML = '🔵 Sign in with Google';
+  btn.onclick = requestGoogleToken;
+  container.appendChild(btn);
+}
+
+function requestGoogleToken(promptType) {
+  if (!tokenClient) {
+    setStatus('err', 'Google sign-in is still loading, try again in a second.');
+    return;
+  }
+  tokenClient.requestAccessToken({ prompt: promptType || '' });
+}
+
+function ensureGoogleToken() {
+  // Returns true if we have a currently valid token; otherwise triggers sign-in and returns false.
+  if (googleAccessToken && Date.now() < googleTokenExpiresAt) return true;
+  requestGoogleToken('consent');
+  return false;
+}
+
+function signOutGoogle() {
+  if (googleAccessToken && window.google && google.accounts.oauth2.revoke) {
+    google.accounts.oauth2.revoke(googleAccessToken, () => {});
+  }
+  googleAccessToken = null;
+  googleTokenExpiresAt = 0;
+  LS.del('fast_google_token_meta');
+  updateAuthUI(false);
+  setStatus('idle', 'Disconnected from Google.');
+}
+
+function updateAuthUI(connected) {
+  const badge = document.getElementById('auth-badge');
+  const signOutBtn = document.getElementById('btn-signout');
+  const gsiContainer = document.getElementById('gsi-btn-container');
+  if (connected) {
+    badge.textContent = 'Connected';
+    badge.className = 'auth-status-badge connected';
+    signOutBtn.style.display = '';
+    gsiContainer.style.display = 'none';
+  } else {
+    badge.textContent = 'Not connected';
+    badge.className = 'auth-status-badge disconnected';
+    signOutBtn.style.display = 'none';
+    gsiContainer.style.display = '';
+  }
+}
+
+// ════════════════════════════════════════════
 //  INIT
 // ════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
-  // restore API key
-  const savedKey = LS.get(API_KEY_KEY);
-  if (savedKey) document.getElementById('api-key').value = savedKey;
-
   renderEngineerSelect();
 
   // restore last selected engineer
@@ -615,10 +722,6 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
 });
-
-function saveApiKey() {
-  LS.set(API_KEY_KEY, document.getElementById('api-key').value.trim());
-}
 
 // ════════════════════════════════════════════
 //  ENGINEER MANAGEMENT
@@ -707,7 +810,6 @@ function renderProjectList() {
     return;
   }
 
-  // Sort: open first, then by last updated
   const sorted = [...projects].sort((a, b) => {
     if (a.rts && !b.rts) return 1;
     if (!a.rts && b.rts) return -1;
@@ -777,10 +879,9 @@ function gatherFormData() {
 function autosave() {
   if (!currentEngineer) return;
   const data = gatherFormData();
-  if (!data.wo && !data.model && !data.sn) return; // nothing to save yet
+  if (!data.wo && !data.model && !data.sn) return;
 
   if (!currentProject) {
-    // create new project on first meaningful input
     currentProject = 'proj_' + Date.now();
   }
   const projects = getProjects(currentEngineer);
@@ -807,7 +908,6 @@ function fillFormFromProject(proj) {
   s('f_poc_email', proj.poc_email || ''); s('f_poc_team', proj.poc_team || '');
   s('f_cust_name', proj.cust_name || ''); s('f_cust_tel', proj.cust_tel || '');
   s('f_cust_email', proj.cust_email || '');
-  // items
   document.getElementById('items-container').innerHTML = '';
   itemCount = 0;
   (proj.items || []).forEach(it => addItem(it.label, it.status, it.detail));
@@ -887,7 +987,6 @@ function confirmSavePoc() {
   if (!profileName) return;
   const g = id => document.getElementById(id)?.value || '';
   const profiles = getPocProfiles(currentEngineer);
-  // Check if name already exists → update
   const idx = profiles.findIndex(p => p.profileName === profileName);
   const entry = {
     profileName,
@@ -903,7 +1002,7 @@ function confirmSavePoc() {
 }
 
 // ════════════════════════════════════════════
-//  PDF EXTRACTION (Gemini)
+//  PDF EXTRACTION (Gemini via OAuth)
 // ════════════════════════════════════════════
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
@@ -934,9 +1033,15 @@ function setStatus(type, msg) {
 }
 
 async function extractPDF() {
-  const apiKey = document.getElementById('api-key').value.trim();
-  if (!apiKey) { setStatus('err', 'Please enter your Google Gemini API key above.'); return; }
-  if (!pdfB64)  { setStatus('err', 'No PDF loaded.'); return; }
+  if (!pdfB64) { setStatus('err', 'No PDF loaded.'); return; }
+
+  // Make sure we have a valid (non-expired) Google OAuth token; if not, this
+  // triggers the Google sign-in popup and the user must click "Extract" again
+  // once connected.
+  if (!ensureGoogleToken()) {
+    setStatus('idle', 'Please sign in with Google, then click "Extract data from PDF" again.');
+    return;
+  }
 
   extractBtn.disabled = true;
   setStatus('load', '<span class="spin"></span> Sending PDF to Gemini — extracting RFS fields…');
@@ -975,10 +1080,13 @@ Rules:
 
   try {
     const res = await fetch(
-  	`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${googleAccessToken}`
+        },
         body: JSON.stringify({
           contents: [{ parts: [
             { inline_data: { mime_type: 'application/pdf', data: pdfB64 } },
@@ -989,7 +1097,15 @@ Rules:
       }
     );
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error?.message || 'API error ' + res.status);
+    if (!res.ok) {
+      if (res.status === 401) {
+        // token expired/invalid mid-flight — force a fresh sign-in
+        googleAccessToken = null;
+        updateAuthUI(false);
+        throw new Error('Google session expired. Please sign in again and retry.');
+      }
+      throw new Error(data.error?.message || 'API error ' + res.status);
+    }
     const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     if (!raw) throw new Error('Empty response from Gemini.');
     const clean = raw.replace(/```json|```/g, '').trim();
@@ -1076,14 +1192,12 @@ function generate() {
   const cName   = g('f_cust_name'), cTel = g('f_cust_tel'), cEmail = g('f_cust_email');
   const items   = getItems();
 
-  // Condition rows
   const condRows = items.map((it, i) => {
     const lbl = i === 0 ? '<b>Condition</b>' : '';
     const bg  = i > 0 ? 'style="background:#f9fafb"' : '';
     return `<tr><td class="lbl-cell" ${bg}>${lbl}</td><td>${it.num}-${it.label.toUpperCase()}</td></tr>`;
   }).join('');
 
-  // Update rows — label + detail on same row
   const updRows = items.map((it, i) => {
     const lbl    = i === 0 ? '<b>Update</b>' : '';
     const bgCell = i === 0 ? 'upd-cell' : 'lbl-cell';
