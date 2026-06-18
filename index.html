@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>FAST Update Generator</title>
+<link rel="icon" href="data:," />
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root {
@@ -659,7 +660,7 @@ function renderGoogleButton() {
   btn.className = 'btn-sm primary';
   btn.id = 'btn-google-signin';
   btn.innerHTML = '🔵 Sign in with Google';
-  btn.onclick = requestGoogleToken;
+  btn.onclick = () => requestGoogleToken();
   container.appendChild(btn);
 }
 
@@ -668,7 +669,9 @@ function requestGoogleToken(promptType) {
     setStatus('err', 'Google sign-in is still loading, try again in a second.');
     return;
   }
-  tokenClient.requestAccessToken({ prompt: promptType || '' });
+  const opts = {};
+  if (typeof promptType === 'string' && promptType) opts.prompt = promptType;
+  tokenClient.requestAccessToken(opts);
 }
 
 function ensureGoogleToken() {
