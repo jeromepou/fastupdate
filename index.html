@@ -52,7 +52,7 @@ header h1{font-size:15px;font-weight:600;flex:1}
 .login-box{background:#fff;border-radius:var(--rlg);border:1px solid var(--g200);box-shadow:var(--sh);padding:2rem;width:100%;max-width:420px;text-align:center}
 .login-box h2{font-size:18px;font-weight:700;color:var(--gd);margin-bottom:.5rem}
 .login-box p{font-size:13px;color:var(--g600);margin-bottom:1.5rem}
-.profile-picker{display:flex;flex-direction:column;gap:8px;margin-bottom:1rem}
+.profile-picker{display:flex;flex-direction:column;gap:8px;margin-bottom:1rem;max-height:300px;overflow-y:auto;padding-right:4px}
 .profile-btn{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--g200);border-radius:var(--r);cursor:pointer;background:#fff;transition:background .15s;text-align:left}
 .profile-btn:hover{background:var(--gl);border-color:var(--gb)}
 .profile-btn .pb-avatar{width:32px;height:32px;border-radius:50%;background:var(--gd);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
@@ -129,7 +129,6 @@ textarea{resize:vertical}
 .update-day-head{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--gl);border-bottom:1px solid var(--gb)}
 .update-day-date{font-size:12px;font-weight:700;color:var(--gd);flex:1}
 .update-day-body{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
-/* Per-item update */
 .upd-item-block{background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:8px 10px}
 .upd-item-header{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap}
 .upd-item-chk{display:flex;align-items:center;gap:6px;flex:1}
@@ -148,6 +147,7 @@ textarea{resize:vertical}
 .poc-block{background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:10px 12px;margin-bottom:8px}
 .poc-block-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .poc-block-head span{font-size:12px;font-weight:700;color:var(--gd);flex:1}
+.poc-block.me{background:var(--gl);border-color:var(--gb)}
 
 /* EMAIL SUBJECT */
 .email-subject-box{background:var(--al);border:1px solid #d4b800;border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
@@ -163,16 +163,12 @@ textarea{resize:vertical}
 .copy-btn.copied{background:var(--gl);color:var(--gd);border-color:var(--gb)}
 .tbl-wrap{background:#fff;border:1px solid var(--g200);border-radius:var(--rlg);overflow-x:scroll;overflow-y:hidden;box-shadow:var(--sh);-webkit-overflow-scrolling:touch}
 
-/* THE FAST TABLE — matches original exactly */
-table.fast-tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:480px;table-layout:fixed}
+/* THE FAST TABLE */
+table.fast-tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:600px}
 .fast-tbl td{border:1px solid #999;padding:7px 10px;vertical-align:top;word-wrap:break-word;overflow-wrap:break-word}
 .fast-tbl .thr td{background:#3a6e3a;color:#fff;font-weight:700;font-size:13px;padding:8px 10px}
 .fast-tbl .lbl{background:#f0f2eb;font-weight:600;width:25%;color:var(--g800)}
 .fast-tbl .upd-lbl{background:#fefce8;font-weight:600;width:25%;color:var(--g800)}
-.fast-tbl .part-hdr{background:#d8e4d8;font-weight:700;font-size:11px;color:var(--g800);width:20%;padding:6px 4px}
-.fast-tbl .part-row-cell{width:20%;padding:6px 4px;font-size:12px}
-/* 4-column rows (Model/SN — Registry, FAR — RTS/Assist, etc.) — each of the 4 cells is 25% */
-.fast-tbl .lbl-s{background:#f0f2eb;font-weight:600;width:25%;color:var(--g800);font-size:12px}
 
 /* MODAL */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center}
@@ -214,7 +210,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <h1>FAST Update Generator</h1>
   <div class="hdr-right">
     <span id="hdr-profile-name" style="font-size:12px;opacity:.8"></span>
-    <button onclick="logout()" id="btn-logout" style="display:none">↩ Switch profile</button>
+    <button onclick="logout()" id="btn-logout" style="display:none">↩ Switch user</button>
     <button onclick="openModal('modal-help')">❓ Help</button>
   </div>
 </header>
@@ -224,9 +220,11 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div class="login-box">
       <div style="font-size:48px;margin-bottom:.5rem">✈</div>
       <h2>FAST Update Generator</h2>
-      <p>Select your profile to continue, or create a new one.</p>
+      <p>Select your name and enter your PIN to access your projects.</p>
       <div class="profile-picker" id="profile-picker"></div>
-      <button class="btn primary" style="width:100%;justify-content:center;padding:10px" onclick="openModal('modal-new-profile')">+ Create new profile</button>
+      <div style="margin-top:20px;padding-top:15px;border-top:1px solid var(--g200)">
+        <button class="btn" style="width:100%;justify-content:center" onclick="promptAdminPin()">⚙️ Manage Team (Admin)</button>
+      </div>
     </div>
   </div>
 </div>
@@ -238,8 +236,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div class="eng-name" id="eng-bar-name">—</div>
     <div class="eng-sub" id="eng-bar-sub">—</div>
   </div>
-  <button class="btn" onclick="openModal('modal-edit-profile')">✏️ Edit profile</button>
-  <button class="btn danger" onclick="confirmDeleteProfile()">🗑 Delete profile</button>
 </div>
 
 <div class="proj-panel">
@@ -261,12 +257,12 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 </div>
 
 <div class="card">
-  <div class="card-head"><span class="step-badge">STEP 1</span><h2>Upload RFS PDF — optional, auto-fills fields</h2></div>
+  <div class="card-head"><span class="step-badge">STEP 1</span><h2>Upload RFS PDF — optional</h2></div>
   <div class="card-body">
     <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--gm);margin-bottom:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><polyline points="9 15 12 12 15 15"/></svg>
       <p id="drop-label">Drag & drop or click to select the RFS PDF</p>
-      <small>Gulfstream RFS · PDF only · or fill fields manually below</small>
+      <small>Gulfstream RFS · PDF only</small>
       <input type="file" id="file-input" accept="application/pdf"/>
     </div>
     <button class="extract-btn" id="extract-btn" onclick="extractPDF()" disabled>Extract data from PDF</button>
@@ -309,8 +305,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <span class="step-badge">STEP 4</span>
     <h2>Daily updates</h2>
     <button class="btn" onclick="addDayBeforeUpdate()" style="margin-left:auto">+ Day before yesterday</button>
-    <button class="btn" onclick="addYesterdayUpdate()">+ Yesterday's update</button>
-    <button class="btn primary" onclick="addTodayUpdate()">+ Today's update</button>
+    <button class="btn" onclick="addYesterdayUpdate()">+ Yesterday</button>
+    <button class="btn primary" onclick="addTodayUpdate()">+ Today</button>
 </div>
   <div class="card-body">
     <div id="updates-container">
@@ -344,11 +340,15 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="card-head">
     <span class="step-badge">STEP 6</span>
     <h2>Onsite FAST engineers &amp; customer</h2>
-    <button class="btn primary" onclick="addPocSlot()" id="btn-add-poc" style="margin-left:auto">+ Add engineer</button>
+    <button class="btn" onclick="addColleagueSlot()" id="btn-add-poc" style="margin-left:auto">+ Add Colleague</button>
   </div>
   <div class="card-body">
-    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">Select the engineers present onsite. Manage engineer profiles in <b>Settings → Engineer profiles</b>.</p>
-    <div id="poc-slots-container"></div>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">You are automatically assigned as the Lead Engineer. Add colleagues if they are assisting you.</p>
+    
+    <div id="poc-me-container" class="poc-block me"></div>
+    
+    <div id="poc-colleagues-container"></div>
+    
     <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--g200)">
       <div style="font-size:12px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Customer info</div>
       <div class="grid g2">
@@ -385,18 +385,36 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="tbl-wrap"><div id="tbl-out"></div></div>
 </div>
 
-</div><div class="modal-bg" id="modal-new-profile">
-  <div class="modal">
-    <h3>Create my profile</h3>
-    <p style="font-size:13px;color:var(--g600);margin-bottom:12px">Your profile stores your projects in this browser. Set a PIN to protect it.</p>
-    <div class="fg"><label>Your name</label><input type="text" id="np_name" placeholder="e.g. Jeremy Couchet"/></div>
-    <div class="fg"><label>Email (optional)</label><input type="email" id="np_email" placeholder="e.g. jcouchet@headstart.com"/></div>
-    <div class="fg"><label>Team (optional)</label><input type="text" id="np_team" placeholder="e.g. FAST EMEA"/></div>
-    <div class="fg"><label>Phone (optional)</label><input type="text" id="np_phone" placeholder="e.g. +33 778 380567"/></div>
-    <div class="fg"><label>PIN (4 digits)</label><input type="password" id="np_pin" placeholder="e.g. 1234" maxlength="4" style="letter-spacing:.3em"/></div>
+</div><div class="modal-bg" id="modal-admin-auth">
+  <div class="modal" style="max-width:340px;text-align:center">
+    <h3 id="admin-pin-title">Admin Access</h3>
+    <p style="font-size:13px;color:var(--g600);margin-bottom:12px" id="admin-pin-sub">Enter Master PIN</p>
+    <input type="password" id="admin-pin-input" placeholder="• • • •" maxlength="4" style="text-align:center;font-size:22px;letter-spacing:.4em;width:100%;margin-bottom:8px" oninput="adminPinInput()"/>
+    <div id="admin-pin-error" style="font-size:12px;color:var(--red);min-height:18px"></div>
+    <div class="modal-btns" style="justify-content:center">
+      <button class="btn" onclick="closeModal('modal-admin-auth')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-manage-team">
+  <div class="modal" style="max-width:560px">
+    <h3>👥 Manage Team (Admin)</h3>
+    <p style="font-size:13px;color:var(--g600);margin-bottom:12px">Create and manage engineer profiles. Each engineer needs a 4-digit PIN to log into their projects.</p>
+    <div id="team-list" style="max-height:250px;overflow-y:auto;margin-bottom:12px;padding-right:4px"></div>
+    <div style="padding-top:12px;border-top:1px solid var(--g200)">
+      <div style="font-size:12px;font-weight:700;color:var(--g800);margin-bottom:8px">Add Team Member</div>
+      <div class="grid g2">
+        <div class="fg"><label>Name</label><input type="text" id="nt_name" placeholder="Full name"/></div>
+        <div class="fg"><label>User PIN (4 digits)</label><input type="password" id="nt_pin" placeholder="e.g. 1234" maxlength="4" style="letter-spacing:.3em"/></div>
+        <div class="fg"><label>Phone</label><input type="text" id="nt_phone" placeholder="Cell"/></div>
+        <div class="fg"><label>Email</label><input type="email" id="nt_email" placeholder="Email"/></div>
+        <div class="fg"><label>Team</label><input type="text" id="nt_team" placeholder="e.g. FAST EMEA"/></div>
+      </div>
+      <button class="btn primary" onclick="addTeamMember()" style="margin-top:8px">+ Create Engineer</button>
+    </div>
     <div class="modal-btns">
-      <button class="btn" onclick="closeModal('modal-new-profile')">Cancel</button>
-      <button class="btn primary" onclick="createProfile()">Create</button>
+      <button class="btn primary" onclick="closeManageTeam()">Done</button>
     </div>
   </div>
 </div>
@@ -405,46 +423,10 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="modal" style="max-width:340px;text-align:center">
     <h3 id="modal-pin-title">Enter PIN</h3>
     <p style="font-size:13px;color:var(--g600);margin-bottom:12px" id="modal-pin-sub">Enter your 4-digit PIN to continue.</p>
-    <input type="password" id="pin-input" placeholder="• • • •" maxlength="4" style="text-align:center;font-size:22px;letter-spacing:.4em;width:100%;margin-bottom:8px" oninput="pinInput()"/>
+    <input type="password" id="pin-input" placeholder="• • • •" maxlength="4" style="text-align:center;font-size:22px;letter-spacing:.4em;width:100%;margin-bottom:8px" oninput="userPinInput()"/>
     <div id="pin-error" style="font-size:12px;color:var(--red);min-height:18px"></div>
     <div class="modal-btns" style="justify-content:center">
       <button class="btn" onclick="closeModal('modal-pin')">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-bg" id="modal-edit-profile">
-  <div class="modal">
-    <h3>Edit my profile</h3>
-    <div class="fg"><label>Name</label><input type="text" id="ep_name"/></div>
-    <div class="fg"><label>Email</label><input type="email" id="ep_email"/></div>
-    <div class="fg"><label>Team</label><input type="text" id="ep_team"/></div>
-    <div class="fg"><label>Phone</label><input type="text" id="ep_phone"/></div>
-    <div class="fg"><label>New PIN (leave blank to keep current)</label><input type="password" id="ep_pin" placeholder="Enter new PIN" maxlength="4" style="letter-spacing:.3em"/></div>
-    <div class="modal-btns">
-      <button class="btn" onclick="closeModal('modal-edit-profile')">Cancel</button>
-      <button class="btn primary" onclick="saveEditProfile()">Save</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-bg" id="modal-eng-profiles">
-  <div class="modal" style="max-width:560px">
-    <h3>⚙️ Engineer profiles</h3>
-    <p style="font-size:13px;color:var(--g600);margin-bottom:12px">These are the FAST engineers available for selection in Step 6 of any project.</p>
-    <div id="eng-profiles-list"></div>
-    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--g200)">
-      <div style="font-size:12px;font-weight:700;color:var(--g800);margin-bottom:8px">Add new engineer profile</div>
-      <div class="grid g2">
-        <div class="fg"><label>Name</label><input type="text" id="nep_name" placeholder="Full name"/></div>
-        <div class="fg"><label>Phone</label><input type="text" id="nep_phone" placeholder="Cell"/></div>
-        <div class="fg"><label>Email</label><input type="email" id="nep_email" placeholder="Email"/></div>
-        <div class="fg"><label>Team</label><input type="text" id="nep_team" placeholder="e.g. FAST EMEA"/></div>
-      </div>
-      <button class="btn primary" onclick="addEngProfile()" style="margin-top:8px">+ Add engineer</button>
-    </div>
-    <div class="modal-btns">
-      <button class="btn primary" onclick="closeModal('modal-eng-profiles')">Done</button>
     </div>
   </div>
 </div>
@@ -466,38 +448,15 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div class="help-section">
       <h4>🗂 How it works</h4>
       <ol>
-        <li><strong>Create your profile</strong> (login screen) — your name, team, phone, email + a 4-digit PIN. This is YOUR profile as the app user. All your projects are stored here.</li>
-        <li><strong>Engineer profiles</strong> (⚙️ Settings → Engineer profiles) — add all the FAST engineers you work with. These are reusable across all your projects.</li>
-        <li><strong>Step 3 Condition</strong> — add the work items from the RFS. These stay fixed throughout the chantier.</li>
-        <li><strong>Step 4 Daily updates</strong> — every day, click "+ Today's update". For each work item, check the box, set its status, and write what was done. Add a global note at the bottom.</li>
-        <li><strong>Step 6</strong> — select the engineers onsite from your saved profiles. Their info fills automatically.</li>
-        <li><strong>Generate</strong> → table in the exact FAST email format → Copy → Paste into email.</li>
-        <li><strong>Mark A/C RTS</strong> when done. The project is archived.</li>
+        <li><strong>Admin setup:</strong> Click "Manage Team", set a Master PIN, and create profiles for all your engineers (Name + PIN personnel).</li>
+        <li><strong>Login:</strong> An engineer clicks his name and enters his PIN.</li>
+        <li><strong>Step 6:</strong> L'ingénieur connecté est automatiquement le "Lead Engineer". Il peut ajouter des collègues via le menu déroulant si besoin.</li>
+        <li><strong>Generate:</strong> The exact FAST table is created. SN ON and layouts are fully responsive.</li>
       </ol>
     </div>
     <div class="help-section">
       <h4>💾 Data storage</h4>
-      <p>All data is stored locally in your browser (localStorage). Nothing is sent to any server. PIN protects your profile from casual access but is not bank-grade security.</p>
-    </div>
-    <div class="help-section">
-      <h4>📱 Install on phone (PWA)</h4>
-      <div class="install-os">
-        <h5>🤖 Android (Chrome)</h5>
-        <ol>
-          <li>Open this file in Chrome</li>
-          <li>Tap ⋮ menu → <strong>"Add to Home screen"</strong></li>
-          <li>Confirm — app appears on your home screen</li>
-        </ol>
-      </div>
-      <div class="install-os">
-        <h5>🍎 iPhone / iPad (Safari)</h5>
-        <ol>
-          <li>Open in <strong>Safari</strong></li>
-          <li>Tap Share (□↑) → <strong>"Add to Home Screen"</strong></li>
-          <li>Tap Add</li>
-        </ol>
-        <p style="font-size:12px;color:var(--g600);margin-top:4px">⚠ Must be served from a web server or cloud link on iOS.</p>
-      </div>
+      <p>All data is stored locally in your browser (localStorage). Nothing is sent to any server.</p>
     </div>
     <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-help')">Close</button></div>
   </div>
@@ -505,153 +464,184 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 
 <script>
 // ══════════════════════════════════════
-//  PWA
+//  PWA & INIT
 // ══════════════════════════════════════
 (function(){
-  const m={name:'FAST Update Generator',short_name:'FAST Update',start_url:'./',display:'standalone',background_color:'#f1f3f5',theme_color:'#2d5a2d',icons:[{src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%232d5a2d"/><text y=".9em" font-size="80" x="10">✈</text></svg>',sizes:'192x192',type:'image/svg+xml'}]};
+  const m={name:'FAST Update',short_name:'FAST',start_url:'./',display:'standalone',background_color:'#f1f3f5',theme_color:'#2d5a2d',icons:[{src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="%232d5a2d"/><text y=".9em" font-size="80" x="10">✈</text></svg>',sizes:'192x192',type:'image/svg+xml'}]};
   const b=new Blob([JSON.stringify(m)],{type:'application/json'});
   document.getElementById('pwa-manifest').href=URL.createObjectURL(b);
 })();
-if('serviceWorker' in navigator){
-  const sw=`self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>clients.claim());self.addEventListener('fetch',e=>e.respondWith(caches.open('fast-v3').then(c=>c.match(e.request).then(r=>r||fetch(e.request).then(res=>{c.put(e.request,res.clone());return res;})))));`;
-  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});
-}
 
-// ══════════════════════════════════════
-//  GOOGLE AUTH
-// ══════════════════════════════════════
 const GCID='624747295284-rpktnnbk5kugn7jhero0e267soidb2oj.apps.googleusercontent.com';
 const GSCOPE='https://www.googleapis.com/auth/generative-language.retriever https://www.googleapis.com/auth/cloud-platform';
 let tokenClient=null,gToken=null,gTokenExp=0;
-
 (function(){const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=s.defer=true;document.head.appendChild(s);})();
-window.addEventListener('load',()=>{
-  let t=0; const tr=()=>{ if(window.google?.accounts?.oauth2) initGA(); else if(t++<40) setTimeout(tr,150); }; tr();
-});
-function initGA(){
-  tokenClient=google.accounts.oauth2.initTokenClient({
-    client_id:GCID,scope:GSCOPE,
-    callback:(r)=>{if(r?.access_token){gToken=r.access_token;gTokenExp=Date.now()+((r.expires_in||3500)*1000)-30000;updateAuthUI(true);setStatus('done','✓ Connected to Google — PDF extraction ready.');}},
-    error_callback:()=>setStatus('err','Google sign-in cancelled.')
-  });
-  renderGBtn();
-}
-function renderGBtn(){
-  const c=document.getElementById('gsi-btn-container');c.innerHTML='';
-  const b=document.createElement('button');b.className='btn primary';b.innerHTML='🔵 Sign in with Google';b.onclick=()=>tokenClient?.requestAccessToken({});c.appendChild(b);
-}
+window.addEventListener('load',()=>{let t=0;const tr=()=>{if(window.google?.accounts?.oauth2)initGA();else if(t++<40)setTimeout(tr,150);};tr();});
+function initGA(){tokenClient=google.accounts.oauth2.initTokenClient({client_id:GCID,scope:GSCOPE,callback:(r)=>{if(r?.access_token){gToken=r.access_token;gTokenExp=Date.now()+((r.expires_in||3500)*1000)-30000;updateAuthUI(true);setStatus('done','✓ Connected to Google.');}},error_callback:()=>setStatus('err','Google sign-in cancelled.')});renderGBtn();}
+function renderGBtn(){const c=document.getElementById('gsi-btn-container');c.innerHTML='';const b=document.createElement('button');b.className='btn primary';b.innerHTML='🔵 Sign in with Google';b.onclick=()=>tokenClient?.requestAccessToken({});c.appendChild(b);}
 function ensureGToken(){if(gToken&&Date.now()<gTokenExp)return true;tokenClient?.requestAccessToken({prompt:'consent'});return false;}
 function signOutGoogle(){if(gToken&&window.google?.accounts?.oauth2?.revoke)google.accounts.oauth2.revoke(gToken,()=>{});gToken=null;gTokenExp=0;updateAuthUI(false);}
-function updateAuthUI(ok){
-  document.getElementById('auth-badge').textContent=ok?'Connected':'Not connected';
-  document.getElementById('auth-badge').className='abadge '+(ok?'ok':'ko');
-  document.getElementById('btn-signout').style.display=ok?'':'none';
-  document.getElementById('gsi-btn-container').style.display=ok?'none':'';
-}
+function updateAuthUI(ok){document.getElementById('auth-badge').textContent=ok?'Connected':'Not connected';document.getElementById('auth-badge').className='abadge '+(ok?'ok':'ko');document.getElementById('btn-signout').style.display=ok?'':'none';document.getElementById('gsi-btn-container').style.display=ok?'none':'';}
 
 // ══════════════════════════════════════
-//  STORAGE
+//  STORAGE & TEAM LOGIC
 // ══════════════════════════════════════
-const LS={
-  get:k=>{try{return JSON.parse(localStorage.getItem(k))}catch{return null}},
-  set:(k,v)=>localStorage.setItem(k,JSON.stringify(v)),
-  del:k=>localStorage.removeItem(k)
-};
+const LS={get:k=>{try{return JSON.parse(localStorage.getItem(k))}catch{return null}},set:(k,v)=>localStorage.setItem(k,JSON.stringify(v)),del:k=>localStorage.removeItem(k)};
+function hashPin(pin){let h=5381;for(let i=0;i<pin.length;i++)h=((h<<5)+h)+pin.charCodeAt(i);return(h>>>0).toString(16);}
 
-// ══════════════════════════════════════
-//  PROFILES (users of the app)
-// ══════════════════════════════════════
-// Structure: [{id, name, email, team, phone, pinHash, projects:[]}]
-const PK='fast_profiles';
-const getProfiles=()=>LS.get(PK)||[];
-const saveProfiles=a=>LS.set(PK,a);
+const TEAM_KEY='fast_profiles'; // Reusing key for backward compatibility, now acts as global team roster
+const getTeam=()=>LS.get(TEAM_KEY)||[];
+const saveTeam=a=>LS.set(TEAM_KEY,a);
 
-// Engineer profiles (globally shared — not per user)
-const EK='fast_eng_profiles';
-const getEngProfiles=()=>LS.get(EK)||[];
-const saveEngProfiles=a=>LS.set(EK,a);
-
-function hashPin(pin){
-  // Simple hash (djb2) — not cryptographic but sufficient for this use
-  let h=5381; for(let i=0;i<pin.length;i++) h=((h<<5)+h)+pin.charCodeAt(i);
-  return (h>>>0).toString(16);
-}
-
-// ══════════════════════════════════════
-//  AUTH STATE
-// ══════════════════════════════════════
-let curProfile=null; // profile object
-let curProj=null;    // project id
+let curProfile=null;
+let curProj=null;
 let pdfB64=null;
-let itemCount=0,partCount=0,pocSlotCount=0;
-
-// Pending PIN action
-let pendingPinAction=null; // {type:'login'|'delete'|'edit', profileId, callback}
+let itemCount=0,partCount=0,colleagueSlotCount=0;
+let pendingUserToLogin=null;
 
 window.addEventListener('DOMContentLoaded',()=>{
   const lastId=LS.get('fast_last_profile');
   renderLoginScreen();
   if(lastId){
-    const profiles=getProfiles();
-    const p=profiles.find(p=>p.id===lastId);
-    if(p) promptPin(p,'login');
+    const p=getTeam().find(x=>x.id===lastId);
+    if(p) promptUserPin(p);
   }
 });
 
+// ══════════════════════════════════════
+//  ADMIN: MANAGE TEAM
+// ══════════════════════════════════════
+function promptAdminPin(){
+  const adminPin=LS.get('fast_admin_pin');
+  document.getElementById('admin-pin-title').textContent=adminPin?'Admin Access':'Set Admin PIN';
+  document.getElementById('admin-pin-sub').textContent=adminPin?'Enter Master PIN to manage team.':'Create a 4-digit Master PIN to secure Admin access.';
+  document.getElementById('admin-pin-input').value='';
+  document.getElementById('admin-pin-error').textContent='';
+  openModal('modal-admin-auth');
+  setTimeout(()=>document.getElementById('admin-pin-input').focus(),100);
+}
+
+function adminPinInput(){
+  const val=document.getElementById('admin-pin-input').value;
+  if(val.length===4){
+    const stored=LS.get('fast_admin_pin');
+    if(!stored){
+      LS.set('fast_admin_pin',hashPin(val));
+      closeModal('modal-admin-auth');
+      openManageTeam();
+    }else{
+      if(hashPin(val)===stored){
+        closeModal('modal-admin-auth');
+        openManageTeam();
+      }else{
+        document.getElementById('admin-pin-error').textContent='❌ Incorrect Master PIN.';
+        document.getElementById('admin-pin-input').value='';
+      }
+    }
+  }
+}
+
+function openManageTeam(){
+  renderTeamAdminList();
+  openModal('modal-manage-team');
+}
+
+function renderTeamAdminList(){
+  const list=document.getElementById('team-list');
+  const team=getTeam();
+  if(!team.length){list.innerHTML='<p style="font-size:13px;color:var(--g400)">No engineers created yet. Add one below.</p>';return;}
+  list.innerHTML=team.map((p,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:6px">
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:13px">${p.name}</div>
+        <div style="font-size:11px;color:var(--g600)">${[p.team,p.email,p.phone].filter(Boolean).join(' · ')}</div>
+      </div>
+      <button class="btn danger" onclick="deleteTeamMember('${p.id}')" style="padding:4px 8px;font-size:11px">🗑</button>
+    </div>`).join('');
+}
+
+function addTeamMember(){
+  const name=document.getElementById('nt_name').value.trim();
+  const pin=document.getElementById('nt_pin').value.trim();
+  if(!name){alert('Name required.');return;}
+  if(pin.length!==4||!/^\d{4}$/.test(pin)){alert('User PIN must be exactly 4 digits.');return;}
+  
+  const team=getTeam();
+  team.push({
+    id:'prof_'+Date.now(),
+    name,
+    email:document.getElementById('nt_email').value.trim(),
+    team:document.getElementById('nt_team').value.trim(),
+    phone:document.getElementById('nt_phone').value.trim(),
+    pinHash:hashPin(pin),
+    projects:[] // initialize empty projects array
+  });
+  saveTeam(team);
+  
+  ['nt_name','nt_email','nt_team','nt_phone','nt_pin'].forEach(id=>document.getElementById(id).value='');
+  renderTeamAdminList();
+}
+
+function deleteTeamMember(id){
+  if(!confirm('Delete this engineer profile permanently?')) return;
+  saveTeam(getTeam().filter(p=>p.id!==id));
+  renderTeamAdminList();
+}
+
+function closeManageTeam(){
+  closeModal('modal-manage-team');
+  renderLoginScreen();
+}
+
+// ══════════════════════════════════════
+//  USER LOGIN
+// ══════════════════════════════════════
 function renderLoginScreen(){
   document.getElementById('login-screen').style.display='';
   document.getElementById('app-screen').style.display='none';
   document.getElementById('btn-logout').style.display='none';
   document.getElementById('hdr-profile-name').textContent='';
   const picker=document.getElementById('profile-picker');
-  const profiles=getProfiles();
+  const team=getTeam();
   picker.innerHTML='';
-  if(!profiles.length){
-    picker.innerHTML='<p style="font-size:13px;color:var(--g400);text-align:center;padding:.5rem 0">No profiles yet — create one below.</p>';
+  if(!team.length){
+    picker.innerHTML='<p style="font-size:13px;color:var(--g400);text-align:center;padding:.5rem 0">Team is empty. Click "Manage Team" below to create profiles.</p>';
     return;
   }
-  profiles.forEach(p=>{
+  team.forEach(p=>{
     const btn=document.createElement('button');
     btn.className='profile-btn';
     const initials=(p.name||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
     const projs=(p.projects||[]).length;
     btn.innerHTML=`<div class="pb-avatar">${initials}</div><div class="pb-info"><div class="pb-name">${p.name}</div><div class="pb-sub">${p.team||''}${p.team&&projs?' · ':''}${projs} project${projs!==1?'s':''}</div></div><div class="pb-lock">🔒</div>`;
-    btn.onclick=()=>promptPin(p,'login');
+    btn.onclick=()=>promptUserPin(p);
     picker.appendChild(btn);
   });
 }
 
-function promptPin(profile, type, callback){
-  pendingPinAction={type, profileId:profile.id, callback};
-  document.getElementById('modal-pin-title').textContent=type==='delete'?`Delete profile "${profile.name}"`:`Unlock: ${profile.name}`;
-  document.getElementById('modal-pin-sub').textContent='Enter your 4-digit PIN to continue.';
+function promptUserPin(profile){
+  pendingUserToLogin=profile;
+  document.getElementById('modal-pin-title').textContent=`Unlock: ${profile.name}`;
   document.getElementById('pin-input').value='';
   document.getElementById('pin-error').textContent='';
   openModal('modal-pin');
   setTimeout(()=>document.getElementById('pin-input').focus(),100);
 }
 
-function pinInput(){
+function userPinInput(){
   const val=document.getElementById('pin-input').value;
-  if(val.length===4) verifyPin(val);
-}
-
-function verifyPin(pin){
-  const action=pendingPinAction; if(!action) return;
-  const profiles=getProfiles();
-  const profile=profiles.find(p=>p.id===action.profileId); if(!profile) return;
-  if(hashPin(pin)!==profile.pinHash){
-    document.getElementById('pin-error').textContent='❌ Incorrect PIN — try again.';
-    document.getElementById('pin-input').value='';
-    return;
+  if(val.length===4){
+    if(!pendingUserToLogin) return;
+    // Refresh user from DB in case it was edited
+    const p=getTeam().find(x=>x.id===pendingUserToLogin.id);
+    if(hashPin(val)!==p.pinHash){
+      document.getElementById('pin-error').textContent='❌ Incorrect PIN.';
+      document.getElementById('pin-input').value='';
+    }else{
+      closeModal('modal-pin');
+      loginAs(p);
+    }
   }
-  closeModal('modal-pin');
-  if(action.type==='login') loginAs(profile);
-  else if(action.type==='delete') deleteProfile(profile.id);
-  else if(action.type==='edit'){
-    openEditProfileModal(profile);
-  }
-  else if(action.callback) action.callback(profile);
 }
 
 function loginAs(profile){
@@ -663,136 +653,32 @@ function loginAs(profile){
   document.getElementById('btn-logout').style.display='';
   document.getElementById('eng-bar-name').textContent=profile.name;
   document.getElementById('eng-bar-sub').textContent=[profile.team,profile.email,profile.phone].filter(Boolean).join(' · ');
+  
   renderProjList();
-  renderPocSlotSelects();
-  addPocSlot(); // start with one empty slot
+  renderStep6Me(); // Auto-inject the user into Step 6
 }
 
 function logout(){
-  curProfile=null; curProj=null;
-  document.getElementById('poc-slots-container').innerHTML='';pocSlotCount=0;
+  curProfile=null; curProj=null; pendingUserToLogin=null;
+  LS.del('fast_last_profile');
+  document.getElementById('poc-colleagues-container').innerHTML='';colleagueSlotCount=0;
   renderLoginScreen();
 }
 
 // ══════════════════════════════════════
-//  PROFILE CRUD
+//  PROJECTS CRUD
 // ══════════════════════════════════════
-function createProfile(){
-  const name=document.getElementById('np_name').value.trim();
-  const pin=document.getElementById('np_pin').value.trim();
-  if(!name){alert('Please enter your name.');return;}
-  if(pin.length!==4||!/^\d{4}$/.test(pin)){alert('PIN must be exactly 4 digits.');return;}
-  const profile={
-    id:'prof_'+Date.now(),
-    name,
-    email:document.getElementById('np_email').value.trim(),
-    team:document.getElementById('np_team').value.trim(),
-    phone:document.getElementById('np_phone').value.trim(),
-    pinHash:hashPin(pin),
-    projects:[]
-  };
-  const profiles=getProfiles(); profiles.push(profile); saveProfiles(profiles);
-  closeModal('modal-new-profile');
-  renderLoginScreen();
-  loginAs(profile);
-}
-
-function openEditProfileModal(profile){
-  document.getElementById('ep_name').value=profile.name||'';
-  document.getElementById('ep_email').value=profile.email||'';
-  document.getElementById('ep_team').value=profile.team||'';
-  document.getElementById('ep_phone').value=profile.phone||'';
-  document.getElementById('ep_pin').value='';
-  openModal('modal-edit-profile');
-}
-
-function saveEditProfile(){
-  if(!curProfile) return;
-  const profiles=getProfiles(); const p=profiles.find(x=>x.id===curProfile.id); if(!p) return;
-  p.name=document.getElementById('ep_name').value.trim()||p.name;
-  p.email=document.getElementById('ep_email').value.trim();
-  p.team=document.getElementById('ep_team').value.trim();
-  p.phone=document.getElementById('ep_phone').value.trim();
-  const newPin=document.getElementById('ep_pin').value.trim();
-  if(newPin){if(!/^\d{4}$/.test(newPin)){alert('PIN must be 4 digits.');return;} p.pinHash=hashPin(newPin);}
-  saveProfiles(profiles);
-  curProfile=p;
-  document.getElementById('eng-bar-name').textContent=p.name;
-  document.getElementById('eng-bar-sub').textContent=[p.team,p.email,p.phone].filter(Boolean).join(' · ');
-  document.getElementById('hdr-profile-name').textContent=p.name;
-  closeModal('modal-edit-profile');
-}
-
-function confirmDeleteProfile(){
-  if(!curProfile) return;
-  promptPin(curProfile,'delete');
-}
-function deleteProfile(pid){
-  const profiles=getProfiles().filter(p=>p.id!==pid); saveProfiles(profiles);
-  if(LS.get('fast_last_profile')===pid) LS.del('fast_last_profile');
-  curProfile=null; curProj=null;
-  renderLoginScreen();
-}
-
-// ══════════════════════════════════════
-//  ENGINEER PROFILES (for Step 6)
-// ══════════════════════════════════════
-function openEngProfilesModal(){
-  renderEngProfilesList();
-  openModal('modal-eng-profiles');
-}
-
-function renderEngProfilesList(){
-  const list=document.getElementById('eng-profiles-list');
-  const profiles=getEngProfiles();
-  if(!profiles.length){list.innerHTML='<p style="font-size:13px;color:var(--g400);margin-bottom:8px">No engineer profiles yet.</p>';return;}
-  list.innerHTML=profiles.map((p,i)=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:6px">
-      <div style="flex:1">
-        <div style="font-weight:700;font-size:13px">${p.name}</div>
-        <div style="font-size:11px;color:var(--g600)">${[p.team,p.email,p.phone].filter(Boolean).join(' · ')}</div>
-      </div>
-      <button class="btn danger" onclick="deleteEngProfile(${i})" style="padding:4px 8px;font-size:11px">🗑</button>
-    </div>`).join('');
-}
-
-function addEngProfile(){
-  const name=document.getElementById('nep_name').value.trim(); if(!name){alert('Name required.');return;}
-  const profiles=getEngProfiles();
-  profiles.push({
-    id:'ep_'+Date.now(),
-    name,
-    email:document.getElementById('nep_email').value.trim(),
-    team:document.getElementById('nep_team').value.trim(),
-    phone:document.getElementById('nep_phone').value.trim()
-  });
-  saveEngProfiles(profiles);
-  ['nep_name','nep_email','nep_team','nep_phone'].forEach(id=>document.getElementById(id).value='');
-  renderEngProfilesList();
-  renderPocSlotSelects();
-}
-
-function deleteEngProfile(idx){
-  if(!confirm('Delete this engineer profile?')) return;
-  const profiles=getEngProfiles(); profiles.splice(idx,1); saveEngProfiles(profiles);
-  renderEngProfilesList(); renderPocSlotSelects();
-}
-
-// ══════════════════════════════════════
-//  PROJECTS
-// ══════════════════════════════════════
-function getProjs(){return(curProfile?(getProfiles().find(p=>p.id===curProfile.id)||{}).projects:[]) || [];}
+function getProjs(){return(curProfile?(getTeam().find(p=>p.id===curProfile.id)||{}).projects:[]) || [];}
 function saveProj(proj){
-  const profiles=getProfiles(); const p=profiles.find(x=>x.id===curProfile.id); if(!p) return;
+  const team=getTeam(); const p=team.find(x=>x.id===curProfile.id); if(!p) return;
   if(!p.projects)p.projects=[];
   const i=p.projects.findIndex(x=>x.id===proj.id);
   if(i>=0)p.projects[i]=proj; else p.projects.push(proj);
-  saveProfiles(profiles);
-  curProfile=p;
+  saveTeam(team); curProfile=p;
 }
 function delProj(pid){
-  const profiles=getProfiles(); const p=profiles.find(x=>x.id===curProfile.id); if(!p||!p.projects) return;
-  p.projects=p.projects.filter(x=>x.id!==pid); saveProfiles(profiles); curProfile=p;
+  const team=getTeam(); const p=team.find(x=>x.id===curProfile.id); if(!p||!p.projects) return;
+  p.projects=p.projects.filter(x=>x.id!==pid); saveTeam(team); curProfile=p;
 }
 
 function renderProjList(){
@@ -822,19 +708,13 @@ function deleteProjUI(pid){
   delProj(pid); if(curProj===pid){curProj=null;clearForm();} renderProjList();
 }
 
-// ══════════════════════════════════════
-//  FORM DATA
-// ══════════════════════════════════════
-const gv=id=>document.getElementById(id)?.value||'';
-const sv=(id,v)=>{const e=document.getElementById(id);if(e&&v!=null)e.value=v;};
-
 function gatherData(){
   return {
     wo:gv('f_wo'),model:gv('f_model'),sn:gv('f_sn'),reg:gv('f_reg'),loc:gv('f_loc'),
     rts_assist:gv('f_rts_assist'),far:gv('f_far'),country:gv('f_country'),fbo:gv('f_fbo'),po:gv('f_po'),
     erts:gv('f_erts'),nxt:gv('f_nxt'),retdate:gv('f_retdate'),rettime:gv('f_rettime'),info:gv('f_info'),
     cust_name:gv('f_cust_name'),cust_tel:gv('f_cust_tel'),cust_email:gv('f_cust_email'),
-    items:getItems(),parts:getParts(),pocSlots:getPocSlots(),updates:getUpdatesData()
+    items:getItems(),parts:getParts(),colleagues:getColleagueSlots(),updates:getUpdatesData()
   };
 }
 
@@ -847,6 +727,9 @@ function autosave(){
   renderProjList();
 }
 
+const gv=id=>document.getElementById(id)?.value||'';
+const sv=(id,v)=>{const e=document.getElementById(id);if(e&&v!=null)e.value=v;};
+
 function fillFromProj(proj){
   sv('f_wo',proj.wo);sv('f_model',proj.model);sv('f_sn',proj.sn);sv('f_reg',proj.reg);sv('f_loc',proj.loc);
   sv('f_rts_assist',proj.rts_assist||'RTS');sv('f_far',proj.far);sv('f_country',proj.country);sv('f_fbo',proj.fbo);sv('f_po',proj.po);
@@ -856,9 +739,11 @@ function fillFromProj(proj){
   (proj.items||[]).forEach(it=>addItem(it.label,it.status));
   document.getElementById('parts-container').innerHTML='';partCount=0;
   (proj.parts||[]).forEach(p=>addPart(p.nom,p.pn_off,p.sn_off,p.pn_on,p.sn_on));
-  document.getElementById('poc-slots-container').innerHTML='';pocSlotCount=0;
-  if((proj.pocSlots||[]).length>0) proj.pocSlots.forEach(s=>addPocSlot(s.engId));
-  else addPocSlot();
+  
+  renderStep6Me();
+  document.getElementById('poc-colleagues-container').innerHTML='';colleagueSlotCount=0;
+  if((proj.colleagues||[]).length>0) proj.colleagues.forEach(c=>addColleagueSlot(c.id));
+  
   document.getElementById('updates-container').innerHTML='';
   (proj.updates||[]).forEach(u=>renderUpdateBlock(u));
   if(!(proj.updates||[]).length) document.getElementById('updates-container').innerHTML='<p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet</p>';
@@ -866,18 +751,96 @@ function fillFromProj(proj){
 }
 
 function clearForm(){
-  ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po',
-   'f_erts','f_nxt','f_retdate','f_rettime','f_info','f_cust_name','f_cust_tel','f_cust_email'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_cust_name','f_cust_tel','f_cust_email'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('f_rts_assist').value='RTS';
   document.getElementById('items-container').innerHTML='';itemCount=0;
   document.getElementById('parts-container').innerHTML='';partCount=0;
-  document.getElementById('poc-slots-container').innerHTML='';pocSlotCount=0;addPocSlot();
+  
+  renderStep6Me();
+  document.getElementById('poc-colleagues-container').innerHTML='';colleagueSlotCount=0;
+  
   document.getElementById('updates-container').innerHTML='<p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet</p>';
   document.getElementById('output-section').style.display='none';
 }
 
 // ══════════════════════════════════════
-//  WORK ITEMS
+//  STEP 6: TEAM POC (Lead + Colleagues)
+// ══════════════════════════════════════
+function renderStep6Me(){
+  if(!curProfile) return;
+  const me=document.getElementById('poc-me-container');
+  me.innerHTML=`
+    <div class="poc-block-head">
+      <span style="color:var(--gd)">👨‍🔧 Lead Engineer (You)</span>
+    </div>
+    <div style="font-size:13px;color:var(--g900)">
+      <b>${curProfile.name}</b>${curProfile.team?' · '+curProfile.team:''}<br>
+      ${curProfile.phone?'📱 '+curProfile.phone+'<br>':''}
+      ${curProfile.email?'✉️ '+curProfile.email:''}
+    </div>`;
+}
+
+function buildColleagueOptions(selectedId=''){
+  const team=getTeam().filter(p=>p.id!==curProfile.id); // Exclude self
+  let html='<option value="">— Select colleague —</option>';
+  team.forEach(p=>{html+=`<option value="${p.id}" ${p.id===selectedId?'selected':''}>${p.name}${p.team?' ('+p.team+')':''}</option>`;});
+  return html;
+}
+
+function addColleagueSlot(colleagueId=''){
+  if(colleagueSlotCount>=2){alert('Maximum 2 additional colleagues per project.');return;}
+  colleagueSlotCount++;
+  const c=document.getElementById('poc-colleagues-container');const d=document.createElement('div');
+  d.className='poc-block colleague-slot';d.id='coll-slot-'+colleagueSlotCount;
+  d.innerHTML=`<div class="poc-block-head">
+    <span>Assist Engineer</span>
+    <button class="btn danger" onclick="removeColleagueSlot('${d.id}')" style="padding:4px 8px;font-size:11px">Remove</button>
+  </div>
+  <select class="coll-sel" style="margin-bottom:8px" onchange="onColleagueSelect(this)">${buildColleagueOptions(colleagueId)}</select>
+  <div class="coll-info" style="font-size:12px;color:var(--g600)"></div>`;
+  c.appendChild(d);
+  document.getElementById('btn-add-poc').style.display=colleagueSlotCount>=2?'none':'';
+  if(colleagueId) displayColleagueInfo(d.querySelector('.coll-info'),colleagueId);
+}
+
+function onColleagueSelect(sel){
+  const block=sel.closest('.poc-block');
+  displayColleagueInfo(block.querySelector('.coll-info'),sel.value);
+  autosave();
+}
+
+function displayColleagueInfo(el,id){
+  if(!id){el.innerHTML='';return;}
+  const p=getTeam().find(x=>x.id===id);
+  if(!p){el.innerHTML='';return;}
+  el.innerHTML=`<b>${p.name}</b>${p.team?' · '+p.team:''}${p.phone?'<br>📱 '+p.phone:''}${p.email?'<br>✉️ '+p.email:''}`;
+}
+
+function removeColleagueSlot(id){
+  const el=document.getElementById(id);if(el)el.remove();colleagueSlotCount--;
+  document.getElementById('btn-add-poc').style.display='';
+  autosave();
+}
+
+function getColleagueSlots(){
+  return Array.from(document.querySelectorAll('.colleague-slot')).map(b=>{
+    const sel=b.querySelector('.coll-sel');
+    const id=sel?.value||'';
+    const p=getTeam().find(x=>x.id===id);
+    return p?{id:p.id,name:p.name,tel:p.phone,email:p.email,team:p.team}:null;
+  }).filter(Boolean);
+}
+
+function getAllPocsData(){
+  // Returns [Me, Colleague1, Colleague2]
+  const pocs=[];
+  if(curProfile) pocs.push({name:curProfile.name,tel:curProfile.phone,email:curProfile.email,team:curProfile.team});
+  pocs.push(...getColleagueSlots());
+  return pocs;
+}
+
+// ══════════════════════════════════════
+//  WORK ITEMS & UPDATES
 // ══════════════════════════════════════
 function addItem(label='',status='pending'){
   itemCount++;
@@ -899,157 +862,22 @@ function addItem(label='',status='pending'){
   c.appendChild(d);
 }
 
-function getItems(){
-  return Array.from(document.querySelectorAll('.item-row')).map((r,i)=>({
-    num:i+1,label:r.querySelector('input').value,status:r.querySelector('select').value
-  }));
-}
+function getItems(){return Array.from(document.querySelectorAll('.item-row')).map((r,i)=>({num:i+1,label:r.querySelector('input').value,status:r.querySelector('select').value}));}
 
-// ══════════════════════════════════════
-//  PARTS — PN OFF → PN ON auto-copy
-// ══════════════════════════════════════
-function addPart(nom='',pn_off='',sn_off='',pn_on='',sn_on=''){
-  partCount++;
-  const c=document.getElementById('parts-container');const d=document.createElement('div');
-  d.className='part-row';d.id='part-'+partCount;
-  d.innerHTML=`<div class="part-fields">
-    <div class="fg"><label>Nomenclature</label><input type="text" class="p-nom" value="${nom}" placeholder="e.g. FCC com 2A" oninput="autosave()"/></div>
-    <div class="fg"><label>PN OFF</label><input type="text" class="p-pnoff" value="${pn_off}" oninput="onPnOffInput(this)"/></div>
-    <div class="fg"><label>SN OFF</label><input type="text" class="p-snoff" value="${sn_off}" oninput="autosave()"/></div>
-    <div class="fg"><label>PN ON</label><input type="text" class="p-pnon" value="${pn_on}" placeholder="auto-fills from PN OFF" oninput="autosave()"/></div>
-    <div class="fg"><label>SN ON</label><input type="text" class="p-snon" value="${sn_on}" oninput="autosave()"/></div>
-  </div>
-  <button class="btn-rm" onclick="this.parentElement.remove();autosave()" style="margin-top:18px">×</button>`;
-  c.appendChild(d);
-}
-
-function onPnOffInput(el){
-  const row=el.closest('.part-row');
-  const pnOn=row.querySelector('.p-pnon');
-  // Auto-fill PN ON only if it's empty or was auto-filled (user hasn't manually edited it)
-  if(!pnOn.dataset.manualEdit) pnOn.value=el.value;
-  autosave();
-}
-// Mark PN ON as manually edited if user types in it
-document.addEventListener('input',e=>{if(e.target.classList.contains('p-pnon')&&!e.target.dataset.pnoffFill) e.target.dataset.manualEdit='1';});
-
-function getParts(){
-  return Array.from(document.querySelectorAll('.part-row')).map(r=>({
-    nom:r.querySelector('.p-nom').value,pn_off:r.querySelector('.p-pnoff').value,
-    sn_off:r.querySelector('.p-snoff').value,pn_on:r.querySelector('.p-pnon').value,sn_on:r.querySelector('.p-snon').value
-  }));
-}
-
-// ══════════════════════════════════════
-//  STEP 6 — POC slots (dropdown from engineer profiles)
-// ══════════════════════════════════════
-function renderPocSlotSelects(){
-  // Re-render all select options without destroying existing selections
-  document.querySelectorAll('.poc-eng-select').forEach(sel=>{
-    const curVal=sel.value;
-    sel.innerHTML=buildEngOptions(curVal);
-  });
-}
-
-function buildEngOptions(selectedId=''){
-  const profs=getEngProfiles();
-  let html='<option value="">— Select engineer —</option>';
-  profs.forEach(p=>{html+=`<option value="${p.id}" ${p.id===selectedId?'selected':''}>${p.name}${p.team?' ('+p.team+')':''}</option>`;});
-  html+='<option value="__manage__">⚙️ Manage engineer profiles…</option>';
-  return html;
-}
-
-function addPocSlot(engId=''){
-  if(pocSlotCount>=3){alert('Maximum 3 engineers per project.');return;}
-  pocSlotCount++;
-  const c=document.getElementById('poc-slots-container');const d=document.createElement('div');
-  d.className='poc-block';d.id='poc-slot-'+pocSlotCount;
-  d.innerHTML=`<div class="poc-block-head">
-    <span>Engineer ${pocSlotCount}</span>
-    <button class="btn danger" onclick="removePocSlot('poc-slot-${pocSlotCount}')" style="padding:4px 8px;font-size:11px">Remove</button>
-  </div>
-  <select class="poc-eng-select" style="margin-bottom:8px" onchange="onPocSelectChange(this)">${buildEngOptions(engId)}</select>
-  <div class="poc-info-display" style="font-size:12px;color:var(--g600)"></div>`;
-  c.appendChild(d);
-  document.getElementById('btn-add-poc').style.display=pocSlotCount>=3?'none':'';
-  if(engId) displayPocInfo(d.querySelector('.poc-info-display'),engId);
-}
-
-function onPocSelectChange(sel){
-  if(sel.value==='__manage__'){
-    sel.value='';
-    openEngProfilesModal();
-    return;
-  }
-  const block=sel.closest('.poc-block');
-  displayPocInfo(block.querySelector('.poc-info-display'),sel.value);
-  autosave();
-}
-
-function displayPocInfo(el,engId){
-  if(!engId){el.innerHTML='';return;}
-  const p=getEngProfiles().find(x=>x.id===engId);
-  if(!p){el.innerHTML='';return;}
-  el.innerHTML=`<b>${p.name}</b>${p.team?' · '+p.team:''}${p.phone?'<br>📱 '+p.phone:''}${p.email?'<br>✉️ '+p.email:''}`;
-}
-
-function removePocSlot(id){
-  const el=document.getElementById(id);if(el)el.remove();pocSlotCount--;
-  document.getElementById('btn-add-poc').style.display='';
-  autosave();
-}
-
-function getPocSlots(){
-  return Array.from(document.querySelectorAll('.poc-block')).map(b=>{
-    const sel=b.querySelector('.poc-eng-select');
-    const engId=sel?.value||'';
-    const p=getEngProfiles().find(x=>x.id===engId);
-    return {engId,name:p?.name||'',tel:p?.phone||'',email:p?.email||'',team:p?.team||''};
-  }).filter(s=>s.engId&&s.engId!=='__manage__');
-}
-
-// ══════════════════════════════════════
-//  DAILY UPDATES
-// ══════════════════════════════════════
 function todayLabel(){return new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});}
+function addTodayUpdate(){const t=todayLabel();if(getUpdatesData().find(u=>u.date===t)){setStatus('idle',"Today's update already exists.");return;} createUpdateBlock(t);}
+function addYesterdayUpdate(){const y=new Date();y.setDate(y.getDate()-1);const t=y.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});if(getUpdatesData().find(u=>u.date===t)){setStatus('idle',"Yesterday's update already exists.");return;} createUpdateBlock(t);} 
+function addDayBeforeUpdate(){const y=new Date();y.setDate(y.getDate()-2);const t=y.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});if(getUpdatesData().find(u=>u.date===t)){setStatus('idle',"This day's update already exists.");return;} createUpdateBlock(t);}
 
-function addTodayUpdate(){
-  const today=todayLabel();
-  if(getUpdatesData().find(u=>u.date===today)){setStatus('idle',"Today's update already exists — scroll down to edit it.");return;}
-  const uc=document.getElementById('updates-container');
-  const ph=uc.querySelector('p');if(ph)ph.remove();
-  renderUpdateBlock({id:'upd_'+Date.now(),date:today,isRTS:false,freeText:'',itemUpdates:[]});
-  autosave();
-}
-
-function addYesterdayUpdate(){
-  const y=new Date();y.setDate(y.getDate()-1);
-  const label=y.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
-  if(getUpdatesData().find(u=>u.date===label)){setStatus('idle',"Yesterday's update already exists — scroll down to edit it.");return;}
-  const uc=document.getElementById('updates-container');
-  const ph=uc.querySelector('p');if(ph)ph.remove();
-  renderUpdateBlock({id:'upd_'+Date.now(),date:label,isRTS:false,freeText:'',itemUpdates:[]});
-  autosave();
-} 
-  
-function addDayBeforeUpdate(){
-  const y=new Date();y.setDate(y.getDate()-2);
-  const label=y.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
-  if(getUpdatesData().find(u=>u.date===label)){setStatus('idle',"This day's update already exists — scroll down to edit it.");return;}
-  const uc=document.getElementById('updates-container');
-  const ph=uc.querySelector('p');if(ph)ph.remove();
+function createUpdateBlock(label){
+  const ph=document.getElementById('updates-container').querySelector('p');if(ph)ph.remove();
   renderUpdateBlock({id:'upd_'+Date.now(),date:label,isRTS:false,freeText:'',itemUpdates:[]});
   autosave();
 }
 
 function getLastCarriedOutMap(){
-  const all=getUpdatesData();
-  const map={};
-  all.forEach(u=>{
-    u.itemUpdates.forEach(iu=>{
-      if(iu.checked&&iu.status==='done') map[iu.num]={checked:true,status:'done',detail:''};
-    });
-  });
+  const all=getUpdatesData();const map={};
+  all.forEach(u=>{u.itemUpdates.forEach(iu=>{if(iu.checked&&iu.status==='done')map[iu.num]={checked:true,status:'done',detail:''};});});
   return map;
 }
 
@@ -1060,7 +888,6 @@ function renderUpdateBlock(upd){
   const carriedForward=isNewBlock?getLastCarriedOutMap():{};
   const d=document.createElement('div');d.className='update-day';d.id=upd.id;d.dataset.date=upd.date;
 
-  // Per-item update blocks — CHECKBOX to select which items were worked on today
   const itemsHtml=items.length>0?items.map((it,i)=>{
     const saved=(upd.itemUpdates||[]).find(u=>u.num===(i+1))||(carriedForward[i+1]||{});
     const checked=saved.checked||((upd.itemUpdates||[]).find(u=>u.num===(i+1))||carriedForward[i+1])?'checked':'';
@@ -1097,50 +924,34 @@ function renderUpdateBlock(upd){
   uc.appendChild(d);
 }
 
-function onUpdChk(chk){
-  // When unchecked, clear status and detail
-  const block=chk.closest('.upd-item-block');
-  const sel=block.querySelector('.upd-status-sel');
-  const ta=block.querySelector('.upd-detail');
-  if(!chk.checked){sel.value='pending';ta.value='';}
-  autosave();
-}
-
-function removeUpdateBlock(id){
-  const el=document.getElementById(id);if(el)el.remove();
-  const uc=document.getElementById('updates-container');
-  if(!uc.querySelector('.update-day')) uc.innerHTML='<p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet</p>';
-  autosave();
-}
-
-function getUpdatesData(){
-  return Array.from(document.querySelectorAll('.update-day')).map(block=>{
-    const date=block.dataset.date;
-    const isRTS=block.querySelector('[id^="rts_"]')?.checked||false;
-    const freeText=block.querySelector('.upd-free-global')?.value||'';
-    const itemBlocks=block.querySelectorAll('.upd-item-block');
-    const itemUpdates=Array.from(itemBlocks).map((ib,i)=>{
-      const chk=ib.querySelector('input[type=checkbox]');
-      return {
-        num:parseInt(ib.dataset.itemNum||i+1),
-        checked:chk?.checked||false,
-        status:ib.querySelector('.upd-status-sel')?.value||'pending',
-        detail:ib.querySelector('.upd-detail')?.value||''
-      };
-    });
-    return {id:block.id,date,isRTS,freeText,itemUpdates};
-  });
-}
+function onUpdChk(chk){const block=chk.closest('.upd-item-block');const sel=block.querySelector('.upd-status-sel');const ta=block.querySelector('.upd-detail');if(!chk.checked){sel.value='pending';ta.value='';}autosave();}
+function removeUpdateBlock(id){const el=document.getElementById(id);if(el)el.remove();const uc=document.getElementById('updates-container');if(!uc.querySelector('.update-day'))uc.innerHTML='<p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet</p>';autosave();}
+function getUpdatesData(){return Array.from(document.querySelectorAll('.update-day')).map(block=>{return{id:block.id,date:block.dataset.date,isRTS:block.querySelector('[id^="rts_"]')?.checked||false,freeText:block.querySelector('.upd-free-global')?.value||'',itemUpdates:Array.from(block.querySelectorAll('.upd-item-block')).map((ib,i)=>({num:parseInt(ib.dataset.itemNum||i+1),checked:ib.querySelector('input[type=checkbox]')?.checked||false,status:ib.querySelector('.upd-status-sel')?.value||'pending',detail:ib.querySelector('.upd-detail')?.value||''}))};});}
 
 // ══════════════════════════════════════
-//  PDF EXTRACTION
+//  PARTS
 // ══════════════════════════════════════
-const dropZone=document.getElementById('drop-zone');
-const fileInput=document.getElementById('file-input');
-const extractBtn=document.getElementById('extract-btn');
+function addPart(nom='',pn_off='',sn_off='',pn_on='',sn_on=''){
+  partCount++;const c=document.getElementById('parts-container');const d=document.createElement('div');d.className='part-row';d.id='part-'+partCount;
+  d.innerHTML=`<div class="part-fields">
+    <div class="fg"><label>Nomenclature</label><input type="text" class="p-nom" value="${nom}" oninput="autosave()"/></div>
+    <div class="fg"><label>PN OFF</label><input type="text" class="p-pnoff" value="${pn_off}" oninput="onPnOffInput(this)"/></div>
+    <div class="fg"><label>SN OFF</label><input type="text" class="p-snoff" value="${sn_off}" oninput="autosave()"/></div>
+    <div class="fg"><label>PN ON</label><input type="text" class="p-pnon" value="${pn_on}" oninput="autosave()"/></div>
+    <div class="fg"><label>SN ON</label><input type="text" class="p-snon" value="${sn_on}" oninput="autosave()"/></div>
+  </div><button class="btn-rm" onclick="this.parentElement.remove();autosave()" style="margin-top:18px">×</button>`;
+  c.appendChild(d);
+}
+function onPnOffInput(el){const pnOn=el.closest('.part-row').querySelector('.p-pnon');if(!pnOn.dataset.manualEdit)pnOn.value=el.value;autosave();}
+document.addEventListener('input',e=>{if(e.target.classList.contains('p-pnon')&&!e.target.dataset.pnoffFill)e.target.dataset.manualEdit='1';});
+function getParts(){return Array.from(document.querySelectorAll('.part-row')).map(r=>({nom:r.querySelector('.p-nom').value,pn_off:r.querySelector('.p-pnoff').value,sn_off:r.querySelector('.p-snoff').value,pn_on:r.querySelector('.p-pnon').value,sn_on:r.querySelector('.p-snon').value}));}
+
+// ══════════════════════════════════════
+//  PDF EXTRACT (GEMINI)
+// ══════════════════════════════════════
+const dropZone=document.getElementById('drop-zone');const fileInput=document.getElementById('file-input');const extractBtn=document.getElementById('extract-btn');
 fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadFile(fileInput.files[0]);});
-dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('over');});
-dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('over'));
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('over');});dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('over'));
 dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('over');const f=e.dataTransfer.files[0];if(f&&f.type==='application/pdf')loadFile(f);else setStatus('err','Only PDF files are accepted.');});
 function loadFile(f){setStatus('idle',`<b>${f.name}</b> ready — click Extract`);document.getElementById('drop-label').textContent=f.name;const r=new FileReader();r.onload=()=>{pdfB64=r.result.split(',')[1];extractBtn.disabled=false;};r.readAsDataURL(f);}
 function setStatus(type,msg){const el=document.getElementById('status');el.className='status s-'+type;document.getElementById('status-txt').innerHTML=msg;}
@@ -1148,19 +959,14 @@ function setStatus(type,msg){const el=document.getElementById('status');el.class
 async function extractPDF(){
   if(!pdfB64){setStatus('err','No PDF loaded.');return;}
   if(!ensureGToken()){setStatus('idle','Please sign in with Google first.');return;}
-  extractBtn.disabled=true;
-  setStatus('load','<span class="spin"></span> Sending PDF to Gemini…');
+  extractBtn.disabled=true;setStatus('load','<span class="spin"></span> Sending PDF to Gemini…');
   const prompt=`Extract all fields from this Gulfstream RFS PDF. Reply ONLY with valid JSON, no markdown.
 {"work_order":"","model":"e.g. GVIII-G700","serial_number":"","registration":"","location":"ICAO","rts_assist":"RTS or Assist","far_certification":"","country":"","fbo":"","po_number":"","customer_name":"UPPERCASE","customer_phone":"","customer_email":"","estimated_rts":"","next_flight":"UNKWN if unknown","constraints":"","work_items":[{"label":"UPPERCASE","status":"pending"}]}`;
   try{
-    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent`,{
-      method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${gToken}`},
-      body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:'application/pdf',data:pdfB64}},{text:prompt}]}],generationConfig:{temperature:0,maxOutputTokens:1500}})
-    });
+    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${gToken}`},body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:'application/pdf',data:pdfB64}},{text:prompt}]}],generationConfig:{temperature:0,maxOutputTokens:1500}})});
     const data=await res.json();
     if(!res.ok){if(res.status===401){gToken=null;updateAuthUI(false);throw new Error('Session expired. Sign in again.');}throw new Error(data.error?.message||'API error '+res.status);}
     const raw=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
-    if(!raw) throw new Error('Empty response from Gemini.');
     const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
     sv('f_wo',parsed.work_order);sv('f_model',parsed.model);sv('f_sn',parsed.serial_number);sv('f_reg',parsed.registration);
     sv('f_loc',parsed.location);sv('f_far',parsed.far_certification);sv('f_country',parsed.country);sv('f_fbo',parsed.fbo);sv('f_po',parsed.po_number||'');
@@ -1169,10 +975,8 @@ async function extractPDF(){
     if(parsed.rts_assist) document.getElementById('f_rts_assist').value=parsed.rts_assist.toLowerCase().includes('assist')?'Assist':'RTS';
     document.getElementById('items-container').innerHTML='';itemCount=0;
     (parsed.work_items||[]).forEach(it=>addItem(it.label,'pending'));
-    autosave();
-    setStatus('done',`✓ ${(parsed.work_items||[]).length} item(s) extracted.`);
-  }catch(e){setStatus('err','Error: '+e.message);}
-  finally{extractBtn.disabled=false;}
+    autosave();setStatus('done',`✓ ${(parsed.work_items||[]).length} item(s) extracted.`);
+  }catch(e){setStatus('err','Error: '+e.message);}finally{extractBtn.disabled=false;}
 }
 
 // ══════════════════════════════════════
@@ -1184,48 +988,52 @@ const SC={done:'#2d6a2d',pending:'#7a5a00',waiting:'#8a2e00',na:'#555'};
 function generate(){
   autosave();
   const wo=gv('f_wo'),model=gv('f_model'),sn=gv('f_sn'),reg=gv('f_reg'),loc=gv('f_loc');
-  const rtsA=gv('f_rts_assist'),far=gv('f_far');
-  const erts=gv('f_erts'),nxt=gv('f_nxt'),retdate=gv('f_retdate'),rettime=gv('f_rettime'),info=gv('f_info');
+  const rtsA=gv('f_rts_assist'),far=gv('f_far'),erts=gv('f_erts'),nxt=gv('f_nxt'),retdate=gv('f_retdate'),rettime=gv('f_rettime'),info=gv('f_info');
   const cName=gv('f_cust_name'),cTel=gv('f_cust_tel'),cEmail=gv('f_cust_email');
-  const items=getItems(),pocs=getPocSlots(),parts=getParts(),updates=getUpdatesData();
+  const items=getItems(),pocs=getAllPocsData(),parts=getParts(),updates=getUpdatesData();
 
-  // Email subject
   document.getElementById('email-subject').textContent=`UPDATE // ${wo} // ${model} ${sn} // ${reg} // ${loc} //`;
 
-  // Condition rows
-  const condRows=items.length>0
-    ? `<tr><td class="lbl"><b>Condition</b></td><td colspan="3">${items.map(it=>`${it.num}-${it.label.toUpperCase()}`).join('<br>')}</td></tr>`
-    : `<tr><td class="lbl"><b>Condition</b></td><td colspan="3">—</td></tr>`;
+  const condRows=items.length>0?`<tr><td class="lbl"><b>Condition</b></td><td colspan="3">${items.map(it=>`${it.num}-${it.label.toUpperCase()}`).join('<br>')}</td></tr>`:`<tr><td class="lbl"><b>Condition</b></td><td colspan="3">—</td></tr>`;
 
-  // Update rows
   let updRows='';
-  if(!updates.length){
-    updRows=`<tr><td class="upd-lbl"><b>Update</b></td><td colspan="3">—</td></tr>`;
-  } else {
+  if(!updates.length) updRows=`<tr><td class="upd-lbl"><b>Update</b></td><td colspan="3">—</td></tr>`;
+  else{
     updates.forEach((upd,di)=>{
       const lbl=di===0?'<b>Update</b>':'';
-      const bg=di>0?'background:#fffff8':'';
       let content=`<b>${upd.date}</b><br>`;
       if(upd.isRTS) content+=`<span style="display:inline-block;background:#2d5a2d;color:#fff;font-size:11px;font-weight:700;padding:1px 10px;border-radius:20px;margin-bottom:3px">A/C RTS</span><br>`;
       upd.itemUpdates.filter(u=>u.checked).forEach(iu=>{
         const it=items.find(x=>x.num===iu.num);
-        const lbl2=it?`${iu.num}-${it.label.toUpperCase()}`:`Item ${iu.num}`;
-        content+=`${lbl2} — <span style="color:${SC[iu.status]||'#555'};font-weight:700">${SL[iu.status]||iu.status}</span>`;
-        if(iu.detail) content+=`<br><span style="color:#444;font-size:12px">${iu.detail}</span>`;
-        content+='<br>';
+        content+=`${it?`${iu.num}-${it.label.toUpperCase()}`:`Item ${iu.num}`} — <span style="color:${SC[iu.status]||'#555'};font-weight:700">${SL[iu.status]||iu.status}</span><br>`;
+        if(iu.detail) content+=`<span style="color:#444;font-size:12px">${iu.detail}</span><br>`;
       });
       if(upd.freeText) content+=`<span style="color:#444">${upd.freeText}</span><br>`;
-      updRows+=`<tr><td class="upd-lbl" style="${bg}">${lbl}</td><td colspan="3">${content}</td></tr>`;
+      updRows+=`<tr><td class="upd-lbl" style="${di>0?'background:#fffff8':''}">${lbl}</td><td colspan="3">${content}</td></tr>`;
     });
   }
 
-  // Parts
+  // 100% BULLETPROOF HTML EMAIL TRICK: Nested table for 5 columns inside a 4-column parent row.
   const hasParts=parts.some(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on);
-  const partsRows=hasParts
-    ? parts.filter(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on).map(p=>`<tr><td class="part-row-cell">${p.nom}</td><td class="part-row-cell">${p.pn_off}</td><td class="part-row-cell">${p.sn_off}</td><td class="part-row-cell">${p.pn_on}</td><td class="part-row-cell">${p.sn_on}</td></tr>`).join('')
-    : `<tr><td colspan="5" style="color:#aaa;font-style:italic">No parts replaced</td></tr>`;
+  const partsHtml = `
+    <table style="width:100%;border-collapse:collapse;table-layout:fixed;margin:0;padding:0;border:none;">
+      <tr>
+        <td style="width:20%;border:1px solid #999;border-top:none;border-left:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">Nomenclature</td>
+        <td style="width:20%;border:1px solid #999;border-top:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">PN OFF</td>
+        <td style="width:20%;border:1px solid #999;border-top:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">SN OFF</td>
+        <td style="width:20%;border:1px solid #999;border-top:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">PN ON</td>
+        <td style="width:20%;border:1px solid #999;border-top:none;border-right:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">SN ON</td>
+      </tr>
+      ${hasParts ? parts.filter(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on).map(p=>`
+        <tr>
+          <td style="border:1px solid #999;border-bottom:none;border-left:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.nom}</td>
+          <td style="border:1px solid #999;border-bottom:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.pn_off}</td>
+          <td style="border:1px solid #999;border-bottom:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.sn_off}</td>
+          <td style="border:1px solid #999;border-bottom:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.pn_on}</td>
+          <td style="border:1px solid #999;border-bottom:none;border-right:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.sn_on}</td>
+        </tr>`).join('') : `<tr><td colspan="5" style="border:none;padding:6px;color:#aaa;font-style:italic;text-align:center">No parts replaced</td></tr>`}
+    </table>`;
 
-  // POC rows
   const pocRows=pocs.length>0
     ? `<tr><td class="lbl"><b>Name</b></td><td colspan="3">${pocs.map(p=>p.name||'—').join(' / ')}</td></tr>
       <tr><td class="lbl"><b>Cell</b></td><td colspan="3">${pocs.map(p=>p.tel||'—').join(' / ')}</td></tr>
@@ -1233,8 +1041,6 @@ function generate(){
       <tr><td class="lbl"><b>Team</b></td><td colspan="3">${pocs.map(p=>p.team||'—').join(' / ')}</td></tr>`
     : `<tr><td class="lbl"><b>Name</b></td><td colspan="3">—</td></tr><tr><td class="lbl"><b>Cell</b></td><td colspan="3">—</td></tr><tr><td class="lbl"><b>Email</b></td><td colspan="3">—</td></tr><tr><td class="lbl"><b>Team</b></td><td colspan="3">—</td></tr>`;
 
-  // ── THE TABLE — exact FAST email format ──
-  // Note: "Model and S/N" and "A/C Registry" are on the SAME row in 4 columns
   document.getElementById('tbl-out').innerHTML=`
   <table class="fast-tbl" id="gen-tbl">
     <colgroup><col style="width:25%"><col style="width:25%"><col style="width:25%"><col style="width:25%"></colgroup>
@@ -1259,8 +1065,7 @@ function generate(){
       <td class="lbl"><b>A/C Registry:</b></td><td>${reg||'—'}</td>
     </tr>
     <tr class="thr"><td colspan="4"><b>Parts</b></td></tr>
-    <tr><td class="part-hdr" style="width:18%"><b>Nomenclature</b></td><td class="part-hdr" style="width:18%"><b>PN OFF</b></td><td class="part-hdr" style="width:18%"><b>SN OFF</b></td><td class="part-hdr" style="width:18%"><b>PN ON</b></td><td class="part-hdr" style="width:18%"><b>SN ON</b></td></tr>
-    ${partsRows}
+    <tr><td colspan="4" style="padding:0; border:none;">${partsHtml}</td></tr>
     <tr class="thr"><td colspan="4"><b>Onsite Support FAST POC</b></td></tr>
     ${pocRows}
     <tr class="thr"><td colspan="4"><b>Customer Info</b></td></tr>
@@ -1284,29 +1089,13 @@ function copyTable(){
   setTimeout(()=>{btn.classList.remove('copied');btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy table`;},2500);
 }
 
-function copySubject(){
-  navigator.clipboard.writeText(document.getElementById('email-subject')?.textContent||'').catch(()=>{});
-  setStatus('done','✓ Email subject copied!');
-}
-
-// RTS
+function copySubject(){navigator.clipboard.writeText(document.getElementById('email-subject')?.textContent||'').catch(()=>{});setStatus('done','✓ Email subject copied!');}
 function markRTS(){openModal('modal-rts');}
-function confirmRTS(){
-  if(!curProj||!curProfile){closeModal('modal-rts');return;}
-  autosave();const projs=getProjs();const proj=projs.find(p=>p.id===curProj);
-  if(proj){proj.rts=true;proj.updatedAt=Date.now();saveProj(proj);}
-  renderProjList();closeModal('modal-rts');setStatus('done','✅ Project marked RTS.');
-}
-
-// MODALS
+function confirmRTS(){if(!curProj||!curProfile){closeModal('modal-rts');return;} autosave();const p=getProjs().find(x=>x.id===curProj);if(p){p.rts=true;p.updatedAt=Date.now();saveProj(p);} renderProjList();closeModal('modal-rts');setStatus('done','✅ Project marked RTS.');}
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 
-// Settings button in header (engineer profiles)
-document.querySelector('.hdr-right').insertAdjacentHTML('afterbegin','<button onclick="openEngProfilesModal()" id="btn-settings" style="display:none">⚙️ Settings</button>');
-// Show settings button only when logged in
-const origLoginAs=loginAs;
 </script>
 </body>
 </html>
