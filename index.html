@@ -842,7 +842,7 @@ function getAllPocsData(){
 // ══════════════════════════════════════
 //  WORK ITEMS & UPDATES
 // ══════════════════════════════════════
-function addItem(label='',status='pending'){
+function addItem(label=''){
   itemCount++;
   const c=document.getElementById('items-container');
   const d=document.createElement('div');d.className='item-row';d.id='item-'+itemCount;
@@ -850,19 +850,13 @@ function addItem(label='',status='pending'){
     <div class="item-fields">
       <div class="item-label-row">
         <input type="text" value="${label.replace(/"/g,'&quot;')}" placeholder="Work item description" oninput="autosave()"/>
-        <select onchange="autosave()">
-          <option value="pending" ${status==='pending'?'selected':''}>⏳ In progress</option>
-          <option value="done" ${status==='done'?'selected':''}>✅ Carried out</option>
-          <option value="waiting" ${status==='waiting'?'selected':''}>⚠️ Waiting</option>
-          <option value="na" ${status==='na'?'selected':''}>— N/A</option>
-        </select>
       </div>
     </div>
     <button class="btn-rm" onclick="this.parentElement.remove();autosave()">×</button>`;
   c.appendChild(d);
 }
 
-function getItems(){return Array.from(document.querySelectorAll('.item-row')).map((r,i)=>({num:i+1,label:r.querySelector('input').value,status:r.querySelector('select').value}));}
+function getItems(){return Array.from(document.querySelectorAll('.item-row')).map((r,i)=>({num:i+1,label:r.querySelector('input').value}));}
 
 function todayLabel(){return new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});}
 function addTodayUpdate(){const t=todayLabel();if(getUpdatesData().find(u=>u.date===t)){setStatus('idle',"Today's update already exists.");return;} createUpdateBlock(t);}
