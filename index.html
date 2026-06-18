@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FAST Update Generator</title>
+<style>
+:root {
+  --green-dark: #2d5a2d;
+  --green-mid: #3a6e3a;
+  --green-light: #e8f2e8;
+  --green-border: #a8c8a8;
+  --red: #8a2e00;
+  --red-light: #fdf0eb;
+  --blue: #1a4a7a;
+  --blue-light: #e8f0f8;
+  --amber: #7a5a00;
+  --amber-light: #fef9e7;
+  --gray-50: #f8f9fa;
+  --gray-100: #f1f3f5;
+  --gray-200: #e9ecef;
+  --gray-400: #adb5bd;
+  --gray-600: #6c757d;
+  --gray-800: #343a40;
+  --gray-900: #212529;
+  --white: #ffffff;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--gray-100);
+  color: var(--gray-900);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+header {
+  background: var(--green-dark);
+  color: white;
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+header h1 { font-size: 16px; font-weight: 600; }
+header .hdr-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+header .hdr-right span { font-size: 12px; opacity: 0.65; }
+
+.main { max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem 5rem; }
+
+/* ── ENGINEER SELECTOR ── */
+.eng-bar {
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  box-shadow: var(--shadow);
+}
+.eng-bar label { font-size: 11px; font-weight: 700; color: var(--gray-600); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.eng-bar select { flex: 1; min-width: 160px; padding: 8px 10px; border: 1px solid var(--gray-200); border-radius: var(--radius); font-size: 13px; }
+.eng-bar select:focus { outline: 2px solid var(--green-mid); }
+.btn-sm {
+  padding: 7px 14px; border-radius: var(--radius); font-size: 12px; font-weight: 600;
+  cursor: pointer; border: 1px solid var(--gray-200); background: white; color: var(--gray-800);
+  display: flex; align-items: center; gap: 6px; transition: background .15s;
+  white-space: nowrap;
+}
+.btn-sm:hover { background: var(--gray-100); }
+.btn-sm.primary { background: var(--green-dark); color: white; border-color: var(--green-dark); }
+.btn-sm.primary:hover { background: var(--green-mid); }
+.btn-sm.danger { color: var(--red); border-color: #e8b8a0; }
+.btn-sm.danger:hover { background: var(--red-light); }
+
+/* ── PROJECTS PANEL ── */
+.proj-panel {
+  background: white;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.proj-panel-head {
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+  padding: 10px 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.proj-panel-head h3 { font-size: 13px; font-weight: 700; color: var(--gray-800); flex: 1; }
+.proj-list { padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.proj-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.proj-item:hover { background: var(--green-light); border-color: var(--green-border); }
+.proj-item.active { background: var(--green-light); border-color: var(--green-dark); }
+.proj-item-info { flex: 1; min-width: 0; }
+.proj-item-wo { font-weight: 700; font-size: 13px; color: var(--green-dark); }
+.proj-item-sub { font-size: 11px; color: var(--gray-600); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.proj-item-date { font-size: 10px; color: var(--gray-400); white-space: nowrap; }
+.proj-empty { padding: 1.5rem; text-align: center; color: var(--gray-400); font-size: 13px; }
+
+/* ── API KEY ── */
+.api-banner {
+  background: var(--blue-light);
+  border: 1px solid #b8d0e8;
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.api-banner-text { flex: 1; min-width: 200px; }
+.api-banner-text strong { color: var(--blue); display: block; font-size: 13px; margin-bottom: 2px; }
+.api-banner-text small { font-size: 12px; color: var(--gray-600); }
+.api-free-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: #e8f5e9; border: 1px solid #a5d6a7; color: #2e7d32;
+  font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+  letter-spacing: .04em; margin-left: 6px;
+}
+.api-banner input {
+  flex: 1; min-width: 200px; font-family: monospace; font-size: 13px;
+  padding: 8px 12px; border: 1px solid #b8d0e8; border-radius: var(--radius);
+  background: white;
+}
+.api-banner input:focus { outline: 2px solid var(--blue); }
+
+/* ── CARD ── */
+.card {
+  background: white;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow);
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+.card-head {
+  padding: 11px 1.25rem;
+  border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--gray-50);
+}
+.step-badge {
+  background: var(--green-dark); color: white;
+  font-size: 11px; font-weight: 600;
+  padding: 2px 8px; border-radius: 20px; letter-spacing: .03em;
+}
+.card-head h2 { font-size: 13px; font-weight: 600; color: var(--gray-800); }
+.card-body { padding: 1.25rem; }
+
+/* ── FORM ── */
+.grid { display: grid; gap: 12px; }
+.g2 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.g3 { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.fg { display: flex; flex-direction: column; gap: 4px; }
+label { font-size: 11px; font-weight: 600; color: var(--gray-600); text-transform: uppercase; letter-spacing: .04em; }
+input[type=text], input[type=email], input[type=password], textarea, select {
+  padding: 8px 10px; border: 1px solid var(--gray-200); border-radius: var(--radius);
+  font-size: 13px; font-family: inherit; color: var(--gray-900); background: white;
+  transition: border-color .15s; width: 100%;
+}
+input:focus, textarea:focus, select:focus { outline: 2px solid var(--green-mid); border-color: var(--green-mid); }
+textarea { min-height: 70px; resize: vertical; }
+
+/* ── DROP ZONE ── */
+.drop-zone {
+  border: 2px dashed var(--green-border);
+  border-radius: var(--radius);
+  padding: 1.75rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  background: var(--green-light);
+  transition: background .15s;
+}
+.drop-zone:hover, .drop-zone.over { background: #d4e8d4; border-color: var(--green-mid); }
+.drop-zone p { color: var(--gray-600); font-size: 13px; }
+.drop-zone small { font-size: 11px; color: var(--gray-400); }
+#file-input { display: none; }
+.extract-btn {
+  width: 100%; margin-top: 10px; padding: 10px;
+  background: var(--green-dark); color: white; border: none;
+  border-radius: var(--radius); font-size: 13px; font-weight: 600;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background .15s;
+}
+.extract-btn:hover:not(:disabled) { background: var(--green-mid); }
+.extract-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── STATUS ── */
+.status {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 9px 13px; border-radius: var(--radius);
+  font-size: 13px; margin-top: 10px;
+}
+.s-idle { background: var(--gray-100); color: var(--gray-600); border: 1px solid var(--gray-200); }
+.s-load { background: var(--blue-light); color: var(--blue); border: 1px solid #b8d0e8; }
+.s-done { background: var(--green-light); color: var(--green-dark); border: 1px solid var(--green-border); }
+.s-err  { background: var(--red-light); color: var(--red); border: 1px solid #e8b8a0; }
+
+/* ── WORK ITEMS ── */
+.item-row {
+  display: flex; gap: 8px; align-items: flex-start;
+  padding: 8px 10px;
+  background: var(--gray-50); border: 1px solid var(--gray-200);
+  border-radius: var(--radius); margin-bottom: 6px;
+}
+.item-num { font-size: 11px; font-weight: 700; color: var(--gray-400); min-width: 18px; text-align: center; padding-top: 9px; }
+.item-fields { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.item-fields input { font-size: 13px; }
+.item-fields textarea { font-size: 12px; min-height: 48px; }
+.item-fields .item-label-row { display: flex; gap: 6px; align-items: center; }
+.item-fields .item-label-row input { flex: 1; }
+.item-fields .item-label-row select { width: 148px; flex-shrink: 0; font-size: 12px; }
+.btn-rm { background: none; border: none; cursor: pointer; color: var(--gray-400); font-size: 18px; padding: 0 2px; line-height: 1; flex-shrink: 0; transition: color .15s; padding-top: 6px; }
+.btn-rm:hover { color: var(--red); }
+.btn-add {
+  background: none; border: 1px dashed var(--gray-400); border-radius: var(--radius);
+  cursor: pointer; font-size: 12px; color: var(--gray-600); padding: 6px 14px;
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: border-color .15s, color .15s; margin-top: 4px;
+}
+.btn-add:hover { border-color: var(--green-mid); color: var(--green-mid); }
+
+/* ── POC PROFILES ── */
+.poc-profile-bar {
+  display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap;
+}
+.poc-profile-bar select { flex: 1; min-width: 160px; }
+.poc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.poc-chip {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--green-light); border: 1px solid var(--green-border);
+  border-radius: 20px; padding: 4px 10px 4px 12px;
+  font-size: 12px; font-weight: 600; color: var(--green-dark);
+  cursor: pointer; transition: background .15s;
+}
+.poc-chip:hover { background: #d4e8d4; }
+.poc-chip .chip-x { font-size: 14px; color: var(--green-mid); line-height: 1; padding: 0 0 0 2px; }
+
+/* ── GENERATE BUTTON ── */
+.generate-btn {
+  width: 100%; padding: 13px;
+  background: var(--green-dark); color: white; border: none;
+  border-radius: var(--radius-lg); font-size: 15px; font-weight: 700;
+  cursor: pointer; margin-top: .5rem;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background .15s;
+}
+.generate-btn:hover { background: var(--green-mid); }
+
+/* ── ACTION ROW ── */
+.action-row {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;
+}
+.action-row button { flex: 1; min-width: 120px; }
+
+/* ── OUTPUT TABLE ── */
+.output-section { margin-top: 1.5rem; }
+.output-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px; flex-wrap: wrap; gap: 10px;
+}
+.output-head h3 { font-size: 13px; font-weight: 700; color: var(--gray-800); text-transform: uppercase; letter-spacing: .05em; }
+.copy-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 16px; border-radius: var(--radius);
+  background: white; border: 1px solid var(--gray-200);
+  font-size: 13px; font-weight: 600; cursor: pointer; color: var(--gray-800);
+  transition: background .15s;
+}
+.copy-btn:hover { background: var(--gray-100); }
+.copy-btn.copied { background: var(--green-light); color: var(--green-dark); border-color: var(--green-border); }
+.tbl-wrap { background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); }
+table.fast-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fast-tbl td { border: 1px solid #ccc; padding: 8px 12px; vertical-align: top; }
+.fast-tbl .thr td { background: #3a6e3a; color: #fff; font-weight: 700; font-size: 13px; }
+.fast-tbl .lbl-cell { background: #f2f4ee; font-weight: 600; width: 185px; color: var(--gray-800); }
+.fast-tbl .upd-cell { background: #fefce8; font-weight: 600; width: 185px; color: var(--gray-800); }
+
+/* ── MODAL ── */
+.modal-bg {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.45); z-index: 500;
+  align-items: center; justify-content: center;
+}
+.modal-bg.open { display: flex; }
+.modal {
+  background: white; border-radius: var(--radius-lg);
+  padding: 1.5rem; width: 100%; max-width: 460px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.2); margin: 1rem;
+}
+.modal h3 { font-size: 15px; font-weight: 700; margin-bottom: 1rem; color: var(--gray-900); }
+.modal .fg { margin-bottom: 10px; }
+.modal-btns { display: flex; gap: 8px; margin-top: 1rem; justify-content: flex-end; }
+
+/* ── MISC ── */
+.spin {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid currentColor; border-top-color: transparent;
+  border-radius: 50%; animation: rot .7s linear infinite; flex-shrink: 0;
+}
+@keyframes rot { to { transform: rotate(360deg); } }
+hr { border: none; border-top: 1px solid var(--gray-200); margin: 1.5rem 0; }
+.tag-rts { display: inline-block; background: var(--green-light); border: 1px solid var(--green-border); color: var(--green-dark); border-radius: 20px; font-size: 10px; font-weight: 700; padding: 1px 8px; letter-spacing: .04em; }
+.tag-open { display: inline-block; background: var(--amber-light); border: 1px solid #d4b800; color: var(--amber); border-radius: 20px; font-size: 10px; font-weight: 700; padding: 1px 8px; letter-spacing: .04em; }
+@media (max-width: 600px) {
+  header h1 { font-size: 14px; }
+  .fast-tbl .lbl-cell { width: 120px; }
+  .item-fields .item-label-row { flex-direction: column; }
+  .item-fields .item-label-row select { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+  <h1>FAST Update Generator</h1>
+  <div class="hdr-right"><span>Gulfstream · RFS → Email table</span></div>
+</header>
+
+<div class="main">
+
+<!-- ENGINEER SELECTOR -->
+<div class="eng-bar">
+  <label>👤 Engineer</label>
+  <select id="eng-select" onchange="switchEngineer()">
+    <option value="">— Select or create —</option>
+  </select>
+  <button class="btn-sm primary" onclick="openNewEngModal()">+ New engineer</button>
+  <button class="btn-sm danger" onclick="deleteEngineer()" id="btn-del-eng" style="display:none">🗑 Delete</button>
+</div>
+
+<!-- PROJECTS PANEL -->
+<div class="proj-panel" id="proj-panel" style="display:none">
+  <div class="proj-panel-head">
+    <h3>📁 My projects (chantiers)</h3>
+    <button class="btn-sm primary" onclick="newProject()">+ New project</button>
+  </div>
+  <div class="proj-list" id="proj-list"></div>
+</div>
+
+<!-- API KEY -->
+<div class="api-banner">
+  <div style="font-size:20px">🔑</div>
+  <div class="api-banner-text">
+    <strong>Google Gemini API Key <span class="api-free-badge">✦ GRATUIT</span></strong>
+    <small>Clé gratuite sur <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--blue)">aistudio.google.com</a> — reste dans ton navigateur</small>
+  </div>
+  <input type="password" id="api-key" placeholder="AIza…" autocomplete="off" oninput="saveApiKey()" />
+</div>
+
+<!-- STEP 1 : PDF -->
+<div class="card">
+  <div class="card-head"><span class="step-badge">STEP 1</span><h2>Upload RFS PDF — optional, fills fields automatically</h2></div>
+  <div class="card-body">
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--green-mid);margin-bottom:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><polyline points="9 15 12 12 15 15"/></svg>
+      <p>Drag & drop or click to select the RFS PDF</p>
+      <small>Gulfstream RFS format · PDF only · or fill manually below</small>
+      <input type="file" id="file-input" accept="application/pdf" />
+    </div>
+    <button class="extract-btn" id="extract-btn" onclick="extractPDF()" disabled>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      Extract data from PDF
+    </button>
+    <div id="status" class="status s-idle">
+      <span id="status-txt">Select a PDF to extract, or fill the fields manually below</span>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 2 : Aircraft -->
+<div class="card">
+  <div class="card-head"><span class="step-badge">STEP 2</span><h2>Aircraft & order details</h2></div>
+  <div class="card-body">
+    <div class="grid g3" style="margin-bottom:12px">
+      <div class="fg"><label>Work Order #</label><input type="text" id="f_wo" placeholder="e.g. FA33036" oninput="autosave()" /></div>
+      <div class="fg"><label>Model</label><input type="text" id="f_model" placeholder="e.g. G700" oninput="autosave()" /></div>
+      <div class="fg"><label>Serial Number</label><input type="text" id="f_sn" placeholder="e.g. 87033" oninput="autosave()" /></div>
+      <div class="fg"><label>A/C Registry</label><input type="text" id="f_reg" placeholder="e.g. T7-MINT" oninput="autosave()" /></div>
+      <div class="fg"><label>A/C Location (ICAO)</label><input type="text" id="f_loc" placeholder="e.g. LFMN" oninput="autosave()" /></div>
+      <div class="fg"><label>RTS / Assist</label>
+        <select id="f_rts_assist" onchange="autosave()"><option value="RTS">RTS</option><option value="Assist">Assist</option></select>
+      </div>
+    </div>
+    <div class="grid g2">
+      <div class="fg"><label>FAR / Certification</label><input type="text" id="f_far" placeholder="e.g. EASA" oninput="autosave()" /></div>
+      <div class="fg"><label>Country of Registry</label><input type="text" id="f_country" placeholder="e.g. San Marino" oninput="autosave()" /></div>
+      <div class="fg"><label>FBO / Support Location</label><input type="text" id="f_fbo" placeholder="e.g. FBO Jetex" oninput="autosave()" /></div>
+      <div class="fg"><label>PO Number</label><input type="text" id="f_po" placeholder="e.g. 17-26-REX" oninput="autosave()" /></div>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 3 : Work items -->
+<div class="card">
+  <div class="card-head"><span class="step-badge">STEP 3</span><h2>Work items & status</h2></div>
+  <div class="card-body">
+    <div id="items-container"></div>
+    <button class="btn-add" onclick="addItem()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add work item
+    </button>
+  </div>
+</div>
+
+<!-- STEP 4 : Closing -->
+<div class="card">
+  <div class="card-head"><span class="step-badge">STEP 4</span><h2>Closing details</h2></div>
+  <div class="card-body">
+    <div class="grid g2" style="margin-bottom:12px">
+      <div class="fg"><label>Estimated RTS</label><input type="text" id="f_erts" placeholder="e.g. 20 June 26" oninput="autosave()" /></div>
+      <div class="fg"><label>Next Flight</label><input type="text" id="f_nxt" placeholder="e.g. ASAP" oninput="autosave()" /></div>
+    </div>
+    <div class="fg"><label>Additional Info / Constraints</label><textarea id="f_info" placeholder="e.g. WAITING ON SHIPPING DETAILS..." oninput="autosave()"></textarea></div>
+  </div>
+</div>
+
+<!-- STEP 5 : POC -->
+<div class="card">
+  <div class="card-head"><span class="step-badge">STEP 5</span><h2>Onsite FAST POC</h2></div>
+  <div class="card-body">
+    <!-- Saved profiles -->
+    <div id="poc-chips" class="poc-chips" style="display:none"></div>
+    <div class="poc-profile-bar">
+      <select id="poc-profile-select" style="flex:1;min-width:160px">
+        <option value="">— Load saved POC profile —</option>
+      </select>
+      <button class="btn-sm" onclick="loadPocProfile()">Load</button>
+      <button class="btn-sm primary" onclick="savePocProfile()">💾 Save as profile</button>
+    </div>
+    <div class="grid g2">
+      <div class="fg"><label>Name</label><input type="text" id="f_poc_name" oninput="autosave()" /></div>
+      <div class="fg"><label>Cell</label><input type="text" id="f_poc_tel" oninput="autosave()" /></div>
+      <div class="fg"><label>Email</label><input type="email" id="f_poc_email" oninput="autosave()" /></div>
+      <div class="fg"><label>Team</label><input type="text" id="f_poc_team" oninput="autosave()" /></div>
+    </div>
+  </div>
+</div>
+
+<!-- Customer -->
+<div class="card">
+  <div class="card-head"><h2>Customer info</h2></div>
+  <div class="card-body">
+    <div class="grid g2">
+      <div class="fg"><label>Name</label><input type="text" id="f_cust_name" oninput="autosave()" /></div>
+      <div class="fg"><label>Phone</label><input type="text" id="f_cust_tel" oninput="autosave()" /></div>
+      <div class="fg"><label>Email</label><input type="email" id="f_cust_email" oninput="autosave()" /></div>
+    </div>
+  </div>
+</div>
+
+<div class="action-row">
+  <button class="generate-btn" onclick="generate()" style="flex:2">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+    Generate FAST Update table
+  </button>
+  <button class="btn-sm danger" onclick="markRTS()" style="flex:1;justify-content:center;font-size:13px;padding:13px">
+    ✅ Mark A/C RTS &amp; close
+  </button>
+</div>
+
+<!-- OUTPUT -->
+<div id="output-section" class="output-section" style="display:none">
+  <hr />
+  <div class="output-head">
+    <h3>Generated table — ready to paste into email</h3>
+    <button class="copy-btn" id="copy-btn" onclick="copyTable()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      Copy table
+    </button>
+  </div>
+  <div class="tbl-wrap"><div id="tbl-out"></div></div>
+</div>
+
+</div><!-- /main -->
+
+<!-- MODAL: New engineer -->
+<div class="modal-bg" id="modal-eng">
+  <div class="modal">
+    <h3>New engineer</h3>
+    <div class="fg"><label>Full name</label><input type="text" id="m_eng_name" placeholder="e.g. Jeremy Couchet" /></div>
+    <div class="modal-btns">
+      <button class="btn-sm" onclick="closeModal('modal-eng')">Cancel</button>
+      <button class="btn-sm primary" onclick="createEngineer()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Save POC profile -->
+<div class="modal-bg" id="modal-poc">
+  <div class="modal">
+    <h3>Save POC profile</h3>
+    <div class="fg"><label>Profile name</label><input type="text" id="m_poc_name" placeholder="e.g. Jeremy C. – FAST EMEA" /></div>
+    <div class="modal-btns">
+      <button class="btn-sm" onclick="closeModal('modal-poc')">Cancel</button>
+      <button class="btn-sm primary" onclick="confirmSavePoc()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Confirm RTS close -->
+<div class="modal-bg" id="modal-rts">
+  <div class="modal">
+    <h3>Mark A/C as RTS and close project?</h3>
+    <p style="font-size:13px;color:var(--gray-600);margin-bottom:1rem">The project will be marked RTS. You can still view it but it will no longer appear at the top of the list.</p>
+    <div class="modal-btns">
+      <button class="btn-sm" onclick="closeModal('modal-rts')">Cancel</button>
+      <button class="btn-sm primary" onclick="confirmRTS()">Confirm RTS</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════
+let currentEngineer = null; // engineer id
+let currentProject  = null; // project id (WO key)
+let pdfB64 = null;
+
+// ════════════════════════════════════════════
+//  STORAGE HELPERS
+// ════════════════════════════════════════════
+const LS = {
+  get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set: (k, v) => localStorage.setItem(k, JSON.stringify(v)),
+  del: k => localStorage.removeItem(k),
+};
+
+function engKey(eid)     { return `fast_eng_${eid}`; }
+function projKey(eid,pid){ return `fast_proj_${eid}_${pid}`; }
+function pocKey(eid)     { return `fast_poc_${eid}`; }
+const ENGINEERS_KEY = 'fast_engineers';
+const API_KEY_KEY   = 'fast_apikey';
+
+function getEngineers() { return LS.get(ENGINEERS_KEY) || []; }
+function saveEngineers(arr) { LS.set(ENGINEERS_KEY, arr); }
+
+function getProjects(eid) {
+  const eng = (getEngineers()).find(e => e.id === eid);
+  return eng ? (eng.projects || []) : [];
+}
+
+function saveProject(eid, proj) {
+  const engineers = getEngineers();
+  const e = engineers.find(e => e.id === eid);
+  if (!e) return;
+  if (!e.projects) e.projects = [];
+  const idx = e.projects.findIndex(p => p.id === proj.id);
+  if (idx >= 0) e.projects[idx] = proj;
+  else e.projects.push(proj);
+  saveEngineers(engineers);
+}
+
+function deleteProject(eid, pid) {
+  const engineers = getEngineers();
+  const e = engineers.find(e => e.id === eid);
+  if (!e || !e.projects) return;
+  e.projects = e.projects.filter(p => p.id !== pid);
+  saveEngineers(engineers);
+}
+
+function getPocProfiles(eid) {
+  return LS.get(pocKey(eid)) || [];
+}
+function savePocProfiles(eid, arr) {
+  LS.set(pocKey(eid), arr);
+}
+
+// ════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  // restore API key
+  const savedKey = LS.get(API_KEY_KEY);
+  if (savedKey) document.getElementById('api-key').value = savedKey;
+
+  renderEngineerSelect();
+
+  // restore last selected engineer
+  const lastEng = LS.get('fast_last_eng');
+  if (lastEng) {
+    document.getElementById('eng-select').value = lastEng;
+    if (document.getElementById('eng-select').value === lastEng) {
+      currentEngineer = lastEng;
+      showEngineerUI();
+    }
+  }
+});
+
+function saveApiKey() {
+  LS.set(API_KEY_KEY, document.getElementById('api-key').value.trim());
+}
+
+// ════════════════════════════════════════════
+//  ENGINEER MANAGEMENT
+// ════════════════════════════════════════════
+function renderEngineerSelect() {
+  const sel = document.getElementById('eng-select');
+  const engineers = getEngineers();
+  sel.innerHTML = '<option value="">— Select or create —</option>';
+  engineers.forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e.id;
+    opt.textContent = e.name;
+    sel.appendChild(opt);
+  });
+  if (currentEngineer) sel.value = currentEngineer;
+}
+
+function switchEngineer() {
+  const sel = document.getElementById('eng-select');
+  currentEngineer = sel.value || null;
+  currentProject = null;
+  LS.set('fast_last_eng', currentEngineer);
+  if (currentEngineer) {
+    showEngineerUI();
+  } else {
+    document.getElementById('proj-panel').style.display = 'none';
+    document.getElementById('btn-del-eng').style.display = 'none';
+    clearForm();
+  }
+}
+
+function showEngineerUI() {
+  document.getElementById('proj-panel').style.display = '';
+  document.getElementById('btn-del-eng').style.display = '';
+  renderProjectList();
+  renderPocProfileSelect();
+}
+
+function openNewEngModal() {
+  document.getElementById('m_eng_name').value = '';
+  openModal('modal-eng');
+  setTimeout(() => document.getElementById('m_eng_name').focus(), 100);
+}
+
+function createEngineer() {
+  const name = document.getElementById('m_eng_name').value.trim();
+  if (!name) return;
+  const id = 'eng_' + Date.now();
+  const engineers = getEngineers();
+  engineers.push({ id, name, projects: [] });
+  saveEngineers(engineers);
+  renderEngineerSelect();
+  document.getElementById('eng-select').value = id;
+  currentEngineer = id;
+  LS.set('fast_last_eng', id);
+  showEngineerUI();
+  closeModal('modal-eng');
+}
+
+function deleteEngineer() {
+  if (!currentEngineer) return;
+  const engineers = getEngineers();
+  const eng = engineers.find(e => e.id === currentEngineer);
+  if (!eng) return;
+  if (!confirm(`Delete engineer "${eng.name}" and ALL their projects? This cannot be undone.`)) return;
+  const filtered = engineers.filter(e => e.id !== currentEngineer);
+  saveEngineers(filtered);
+  currentEngineer = null;
+  currentProject = null;
+  renderEngineerSelect();
+  document.getElementById('proj-panel').style.display = 'none';
+  document.getElementById('btn-del-eng').style.display = 'none';
+  clearForm();
+}
+
+// ════════════════════════════════════════════
+//  PROJECT MANAGEMENT
+// ════════════════════════════════════════════
+function renderProjectList() {
+  if (!currentEngineer) return;
+  const projects = getProjects(currentEngineer);
+  const list = document.getElementById('proj-list');
+
+  if (projects.length === 0) {
+    list.innerHTML = '<div class="proj-empty">No projects yet — create one or upload a PDF to start.</div>';
+    return;
+  }
+
+  // Sort: open first, then by last updated
+  const sorted = [...projects].sort((a, b) => {
+    if (a.rts && !b.rts) return 1;
+    if (!a.rts && b.rts) return -1;
+    return (b.updatedAt || 0) - (a.updatedAt || 0);
+  });
+
+  list.innerHTML = '';
+  sorted.forEach(proj => {
+    const div = document.createElement('div');
+    div.className = 'proj-item' + (proj.id === currentProject ? ' active' : '');
+    const d = new Date(proj.updatedAt || proj.createdAt);
+    const dateStr = d.toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'2-digit' });
+    div.innerHTML = `
+      <div class="proj-item-info">
+        <div class="proj-item-wo">${proj.wo || '(no WO)'} ${proj.rts ? '<span class="tag-rts">RTS ✓</span>' : '<span class="tag-open">OPEN</span>'}</div>
+        <div class="proj-item-sub">${[proj.model, proj.sn, proj.reg, proj.loc].filter(Boolean).join(' · ')}</div>
+      </div>
+      <div class="proj-item-date">${dateStr}</div>
+      <button class="btn-sm danger" onclick="event.stopPropagation();deleteProj('${proj.id}')" title="Delete project">🗑</button>
+    `;
+    div.onclick = () => loadProject(proj.id);
+    list.appendChild(div);
+  });
+}
+
+function newProject() {
+  if (!currentEngineer) { alert('Select an engineer first.'); return; }
+  currentProject = null;
+  clearForm();
+  renderProjectList();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function loadProject(pid) {
+  const projects = getProjects(currentEngineer);
+  const proj = projects.find(p => p.id === pid);
+  if (!proj) return;
+  currentProject = pid;
+  fillFormFromProject(proj);
+  renderProjectList();
+  window.scrollTo({ top: document.querySelector('.card').offsetTop - 70, behavior: 'smooth' });
+}
+
+function deleteProj(pid) {
+  const projects = getProjects(currentEngineer);
+  const proj = projects.find(p => p.id === pid);
+  if (!proj) return;
+  if (!confirm(`Delete project "${proj.wo || '(no WO)'}"?`)) return;
+  deleteProject(currentEngineer, pid);
+  if (currentProject === pid) { currentProject = null; clearForm(); }
+  renderProjectList();
+}
+
+function gatherFormData() {
+  const g = id => document.getElementById(id)?.value || '';
+  return {
+    wo: g('f_wo'), model: g('f_model'), sn: g('f_sn'),
+    reg: g('f_reg'), loc: g('f_loc'), rts_assist: g('f_rts_assist'),
+    far: g('f_far'), country: g('f_country'), fbo: g('f_fbo'), po: g('f_po'),
+    erts: g('f_erts'), nxt: g('f_nxt'), info: g('f_info'),
+    poc_name: g('f_poc_name'), poc_tel: g('f_poc_tel'), poc_email: g('f_poc_email'), poc_team: g('f_poc_team'),
+    cust_name: g('f_cust_name'), cust_tel: g('f_cust_tel'), cust_email: g('f_cust_email'),
+    items: getItems(),
+  };
+}
+
+function autosave() {
+  if (!currentEngineer) return;
+  const data = gatherFormData();
+  if (!data.wo && !data.model && !data.sn) return; // nothing to save yet
+
+  if (!currentProject) {
+    // create new project on first meaningful input
+    currentProject = 'proj_' + Date.now();
+  }
+  const projects = getProjects(currentEngineer);
+  const existing = projects.find(p => p.id === currentProject);
+  const proj = {
+    ...(existing || {}),
+    id: currentProject,
+    createdAt: existing?.createdAt || Date.now(),
+    updatedAt: Date.now(),
+    rts: existing?.rts || false,
+    ...data,
+  };
+  saveProject(currentEngineer, proj);
+  renderProjectList();
+}
+
+function fillFormFromProject(proj) {
+  const s = (id, v) => { const e = document.getElementById(id); if (e && v != null) e.value = v; };
+  s('f_wo', proj.wo); s('f_model', proj.model); s('f_sn', proj.sn);
+  s('f_reg', proj.reg); s('f_loc', proj.loc); s('f_rts_assist', proj.rts_assist || 'RTS');
+  s('f_far', proj.far); s('f_country', proj.country); s('f_fbo', proj.fbo); s('f_po', proj.po);
+  s('f_erts', proj.erts); s('f_nxt', proj.nxt || ''); s('f_info', proj.info || '');
+  s('f_poc_name', proj.poc_name || ''); s('f_poc_tel', proj.poc_tel || '');
+  s('f_poc_email', proj.poc_email || ''); s('f_poc_team', proj.poc_team || '');
+  s('f_cust_name', proj.cust_name || ''); s('f_cust_tel', proj.cust_tel || '');
+  s('f_cust_email', proj.cust_email || '');
+  // items
+  document.getElementById('items-container').innerHTML = '';
+  itemCount = 0;
+  (proj.items || []).forEach(it => addItem(it.label, it.status, it.detail));
+  document.getElementById('output-section').style.display = 'none';
+}
+
+function clearForm() {
+  ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po',
+   'f_erts','f_nxt','f_info','f_poc_name','f_poc_tel','f_poc_email','f_poc_team',
+   'f_cust_name','f_cust_tel','f_cust_email'].forEach(id => {
+    const e = document.getElementById(id); if (e) e.value = '';
+  });
+  document.getElementById('f_rts_assist').value = 'RTS';
+  document.getElementById('items-container').innerHTML = '';
+  itemCount = 0;
+  document.getElementById('output-section').style.display = 'none';
+}
+
+// ════════════════════════════════════════════
+//  MARK RTS
+// ════════════════════════════════════════════
+function markRTS() { openModal('modal-rts'); }
+
+function confirmRTS() {
+  if (!currentProject || !currentEngineer) { closeModal('modal-rts'); return; }
+  autosave();
+  const projects = getProjects(currentEngineer);
+  const proj = projects.find(p => p.id === currentProject);
+  if (proj) {
+    proj.rts = true;
+    proj.updatedAt = Date.now();
+    saveProject(currentEngineer, proj);
+  }
+  renderProjectList();
+  closeModal('modal-rts');
+  setStatus('done', '✅ Project marked RTS and saved.');
+}
+
+// ════════════════════════════════════════════
+//  POC PROFILES
+// ════════════════════════════════════════════
+function renderPocProfileSelect() {
+  if (!currentEngineer) return;
+  const sel = document.getElementById('poc-profile-select');
+  const profiles = getPocProfiles(currentEngineer);
+  sel.innerHTML = '<option value="">— Load saved POC profile —</option>';
+  profiles.forEach((p, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = p.profileName;
+    sel.appendChild(opt);
+  });
+}
+
+function loadPocProfile() {
+  const sel = document.getElementById('poc-profile-select');
+  if (sel.value === '') return;
+  const profiles = getPocProfiles(currentEngineer);
+  const p = profiles[parseInt(sel.value)];
+  if (!p) return;
+  const s = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
+  s('f_poc_name', p.poc_name); s('f_poc_tel', p.poc_tel);
+  s('f_poc_email', p.poc_email); s('f_poc_team', p.poc_team);
+  autosave();
+}
+
+function savePocProfile() {
+  if (!currentEngineer) { alert('Select an engineer first.'); return; }
+  const name = document.getElementById('f_poc_name').value.trim();
+  document.getElementById('m_poc_name').value = name ? `${name} – FAST` : '';
+  openModal('modal-poc');
+  setTimeout(() => document.getElementById('m_poc_name').focus(), 100);
+}
+
+function confirmSavePoc() {
+  const profileName = document.getElementById('m_poc_name').value.trim();
+  if (!profileName) return;
+  const g = id => document.getElementById(id)?.value || '';
+  const profiles = getPocProfiles(currentEngineer);
+  // Check if name already exists → update
+  const idx = profiles.findIndex(p => p.profileName === profileName);
+  const entry = {
+    profileName,
+    poc_name: g('f_poc_name'), poc_tel: g('f_poc_tel'),
+    poc_email: g('f_poc_email'), poc_team: g('f_poc_team'),
+  };
+  if (idx >= 0) profiles[idx] = entry;
+  else profiles.push(entry);
+  savePocProfiles(currentEngineer, profiles);
+  renderPocProfileSelect();
+  closeModal('modal-poc');
+  setStatus('done', `✓ POC profile "${profileName}" saved.`);
+}
+
+// ════════════════════════════════════════════
+//  PDF EXTRACTION (Gemini)
+// ════════════════════════════════════════════
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const extractBtn = document.getElementById('extract-btn');
+
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type === 'application/pdf') loadFile(f);
+  else setStatus('err', 'Only PDF files are accepted.');
+});
+
+function loadFile(f) {
+  setStatus('idle', `<b>${f.name}</b> ready — click "Extract data from PDF"`);
+  dropZone.querySelector('p').textContent = f.name;
+  const reader = new FileReader();
+  reader.onload = () => { pdfB64 = reader.result.split(',')[1]; extractBtn.disabled = false; };
+  reader.readAsDataURL(f);
+}
+
+function setStatus(type, msg) {
+  const el = document.getElementById('status');
+  el.className = 'status s-' + type;
+  document.getElementById('status-txt').innerHTML = msg;
+}
+
+async function extractPDF() {
+  const apiKey = document.getElementById('api-key').value.trim();
+  if (!apiKey) { setStatus('err', 'Please enter your Google Gemini API key above.'); return; }
+  if (!pdfB64)  { setStatus('err', 'No PDF loaded.'); return; }
+
+  extractBtn.disabled = true;
+  setStatus('load', '<span class="spin"></span> Sending PDF to Gemini — extracting RFS fields…');
+
+  const prompt = `You are an aviation document parser. Extract all fields from this Gulfstream RFS PDF.
+Reply ONLY with a valid JSON object — no markdown, no backticks, no explanation.
+
+{
+  "work_order": "WO number",
+  "model": "aircraft model e.g. G700",
+  "serial_number": "serial number",
+  "registration": "aircraft registration",
+  "location": "ICAO airport code from Airport Dispatched To",
+  "rts_assist": "RTS or Assist from RFS Type field",
+  "far_certification": "certification e.g. FAR 91.409 (f)(3) or EASA",
+  "country": "country of registry",
+  "fbo": "FBO / support location",
+  "po_number": "PO number or empty string",
+  "customer_name": "contact name in UPPERCASE",
+  "customer_phone": "contact phone",
+  "customer_email": "contact email",
+  "estimated_rts": "estimated RTS date or empty string",
+  "next_flight": "next flight or UNKWN",
+  "constraints": "any notes/constraints or empty string",
+  "poc_name": "FAST POC name or empty",
+  "poc_phone": "FAST POC phone or empty",
+  "poc_email": "FAST POC email or empty",
+  "poc_team": "FAST team or empty",
+  "work_items": [{"label": "ITEM DESCRIPTION IN UPPERCASE", "status": "pending", "detail": ""}]
+}
+
+Rules:
+- rts_assist: exactly "RTS" or "Assist"
+- work_items: extract every item from WO Items; default status "pending"; detail is empty
+- Return ONLY the JSON`;
+
+  try {
+    const res = await fetch(
+  	`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [
+            { inline_data: { mime_type: 'application/pdf', data: pdfB64 } },
+            { text: prompt }
+          ]}],
+          generationConfig: { temperature: 0, maxOutputTokens: 1500 }
+        })
+      }
+    );
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'API error ' + res.status);
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (!raw) throw new Error('Empty response from Gemini.');
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    fillFormFromExtract(parsed);
+    setStatus('done', `✓ ${(parsed.work_items || []).length} work item(s) extracted — review & adjust statuses.`);
+  } catch (e) {
+    setStatus('err', 'Error: ' + e.message);
+  } finally {
+    extractBtn.disabled = false;
+  }
+}
+
+function fillFormFromExtract(d) {
+  const s = (id, v) => { const e = document.getElementById(id); if (e && v != null) e.value = v; };
+  s('f_wo', d.work_order); s('f_model', d.model); s('f_sn', d.serial_number);
+  s('f_reg', d.registration); s('f_loc', d.location); s('f_far', d.far_certification);
+  s('f_country', d.country); s('f_fbo', d.fbo); s('f_po', d.po_number || '');
+  s('f_erts', d.estimated_rts || ''); s('f_nxt', d.next_flight || 'UNKWN');
+  s('f_info', d.constraints || ''); s('f_poc_name', d.poc_name || '');
+  s('f_poc_tel', d.poc_phone || ''); s('f_poc_email', d.poc_email || '');
+  s('f_poc_team', d.poc_team || ''); s('f_cust_name', d.customer_name || '');
+  s('f_cust_tel', d.customer_phone || ''); s('f_cust_email', d.customer_email || '');
+  if (d.rts_assist) document.getElementById('f_rts_assist').value =
+    d.rts_assist.toLowerCase().includes('assist') ? 'Assist' : 'RTS';
+  document.getElementById('items-container').innerHTML = '';
+  itemCount = 0;
+  (d.work_items || []).forEach(it => addItem(it.label, it.status || 'pending', it.detail || ''));
+  autosave();
+}
+
+// ════════════════════════════════════════════
+//  WORK ITEMS
+// ════════════════════════════════════════════
+let itemCount = 0;
+
+function addItem(label = '', status = 'pending', detail = '') {
+  itemCount++;
+  const c = document.getElementById('items-container');
+  const d = document.createElement('div');
+  d.className = 'item-row';
+  d.id = 'item-' + itemCount;
+  d.innerHTML = `
+    <span class="item-num">${itemCount}</span>
+    <div class="item-fields">
+      <div class="item-label-row">
+        <input type="text" value="${label.replace(/"/g,'&quot;')}" placeholder="Work item description" oninput="autosave()" />
+        <select onchange="autosave()">
+          <option value="done"    ${status==='done'    ?'selected':''}>✅ Carried out</option>
+          <option value="pending" ${status==='pending' ?'selected':''}>⏳ In progress</option>
+          <option value="waiting" ${status==='waiting' ?'selected':''}>⚠️ Waiting</option>
+          <option value="na"      ${status==='na'      ?'selected':''}>— N/A</option>
+        </select>
+      </div>
+      <textarea placeholder="Details / update (optional)…" oninput="autosave()">${detail}</textarea>
+    </div>
+    <button class="btn-rm" onclick="this.parentElement.remove();autosave()" title="Remove">×</button>`;
+  c.appendChild(d);
+}
+
+function getItems() {
+  return Array.from(document.querySelectorAll('.item-row')).map((r, i) => ({
+    num: i + 1,
+    label: r.querySelector('input').value,
+    status: r.querySelector('select').value,
+    detail: r.querySelector('textarea').value,
+  }));
+}
+
+// ════════════════════════════════════════════
+//  GENERATE TABLE
+// ════════════════════════════════════════════
+const S_LABEL = { done:'CARRIED OUT', pending:'IN PROGRESS', waiting:'WAITING', na:'N/A' };
+const S_COLOR = { done:'#2d6a2d', pending:'#7a5a00', waiting:'#8a2e00', na:'#555' };
+
+function generate() {
+  autosave();
+  const g = id => document.getElementById(id)?.value || '—';
+  const wo      = g('f_wo'), model = g('f_model'), sn = g('f_sn'), reg = g('f_reg');
+  const loc     = g('f_loc'), rtsA = g('f_rts_assist'), far = g('f_far');
+  const country = g('f_country'), fbo = g('f_fbo'), po = g('f_po');
+  const erts    = g('f_erts'), nxt = g('f_nxt'), info = g('f_info');
+  const pName   = g('f_poc_name'), pTel = g('f_poc_tel'), pEmail = g('f_poc_email'), pTeam = g('f_poc_team');
+  const cName   = g('f_cust_name'), cTel = g('f_cust_tel'), cEmail = g('f_cust_email');
+  const items   = getItems();
+
+  // Condition rows
+  const condRows = items.map((it, i) => {
+    const lbl = i === 0 ? '<b>Condition</b>' : '';
+    const bg  = i > 0 ? 'style="background:#f9fafb"' : '';
+    return `<tr><td class="lbl-cell" ${bg}>${lbl}</td><td>${it.num}-${it.label.toUpperCase()}</td></tr>`;
+  }).join('');
+
+  // Update rows — label + detail on same row
+  const updRows = items.map((it, i) => {
+    const lbl    = i === 0 ? '<b>Update</b>' : '';
+    const bgCell = i === 0 ? 'upd-cell' : 'lbl-cell';
+    const bgStyle = i > 0 ? 'style="background:#fefce8"' : '';
+    const statusSpan = `<span style="color:${S_COLOR[it.status]||'#555'};font-weight:700">${S_LABEL[it.status]||it.status}</span>`;
+    const detailPart = it.detail ? `<br><span style="color:#444;font-size:12px">${it.detail}</span>` : '';
+    return `<tr><td class="${bgCell}" ${bgStyle}>${lbl}</td><td>${it.label.toUpperCase()} — ${statusSpan}${detailPart}</td></tr>`;
+  }).join('');
+
+  document.getElementById('tbl-out').innerHTML = `
+  <table class="fast-tbl" id="gen-tbl">
+    <tr class="thr"><td colspan="2"><b>WORK ORDER #: ${wo}</b></td></tr>
+    ${condRows}
+    ${updRows}
+    <tr><td class="lbl-cell"><b>Additional Info (Constraints)</b></td><td>${info ? info.toUpperCase() : '—'}</td></tr>
+    <tr><td class="lbl-cell"><b>Estimated RTS</b></td><td>${erts}</td></tr>
+    <tr><td class="lbl-cell"><b>Next Flight</b></td><td>${nxt}</td></tr>
+    <tr><td class="lbl-cell"><b>FAR / Certification</b></td><td>${far}</td></tr>
+    <tr><td class="lbl-cell"><b>RTS / Assist</b></td><td>${rtsA}</td></tr>
+    <tr><td class="lbl-cell"><b>Model and S/N</b></td><td>${model} / ${sn}</td></tr>
+    <tr><td class="lbl-cell"><b>A/C Registry</b></td><td>${reg}</td></tr>
+    <tr><td class="lbl-cell"><b>Country of Registry</b></td><td>${country}</td></tr>
+    <tr><td class="lbl-cell"><b>A/C Location</b></td><td>${loc}</td></tr>
+    <tr><td class="lbl-cell"><b>FBO / Support Location</b></td><td>${fbo}</td></tr>
+    <tr><td class="lbl-cell"><b>PO Number</b></td><td>${po}</td></tr>
+    <tr class="thr"><td colspan="2"><b>Onsite Support FAST POC</b></td></tr>
+    <tr><td class="lbl-cell"><b>Name</b></td><td>${pName}</td></tr>
+    <tr><td class="lbl-cell"><b>Cell</b></td><td>${pTel}</td></tr>
+    <tr><td class="lbl-cell"><b>Email</b></td><td>${pEmail}</td></tr>
+    <tr><td class="lbl-cell"><b>Team</b></td><td>${pTeam}</td></tr>
+    <tr class="thr"><td colspan="2"><b>Customer Info</b></td></tr>
+    <tr><td class="lbl-cell"><b>Name</b></td><td>${cName}</td></tr>
+    <tr><td class="lbl-cell"><b>Phone</b></td><td>${cTel}</td></tr>
+    <tr><td class="lbl-cell"><b>Email</b></td><td>${cEmail}</td></tr>
+  </table>`;
+
+  document.getElementById('output-section').style.display = 'block';
+  document.getElementById('output-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+function copyTable() {
+  const tbl = document.getElementById('gen-tbl');
+  if (!tbl) return;
+  const range = document.createRange();
+  range.selectNode(tbl);
+  const sel = window.getSelection();
+  sel.removeAllRanges(); sel.addRange(range);
+  document.execCommand('copy');
+  sel.removeAllRanges();
+  const btn = document.getElementById('copy-btn');
+  btn.classList.add('copied');
+  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
+  setTimeout(() => {
+    btn.classList.remove('copied');
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy table`;
+  }, 2500);
+}
+
+// ════════════════════════════════════════════
+//  MODAL HELPERS
+// ════════════════════════════════════════════
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-bg').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+</script>
+</body>
+</html>
