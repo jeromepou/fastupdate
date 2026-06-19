@@ -1143,12 +1143,10 @@ function renderUpdateBlock(upd) {
 
 G.onUpdChk = function(chk) {
   const block = chk.closest('.upd-item-block');
-  const sel = block.querySelector('.upd-status-sel');
   const ta = block.querySelector('.upd-detail');
-  if (chk.checked) {
-    if (!sel.value) sel.value = 'pending';
-  } else {
-    sel.value = '';
+  // Décocher manuellement → efface le texte mais garde le statut intact
+  // Cocher manuellement → ne touche pas au statut (peut rester "no status")
+  if (!chk.checked) {
     ta.value = '';
   }
   G.autosave();
@@ -1157,11 +1155,13 @@ G.onUpdChk = function(chk) {
 G.onUpdStatusChange = function(sel) {
   const block = sel.closest('.upd-item-block');
   const chk = block.querySelector('input[type=checkbox]');
-  if (sel.value && sel.value !== '') {
-    chk.checked = true;
-  } else {
+  // Sélectionner un statut → coche la case
+  // Repasser à "no status" → décoche et efface
+  if (sel.value === '') {
     chk.checked = false;
     block.querySelector('.upd-detail').value = '';
+  } else {
+    chk.checked = true;
   }
   G.autosave();
 };
