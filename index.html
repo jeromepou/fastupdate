@@ -435,8 +435,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">📬 To (recipients)</div>
     <div id="recipients-tags" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px"></div>
     <div style="display:flex;gap:6px">
-      <input type="email" id="recipient-input" placeholder="Add email address…" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r)"
-        onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();addRecipient();}"/>
+      <input type="email" id="recipient-input" autocomplete="off" placeholder="Add email address…" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r)" onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();addRecipient();}"/>
       <button class="btn" onclick="addRecipient()" style="font-size:12px;padding:5px 10px">+ Add</button>
     </div>
   </div>
@@ -469,8 +468,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px">📬 Default email recipients (shared by all engineers)</div>
       <div id="default-recipients-tags" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px"></div>
       <div style="display:flex;gap:6px">
-        <input type="email" id="default-recipient-input" placeholder="Add email address…" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r)"
-          onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();addDefaultRecipient();}"/>
+        <input type="email" id="default-recipient-input" autocomplete="off" placeholder="Add email address…" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r)" onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();addDefaultRecipient();}"/>
         <button class="btn" onclick="addDefaultRecipient()" style="font-size:12px;padding:5px 10px">+ Add</button>
       </div>
     </div>
@@ -1559,14 +1557,16 @@ G.generate = async function() {
         const it=items.find(x=>x.num===iu.num);
         const statusLabel = SL[iu.status];
         const statusColor = SC[iu.status]||'#555';
-        const statusHtml = statusLabel
-          ? ` — <span style="color:${statusColor};font-weight:700">${statusLabel}</span>`
-          : '';
+        const statusHtml = statusLabel ? ` — <span style="color:${statusColor};font-weight:700">${statusLabel}</span>` : '';
         content+=`${it?`${iu.num}-${it.label.toUpperCase()}`:`Item ${iu.num}`}${statusHtml}<br>`;
         if(iu.detail) content+=`<span style="color:#444;font-size:12px">${iu.detail}</span><br>`;
       });
       if(upd.freeText) content+=`<span style="color:#444">${upd.freeText}</span><br>`;
-      updRows+=`<tr><td class="upd-lbl" style="${di>0?'background:#fffff8':''}">${lbl}</td><td colspan="3">${content}</td></tr>`;
+      
+      // CSS qui supprime les traits en dessous de Update, mais les garde côté date
+      const leftStyle = `background:${di>0?'#fffff8':'#fefce8'}; border-top:${di===0?'1px solid #999':'none'}; border-bottom:${di===updates.length-1?'1px solid #999':'none'};`;
+      
+      updRows+=`<tr><td class="upd-lbl" style="${leftStyle}">${lbl}</td><td colspan="3">${content}</td></tr>`;
     });
   }
 
@@ -1579,13 +1579,13 @@ G.generate = async function() {
       <td style="width:20%;border:1px solid #999;border-top:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">PN ON</td>
       <td style="width:20%;border:1px solid #999;border-top:none;border-right:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">SN ON</td>
     </tr>
-    ${hasParts?parts.filter(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on).map(p=>`
+    ${hasParts?parts.filter(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on).map((p, idx, arr)=>`
       <tr>
-        <td style="border:1px solid #999;border-bottom:none;border-left:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.nom}</td>
-        <td style="border:1px solid #999;border-bottom:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.pn_off}</td>
-        <td style="border:1px solid #999;border-bottom:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.sn_off}</td>
-        <td style="border:1px solid #999;border-bottom:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.pn_on}</td>
-        <td style="border:1px solid #999;border-bottom:none;border-right:none;padding:6px 4px;font-size:12px;word-break:break-word">${p.sn_on}</td>
+        <td style="border:1px solid #999;border-left:none;${idx===arr.length-1?'border-bottom:none;':''}padding:6px 4px;font-size:12px;word-break:break-word">${p.nom}</td>
+        <td style="border:1px solid #999;${idx===arr.length-1?'border-bottom:none;':''}padding:6px 4px;font-size:12px;word-break:break-word">${p.pn_off}</td>
+        <td style="border:1px solid #999;${idx===arr.length-1?'border-bottom:none;':''}padding:6px 4px;font-size:12px;word-break:break-word">${p.sn_off}</td>
+        <td style="border:1px solid #999;${idx===arr.length-1?'border-bottom:none;':''}padding:6px 4px;font-size:12px;word-break:break-word">${p.pn_on}</td>
+        <td style="border:1px solid #999;border-right:none;${idx===arr.length-1?'border-bottom:none;':''}padding:6px 4px;font-size:12px;word-break:break-word">${p.sn_on}</td>
       </tr>`).join(''):`<tr><td colspan="5" style="border:none;padding:6px;color:#aaa;font-style:italic;text-align:center">No parts replaced</td></tr>`}
   </table>`;
 
