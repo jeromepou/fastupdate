@@ -1069,7 +1069,15 @@ G.addDayBeforeUpdate = function() {
 
 function createUpdateBlock(label) {
   const ph = document.getElementById('updates-container').querySelector('p'); if(ph) ph.remove();
-  renderUpdateBlock({id:'upd_'+Date.now(), date:label, isRTS:false, freeText:'', itemUpdates:[]});
+  // Récupérer les items cochés du dernier jour pour les propager
+  const allUpdates = getUpdatesData();
+  const lastUpdate = allUpdates[allUpdates.length - 1];
+  const carriedItems = lastUpdate
+    ? lastUpdate.itemUpdates
+        .filter(u => u.checked && u.status === 'done')
+        .map(u => ({ num: u.num, checked: true, status: 'done', detail: '' }))
+    : [];
+  renderUpdateBlock({id:'upd_'+Date.now(), date:label, isRTS:false, freeText:'', itemUpdates: carriedItems});
   G.autosave();
 }
 
@@ -1137,7 +1145,12 @@ G.onUpdChk = function(chk) {
   const block = chk.closest('.upd-item-block');
   const sel = block.querySelector('.upd-status-sel');
   const ta = block.querySelector('.upd-detail');
-  if (!chk.checked) { sel.value = 'pending'; ta.value = ''; }
+  if (chk.checked) {
+    if (!sel.value) sel.value = 'pending';
+  } else {
+    sel.value = '';
+    ta.value = '';
+  }
   G.autosave();
 };
 G.removeUpdateBlock = function(id) {
@@ -1154,7 +1167,7 @@ function getUpdatesData() {
     itemUpdates: Array.from(block.querySelectorAll('.upd-item-block')).map((ib, i) => ({
       num: parseInt(ib.dataset.itemNum || i+1),
       checked: ib.querySelector('input[type=checkbox]')?.checked || false,
-      status: ib.querySelector('.upd-status-sel')?.value || 'pending',
+      status: ib.querySelector('.upd-status-sel')?.value ?? '',
       detail: ib.querySelector('.upd-detail')?.value || ''
     }))
   }));
