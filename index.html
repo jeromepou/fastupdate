@@ -1520,11 +1520,11 @@ const SL={
   '':''
 };
 const SC={
-  done:'#2d6a2d',
-  waiting_parts:'#7a5a00',
-  mel:'#1a4a7a',
-  cancelled:'#8a2e00',
-  pending:'#555',
+  done:'#1a7a1a',
+  waiting_parts:'#b37700',
+  mel:'#0055cc',
+  cancelled:'#cc2200',
+  pending:'#e07800',
   '':'#aaa'
 };
 
@@ -1556,7 +1556,7 @@ G.generate = async function() {
         const it=items.find(x=>x.num===iu.num);
         const statusLabel = SL[iu.status];
         const statusColor = SC[iu.status]||'#555';
-        const statusHtml = statusLabel ? ` — <span style="color:${statusColor};font-weight:700">${statusLabel}</span>` : '';
+        const statusHtml = statusLabel ? ` — <span style="color:#fff;font-weight:700;background:${statusColor};padding:1px 7px;border-radius:10px;font-size:11px">${statusLabel}</span>` : '';
         content+=`${it?`${iu.num}-${it.label.toUpperCase()}`:`Item ${iu.num}`}${statusHtml}<br>`;
         if(iu.detail) content+=`<span style="color:#444;font-size:12px">${iu.detail}</span><br>`;
       });
@@ -1566,7 +1566,7 @@ G.generate = async function() {
       const isFirst = di === 0;
       const isLast = di === updatesReversed.length - 1;
       const borderStyle = !isFirst && !isLast ? 'border-top:none;border-bottom:none' : isFirst ? 'border-bottom:none' : 'border-top:none';
-      updRows+=`<tr><td class="upd-lbl" style="${borderStyle}">${lbl}</td><td colspan="4">${content}</td></tr>`;
+      updRows+=`<tr><td class="upd-lbl" style="${borderStyle}">${lbl}</td><td colspan="4" style="${borderStyle}">${content}</td></tr>`;
     });
   }
 
@@ -1647,13 +1647,13 @@ G.draftInGmail = async function() {
     // Appliquer les styles inline sur chaque cellule
     tblClone.style.cssText = 'border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:13px';
     tblClone.querySelectorAll('td').forEach(td => {
-      const existingBorderBottom = td.style.borderBottom;
-      const existingBorderTop = td.style.borderTop;
+      const bBottom = td.style.borderBottom;
+      const bTop = td.style.borderTop;
       td.style.border = '1px solid #999';
-      td.style.padding = '7px 10px';
+      td.style.padding = td.style.padding || '7px 10px';
       td.style.verticalAlign = 'top';
-      if(existingBorderBottom === 'none') td.style.borderBottom = 'none';
-      if(existingBorderTop === 'none') td.style.borderTop = 'none';
+      if(bBottom === 'none') td.style.borderBottom = 'none';
+      if(bTop === 'none') td.style.borderTop = 'none';
     });
     // Header rows (thr)
     tblClone.querySelectorAll('.thr td').forEach(td => {
