@@ -1638,32 +1638,23 @@ G.draftInGmail = async function() {
   draftBtn.innerHTML = '<span class="spin"></span> Creating draft…';
 
   try {
-    // Build recipient list from project recipients
     const toAddrs = getRecipients();
-
     const subject = document.getElementById('email-subject')?.textContent || '';
-
-    // Build RFC2822 email with HTML body
     const tableHtml = tbl.outerHTML;
     const htmlBody = `<html><body style="font-family:Arial,sans-serif;font-size:13px">${tableHtml}</body></html>`;
 
-    const toHeader = toAddrs.length ? toAddrs.join(', ') : '';
-    const raw = [
-      `To: ${toHeader}`,
-      `Subject: ${subject}`,
-      'MIME-Version: 1.0',
-      'Content-Type: text/html; charset=UTF-8',
-      '',
-      htmlBody
-    ].join('\r\n');
-
-    const encoded = btoa(unescape(encodeURIComponent(raw)))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-
+    // ✅ FIX: utiliser l'API message.create avec les bons champs JSON
     const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${gToken}` },
-      body: JSON.stringify({ message: { raw: encoded } })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${gToken}`
+      },
+      body: JSON.stringify({
+        message: {
+          raw: buildRfc2822(toAddrs, subject, htmlBody)
+        }
+      })
     });
 
     if (!res.ok) {
@@ -1684,6 +1675,27 @@ G.draftInGmail = async function() {
     draftBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> 📧 Draft in Gmail';
   }
 };
+
+// ✅ NOUVELLE FONCTION — encodage propre RFC2822
+function buildRfc2822(toAddrs, subject, htmlBody) {
+  // Encoder le sujet en base64 UTF-8 (RFC2047) pour gérer /  # etc.
+  const encSubject = '=?UTF-8?B?' + btoa(unescape(encodeURIComponent(subject))) + '?=';
+  
+  const lines = [
+    toAddrs.length ? `To: ${toAddrs.join(', ')}` : 'To: ',
+    `Subject: ${encSubject}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/html; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    btoa(unescape(encodeURIComponent(htmlBody)))
+  ];
+  
+  const raw = lines.join('\r\n');
+  // Encoder l'email entier en base64url pour l'API Gmail
+  return btoa(unescape(encodeURIComponent(raw)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
 G.markRTS = function() {
   const isAssist = gv('f_rts_assist') === 'Assist';
   document.getElementById('modal-rts-title').textContent = isAssist ? 'Mark Assistance as Provided?' : 'Mark A/C as RTS?';
