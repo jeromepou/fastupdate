@@ -1647,13 +1647,14 @@ G.draftInGmail = async function() {
     // Appliquer les styles inline sur chaque cellule
     tblClone.style.cssText = 'border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:13px';
     tblClone.querySelectorAll('td').forEach(td => {
-      const bBottom = td.style.borderBottom;
-      const bTop = td.style.borderTop;
+      const styleAttr = td.getAttribute('style') || '';
+      const noTop = styleAttr.includes('border-top:none');
+      const noBottom = styleAttr.includes('border-bottom:none');
       td.style.border = '1px solid #999';
       td.style.padding = td.style.padding || '7px 10px';
       td.style.verticalAlign = 'top';
-      if(bBottom === 'none') td.style.borderBottom = 'none';
-      if(bTop === 'none') td.style.borderTop = 'none';
+      if(noTop) td.style.borderTop = 'none';
+      if(noBottom) td.style.borderBottom = 'none';
     });
     // Header rows (thr)
     tblClone.querySelectorAll('.thr td').forEach(td => {
