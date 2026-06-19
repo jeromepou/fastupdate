@@ -1560,16 +1560,7 @@ G.generate = async function() {
         const statusColor = SC[iu.status]||'#555';
         const statusHtml = statusLabel ? ` — <span style="color:${statusColor};font-weight:700">${statusLabel}</span>` : '';
         content+=`${it?`${iu.num}-${it.label.toUpperCase()}`:`Item ${iu.num}`}${statusHtml}<br>`;
-        if(iu.detail) content+=`<span style="color:#444;font-size:12px">${iu.detail}</span><br>const hasParts = parts.some(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on);
-const partRows = hasParts
-  ? parts.filter(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on).map(p=>`
-      <tr>
-        <td style="font-size:12px;padding:6px 8px">${p.nom||'—'}</td>
-        <td style="font-size:12px;padding:6px 8px">${p.pn_off||'—'}</td>
-        <td style="font-size:12px;padding:6px 8px">${p.sn_off||'—'}</td>
-        <td style="font-size:12px;padding:6px 8px">${p.pn_on||'—'} / ${p.sn_on||'—'}</td>
-      </tr>`).join('')
-  : `<tr><td colspan="4" style="padding:8px;color:#aaa;font-style:italic;text-align:center">No parts replaced</td></tr>`;
+        if(iu.detail) content+=`<span style="color:#444;font-size:12px">${iu.detail}</span><br>`;
       });
       if(upd.freeText) content+=`<span style="color:#444">${upd.freeText}</span><br>`;
       
