@@ -48,7 +48,7 @@ header h1{font-size:15px;font-weight:600;flex:1}
 
 /* AUTH / LOGIN SCREEN */
 .auth-screen{min-height:80vh;display:flex;align-items:center;justify-content:center}
-.auth-box{background:#fff;border-radius:var(--rlg);border:1px solid var(--g200);box-shadow:var(--sh);padding:2rem;width:100%;max-width:420px;text-align:center}
+.auth-box{background:#fff;border-radius:var(--rlg);border:1px solid var(--g200);box-shadow:var(--sh);padding:2rem;width:100%;max-width:560px;text-align:center}
 .auth-box h2{font-size:18px;font-weight:700;color:var(--gd);margin-bottom:.5rem}
 .auth-box p{font-size:13px;color:var(--g600);margin-bottom:1.5rem}
 .auth-tabs{display:flex;gap:0;margin-bottom:1.5rem;border:1px solid var(--g200);border-radius:var(--r);overflow:hidden}
@@ -633,27 +633,61 @@ async function loadTeamForPicker() {
       picker.innerHTML = '<p style="font-size:13px;color:var(--g400);text-align:center;padding:.5rem 0">No engineers yet — contact your admin.</p>';
       return;
     }
-    const team = Object.values(snap.val());
-    picker.innerHTML = '';
-    team.forEach(p => {
-      const btn = document.createElement('button');
-      btn.className = 'profile-btn';
-      const initials = (p.name || '?').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
-      const projCount = Object.keys(p.projects || {}).length;
-      const roleIcon = p.role === 'ops' ? '🖥️' : '✈️';
-      btn.innerHTML = `<div class="pb-avatar">${initials}</div>
-        <div class="pb-info">
-          <div class="pb-name">${p.name} <span style="font-size:10px;color:var(--g400)">${roleIcon} ${p.role === 'ops' ? 'OPS' : 'Engineer'}</span></div>
-          <div class="pb-sub">${p.team || ''}${p.team && projCount ? ' · ' : ''}${projCount} project${projCount !== 1 ? 's' : ''}</div>
-        </div>
-        <div style="font-size:16px;color:var(--g400)">🔒</div>`;
-      btn.onclick = () => showPinEntry(p);
-      picker.appendChild(btn);
-    });
+    const team = Object.values(snap.val()).sort((a,b) => a.name.localeCompare(b.name));
+
+    // Barre de recherche
+    picker.innerHTML = `
+      <input type="text" id="picker-search" placeholder="🔍 Search your name…"
+        style="width:100%;margin-bottom:8px;padding:8px 10px;border:1px solid var(--g200);border-radius:var(--r);font-size:13px"
+        oninput="filterPicker()" autofocus/>
+      <div id="picker-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:320px;overflow-y:auto;padding-right:2px"></div>`;
+
+    // Stocker l'équipe pour le filtre
+    window._pickerTeam = team;
+    window._pickerLoginFn = showPinEntry;
+    renderPickerGrid(team);
+
   } catch(e) {
-    picker.innerHTML = `<p style="font-size:13px;color:var(--red);text-align:center;padding:.5rem 0">Error loading team: ${e.message}</p>`;
+    picker.innerHTML = `<p style="font-size:13px;color:var(--red);text-align:center;padding:.5rem 0">Error: ${e.message}</p>`;
   }
 }
+
+function renderPickerGrid(team) {
+  const grid = document.getElementById('picker-grid');
+  if (!grid) return;
+  if (!team.length) {
+    grid.innerHTML = '<p style="font-size:13px;color:var(--g400);text-align:center;grid-column:span 2;padding:.5rem 0">No results.</p>';
+    return;
+  }
+  grid.innerHTML = '';
+  team.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'profile-btn';
+    btn.style.cssText = 'padding:8px 10px;flex-direction:column;align-items:flex-start;gap:4px';
+    const initials = (p.name||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+    const roleIcon = p.role === 'ops' ? '🖥️' : '✈️';
+    btn.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;width:100%">
+        <div class="pb-avatar" style="width:28px;height:28px;font-size:12px;flex-shrink:0">${initials}</div>
+        <div style="flex:1;min-width:0;text-align:left">
+          <div class="pb-name" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+          <div class="pb-sub" style="font-size:10px">${roleIcon} ${p.team||''}</div>
+        </div>
+        <div style="font-size:13px">🔒</div>
+      </div>`;
+    btn.onclick = () => showPinEntry(p);
+    grid.appendChild(btn);
+  });
+}
+
+G.filterPicker = function() {
+  const q = document.getElementById('picker-search')?.value.toLowerCase() || '';
+  const filtered = (window._pickerTeam || []).filter(p =>
+    p.name.toLowerCase().includes(q) ||
+    (p.team||'').toLowerCase().includes(q)
+  );
+  renderPickerGrid(filtered);
+};
 
 function showPinEntry(profile) {
   pendingUserToLogin = profile;
