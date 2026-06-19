@@ -435,7 +435,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">📬 To (recipients)</div>
     <div id="recipients-tags" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px"></div>
     <div style="display:flex;gap:6px">
-      <input type="text" id="recipient-input" autocomplete="off" placeholder="Add email address…" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r)" onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();addRecipient();}"/>
+      <input type="text" id="recipient-input" autocomplete="new-password" placeholder="Add email address…" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r)" onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();addRecipient();}"/>
       <button class="btn" onclick="addRecipient()" style="font-size:12px;padding:5px 10px">+ Add</button>
     </div>
   </div>
@@ -1541,10 +1541,8 @@ G.generate = async function() {
   const subjectFull = jobDesc ? `${subjectBase} ${jobDesc}` : subjectBase;
   document.getElementById('email-subject').textContent = subjectFull;
 
-  const condRows=items.length>0?`<tr><td class="lbl"><b>Condition</b></td><td colspan="3">${items.map(it=>`${it.num}-${it.label.toUpperCase()}`).join('<br>')}</td></tr>`:`<tr><td class="lbl"><b>Condition</b></td><td colspan="3">—</td></tr>`;
-
   let updRows='';
-  if(!updates.length) updRows=`<tr><td class="upd-lbl"><b>Update</b></td><td colspan="3">—</td></tr>`;
+  if(!updates.length) updRows=`<tr><td class="upd-lbl"><b>Update</b></td><td colspan="4">—</td></tr>`;
   else{
     const updatesReversed = [...updates].reverse();
     updatesReversed.forEach((upd,di)=>{
@@ -1565,8 +1563,10 @@ G.generate = async function() {
       if(upd.freeText) content+=`<span style="color:#444">${upd.freeText}</span><br>`;
       
       // CSS qui supprime les traits en dessous de Update, mais les garde côté date
+      const isFirst = di === 0;
       const isLast = di === updatesReversed.length - 1;
-      updRows+=`<tr><td class="upd-lbl" style="${isLast?'':'border-bottom:none'}">${lbl}</td><td colspan="3">${content}</td></tr>`;
+      const borderStyle = !isFirst && !isLast ? 'border-top:none;border-bottom:none' : isFirst ? 'border-bottom:none' : 'border-top:none';
+      updRows+=`<tr><td class="upd-lbl" style="${borderStyle}">${lbl}</td><td colspan="4">${content}</td></tr>`;
     });
   }
 
@@ -1591,24 +1591,25 @@ G.generate = async function() {
 
   document.getElementById('tbl-out').innerHTML=`
   <table class="fast-tbl" id="gen-tbl">
-    <colgroup><col style="width:25%"><col style="width:25%"><col style="width:25%"><col style="width:25%"></colgroup>
-    <tr class="thr"><td colspan="4"><b>WORK ORDER #: ${wo}</b></td></tr>
-    ${condRows}${updRows}
-    <tr><td class="lbl"><b>Additional Info (Constraints)</b></td><td colspan="3">${info||'—'}</td></tr>
-    <tr><td class="lbl"><b>Estimated RTS:</b></td><td>${erts||'—'}</td><td class="lbl"><b>Next Flight:</b></td><td>${nxt||'—'}</td></tr>
-    <tr><td class="lbl"><b>Return Date:</b></td><td>${retdate||'—'}</td><td class="lbl"><b>Return Time</b></td><td>${rettime||'—'}</td></tr>
-    <tr><td class="lbl"><b>FAR</b></td><td>${far||'—'}</td><td class="lbl"><b>RTS/Assist</b></td><td>${rtsA}</td></tr>
-    <tr><td class="lbl"><b>Model and S/N:</b></td><td>${model} / ${sn}</td><td class="lbl"><b>A/C Registry:</b></td><td>${reg||'—'}</td></tr>
-    <tr class="thr"><td colspan="4"><b>Parts</b></td></tr>
+    <colgroup><col style="width:20%"><col style="width:20%"><col style="width:20%"><col style="width:20%"><col style="width:20%"></colgroup>
+    <tr class="thr"><td colspan="5"><b>WORK ORDER #: ${wo}</b></td></tr>
+    <tr><td class="lbl"><b>Condition</b></td><td colspan="4">${items.length>0?items.map(it=>`${it.num}-${it.label.toUpperCase()}`).join('<br>'):'—'}</td></tr>
+    ${updRows}
+    <tr><td class="lbl"><b>Additional Info (Constraints)</b></td><td colspan="4">${info||'—'}</td></tr>
+    <tr><td class="lbl"><b>Estimated RTS:</b></td><td>${erts||'—'}</td><td class="lbl"><b>Next Flight:</b></td><td colspan="2">${nxt||'—'}</td></tr>
+    <tr><td class="lbl"><b>Return Date:</b></td><td>${retdate||'—'}</td><td class="lbl"><b>Return Time</b></td><td colspan="2">${rettime||'—'}</td></tr>
+    <tr><td class="lbl"><b>FAR</b></td><td>${far||'—'}</td><td class="lbl"><b>RTS/Assist</b></td><td colspan="2">${rtsA}</td></tr>
+    <tr><td class="lbl"><b>Model and S/N:</b></td><td>${model} / ${sn}</td><td class="lbl"><b>A/C Registry:</b></td><td colspan="2">${reg||'—'}</td></tr>
+    <tr class="thr"><td colspan="5"><b>Parts</b></td></tr>
     <tr><td style="background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 8px;color:#343a40"><b>Nomenclature</b></td><td style="background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 8px;color:#343a40"><b>PN OFF</b></td><td style="background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 8px;color:#343a40"><b>SN OFF</b></td><td style="background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 8px;color:#343a40"><b>PN ON</b></td><td style="background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 8px;color:#343a40"><b>SN ON</b></td></tr>
     ${partRows}
-    <tr class="thr"><td colspan="4"><b>Onsite Support FAST POC</b></td></tr>
-    ${pocRows}
-    <tr class="thr"><td colspan="4"><b>Customer Info</b></td></tr>
-    <tr><td class="lbl"><b>Name :</b></td><td colspan="3">${cName||'—'}</td></tr>
-    <tr><td class="lbl"><b>Phone:</b></td><td colspan="3">${cTel||'—'}</td></tr>
-    <tr><td class="lbl"><b>Email</b></td><td colspan="3">${cEmail||'—'}</td></tr>
-    <tr><td class="lbl"><b>A/C LOCATION:</b></td><td colspan="3">${loc||'—'}</td></tr>
+    <tr class="thr"><td colspan="5"><b>Onsite Support FAST POC</b></td></tr>
+    ${pocRows.replace(/colspan="3"/g,'colspan="4"')}
+    <tr class="thr"><td colspan="5"><b>Customer Info</b></td></tr>
+    <tr><td class="lbl"><b>Name :</b></td><td colspan="4">${cName||'—'}</td></tr>
+    <tr><td class="lbl"><b>Phone:</b></td><td colspan="4">${cTel||'—'}</td></tr>
+    <tr><td class="lbl"><b>Email</b></td><td colspan="4">${cEmail||'—'}</td></tr>
+    <tr><td class="lbl"><b>A/C LOCATION:</b></td><td colspan="4">${loc||'—'}</td></tr>
   </table>`;
 
   document.getElementById('output-section').style.display='block';
