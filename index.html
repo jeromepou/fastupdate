@@ -880,7 +880,11 @@ const sv = (id, v) => { const e = document.getElementById(id); if (e && v != nul
 
 function fillFromProj(proj) {
   sv('f_wo', proj.wo); sv('f_model', proj.model); sv('f_sn', proj.sn); sv('f_reg', proj.reg); sv('f_loc', proj.loc);
-  sv('f_rts_assist', proj.rts_assist || 'RTS'); sv('f_far', proj.far); sv('f_country', proj.country); sv('f_fbo', proj.fbo); sv('f_po', proj.po);
+  sv('f_rts_assist', proj.rts_assist || 'RTS');
+  // Mettre à jour le bouton immédiatement
+  const isAssist = (proj.rts_assist || 'RTS') === 'Assist';
+  const btn = document.getElementById('btn-mark-rts');
+  if (btn) btn.textContent = isAssist ? '🤝 Assistance Provided' : '✅ Mark A/C RTS'; sv('f_far', proj.far); sv('f_country', proj.country); sv('f_fbo', proj.fbo); sv('f_po', proj.po);
   sv('f_erts', proj.erts || ''); sv('f_nxt', proj.nxt || ''); sv('f_retdate', proj.retdate || ''); sv('f_rettime', proj.rettime || ''); sv('f_info', proj.info || '');
   sv('f_cust_name', proj.cust_name || ''); sv('f_cust_tel', proj.cust_tel || ''); sv('f_cust_email', proj.cust_email || '');
 
@@ -917,6 +921,8 @@ function clearForm() {
   ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_cust_name','f_cust_tel','f_cust_email']
     .forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
   document.getElementById('f_rts_assist').value = 'RTS';
+  const btn = document.getElementById('btn-mark-rts');
+  if (btn) btn.textContent = '✅ Mark A/C RTS';
   document.getElementById('items-container').innerHTML = ''; itemCount = 0;
   document.getElementById('parts-container').innerHTML = ''; partCount = 0;
   renderStep6Me();
@@ -1102,7 +1108,7 @@ async function renderStep6Me() {
   const snap = await get(ref(db, 'team'));
   const team = snap.exists() ? Object.values(snap.val()) : [];
   const othersOpts = ['<option value="">— Assign lead engineer —</option>',
-    ...team.map(p => `<option value="${p.id}">${p.name}${p.team?' ('+p.team+')':''}</option>`)
+    ...team.filter(p => p.role !== 'ops').map(p => `<option value="${p.id}">${p.name}${p.team?' ('+p.team+')':''}</option>`)
   ].join('');
 
   document.getElementById('poc-me-container').innerHTML = `
