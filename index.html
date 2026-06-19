@@ -1407,7 +1407,12 @@ G.generate = async function() {
       }
       upd.itemUpdates.filter(u=>u.checked).forEach(iu=>{
         const it=items.find(x=>x.num===iu.num);
-        content+=`${it?`${iu.num}-${it.label.toUpperCase()}`:`Item ${iu.num}`} — <span style="color:${SC[iu.status]||'#555'};font-weight:700">${SL[iu.status]||iu.status}</span><br>`;
+        const statusLabel = SL[iu.status];
+        const statusColor = SC[iu.status]||'#555';
+        const statusHtml = statusLabel
+          ? ` — <span style="color:${statusColor};font-weight:700">${statusLabel}</span>`
+          : '';
+        content+=`${it?`${iu.num}-${it.label.toUpperCase()}`:`Item ${iu.num}`}${statusHtml}<br>`;
         if(iu.detail) content+=`<span style="color:#444;font-size:12px">${iu.detail}</span><br>`;
       });
       if(upd.freeText) content+=`<span style="color:#444">${upd.freeText}</span><br>`;
