@@ -379,6 +379,11 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 <div class="card">
   <div class="card-head"><span class="step-badge">STEP 5</span><h2>Closing details</h2></div>
   <div class="card-body">
+    <div class="fg" style="margin-bottom:12px">
+      <label style="color:var(--blue);font-weight:700">✉️ Job description (email subject suffix)</label>
+      <input type="text" id="f_job_desc" placeholder="e.g. SAV - APU REPLACEMENT" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase();autosave()"/>
+      <small style="color:var(--g600);font-size:11px">Appended to the email subject — saved with the project</small>
+    </div>
     <div class="grid g2" style="margin-bottom:10px">
       <div class="fg"><label>Estimated RTS</label><input type="text" id="f_erts" placeholder="e.g. JUN 18/26" oninput="autosave()"/></div>
       <div class="fg"><label>Next Flight</label><input type="text" id="f_nxt" placeholder="e.g. 19JUN26" oninput="autosave()"/></div>
@@ -426,11 +431,24 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <span class="subj-txt" id="email-subject">—</span>
     <button class="btn" onclick="copySubject()">Copy</button>
   </div>
+  <div style="background:#f0f4ff;border:1px solid #b8d0e8;border-radius:var(--r);padding:10px 12px;margin-bottom:10px">
+    <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">📬 To (recipients)</div>
+    <div id="recipients-tags" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px"></div>
+    <div style="display:flex;gap:6px">
+      <input type="email" id="recipient-input" placeholder="Add email address…" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r)"
+        onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();addRecipient();}"/>
+      <button class="btn" onclick="addRecipient()" style="font-size:12px;padding:5px 10px">+ Add</button>
+    </div>
+  </div>
   <div class="output-head">
     <h3>Generated table — ready to paste into email</h3>
     <button class="copy-btn" id="copy-btn" onclick="copyTable()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
       Copy table
+    </button>
+    <button class="copy-btn" id="draft-btn" onclick="draftInGmail()" style="background:var(--blue);color:#fff;border-color:var(--blue)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      📧 Draft in Gmail
     </button>
   </div>
   <div class="tbl-wrap"><div id="tbl-out"></div></div>
@@ -461,6 +479,11 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
           </select>
         </div>
       </div>
+      <div class="fg" style="margin-top:8px">
+        <label>📧 Default email recipients (comma-separated)</label>
+        <input type="text" id="nt_recipients" placeholder="ops@headstart.com, fsr@gulfstream.com"/>
+        <small style="color:var(--g600);font-size:11px">Pre-filled in Gmail drafts created by this engineer</small>
+      </div>
       <div class="err-msg" id="nt-error"></div>
       <button class="btn primary" onclick="addTeamMember()" style="margin-top:8px">+ Create Engineer</button>
     </div>
@@ -486,6 +509,11 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
           <option value="ops">🖥️ OPS</option>
         </select>
       </div>
+    </div>
+    <div class="fg" style="margin-top:8px">
+      <label>📧 Default email recipients (comma-separated)</label>
+      <input type="text" id="edit_recipients" placeholder="ops@headstart.com, fsr@gulfstream.com"/>
+      <small style="color:var(--g600);font-size:11px">Pre-filled in Gmail drafts created by this engineer</small>
     </div>
     <div class="err-msg" id="edit-member-error"></div>
     <div class="modal-btns">
@@ -584,7 +612,7 @@ let projTab = 'active';  // 'active' | 'archive'
 
 // Gemini / Google OAuth
 const GCID = '624747295284-rpktnnbk5kugn7jhero0e267soidb2oj.apps.googleusercontent.com';
-const GSCOPE = 'https://www.googleapis.com/auth/generative-language.retriever https://www.googleapis.com/auth/cloud-platform';
+const GSCOPE = 'https://www.googleapis.com/auth/generative-language.retriever https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/gmail.compose';
 let tokenClient = null, gToken = null, gTokenExp = 0;
 
 // ══════════════════════════════════════
@@ -808,6 +836,7 @@ async function renderTeamAdminList() {
       <div style="flex:1">
         <div style="font-weight:700;font-size:13px">${p.name}</div>
         <div style="font-size:11px;color:var(--g600)">${p.role === 'ops' ? '🖥️ OPS · ' : '✈️ Engineer · '}${[p.team, p.email, p.phone].filter(Boolean).join(' · ')}</div>
+        ${p.defaultRecipients ? `<div style="font-size:10px;color:var(--blue);margin-top:2px">📧 ${p.defaultRecipients}</div>` : ''}
       </div>
       <button class="btn" onclick="promptEditMember('${id}')" style="padding:4px 8px;font-size:11px">✏️ Edit</button>
       <button class="btn" onclick="promptResetPin('${id}')" style="padding:4px 8px;font-size:11px">🔑 PIN</button>
@@ -830,10 +859,11 @@ G.addTeamMember = async function() {
     phone: document.getElementById('nt_phone').value.trim(),
     pinHash: hashPin(pin),
     role: document.getElementById('nt_role').value || 'engineer',
+    defaultRecipients: document.getElementById('nt_recipients').value.trim(),
     projects: {}
   };
   await set(ref(db, 'team/' + id), member);
-  ['nt_name','nt_email','nt_team','nt_phone','nt_pin'].forEach(i => document.getElementById(i).value = '');
+  ['nt_name','nt_email','nt_team','nt_phone','nt_pin','nt_recipients'].forEach(i => document.getElementById(i).value = '');
   document.getElementById('nt_role').value = 'engineer';
   renderTeamAdminList();
 };
@@ -919,6 +949,8 @@ function gatherData() {
     wo: gv('f_wo'), model: gv('f_model'), sn: gv('f_sn'), reg: gv('f_reg'), loc: gv('f_loc'),
     rts_assist: gv('f_rts_assist'), far: gv('f_far'), country: gv('f_country'), fbo: gv('f_fbo'), po: gv('f_po'),
     erts: gv('f_erts'), nxt: gv('f_nxt'), retdate: gv('f_retdate'), rettime: gv('f_rettime'), info: gv('f_info'),
+    job_desc: gv('f_job_desc'),
+    recipients: getRecipients(),
     cust_name: gv('f_cust_name'), cust_tel: gv('f_cust_tel'), cust_email: gv('f_cust_email'),
     leadEngId: document.getElementById('lead-eng-sel')?.value || '',  // ← nouveau
     items: getItems(), parts: getParts(), colleagues: getColleagueSlots(), updates: getUpdatesData()
@@ -976,6 +1008,8 @@ function fillFromProj(proj) {
   const btn = document.getElementById('btn-mark-rts');
   if (btn) btn.textContent = isAssist ? '🤝 Assistance Provided' : '✅ Mark A/C RTS'; sv('f_far', proj.far); sv('f_country', proj.country); sv('f_fbo', proj.fbo); sv('f_po', proj.po);
   sv('f_erts', proj.erts || ''); sv('f_nxt', proj.nxt || ''); sv('f_retdate', proj.retdate || ''); sv('f_rettime', proj.rettime || ''); sv('f_info', proj.info || '');
+  sv('f_job_desc', proj.job_desc || '');
+  renderRecipients(Array.isArray(proj.recipients) ? proj.recipients : []);
   sv('f_cust_name', proj.cust_name || ''); sv('f_cust_tel', proj.cust_tel || ''); sv('f_cust_email', proj.cust_email || '');
 
   document.getElementById('items-container').innerHTML = ''; itemCount = 0;
@@ -1008,7 +1042,7 @@ function fillFromProj(proj) {
 }
 
 function clearForm() {
-  ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_cust_name','f_cust_tel','f_cust_email']
+  ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_job_desc','f_cust_name','f_cust_tel','f_cust_email']
     .forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
   document.getElementById('f_rts_assist').value = 'RTS';
   const btn = document.getElementById('btn-mark-rts');
@@ -1019,10 +1053,34 @@ function clearForm() {
   document.getElementById('poc-colleagues-container').innerHTML = ''; colleagueSlotCount = 0;
   document.getElementById('updates-container').innerHTML = '<p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet</p>';
   document.getElementById('output-section').style.display = 'none';
+  const defaults = curProfile?.defaultRecipients ? curProfile.defaultRecipients.split(',').map(e=>e.trim()).filter(Boolean) : [];
+  renderRecipients(defaults);
 }
 
 // ══════════════════════════════════════
-//  WORK ITEMS  ← CORRECTED (no status select)
+//  RECIPIENTS
+// ══════════════════════════════════════
+let _recipients = [];
+function getRecipients() { return [..._recipients]; }
+function renderRecipients(list) {
+  _recipients = list;
+  const c = document.getElementById('recipients-tags'); if(!c) return;
+  c.innerHTML = _recipients.map((e,i) => `
+    <span style="display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid #b8d0e8;border-radius:20px;font-size:11px;padding:3px 10px;color:var(--blue)">
+      ${e}
+      <button onclick="removeRecipient(${i})" style="background:none;border:none;cursor:pointer;color:#999;font-size:14px;line-height:1;padding:0 0 0 2px">&times;</button>
+    </span>`).join('');
+}
+G.addRecipient = function() {
+  const inp = document.getElementById('recipient-input');
+  const val = inp.value.trim().replace(/,$/, '');
+  if (!val || !val.includes('@')) return;
+  if (!_recipients.includes(val)) { _recipients.push(val); renderRecipients(_recipients); G.autosave(); }
+  inp.value = '';
+};
+G.removeRecipient = function(i) {
+  _recipients.splice(i, 1); renderRecipients(_recipients); G.autosave();
+};
 // ══════════════════════════════════════
 G.addItem = function(label = '') {
   itemCount++;
@@ -1410,11 +1468,14 @@ G.generate = async function() {
   G.autosave();
   const wo=gv('f_wo'),model=gv('f_model'),sn=gv('f_sn'),reg=gv('f_reg'),loc=gv('f_loc');
   const rtsA=gv('f_rts_assist'),far=gv('f_far'),erts=gv('f_erts'),nxt=gv('f_nxt'),retdate=gv('f_retdate'),rettime=gv('f_rettime'),info=gv('f_info');
+  const jobDesc=gv('f_job_desc');
   const cName=gv('f_cust_name'),cTel=gv('f_cust_tel'),cEmail=gv('f_cust_email');
   const items=getItems(), parts=getParts(), updates=getUpdatesData();
   const pocs=await getAllPocsData();
 
-  document.getElementById('email-subject').textContent=`UPDATE // ${wo} // ${model} ${sn} // ${reg} // ${loc} //`;
+  const subjectBase = `UPDATE // ${wo} // ${model} ${sn} // ${reg} // ${loc} //`;
+  const subjectFull = jobDesc ? `${subjectBase} ${jobDesc}` : subjectBase;
+  document.getElementById('email-subject').textContent = subjectFull;
 
   const condRows=items.length>0?`<tr><td class="lbl"><b>Condition</b></td><td colspan="3">${items.map(it=>`${it.num}-${it.label.toUpperCase()}`).join('<br>')}</td></tr>`:`<tr><td class="lbl"><b>Condition</b></td><td colspan="3">—</td></tr>`;
 
@@ -1504,6 +1565,63 @@ G.copyTable = function() {
   setTimeout(()=>{btn.classList.remove('copied');btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy table`;},2500);
 };
 G.copySubject = function() { navigator.clipboard.writeText(document.getElementById('email-subject')?.textContent||'').catch(()=>{}); setStatus('done','✓ Email subject copied!'); };
+
+G.draftInGmail = async function() {
+  if (!ensureGToken()) { setStatus('idle','Please sign in with Google first to use Draft in Gmail.'); return; }
+  const tbl = document.getElementById('gen-tbl');
+  if (!tbl) { setStatus('err','Generate the table first.'); return; }
+
+  const draftBtn = document.getElementById('draft-btn');
+  draftBtn.disabled = true;
+  draftBtn.innerHTML = '<span class="spin"></span> Creating draft…';
+
+  try {
+    // Build recipient list from project recipients
+    const toAddrs = getRecipients();
+
+    const subject = document.getElementById('email-subject')?.textContent || '';
+
+    // Build RFC2822 email with HTML body
+    const tableHtml = tbl.outerHTML;
+    const htmlBody = `<html><body style="font-family:Arial,sans-serif;font-size:13px">${tableHtml}</body></html>`;
+
+    const toHeader = toAddrs.length ? toAddrs.join(', ') : '';
+    const raw = [
+      `To: ${toHeader}`,
+      `Subject: ${subject}`,
+      'MIME-Version: 1.0',
+      'Content-Type: text/html; charset=UTF-8',
+      '',
+      htmlBody
+    ].join('\r\n');
+
+    const encoded = btoa(unescape(encodeURIComponent(raw)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+    const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${gToken}` },
+      body: JSON.stringify({ message: { raw: encoded } })
+    });
+
+    if (!res.ok) {
+      if (res.status === 401) { gToken = null; updateAuthUI(false); throw new Error('Session expired — please sign in again.'); }
+      const err = await res.json();
+      throw new Error(err.error?.message || 'Gmail API error ' + res.status);
+    }
+
+    setStatus('done', `✅ Draft created in Gmail${toAddrs.length ? ' — recipients pre-filled' : ' — add recipients in Gmail'}`);
+    draftBtn.innerHTML = '✅ Draft created!';
+    setTimeout(() => {
+      draftBtn.disabled = false;
+      draftBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> 📧 Draft in Gmail';
+    }, 3000);
+  } catch(e) {
+    setStatus('err', 'Draft error: ' + e.message);
+    draftBtn.disabled = false;
+    draftBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> 📧 Draft in Gmail';
+  }
+};
 G.markRTS = function() {
   const isAssist = gv('f_rts_assist') === 'Assist';
   document.getElementById('modal-rts-title').textContent = isAssist ? 'Mark Assistance as Provided?' : 'Mark A/C as RTS?';
@@ -1567,6 +1685,7 @@ G.promptEditMember = async function(id) {
   document.getElementById('edit_email').value = p.email || '';
   document.getElementById('edit_team').value = p.team || '';
   document.getElementById('edit_role').value = p.role || 'engineer';
+  document.getElementById('edit_recipients').value = p.defaultRecipients || '';
   document.getElementById('edit-member-error').textContent = '';
   openModal('modal-edit-member');
 };
@@ -1581,7 +1700,8 @@ G.confirmEditMember = async function() {
     phone: document.getElementById('edit_phone').value.trim(),
     email: document.getElementById('edit_email').value.trim(),
     team:  document.getElementById('edit_team').value.trim(),
-    role:  document.getElementById('edit_role').value
+    role:  document.getElementById('edit_role').value,
+    defaultRecipients: document.getElementById('edit_recipients').value.trim()
   });
   closeModal('modal-edit-member');
   setStatus('done', '✅ Profile updated.');
