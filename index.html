@@ -798,7 +798,7 @@ async function showAdminPanel() {
   renderTeamAdminList();
 }
 
-function loginAs(profile) {
+async function loginAs(profile) {
   curProfile = profile;
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = '';
@@ -807,6 +807,9 @@ function loginAs(profile) {
   document.getElementById('eng-bar-name').textContent = profile.name;
   document.getElementById('eng-bar-sub').textContent = [profile.team, profile.email, profile.phone].filter(Boolean).join(' · ');
   document.getElementById('sync-badge').style.display = '';
+  
+  await loadDefaultRecipients(); // <-- Télécharge les derniers destinataires globaux
+  
   renderProjList();
   renderStep6Me();
 }
@@ -1013,7 +1016,8 @@ function fillFromProj(proj) {
   if (btn) btn.textContent = isAssist ? '🤝 Assistance Provided' : '✅ Mark A/C RTS'; sv('f_far', proj.far); sv('f_country', proj.country); sv('f_fbo', proj.fbo); sv('f_po', proj.po);
   sv('f_erts', proj.erts || ''); sv('f_nxt', proj.nxt || ''); sv('f_retdate', proj.retdate || ''); sv('f_rettime', proj.rettime || ''); sv('f_info', proj.info || '');
   sv('f_job_desc', proj.job_desc || '');
-  renderRecipients(Array.isArray(proj.recipients) ? proj.recipients : []);
+  const savedRecipients = Array.isArray(proj.recipients) ? proj.recipients : [];
+  renderRecipients(savedRecipients.length > 0 ? savedRecipients : [..._defaultRecipients]);
   sv('f_cust_name', proj.cust_name || ''); sv('f_cust_tel', proj.cust_tel || ''); sv('f_cust_email', proj.cust_email || '');
 
   document.getElementById('items-container').innerHTML = ''; itemCount = 0;
@@ -1638,23 +1642,64 @@ G.draftInGmail = async function() {
   draftBtn.innerHTML = '<span class="spin"></span> Creating draft…';
 
   try {
-    const toAddrs = getRecipients();
-    const subject = document.getElementById('email-subject')?.textContent || '';
-    const tableHtml = tbl.outerHTML;
-    const htmlBody = `<html><body style="font-family:Arial,sans-serif;font-size:13px">${tableHtml}</body></html>`;
+    // ✅ Destinataires : UI d'abord, sinon profil Firebase
+    let toAddrs = getRecipients();
+    if (!toAddrs.length && curProfile?.id) {
+      const snap = await get(ref(db, 'team/' + curProfile.id));
+      if (snap.exists()) {
+        const p = snap.val();
+        const raw = p.defaultRecipients || '';
+        toAddrs = raw.split(',').map(e => e.trim()).filter(Boolean);
+        // Mettre à jour l'UI aussi
+        renderRecipients(toAddrs);
+      }
+    }
 
-    // ✅ FIX: utiliser l'API message.create avec les bons champs JSON
+    const subject = document.getElementById('email-subject')?.textContent || '';
+
+    // ✅ Fix tableau : inline styles explicites pour Gmail
+    const tblClone = tbl.cloneNode(true);
+    // Appliquer les styles inline sur chaque cellule
+    tblClone.style.cssText = 'border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:13px';
+    tblClone.querySelectorAll('td').forEach(td => {
+      td.style.border = '1px solid #999';
+      td.style.padding = '7px 10px';
+      td.style.verticalAlign = 'top';
+    });
+    // Header rows (thr)
+    tblClone.querySelectorAll('.thr td').forEach(td => {
+      td.style.cssText = 'border:1px solid #999;padding:8px 10px;background:#3a6e3a;color:#ffffff;font-weight:700;font-size:13px';
+    });
+    // Label cells
+    tblClone.querySelectorAll('.lbl').forEach(td => {
+      td.style.cssText = 'border:1px solid #999;padding:7px 10px;background:#f0f2eb;font-weight:600;color:#343a40';
+    });
+    // Update label cells
+    tblClone.querySelectorAll('.upd-lbl').forEach(td => {
+      td.style.cssText = 'border:1px solid #999;padding:7px 10px;background:#fefce8;font-weight:600;color:#343a40';
+    });
+
+    const htmlBody = `<html><body style="font-family:Arial,sans-serif;font-size:13px;margin:0;padding:16px">${tblClone.outerHTML}</body></html>`;
+
+    const encSubject = '=?UTF-8?B?' + btoa(unescape(encodeURIComponent(subject))) + '?=';
+    const lines = [
+      toAddrs.length ? `To: ${toAddrs.join(', ')}` : 'To: ',
+      `Subject: ${encSubject}`,
+      'MIME-Version: 1.0',
+      'Content-Type: text/html; charset=UTF-8',
+      'Content-Transfer-Encoding: base64',
+      '',
+      btoa(unescape(encodeURIComponent(htmlBody)))
+    ];
+
+    const raw = lines.join('\r\n');
+    const encoded = btoa(unescape(encodeURIComponent(raw)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
     const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${gToken}`
-      },
-      body: JSON.stringify({
-        message: {
-          raw: buildRfc2822(toAddrs, subject, htmlBody)
-        }
-      })
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${gToken}` },
+      body: JSON.stringify({ message: { raw: encoded } })
     });
 
     if (!res.ok) {
@@ -1663,7 +1708,7 @@ G.draftInGmail = async function() {
       throw new Error(err.error?.message || 'Gmail API error ' + res.status);
     }
 
-    setStatus('done', `✅ Draft created in Gmail${toAddrs.length ? ' — recipients pre-filled' : ' — add recipients in Gmail'}`);
+    setStatus('done', `✅ Draft created${toAddrs.length ? ' — ' + toAddrs.length + ' recipient(s) pre-filled' : ' — add recipients in Gmail'}`);
     draftBtn.innerHTML = '✅ Draft created!';
     setTimeout(() => {
       draftBtn.disabled = false;
