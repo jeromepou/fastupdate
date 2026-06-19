@@ -468,7 +468,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px">📬 Default email recipients (shared by all engineers)</div>
       <div id="default-recipients-tags" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px"></div>
       <div style="display:flex;gap:6px">
-        <input type="email" id="default-recipient-input" autocomplete="off" placeholder="Add email address…" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r)" onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();addDefaultRecipient();}"/>
+        <input type="text" id="recipient-input" autocomplete="new-password" placeholder="Add email address…" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r)" onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();addRecipient();}"/>
         <button class="btn" onclick="addDefaultRecipient()" style="font-size:12px;padding:5px 10px">+ Add</button>
       </div>
     </div>
@@ -1647,9 +1647,13 @@ G.draftInGmail = async function() {
     // Appliquer les styles inline sur chaque cellule
     tblClone.style.cssText = 'border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:13px';
     tblClone.querySelectorAll('td').forEach(td => {
+      const existingBorderBottom = td.style.borderBottom;
+      const existingBorderTop = td.style.borderTop;
       td.style.border = '1px solid #999';
       td.style.padding = '7px 10px';
       td.style.verticalAlign = 'top';
+      if(existingBorderBottom === 'none') td.style.borderBottom = 'none';
+      if(existingBorderTop === 'none') td.style.borderTop = 'none';
     });
     // Header rows (thr)
     tblClone.querySelectorAll('.thr td').forEach(td => {
