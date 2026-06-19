@@ -1545,29 +1545,25 @@ G.generate = async function() {
   if(!updates.length) updRows=`<tr><td class="upd-lbl"><b>Update</b></td><td colspan="4">—</td></tr>`;
   else{
     const updatesReversed = [...updates].reverse();
-    updatesReversed.forEach((upd,di)=>{
-      const lbl=di===0?'<b>Update</b>':'';
-      let content=`<b>${upd.date}</b><br>`;
+    let updContent = '';
+    updatesReversed.forEach((upd, di) => {
+      if (di > 0) updContent += `<div style="border-top:2px solid #c8d8c8;margin:8px 0;"></div>`;
+      updContent += `<b style="background:#e8f2e8;padding:2px 8px;border-radius:4px;display:inline-block;margin-bottom:4px">${upd.date}</b><br>`;
       if(upd.isRTS) {
         const rtsLabel = rtsA === 'Assist' ? 'ASSISTANCE PROVIDED' : 'A/C RTS';
-        content+=`<span style="display:inline-block;background:#2d5a2d;color:#fff;font-size:11px;font-weight:700;padding:1px 10px;border-radius:20px;margin-bottom:3px">${rtsLabel}</span><br>`;
+        updContent += `<span style="display:inline-block;background:#2d5a2d;color:#fff;font-size:11px;font-weight:700;padding:1px 10px;border-radius:20px;margin-bottom:3px">${rtsLabel}</span><br>`;
       }
       upd.itemUpdates.filter(u=>u.checked).forEach(iu=>{
         const it=items.find(x=>x.num===iu.num);
         const statusLabel = SL[iu.status];
         const statusColor = SC[iu.status]||'#555';
         const statusHtml = statusLabel ? ` — <span style="color:#fff;font-weight:700;background:${statusColor};padding:1px 7px;border-radius:10px;font-size:11px">${statusLabel}</span>` : '';
-        content+=`${it?`${iu.num}-${it.label.toUpperCase()}`:`Item ${iu.num}`}${statusHtml}<br>`;
-        if(iu.detail) content+=`<span style="color:#444;font-size:12px">${iu.detail}</span><br>`;
+        updContent += `${it?`${iu.num}-${it.label.toUpperCase()}`:`Item ${iu.num}`}${statusHtml}<br>`;
+        if(iu.detail) updContent += `<span style="color:#444;font-size:12px">${iu.detail}</span><br>`;
       });
-      if(upd.freeText) content+=`<span style="color:#444">${upd.freeText}</span><br>`;
-      
-      // CSS qui supprime les traits en dessous de Update, mais les garde côté date
-      const isFirst = di === 0;
-      const isLast = di === updatesReversed.length - 1;
-      const borderStyle = !isFirst && !isLast ? 'border-top:none;border-bottom:none' : isFirst ? 'border-bottom:none' : 'border-top:none';
-      updRows+=`<tr><td class="upd-lbl" style="${borderStyle}">${lbl}</td><td colspan="4" style="${borderStyle}">${content}</td></tr>`;
+      if(upd.freeText) updContent += `<span style="color:#444">${upd.freeText}</span><br>`;
     });
+    updRows = `<tr><td class="upd-lbl"><b>Update</b></td><td colspan="4">${updContent}</td></tr>`;
   }
 
   const hasParts = parts.some(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on);
@@ -1666,12 +1662,7 @@ G.draftInGmail = async function() {
     });
     // Update label cells
     tblClone.querySelectorAll('.upd-lbl').forEach(td => {
-      const styleAttr = td.getAttribute('style') || '';
-      const noTop = styleAttr.includes('border-top:none');
-      const noBottom = styleAttr.includes('border-bottom:none');
       td.style.cssText = 'border:1px solid #999;padding:7px 10px;background:#fefce8;font-weight:600;color:#343a40';
-      if(noTop) td.style.borderTop = 'none';
-      if(noBottom) td.style.borderBottom = 'none';
     });
 
     const htmlBody = `<html><body style="font-family:Arial,sans-serif;font-size:13px;margin:0;padding:16px">${tblClone.outerHTML}</body></html>`;
