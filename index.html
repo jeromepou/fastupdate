@@ -1143,11 +1143,10 @@ function renderUpdateBlock(upd) {
 
 G.onUpdChk = function(chk) {
   const block = chk.closest('.upd-item-block');
-  const ta = block.querySelector('.upd-detail');
-  // Décocher manuellement → efface le texte mais garde le statut intact
-  // Cocher manuellement → ne touche pas au statut (peut rester "no status")
+  const sel = block.querySelector('.upd-status-sel');
+  // Décocher manuellement → repasse le statut à vide mais GARDE le texte
   if (!chk.checked) {
-    ta.value = '';
+    sel.value = '';
   }
   G.autosave();
 };
@@ -1155,11 +1154,9 @@ G.onUpdChk = function(chk) {
 G.onUpdStatusChange = function(sel) {
   const block = sel.closest('.upd-item-block');
   const chk = block.querySelector('input[type=checkbox]');
-  // Sélectionner un statut → coche la case
-  // Repasser à "no status" → décoche et efface
+  // Repasser à "no status" → décoche la case mais GARDE le texte
   if (sel.value === '') {
     chk.checked = false;
-    block.querySelector('.upd-detail').value = '';
   } else {
     chk.checked = true;
   }
@@ -1194,11 +1191,11 @@ G.addPart = function(nom='',pn_off='',sn_off='',pn_on='',sn_on='') {
   const c = document.getElementById('parts-container');
   const d = document.createElement('div'); d.className = 'part-row'; d.id = 'part-'+partCount;
   d.innerHTML = `<div class="part-fields">
-    <div class="fg"><label>Nomenclature</label><input type="text" class="p-nom" value="${nom}" oninput="autosave()"/></div>
-    <div class="fg"><label>PN OFF</label><input type="text" class="p-pnoff" value="${pn_off}" oninput="onPnOffInput(this)"/></div>
-    <div class="fg"><label>SN OFF</label><input type="text" class="p-snoff" value="${sn_off}" oninput="autosave()"/></div>
-    <div class="fg"><label>PN ON</label><input type="text" class="p-pnon" value="${pn_on}" oninput="autosave()"/></div>
-    <div class="fg"><label>SN ON</label><input type="text" class="p-snon" value="${sn_on}" oninput="autosave()"/></div>
+    <div class="fg"><label>Nomenclature</label><input type="text" class="p-nom" value="${nom}" placeholder="e.g. MAIN TIRE" oninput="autosave()"/></div>
+    <div class="fg"><label>PN OFF</label><input type="text" class="p-pnoff" value="${pn_off}" placeholder="PN OFF" oninput="onPnOffInput(this)"/></div>
+    <div class="fg"><label>SN OFF</label><input type="text" class="p-snoff" value="${sn_off}" placeholder="SN OFF" oninput="autosave()"/></div>
+    <div class="fg"><label>PN ON</label><input type="text" class="p-pnon" value="${pn_on}" placeholder="Auto-fills from PN OFF" oninput="autosave()"/></div>
+    <div class="fg"><label>SN ON</label><input type="text" class="p-snon" value="${sn_on}" placeholder="SN ON" oninput="autosave()"/></div>
   </div><button class="btn-rm" onclick="this.parentElement.remove();autosave()" style="margin-top:18px">×</button>`;
   c.appendChild(d);
 };
