@@ -1666,7 +1666,12 @@ G.draftInGmail = async function() {
     });
     // Update label cells
     tblClone.querySelectorAll('.upd-lbl').forEach(td => {
+      const styleAttr = td.getAttribute('style') || '';
+      const noTop = styleAttr.includes('border-top:none');
+      const noBottom = styleAttr.includes('border-bottom:none');
       td.style.cssText = 'border:1px solid #999;padding:7px 10px;background:#fefce8;font-weight:600;color:#343a40';
+      if(noTop) td.style.borderTop = 'none';
+      if(noBottom) td.style.borderBottom = 'none';
     });
 
     const htmlBody = `<html><body style="font-family:Arial,sans-serif;font-size:13px;margin:0;padding:16px">${tblClone.outerHTML}</body></html>`;
