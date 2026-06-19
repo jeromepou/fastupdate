@@ -1109,7 +1109,7 @@ function renderUpdateBlock(upd) {
           <input type="checkbox" id="uchk_${upd.id}_${i}" ${checked} onchange="onUpdChk(this)" style="width:auto"/>
           <label for="uchk_${upd.id}_${i}">${it.num} — ${it.label||'(no description)'}</label>
         </div>
-        <select class="upd-status-sel" onchange="autosave()">${statusOpts}</select>
+        <select class="upd-status-sel" onchange="onUpdStatusChange(this)">${statusOpts}</select>
       </div>
       <textarea class="upd-detail" placeholder="Describe what was done today (optional)…" oninput="autosave()">${saved.detail||''}</textarea>
     </div>`;
@@ -1153,6 +1153,19 @@ G.onUpdChk = function(chk) {
   }
   G.autosave();
 };
+
+G.onUpdStatusChange = function(sel) {
+  const block = sel.closest('.upd-item-block');
+  const chk = block.querySelector('input[type=checkbox]');
+  if (sel.value && sel.value !== '') {
+    chk.checked = true;
+  } else {
+    chk.checked = false;
+    block.querySelector('.upd-detail').value = '';
+  }
+  G.autosave();
+};
+  
 G.removeUpdateBlock = function(id) {
   const el = document.getElementById(id); if(el) el.remove();
   const uc = document.getElementById('updates-container');
