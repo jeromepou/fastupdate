@@ -1546,7 +1546,8 @@ G.generate = async function() {
   let updRows='';
   if(!updates.length) updRows=`<tr><td class="upd-lbl"><b>Update</b></td><td colspan="3">—</td></tr>`;
   else{
-    updates.forEach((upd,di)=>{
+    const updatesReversed = [...updates].reverse();
+    updatesReversed.forEach((upd,di)=>{
       const lbl=di===0?'<b>Update</b>':'';
       let content=`<b>${upd.date}</b><br>`;
       if(upd.isRTS) {
@@ -1559,35 +1560,34 @@ G.generate = async function() {
         const statusColor = SC[iu.status]||'#555';
         const statusHtml = statusLabel ? ` — <span style="color:${statusColor};font-weight:700">${statusLabel}</span>` : '';
         content+=`${it?`${iu.num}-${it.label.toUpperCase()}`:`Item ${iu.num}`}${statusHtml}<br>`;
-        if(iu.detail) content+=`<span style="color:#444;font-size:12px">${iu.detail}</span><br>`;
+        if(iu.detail) content+=`<span style="color:#444;font-size:12px">${iu.detail}</span><br>const hasParts = parts.some(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on);
+const partRows = hasParts
+  ? parts.filter(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on).map(p=>`
+      <tr>
+        <td style="font-size:12px;padding:6px 8px">${p.nom||'—'}</td>
+        <td style="font-size:12px;padding:6px 8px">${p.pn_off||'—'}</td>
+        <td style="font-size:12px;padding:6px 8px">${p.sn_off||'—'}</td>
+        <td style="font-size:12px;padding:6px 8px">${p.pn_on||'—'} / ${p.sn_on||'—'}</td>
+      </tr>`).join('')
+  : `<tr><td colspan="4" style="padding:8px;color:#aaa;font-style:italic;text-align:center">No parts replaced</td></tr>`;
       });
       if(upd.freeText) content+=`<span style="color:#444">${upd.freeText}</span><br>`;
       
       // CSS qui supprime les traits en dessous de Update, mais les garde côté date
-      const leftStyle = `background:${di>0?'#fffff8':'#fefce8'}; border-top:${di===0?'1px solid #999':'none'}; border-bottom:${di===updates.length-1?'1px solid #999':'none'};`;
-      
-      updRows+=`<tr><td class="upd-lbl" style="${leftStyle}">${lbl}</td><td colspan="3">${content}</td></tr>`;
+      updRows+=`<tr><td class="upd-lbl">${lbl}</td><td colspan="3">${content}</td></tr>`;
     });
   }
 
-  const hasParts=parts.some(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on);
-  const partsHtml=`<table style="width:100%;border-collapse:collapse;table-layout:fixed;margin:0;padding:0;border:none;">
-    <tr>
-      <td style="width:20%;border:1px solid #999;border-top:none;border-left:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">Nomenclature</td>
-      <td style="width:20%;border:1px solid #999;border-top:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">PN OFF</td>
-      <td style="width:20%;border:1px solid #999;border-top:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">SN OFF</td>
-      <td style="width:20%;border:1px solid #999;border-top:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">PN ON</td>
-      <td style="width:20%;border:1px solid #999;border-top:none;border-right:none;background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 4px;color:#343a40">SN ON</td>
-    </tr>
-    ${hasParts?parts.filter(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on).map((p, idx, arr)=>`
-      <tr>
-        <td style="border:1px solid #999;border-left:none;${idx===arr.length-1?'border-bottom:none;':''}padding:6px 4px;font-size:12px;word-break:break-word">${p.nom}</td>
-        <td style="border:1px solid #999;${idx===arr.length-1?'border-bottom:none;':''}padding:6px 4px;font-size:12px;word-break:break-word">${p.pn_off}</td>
-        <td style="border:1px solid #999;${idx===arr.length-1?'border-bottom:none;':''}padding:6px 4px;font-size:12px;word-break:break-word">${p.sn_off}</td>
-        <td style="border:1px solid #999;${idx===arr.length-1?'border-bottom:none;':''}padding:6px 4px;font-size:12px;word-break:break-word">${p.pn_on}</td>
-        <td style="border:1px solid #999;border-right:none;${idx===arr.length-1?'border-bottom:none;':''}padding:6px 4px;font-size:12px;word-break:break-word">${p.sn_on}</td>
-      </tr>`).join(''):`<tr><td colspan="5" style="border:none;padding:6px;color:#aaa;font-style:italic;text-align:center">No parts replaced</td></tr>`}
-  </table>`;
+  const hasParts = parts.some(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on);
+  const partRows = hasParts
+    ? parts.filter(p=>p.nom||p.pn_off||p.sn_off||p.pn_on||p.sn_on).map(p=>`
+        <tr>
+          <td style="font-size:12px;padding:6px 8px">${p.nom||'—'}</td>
+          <td style="font-size:12px;padding:6px 8px">${p.pn_off||'—'}</td>
+          <td style="font-size:12px;padding:6px 8px">${p.sn_off||'—'}</td>
+          <td style="font-size:12px;padding:6px 8px">${p.pn_on||'—'} / ${p.sn_on||'—'}</td>
+        </tr>`).join('')
+    : `<tr><td colspan="4" style="padding:8px;color:#aaa;font-style:italic;text-align:center">No parts replaced</td></tr>`;
 
   const pocRows=pocs.length>0
     ?`<tr><td class="lbl"><b>Name</b></td><td colspan="3">${pocs.map(p=>p.name||'—').join(' / ')}</td></tr>
@@ -1607,7 +1607,13 @@ G.generate = async function() {
     <tr><td class="lbl"><b>FAR</b></td><td>${far||'—'}</td><td class="lbl"><b>RTS/Assist</b></td><td>${rtsA}</td></tr>
     <tr><td class="lbl"><b>Model and S/N:</b></td><td>${model} / ${sn}</td><td class="lbl"><b>A/C Registry:</b></td><td>${reg||'—'}</td></tr>
     <tr class="thr"><td colspan="4"><b>Parts</b></td></tr>
-    <tr><td colspan="4" style="padding:0;border:none;">${partsHtml}</td></tr>
+    <tr>
+      <td style="background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 8px;color:#343a40"><b>Nomenclature</b></td>
+      <td style="background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 8px;color:#343a40"><b>PN OFF</b></td>
+      <td style="background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 8px;color:#343a40"><b>SN OFF</b></td>
+      <td style="background:#d8e4d8;font-weight:700;font-size:11px;padding:6px 8px;color:#343a40"><b>PN ON / SN ON</b></td>
+    </tr>
+    ${partRows}
     <tr class="thr"><td colspan="4"><b>Onsite Support FAST POC</b></td></tr>
     ${pocRows}
     <tr class="thr"><td colspan="4"><b>Customer Info</b></td></tr>
@@ -1642,18 +1648,7 @@ G.draftInGmail = async function() {
   draftBtn.innerHTML = '<span class="spin"></span> Creating draft…';
 
   try {
-    // ✅ Destinataires : UI d'abord, sinon profil Firebase
-    let toAddrs = getRecipients();
-    if (!toAddrs.length && curProfile?.id) {
-      const snap = await get(ref(db, 'team/' + curProfile.id));
-      if (snap.exists()) {
-        const p = snap.val();
-        const raw = p.defaultRecipients || '';
-        toAddrs = raw.split(',').map(e => e.trim()).filter(Boolean);
-        // Mettre à jour l'UI aussi
-        renderRecipients(toAddrs);
-      }
-    }
+    const toAddrs = getRecipients();
 
     const subject = document.getElementById('email-subject')?.textContent || '';
 
