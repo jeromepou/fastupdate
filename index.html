@@ -1929,7 +1929,7 @@ G.generate = async function() {
   const items=getItems(), parts=getParts(), updates=getUpdatesData();
   const pocs=await getAllPocsData();
 
-  const subjectBase = `UPDATE // ${wo} // ${model} ${sn} // ${reg} // ${loc} //`;
+  const subjectBase = `UPDATE // ${wo} // ${model} // ${sn} // ${reg} // ${loc} //`;
   const subjectFull = jobDesc ? `${subjectBase} ${jobDesc}` : subjectBase;
   document.getElementById('email-subject').textContent = subjectFull;
 
