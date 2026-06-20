@@ -1493,29 +1493,29 @@ G.extractPDF = async function() {
   const prompt=`You will receive ONE PDF that is ONE of these three Gulfstream document types. First identify which type it is, then extract accordingly.
 
 DOCUMENT TYPE 1 — "RFS" (Request For Service / quote-style document with fields like A/C Registry, Model/SN, FBO, Customer info, work scope items):
-Extract all standard fields.
+Extract all standard fields normally.
 
-DOCUMENT TYPE 2 — "Work Order Detail" (header says "Work Order Detail", contains numbered "Item: N" sections each with "Squawk: X.Y" / "Discrepancy:" / "Status:" lines):
-ONLY extract squawks that belong to "Item 2" (the item titled "Customer Supplied Tasks" or similar — the item containing the actual customer-requested maintenance tasks) as work_items. 
-IGNORE Item 1, 3, 4, 5 for work_items purposes — BUT still read their text carefully to extract these metadata fields if present anywhere in the document:
-- far_certification: look at the "Repair Station:" field at the top of the document and determine which civil aviation authority issued that approval code, based on its format/prefix:
-  - If the code contains "EASA" (e.g. "EASA.145.1234") → far_certification = "EASA"
-  - If the code starts with "QCAA" (e.g. "QCAA/FAMO/186") → far_certification = "QCAA"
-  - If the code is an FAA-style alphanumeric Repair Station Certificate number (e.g. "MGTY330K" — typically a 3-letter + 3-digit + letter pattern with no slashes, not matching EASA/QCAA formats) → far_certification = "FAA"
-  - For any other recognizable national CAA approval code format, output the corresponding authority's short name/acronym (e.g. "CAAC", "ANAC", "TCCA", "DGCA") based on the code's format/prefix.
-  Do NOT infer far_certification from generic release-statement legal boilerplate text inside squawk discrepancies — that text never contains the actual authority code, only the "Repair Station:" field does.
-  If no "Repair Station:" field or recognizable approval code is found, leave far_certification as "".
-- location: look for any ICAO 4-letter airport code mentioned anywhere in the squawks (e.g. in a "Travel To & From XXXX" line, an "Airport Location, FBO" line, or similar). Use that ICAO code as the location.
-- fbo: if an FBO or shipping address is explicitly named anywhere, extract it; otherwise leave blank.
-Also extract: work_order (the "Work Order:" field), model/serial (from "Aircraft Serial Number" — model may need inferring from context if present), customer_name, customer_email, customer_phone (from "Customer Name/E-Mail/Tel" fields).
+DOCUMENT TYPE 2 — "Work Order Detail" (header literally says "Work Order Detail", contains numbered "Item: N" sections each with "Squawk: X.Y" / "Discrepancy:" / "Status:" lines):
+
+STEP A — Read the ENTIRE document top to bottom, including EVERY Item section (1, 2, 3, 4, 5) without skipping any, to extract these metadata fields. Do this BEFORE doing any filtering:
+  - location: scan every single squawk Discrepancy line in the WHOLE document (all Items, not just Item 2) for a 4-letter ICAO airport code. It is commonly found in a travel-related line such as "Travel To & From LEMD" or "Record Airport Location, FBO / Shipping address" — if a specific code like LEMD appears anywhere, that is the location. Use that ICAO code as location.
+  - far_certification: look at the "Repair Station:" field near the top of the document and determine which civil aviation authority issued that approval code, based on its format/prefix:
+    - If the code contains "EASA" (e.g. "EASA.145.1234") → far_certification = "EASA"
+    - If the code starts with "QCAA" (e.g. "QCAA/FAMO/186") → far_certification = "QCAA"
+    - If the code is an FAA-style alphanumeric Repair Station Certificate with no slashes (e.g. "MGTY330K") → far_certification = "FAA"
+    - For any other recognizable national CAA approval code format, output that authority's short acronym based on the code's prefix/format (e.g. "CAAC", "ANAC", "TCCA", "DGCA").
+    Do NOT infer far_certification from generic release-statement legal boilerplate text inside squawk discrepancies (text explaining what a CRS is) — that text never contains the actual authority code. ONLY use the "Repair Station:" field.
+  - work_order (the "Work Order:" field), model/serial (from "Aircraft Serial Number" field; infer model if context allows), customer_name, customer_email, customer_phone (from "Customer Name / E-Mail / Tel" fields).
+
+STEP B — ONLY for the work_items array (this filtering does NOT apply to Step A metadata above): extract ONLY squawks belonging to "Item 2" (the item titled "Customer Supplied Tasks" or similar — containing actual customer-requested maintenance tasks). EXCLUDE all squawks from Item 1 (administrative boilerplate: WIP card, tool control, circuit breakers, hours & cycles, tech log review, risk assessment, AMM checklists, release statement) and from Item 3, 4, 5 (administrative use only / no return to service required / associated task cards / RMC service engineering) — these are NOT work items, even though their text was already read in Step A for metadata.
 
 DOCUMENT TYPE 3 — "WCR" / "Work Change Request" (header says "WORK CHANGE REQUEST", lists numbered tasks like "2.6 - ...", "2.7 - ..." to be ADDED to an existing work order):
-Extract work_order (from "WORK ORDER:" field), registration (A/C REGISTRATION), model/serial (A/C TYPE/SERIAL NO.), customer_name (CUSTOMER REP), and each numbered task line as a work item. Strip the leading number (e.g. "2.7 -"). If a task starts with a registration/squawk-ID prefix followed by a colon-style lead-in like "A7-CGB-260615-1 CREW REPORTED:", strip that prefix too and keep only the actual description after it.
+Extract work_order (from "WORK ORDER:" field), registration (A/C REGISTRATION field), model/serial (A/C TYPE/SERIAL NO. field), customer_name (CUSTOMER REP field), and each numbered task line as a work item. Strip the leading number (e.g. "2.7 -"). If a task starts with a registration/squawk-ID prefix followed by a lead-in like "A7-CGB-260615-1 CREW REPORTED:", strip that whole prefix too and keep only the actual description after it.
 
-UNIVERSAL RULE FOR ALL TYPES: 
-- Any task/squawk whose text is exactly or essentially "EIE" (meaning "Entry In Error") must be COMPLETELY EXCLUDED from work_items — do not include it at all, it is a cancelled/void entry.
-- work_items descriptions must be in UPPERCASE, with NO leading squawk/task numbers (e.g. "2.7", "1.3") in the label text.
-- Only include fields you are confident about; leave others as empty string "" if not present in this document type.
+UNIVERSAL RULE FOR ALL TYPES:
+- Any task/squawk whose text is exactly or essentially just "EIE" (meaning "Entry In Error" — a cancelled/void entry) must be COMPLETELY EXCLUDED from work_items. Do not include it at all.
+- work_items descriptions must be in UPPERCASE, with NO leading squawk/task numbers in the label text.
+- Only include fields you are confident about; leave others as empty string "" if not present or not found in this document.
 
 Reply ONLY with valid JSON, no markdown, in this exact shape:
 {"doc_type":"RFS or WORK_ORDER_DETAIL or WCR","work_order":"","model":"e.g. GVIII-G700","serial_number":"","registration":"","location":"ICAO","rts_assist":"RTS or Assist","far_certification":"","country":"","fbo":"","po_number":"","customer_name":"UPPERCASE","customer_phone":"","customer_email":"","estimated_rts":"","next_flight":"UNKWN if unknown","constraints":"","work_items":[{"label":"UPPERCASE"}]}`;
@@ -1529,13 +1529,12 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
     const docType = parsed.doc_type || 'RFS';
     const isFollowUp = (docType === 'WORK_ORDER_DETAIL' || docType === 'WCR');
 
-    // For RFS (or first import): fill/overwrite the main fields.
-    // For Work Order Detail / WCR on an existing project: only fill empty fields, never overwrite what's already there.
+    // RFS (fresh import) overwrites fields. WOD/WCR (follow-up on existing project) only fills EMPTY fields, never overwrites.
     const fillOrKeep = (id, val) => {
       if (!val) return;
       const el = document.getElementById(id);
       if (!el) return;
-      if (isFollowUp && el.value.trim() !== '') return; // don't clobber existing data
+      if (isFollowUp && el.value.trim() !== '') return;
       el.value = val;
     };
 
@@ -1555,7 +1554,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
     fillOrKeep('f_cust_email',parsed.customer_email||'');
     if(!isFollowUp && parsed.rts_assist) document.getElementById('f_rts_assist').value=parsed.rts_assist.toLowerCase().includes('assist')?'Assist':'RTS';
 
-    // Work items: RFS replaces the list (fresh import). WO Detail / WCR ADD to existing list (no duplicates).
+    // Work items: RFS replaces the list (fresh import). WOD/WCR ADD to existing list, skipping duplicates.
     const newItems = (parsed.work_items||[]).filter(it => it.label && it.label.trim().toUpperCase() !== 'EIE');
 
     if (!isFollowUp) {
@@ -1563,10 +1562,9 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
       newItems.forEach(it=>G.addItem(it.label));
     } else {
       const existingLabels = getItems().map(it => it.label.trim().toUpperCase());
-      let added = 0;
       newItems.forEach(it => {
         const lbl = it.label.trim().toUpperCase();
-        if (!existingLabels.includes(lbl)) { G.addItem(it.label); existingLabels.push(lbl); added++; }
+        if (!existingLabels.includes(lbl)) { G.addItem(it.label); existingLabels.push(lbl); }
       });
     }
 
