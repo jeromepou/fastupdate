@@ -1496,10 +1496,18 @@ DOCUMENT TYPE 1 — "RFS" (Request For Service / quote-style document with field
 Extract all standard fields.
 
 DOCUMENT TYPE 2 — "Work Order Detail" (header says "Work Order Detail", contains numbered "Item: N" sections each with "Squawk: X.Y" / "Discrepancy:" / "Status:" lines):
-ONLY extract squawks that belong to "Item 2" (the item titled "Customer Supplied Tasks" or similar — the item containing the actual customer-requested maintenance tasks). 
-IGNORE all squawks from Item 1 (administrative/boilerplate tasks like WIP card, tool control, circuit breakers, hours & cycles, tech log review, risk assessment, AMM checklists, release statement).
-IGNORE all squawks from Item 3, 4, 5 (administrative use only / no return to service required / associated task cards / RMC service engineering).
-Also extract: work_order (the "Work Order:" field), model/serial (from "Aircraft Serial Number" — model may need inferring from context if present), customer_name, customer_email, customer_phone (from "Customer Name/E-Mail/Tel" fields), location/FBO if mentioned.
+ONLY extract squawks that belong to "Item 2" (the item titled "Customer Supplied Tasks" or similar — the item containing the actual customer-requested maintenance tasks) as work_items. 
+IGNORE Item 1, 3, 4, 5 for work_items purposes — BUT still read their text carefully to extract these metadata fields if present anywhere in the document:
+- far_certification: look at the "Repair Station:" field at the top of the document and determine which civil aviation authority issued that approval code, based on its format/prefix:
+  - If the code contains "EASA" (e.g. "EASA.145.1234") → far_certification = "EASA"
+  - If the code starts with "QCAA" (e.g. "QCAA/FAMO/186") → far_certification = "QCAA"
+  - If the code is an FAA-style alphanumeric Repair Station Certificate number (e.g. "MGTY330K" — typically a 3-letter + 3-digit + letter pattern with no slashes, not matching EASA/QCAA formats) → far_certification = "FAA"
+  - For any other recognizable national CAA approval code format, output the corresponding authority's short name/acronym (e.g. "CAAC", "ANAC", "TCCA", "DGCA") based on the code's format/prefix.
+  Do NOT infer far_certification from generic release-statement legal boilerplate text inside squawk discrepancies — that text never contains the actual authority code, only the "Repair Station:" field does.
+  If no "Repair Station:" field or recognizable approval code is found, leave far_certification as "".
+- location: look for any ICAO 4-letter airport code mentioned anywhere in the squawks (e.g. in a "Travel To & From XXXX" line, an "Airport Location, FBO" line, or similar). Use that ICAO code as the location.
+- fbo: if an FBO or shipping address is explicitly named anywhere, extract it; otherwise leave blank.
+Also extract: work_order (the "Work Order:" field), model/serial (from "Aircraft Serial Number" — model may need inferring from context if present), customer_name, customer_email, customer_phone (from "Customer Name/E-Mail/Tel" fields).
 
 DOCUMENT TYPE 3 — "WCR" / "Work Change Request" (header says "WORK CHANGE REQUEST", lists numbered tasks like "2.6 - ...", "2.7 - ..." to be ADDED to an existing work order):
 Extract work_order (from "WORK ORDER:" field), registration (A/C REGISTRATION), model/serial (A/C TYPE/SERIAL NO.), customer_name (CUSTOMER REP), and each numbered task line as a work item. Strip the leading number (e.g. "2.7 -"). If a task starts with a registration/squawk-ID prefix followed by a colon-style lead-in like "A7-CGB-260615-1 CREW REPORTED:", strip that prefix too and keep only the actual description after it.
