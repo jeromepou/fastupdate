@@ -1583,35 +1583,110 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
   }catch(e){setStatus('err','Error: '+e.message);}finally{extractBtn.disabled=false;}
 };
 
-// Maps an aircraft registration prefix to its civil aviation authority acronym.
-// Extend this table as you encounter new registration prefixes in your fleet.
-function certFromRegistration(reg) {
+// Maps an aircraft registration prefix to its country of registry.
+function countryFromRegistration(reg) {
   const map = [
-    [/^A7-/, 'QCAA'],     // Qatar
-    [/^A6-/, 'GCAA'],     // UAE
-    [/^N/,   'FAA'],      // USA
-    [/^G-/,  'UK CAA'],   // United Kingdom
-    [/^D-/,  'EASA'],     // Germany
-    [/^F-/,  'EASA'],     // France
-    [/^I-/,  'EASA'],     // Italy
-    [/^EC-/, 'EASA'],     // Spain
-    [/^OE-/, 'EASA'],     // Austria
-    [/^OY-/, 'EASA'],     // Denmark
-    [/^LX-/, 'EASA'],     // Luxembourg
-    [/^9H-/, 'EASA'],     // Malta
-    [/^T7-/, 'San Marino CAA'],
-    [/^M-/,  'Isle of Man CAA'],
-    [/^VP-B/, 'Bermuda CAA'],
-    [/^VP-C/, 'Cayman Islands CAA'],
-    [/^P4-/, 'Aruba DCA'],
-    [/^HB-/, 'FOCA'],     // Switzerland
-    [/^C-/,  'TCCA'],     // Canada
-    [/^B-/,  'CAAC'],     // China
-    [/^VT-/, 'DGCA'],     // India
-    [/^PP-|^PR-|^PT-/, 'ANAC'], // Brazil
+    [/^YA-/,'Afghanistan'],[/^ZA-/,'Albania'],[/^7T-/,'Algeria'],[/^C3-/,'Andorra'],
+    [/^D2-/,'Angola'],[/^V2-/,'Antigua and Barbuda'],[/^L[VQ]-/,'Argentina'],[/^EK-/,'Armenia'],
+    [/^P4-/,'Aruba'],[/^VH-/,'Australia'],[/^OE-/,'Austria'],[/^4K-/,'Azerbaijan'],
+    [/^C6-/,'Bahamas'],[/^A9C-/,'Bahrain'],[/^S2-/,'Bangladesh'],[/^8P-/,'Barbados'],
+    [/^EW-/,'Belarus'],[/^OO-/,'Belgium'],[/^V3-/,'Belize'],[/^TY-/,'Benin'],
+    [/^VP-B/,'Bermuda'],[/^A5-/,'Bhutan'],[/^CP-/,'Bolivia'],[/^E7-/,'Bosnia and Herzegovina'],
+    [/^A2-/,'Botswana'],[/^P[PRTUS]-/,'Brazil'],[/^VP-L/,'British Virgin Islands'],[/^V8-/,'Brunei'],
+    [/^LZ-/,'Bulgaria'],[/^XT-/,'Burkina Faso'],[/^9U-/,'Burundi'],[/^XU-/,'Cambodia'],
+    [/^TJ-/,'Cameroon'],[/^C-[FG]/,'Canada'],[/^D4-/,'Cape Verde'],[/^VP-C/,'Cayman Islands'],
+    [/^TL-/,'Central African Republic'],[/^TT-/,'Chad'],[/^CC-/,'Chile'],[/^B-[0-9]/,'China'],
+    [/^B-[HKL]/,'Hong Kong'],[/^B-M/,'Macau'],[/^H[JK]-/,'Colombia'],[/^D6-/,'Comoros'],
+    [/^TN-/,'Republic of the Congo'],[/^9[ST]-/,'Democratic Republic of the Congo'],[/^E5-/,'Cook Islands'],
+    [/^TI-/,'Costa Rica'],[/^9A-/,'Croatia'],[/^CU-/,'Cuba'],[/^5B-/,'Cyprus'],
+    [/^OK-/,'Czech Republic'],[/^OY-/,'Denmark'],[/^J2-/,'Djibouti'],[/^J7-/,'Dominica'],
+    [/^HI-/,'Dominican Republic'],[/^4W-/,'East Timor'],[/^HC-/,'Ecuador'],[/^SU-/,'Egypt'],
+    [/^YS-/,'El Salvador'],[/^3C-/,'Equatorial Guinea'],[/^E3-/,'Eritrea'],[/^ES-/,'Estonia'],
+    [/^3D/,'Eswatini'],[/^ET-/,'Ethiopia'],[/^VP-F/,'Falkland Islands'],[/^DQ-/,'Fiji'],
+    [/^OH-/,'Finland'],[/^F-O/,'French Overseas Territory'],[/^F-/,'France'],[/^TR-/,'Gabon'],
+    [/^C5-/,'Gambia'],[/^4L-/,'Georgia'],[/^D-/,'Germany'],[/^9G/,'Ghana'],
+    [/^VP-G/,'Gibraltar'],[/^SX-/,'Greece'],[/^J3-/,'Grenada'],[/^TG-/,'Guatemala'],
+    [/^2-/,'Guernsey'],[/^3X-/,'Guinea'],[/^J5-/,'Guinea-Bissau'],[/^8R-/,'Guyana'],
+    [/^HH-/,'Haiti'],[/^HR-/,'Honduras'],[/^HA-/,'Hungary'],[/^TF-/,'Iceland'],
+    [/^VT-/,'India'],[/^PK-/,'Indonesia'],[/^EP-/,'Iran'],[/^YI-/,'Iraq'],
+    [/^E[IJ]-/,'Ireland'],[/^M-/,'Isle of Man'],[/^4X-|^4Z/,'Israel'],[/^I-/,'Italy'],
+    [/^TU-/,'Ivory Coast'],[/^6Y-/,'Jamaica'],[/^JA/,'Japan'],[/^JY-/,'Jordan'],
+    [/^UP-/,'Kazakhstan'],[/^5Y-/,'Kenya'],[/^T3-/,'Kiribati'],[/^Z6-/,'Kosovo'],
+    [/^9K-/,'Kuwait'],[/^EX-/,'Kyrgyzstan'],[/^RDPL/,'Laos'],[/^YL-/,'Latvia'],
+    [/^OD-/,'Lebanon'],[/^7P-/,'Lesotho'],[/^A8-/,'Liberia'],[/^5A-/,'Libya'],
+    [/^HB-.*Liechtenstein/i,'Liechtenstein'],[/^LY-/,'Lithuania'],[/^LX-/,'Luxembourg'],
+    [/^5R-/,'Madagascar'],[/^7Q-/,'Malawi'],[/^9M-/,'Malaysia'],[/^8Q-/,'Maldives'],
+    [/^TZ-/,'Mali'],[/^9H-/,'Malta'],[/^V7-/,'Marshall Islands'],[/^5T-/,'Mauritania'],
+    [/^3B-/,'Mauritius'],[/^X[ABC]-/,'Mexico'],[/^V6-/,'Micronesia'],[/^ER-/,'Moldova'],
+    [/^3A-/,'Monaco'],[/^JU-/,'Mongolia'],[/^4O-/,'Montenegro'],[/^VP-M/,'Montserrat'],
+    [/^CN-/,'Morocco'],[/^C9-/,'Mozambique'],[/^X[YZ]-/,'Myanmar'],[/^V5-/,'Namibia'],
+    [/^C2-/,'Nauru'],[/^9N-/,'Nepal'],[/^PH-/,'Netherlands'],[/^PJ-/,'Curaçao/Sint Maarten'],
+    [/^ZK-|^ZL-|^ZM-/,'New Zealand'],[/^YN-/,'Nicaragua'],[/^5U-/,'Niger'],[/^5N-/,'Nigeria'],
+    [/^P-/,'North Korea'],[/^Z3-/,'North Macedonia'],[/^LN-/,'Norway'],[/^A4O-/,'Oman'],
+    [/^AP-/,'Pakistan'],[/^HP-/,'Panama'],[/^P2-/,'Papua New Guinea'],[/^ZP-/,'Paraguay'],
+    [/^OB-/,'Peru'],[/^RP-/,'Philippines'],[/^SP-|^SN-/,'Poland'],[/^C[RS]-/,'Portugal'],
+    [/^A7-/,'Qatar'],[/^YR-/,'Romania'],[/^R[AF]-/,'Russia'],[/^9XR-/,'Rwanda'],
+    [/^V4-/,'Saint Kitts and Nevis'],[/^J6-/,'Saint Lucia'],[/^J8-/,'Saint Vincent and the Grenadines'],
+    [/^5W-/,'Samoa'],[/^T7-/,'San Marino'],[/^S9-/,'São Tomé and Príncipe'],[/^HZ-/,'Saudi Arabia'],
+    [/^6[VW]-/,'Senegal'],[/^YU-/,'Serbia'],[/^S7-/,'Seychelles'],[/^9L-/,'Sierra Leone'],
+    [/^9V-/,'Singapore'],[/^OM-/,'Slovakia'],[/^S5-/,'Slovenia'],[/^H4-/,'Solomon Islands'],
+    [/^6O-/,'Somalia'],[/^Z[STU]-/,'South Africa'],[/^HL/,'South Korea'],[/^Z8-/,'South Sudan'],
+    [/^EC-|^EM-/,'Spain'],[/^4R-/,'Sri Lanka'],[/^ST-/,'Sudan'],[/^PZ-/,'Suriname'],
+    [/^SE-/,'Sweden'],[/^HB-/,'Switzerland'],[/^YK-/,'Syria'],[/^B-/,'Taiwan'],
+    [/^EY-/,'Tajikistan'],[/^5H-/,'Tanzania'],[/^HS-/,'Thailand'],[/^5V-/,'Togo'],
+    [/^A3-/,'Tonga'],[/^9Y-/,'Trinidad and Tobago'],[/^TS-/,'Tunisia'],[/^TC-/,'Turkey'],
+    [/^EZ-/,'Turkmenistan'],[/^VQ-T/,'Turks and Caicos'],[/^T2-/,'Tuvalu'],[/^5X-/,'Uganda'],
+    [/^UR-/,'Ukraine'],[/^A6-/,'United Arab Emirates'],[/^G-/,'United Kingdom'],[/^N/,'United States'],
+    [/^CX-/,'Uruguay'],[/^UK/,'Uzbekistan'],[/^YJ-/,'Vanuatu'],[/^YV/,'Venezuela'],
+    [/^VN-/,'Vietnam'],[/^A4/,'Oman'],
   ];
-  for (const [re, code] of map) if (re.test(reg)) return code;
+  for (const [re, country] of map) if (re.test(reg)) return country;
   return '';
+}
+
+// Maps an aircraft registration prefix to its civil aviation authority acronym.
+function certFromRegistration(reg) {
+  const country = countryFromRegistration(reg);
+  const easaCountries = new Set([
+    'Austria','Belgium','Bulgaria','Croatia','Cyprus','Czech Republic','Denmark','Estonia',
+    'Finland','France','Germany','Greece','Hungary','Iceland','Ireland','Italy','Latvia',
+    'Liechtenstein','Lithuania','Luxembourg','Malta','Netherlands','Norway','Poland','Portugal',
+    'Romania','Slovakia','Slovenia','Spain','Sweden'
+  ]);
+  if (easaCountries.has(country)) return 'EASA';
+  const special = {
+    'United States':'FAA',
+    'United Kingdom':'UK CAA',
+    'Qatar':'QCAA',
+    'United Arab Emirates':'GCAA',
+    'San Marino':'San Marino CAA',
+    'Isle of Man':'Isle of Man CAA',
+    'Bermuda':'Bermuda CAA',
+    'Cayman Islands':'CICAA',
+    'British Virgin Islands':'BVI CAA',
+    'Aruba':'Aruba DCA',
+    'Curaçao/Sint Maarten':'CCAA',
+    'Switzerland':'FOCA',
+    'Canada':'TCCA',
+    'China':'CAAC',
+    'Taiwan':'CAA Taiwan',
+    'Hong Kong':'HKCAD',
+    'Macau':'AACM',
+    'India':'DGCA',
+    'Brazil':'ANAC',
+    'Australia':'CASA',
+    'New Zealand':'CAA NZ',
+    'South Africa':'SACAA',
+    'Saudi Arabia':'GACA',
+    'Singapore':'CAAS',
+    'Japan':'JCAB',
+    'South Korea':'MOLIT/KOCA',
+    'Turkey':'SHGM',
+    'Russia':'Rosaviatsia',
+    'Mexico':'AFAC',
+    'Israel':'CAAI',
+  };
+  return special[country] || '';
 }
 
 // ══════════════════════════════════════
