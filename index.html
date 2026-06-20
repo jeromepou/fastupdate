@@ -292,17 +292,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="proj-list" id="proj-list"></div>
 </div>
 
-<!-- Gemini PDF banner -->
-<div class="gemini-banner">
-  <div style="font-size:20px">🔐</div>
-  <div class="gemini-banner-text">
-    <strong>Google account <span id="auth-badge" class="abadge ko">Not connected</span></strong>
-    <small>Sign in with Google to enable free PDF extraction via Gemini</small>
-  </div>
-  <div id="gsi-btn-container"></div>
-  <button class="btn danger" id="btn-signout-google" onclick="signOutGoogle()" style="display:none">Sign out</button>
-</div>
-
 <!-- STEP 1 -->
 <div class="card">
   <div class="card-head"><span class="step-badge">STEP 1</span><h2>Upload PDF — optional</h2></div>
@@ -453,6 +442,16 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 
 <div id="output-section" class="output-section" style="display:none">
   <hr/>
+  <!-- Google sign-in for Draft in Gmail -->
+  <div class="gemini-banner" style="margin-bottom:12px">
+    <div style="font-size:20px">📧</div>
+    <div class="gemini-banner-text">
+      <strong>Google account <span id="auth-badge" class="abadge ko">Not connected</span></strong>
+      <small>Sign in with Google to create the draft directly in Gmail</small>
+    </div>
+    <div id="gsi-btn-container"></div>
+    <button class="btn danger" id="btn-signout-google" onclick="signOutGoogle()" style="display:none">Sign out</button>
+  </div>
   <div class="email-subject-box">
     <span class="subj-lbl">📧 Email subject</span>
     <span class="subj-txt" id="email-subject">—</span>
@@ -652,7 +651,7 @@ let projTab = 'active';  // 'active' | 'archive'
 
 // Gemini / Google OAuth
 const GCID = '624747295284-rpktnnbk5kugn7jhero0e267soidb2oj.apps.googleusercontent.com';
-const GSCOPE = 'https://www.googleapis.com/auth/generative-language.retriever https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/gmail.compose';
+const GSCOPE = 'https://www.googleapis.com/auth/gmail.compose';
 let tokenClient = null, gToken = null, gTokenExp = 0;
 
 // ══════════════════════════════════════
@@ -1442,17 +1441,36 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
 {"parts":[{"nomenclature":"","pn_off":"","sn_off":"","pn_on":"","sn_on":"","is_consumable":false,"quantity":""}]}`;
 
   try {
-    const parts_input = isPdf
-      ? [{ inline_data: { mime_type: 'application/pdf', data: emailPdfB64 } }, { text: prompt }]
-      : [{ text: prompt + '\n\nEMAIL THREAD TEXT:\n' + pastedText }];
+    let emailText = pastedText;
 
-    const res = await fetch(`https://polished-cherry-8666.jeromepoupinel.workers.dev`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: parts_input }], generationConfig: { temperature: 0, maxOutputTokens: 2000 } })
+    // Si PDF : extraire le texte via OCR Mistral d'abord
+    if (isPdf) {
+      const ocrRes = await fetch('https://orange-snow-95f7.jeromepoupinel.workers.dev/ocr', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model: 'mistral-ocr-latest',
+          document: { type: 'document_url', document_url: `data:application/pdf;base64,${emailPdfB64}` }
+        })
+      });
+      const ocrData = await ocrRes.json();
+      if(!ocrRes.ok) throw new Error(ocrData.message || 'OCR error ' + ocrRes.status);
+      emailText = ocrData.pages.map(p => p.markdown).join('\n\n');
+    }
+
+    const chatRes = await fetch('https://orange-snow-95f7.jeromepoupinel.workers.dev/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'mistral-small-latest',
+        temperature: 0,
+        messages: [{ role: 'user', content: prompt + '\n\nEMAIL THREAD TEXT:\n' + emailText }],
+        response_format: { type: 'json_object' }
+      })
     });
-    const data = await res.json();
-    if (!res.ok) { if (res.status === 401) { gToken = null; updateAuthUI(false); throw new Error('Session expired.'); } throw new Error(data.error?.message || 'API error ' + res.status); }
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const chatData = await chatRes.json();
+    if(!chatRes.ok) throw new Error(chatData.message || 'Chat error ' + chatRes.status);
+    const raw = chatData.choices[0].message.content;
     const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
 
     _previewParts = (parsed.parts || []).map(p => ({
@@ -1460,9 +1478,9 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
       pn_off: p.pn_off || '', sn_off: p.sn_off || '',
       pn_on: p.pn_on || '', sn_on: p.sn_on || '',
       is_consumable: !!p.is_consumable, quantity: p.quantity || '',
-      include: !p.is_consumable || false // tracked components pre-checked, consumables NOT pre-checked
+      include: !p.is_consumable || false
     }));
-    window._previewParts = _previewParts;window._previewParts = _previewParts;
+    window._previewParts = _previewParts;
 
     if (!_previewParts.length) { setEmailStatus('idle', 'No parts found in this email.'); btn.disabled = false; return; }
 
@@ -1636,7 +1654,7 @@ async function getAllPocsData() {
 window.addEventListener('load', () => { let t=0; const tr=()=>{ if(window.google?.accounts?.oauth2) initGA(); else if(t++<40) setTimeout(tr,150); }; tr(); });
 function initGA() {
   tokenClient = google.accounts.oauth2.initTokenClient({client_id:GCID, scope:GSCOPE,
-    callback:(r)=>{ if(r?.access_token){gToken=r.access_token;gTokenExp=Date.now()+((r.expires_in||3500)*1000)-30000;updateAuthUI(true);setStatus('done','✓ Connected to Google.');} },
+    callback:(r)=>{ if(r?.access_token){gToken=r.access_token;gTokenExp=Date.now()+((r.expires_in||3500)*1000)-30000;updateAuthUI(true);} },
     error_callback:()=>setStatus('err','Google sign-in cancelled.')});
   renderGBtn();
 }
@@ -1664,7 +1682,7 @@ function setStatus(type,msg){const el=document.getElementById('status');el.class
 
 G.extractPDF = async function() {
   if(!pdfB64){setStatus('err','No PDF loaded.');return;}
-  extractBtn.disabled=true;setStatus('load','<span class="spin"></span> Sending PDF to Gemini…');
+  extractBtn.disabled=true;setStatus('load','<span class="spin"></span> Sending PDF to Mistral…');
   const prompt=`You will receive ONE PDF that is ONE of these three Gulfstream document types. First identify which type it is, then extract accordingly.
 
 DOCUMENT TYPE 1 — "RFS" (Request For Service / quote-style document with fields like A/C Registry, Model/SN, FBO, Customer info, work scope items):
@@ -1698,16 +1716,37 @@ UNIVERSAL RULE FOR ALL TYPES:
 Reply ONLY with valid JSON, no markdown, in this exact shape:
 {"doc_type":"RFS or WORK_ORDER_DETAIL or WCR","work_order":"","model":"e.g. GVIII-G700","serial_number":"","registration":"","location":"ICAO","rts_assist":"RTS or Assist","far_certification":"","country":"","fbo":"","po_number":"","customer_name":"UPPERCASE","customer_phone":"","customer_email":"","estimated_rts":"","next_flight":"UNKWN if unknown","constraints":"","work_items":[{"label":"UPPERCASE"}]}`;
   try {
-    const res=await fetch(`https://polished-cherry-8666.jeromepoupinel.workers.dev`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'gemini-2.5-flash-lite',contents:[{parts:[{inline_data:{mime_type:'application/pdf',data:pdfB64}},{text:prompt}]}],generationConfig:{temperature:0,maxOutputTokens:1500}})});
-    const data=await res.json();
-    if(!res.ok){if(res.status===401){gToken=null;updateAuthUI(false);throw new Error('Session expired.');}throw new Error(data.error?.message||'API error '+res.status);}
-    const raw=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
-    const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    // Étape 1 : OCR pour extraire le texte du PDF
+    const ocrRes = await fetch('https://orange-snow-95f7.jeromepoupinel.workers.dev/ocr', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'mistral-ocr-latest',
+        document: { type: 'document_url', document_url: `data:application/pdf;base64,${pdfB64}` }
+      })
+    });
+    const ocrData = await ocrRes.json();
+    if(!ocrRes.ok) throw new Error(ocrData.message || 'OCR error ' + ocrRes.status);
+    const extractedText = ocrData.pages.map(p => p.markdown).join('\n\n');
+
+    // Étape 2 : Analyse du texte extrait
+    const chatRes = await fetch('https://orange-snow-95f7.jeromepoupinel.workers.dev/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'mistral-small-latest',
+        temperature: 0,
+        messages: [{ role: 'user', content: prompt + '\n\nDOCUMENT TEXT:\n' + extractedText }],
+        response_format: { type: 'json_object' }
+      })
+    });
+    const chatData = await chatRes.json();
+    if(!chatRes.ok) throw new Error(chatData.message || 'Chat error ' + chatRes.status);
+    const raw = chatData.choices[0].message.content;
+    const parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
 
     const docType = parsed.doc_type || 'RFS';
     const isFollowUp = (docType === 'WORK_ORDER_DETAIL' || docType === 'WCR');
-
-    // RFS (fresh import) overwrites fields. WOD/WCR (follow-up on existing project) only fills EMPTY fields, never overwrites.
     const fillOrKeep = (id, val) => {
       if (!val) return;
       const el = document.getElementById(id);
@@ -1715,7 +1754,6 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
       if (isFollowUp && el.value.trim() !== '') return;
       el.value = val;
     };
-
     fillOrKeep('f_wo',parsed.work_order);
     fillOrKeep('f_model',parsed.model);
     fillOrKeep('f_sn',parsed.serial_number);
@@ -1730,23 +1768,16 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
     fillOrKeep('f_cust_tel',parsed.customer_phone||'');
     fillOrKeep('f_cust_email',parsed.customer_email||'');
     if(!isFollowUp && parsed.rts_assist) document.getElementById('f_rts_assist').value=parsed.rts_assist.toLowerCase().includes('assist')?'Assist':'RTS';
-
-    // FAR / Certification: derive from aircraft registration prefix (country of registry's CAA), not from any document field.
     const regForCert = (document.getElementById('f_reg')?.value || parsed.registration || '').trim().toUpperCase();
     if (regForCert && (!document.getElementById('f_far').value.trim())) {
       const cert = certFromRegistration(regForCert);
       if (cert) document.getElementById('f_far').value = cert;
     }
-
-    // Country of Registry: derive from aircraft registration prefix too.
     if (regForCert && (!document.getElementById('f_country').value.trim())) {
       const ctry = countryFromRegistration(regForCert);
       if (ctry) document.getElementById('f_country').value = ctry;
     }
-
-    // Work items: RFS replaces the list (fresh import). WOD/WCR ADD to existing list, skipping duplicates.
     const newItems = (parsed.work_items||[]).filter(it => it.label && it.label.trim().toUpperCase() !== 'EIE');
-
     if (!isFollowUp) {
       document.getElementById('items-container').innerHTML='';itemCount=0;
       newItems.forEach(it=>G.addItem(it.label));
@@ -1757,7 +1788,6 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
         if (!existingLabels.includes(lbl)) { G.addItem(it.label); existingLabels.push(lbl); }
       });
     }
-
     G.autosave();
     const typeLabel = docType === 'WORK_ORDER_DETAIL' ? 'Work Order Detail' : docType === 'WCR' ? 'WCR' : 'RFS';
     setStatus('done',`✓ ${typeLabel} detected — ${newItems.length} item(s) extracted${isFollowUp ? ' and merged' : ''}.`);
