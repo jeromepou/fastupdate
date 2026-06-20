@@ -305,12 +305,12 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 
 <!-- STEP 1 -->
 <div class="card">
-  <div class="card-head"><span class="step-badge">STEP 1</span><h2>Upload RFS PDF — optional</h2></div>
+  <div class="card-head"><span class="step-badge">STEP 1</span><h2>Upload PDF — optional</h2></div>
   <div class="card-body">
     <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--gm);margin-bottom:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><polyline points="9 15 12 12 15 15"/></svg>
-      <p id="drop-label">Drag & drop or click to select the RFS PDF</p>
-      <small>Gulfstream RFS · PDF only</small>
+      <p id="drop-label">Drag & drop or click to select a PDF (RFS, Work Order Detail, or WCR)</p>
+      <small>Gulfstream RFS / Work Order Detail / WCR · PDF only</small>
       <input type="file" id="file-input" accept="application/pdf"/>
     </div>
     <button class="extract-btn" id="extract-btn" onclick="extractPDF()" disabled>Extract data from PDF</button>
@@ -1490,21 +1490,81 @@ G.extractPDF = async function() {
   if(!pdfB64){setStatus('err','No PDF loaded.');return;}
   if(!ensureGToken()){setStatus('idle','Please sign in with Google first.');return;}
   extractBtn.disabled=true;setStatus('load','<span class="spin"></span> Sending PDF to Gemini…');
-  const prompt=`Extract all fields from this Gulfstream RFS PDF. Reply ONLY with valid JSON, no markdown.\n{"work_order":"","model":"e.g. GVIII-G700","serial_number":"","registration":"","location":"ICAO","rts_assist":"RTS or Assist","far_certification":"","country":"","fbo":"","po_number":"","customer_name":"UPPERCASE","customer_phone":"","customer_email":"","estimated_rts":"","next_flight":"UNKWN if unknown","constraints":"","work_items":[{"label":"UPPERCASE"}]}`;
+  const prompt=`You will receive ONE PDF that is ONE of these three Gulfstream document types. First identify which type it is, then extract accordingly.
+
+DOCUMENT TYPE 1 — "RFS" (Request For Service / quote-style document with fields like A/C Registry, Model/SN, FBO, Customer info, work scope items):
+Extract all standard fields.
+
+DOCUMENT TYPE 2 — "Work Order Detail" (header says "Work Order Detail", contains numbered "Item: N" sections each with "Squawk: X.Y" / "Discrepancy:" / "Status:" lines):
+ONLY extract squawks that belong to "Item 2" (the item titled "Customer Supplied Tasks" or similar — the item containing the actual customer-requested maintenance tasks). 
+IGNORE all squawks from Item 1 (administrative/boilerplate tasks like WIP card, tool control, circuit breakers, hours & cycles, tech log review, risk assessment, AMM checklists, release statement).
+IGNORE all squawks from Item 3, 4, 5 (administrative use only / no return to service required / associated task cards / RMC service engineering).
+Also extract: work_order (the "Work Order:" field), model/serial (from "Aircraft Serial Number" — model may need inferring from context if present), customer_name, customer_email, customer_phone (from "Customer Name/E-Mail/Tel" fields), location/FBO if mentioned.
+
+DOCUMENT TYPE 3 — "WCR" / "Work Change Request" (header says "WORK CHANGE REQUEST", lists numbered tasks like "2.6 - ...", "2.7 - ..." to be ADDED to an existing work order):
+Extract work_order (from "WORK ORDER:" field), registration (A/C REGISTRATION), model/serial (A/C TYPE/SERIAL NO.), customer_name (CUSTOMER REP), and each numbered task line as a work item. Strip the leading number (e.g. "2.7 -"). If a task starts with a registration/squawk-ID prefix followed by a colon-style lead-in like "A7-CGB-260615-1 CREW REPORTED:", strip that prefix too and keep only the actual description after it.
+
+UNIVERSAL RULE FOR ALL TYPES: 
+- Any task/squawk whose text is exactly or essentially "EIE" (meaning "Entry In Error") must be COMPLETELY EXCLUDED from work_items — do not include it at all, it is a cancelled/void entry.
+- work_items descriptions must be in UPPERCASE, with NO leading squawk/task numbers (e.g. "2.7", "1.3") in the label text.
+- Only include fields you are confident about; leave others as empty string "" if not present in this document type.
+
+Reply ONLY with valid JSON, no markdown, in this exact shape:
+{"doc_type":"RFS or WORK_ORDER_DETAIL or WCR","work_order":"","model":"e.g. GVIII-G700","serial_number":"","registration":"","location":"ICAO","rts_assist":"RTS or Assist","far_certification":"","country":"","fbo":"","po_number":"","customer_name":"UPPERCASE","customer_phone":"","customer_email":"","estimated_rts":"","next_flight":"UNKWN if unknown","constraints":"","work_items":[{"label":"UPPERCASE"}]}`;
   try {
     const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${gToken}`},body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:'application/pdf',data:pdfB64}},{text:prompt}]}],generationConfig:{temperature:0,maxOutputTokens:1500}})});
     const data=await res.json();
     if(!res.ok){if(res.status===401){gToken=null;updateAuthUI(false);throw new Error('Session expired.');}throw new Error(data.error?.message||'API error '+res.status);}
     const raw=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
     const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
-    sv('f_wo',parsed.work_order);sv('f_model',parsed.model);sv('f_sn',parsed.serial_number);sv('f_reg',parsed.registration);
-    sv('f_loc',parsed.location);sv('f_far',parsed.far_certification);sv('f_country',parsed.country);sv('f_fbo',parsed.fbo);sv('f_po',parsed.po_number||'');
-    sv('f_erts',parsed.estimated_rts||'');sv('f_nxt',parsed.next_flight||'UNKWN');// constraints volontairement non importées depuis la RFS
-    sv('f_cust_name',parsed.customer_name||'');sv('f_cust_tel',parsed.customer_phone||'');sv('f_cust_email',parsed.customer_email||'');
-    if(parsed.rts_assist) document.getElementById('f_rts_assist').value=parsed.rts_assist.toLowerCase().includes('assist')?'Assist':'RTS';
-    document.getElementById('items-container').innerHTML='';itemCount=0;
-    (parsed.work_items||[]).forEach(it=>G.addItem(it.label));
-    G.autosave();setStatus('done',`✓ ${(parsed.work_items||[]).length} item(s) extracted.`);
+
+    const docType = parsed.doc_type || 'RFS';
+    const isFollowUp = (docType === 'WORK_ORDER_DETAIL' || docType === 'WCR');
+
+    // For RFS (or first import): fill/overwrite the main fields.
+    // For Work Order Detail / WCR on an existing project: only fill empty fields, never overwrite what's already there.
+    const fillOrKeep = (id, val) => {
+      if (!val) return;
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (isFollowUp && el.value.trim() !== '') return; // don't clobber existing data
+      el.value = val;
+    };
+
+    fillOrKeep('f_wo',parsed.work_order);
+    fillOrKeep('f_model',parsed.model);
+    fillOrKeep('f_sn',parsed.serial_number);
+    fillOrKeep('f_reg',parsed.registration);
+    fillOrKeep('f_loc',parsed.location);
+    fillOrKeep('f_far',parsed.far_certification);
+    fillOrKeep('f_country',parsed.country);
+    fillOrKeep('f_fbo',parsed.fbo);
+    fillOrKeep('f_po',parsed.po_number||'');
+    fillOrKeep('f_erts',parsed.estimated_rts||'');
+    fillOrKeep('f_nxt',parsed.next_flight||'UNKWN');
+    fillOrKeep('f_cust_name',parsed.customer_name||'');
+    fillOrKeep('f_cust_tel',parsed.customer_phone||'');
+    fillOrKeep('f_cust_email',parsed.customer_email||'');
+    if(!isFollowUp && parsed.rts_assist) document.getElementById('f_rts_assist').value=parsed.rts_assist.toLowerCase().includes('assist')?'Assist':'RTS';
+
+    // Work items: RFS replaces the list (fresh import). WO Detail / WCR ADD to existing list (no duplicates).
+    const newItems = (parsed.work_items||[]).filter(it => it.label && it.label.trim().toUpperCase() !== 'EIE');
+
+    if (!isFollowUp) {
+      document.getElementById('items-container').innerHTML='';itemCount=0;
+      newItems.forEach(it=>G.addItem(it.label));
+    } else {
+      const existingLabels = getItems().map(it => it.label.trim().toUpperCase());
+      let added = 0;
+      newItems.forEach(it => {
+        const lbl = it.label.trim().toUpperCase();
+        if (!existingLabels.includes(lbl)) { G.addItem(it.label); existingLabels.push(lbl); added++; }
+      });
+    }
+
+    G.autosave();
+    const typeLabel = docType === 'WORK_ORDER_DETAIL' ? 'Work Order Detail' : docType === 'WCR' ? 'WCR' : 'RFS';
+    setStatus('done',`✓ ${typeLabel} detected — ${newItems.length} item(s) extracted${isFollowUp ? ' and merged' : ''}.`);
   }catch(e){setStatus('err','Error: '+e.message);}finally{extractBtn.disabled=false;}
 };
 
