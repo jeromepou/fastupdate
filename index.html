@@ -1381,6 +1381,7 @@ function getParts() {
 let emailInputMode = 'paste';
 let emailPdfB64 = null;
 let _previewParts = [];
+G._previewParts = _previewParts;
 
 G.setEmailInputMode = function(mode) {
   emailInputMode = mode;
@@ -1462,6 +1463,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
       is_consumable: !!p.is_consumable, quantity: p.quantity || '',
       include: !p.is_consumable || false // tracked components pre-checked, consumables NOT pre-checked
     }));
+    window._previewParts = _previewParts;window._previewParts = _previewParts;
 
     if (!_previewParts.length) { setEmailStatus('idle', 'No parts found in this email.'); btn.disabled = false; return; }
 
@@ -1474,20 +1476,21 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
 };
 
 function renderPartsPreview() {
+  window._previewParts = _previewParts;
   const c = document.getElementById('parts-preview-list');
   const esc = (v) => (v||'').replace(/"/g,'&quot;');
   c.innerHTML = _previewParts.map((p, i) => {
     const warn = (field) => !p[field] ? ' style="border-color:#e0a000;background:#fffbe8"' : '';
     const warnIcon = (field) => !p[field] ? ' ⚠️' : '';
     return `<div style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:6px">
-      <input type="checkbox" ${p.include ? 'checked' : ''} onchange="_previewParts[${i}].include=this.checked" style="margin-top:10px;flex-shrink:0"/>
+      <input type="checkbox" ${p.include ? 'checked' : ''} onchange="window._previewParts[${i}].include=this.checked" style="margin-top:10px;flex-shrink:0"/>
       <div style="flex:1;display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr 0.7fr;gap:6px">
-        <div class="fg"><label>Nomenclature</label><input type="text" value="${esc(p.nomenclature)}" oninput="_previewParts[${i}].nomenclature=this.value" style="font-size:12px;padding:5px 8px"/></div>
-        <div class="fg"><label>PN OFF</label><input type="text" value="${esc(p.pn_off)}" oninput="_previewParts[${i}].pn_off=this.value"${warn('pn_off')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
-        <div class="fg"><label>SN OFF${warnIcon('sn_off')}</label><input type="text" value="${esc(p.sn_off)}" oninput="_previewParts[${i}].sn_off=this.value"${warn('sn_off')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
-        <div class="fg"><label>PN ON${warnIcon('pn_on')}</label><input type="text" value="${esc(p.pn_on)}" oninput="_previewParts[${i}].pn_on=this.value"${warn('pn_on')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
-        <div class="fg"><label>SN ON${warnIcon('sn_on')}</label><input type="text" value="${esc(p.sn_on)}" oninput="_previewParts[${i}].sn_on=this.value"${warn('sn_on')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
-        <div class="fg"><label>Qty</label><input type="text" value="${esc(p.quantity)}" oninput="_previewParts[${i}].quantity=this.value" placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
+        <div class="fg"><label>Nomenclature</label><input type="text" value="${esc(p.nomenclature)}" oninput="window._previewParts[${i}].nomenclature=this.value" style="font-size:12px;padding:5px 8px"/></div>
+        <div class="fg"><label>PN OFF</label><input type="text" value="${esc(p.pn_off)}" oninput="window._previewParts[${i}].pn_off=this.value"${warn('pn_off')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
+        <div class="fg"><label>SN OFF${warnIcon('sn_off')}</label><input type="text" value="${esc(p.sn_off)}" oninput="window._previewParts[${i}].sn_off=this.value"${warn('sn_off')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
+        <div class="fg"><label>PN ON${warnIcon('pn_on')}</label><input type="text" value="${esc(p.pn_on)}" oninput="window._previewParts[${i}].pn_on=this.value"${warn('pn_on')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
+        <div class="fg"><label>SN ON${warnIcon('sn_on')}</label><input type="text" value="${esc(p.sn_on)}" oninput="window._previewParts[${i}].sn_on=this.value"${warn('sn_on')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
+        <div class="fg"><label>Qty</label><input type="text" value="${esc(p.quantity)}" oninput="window._previewParts[${i}].quantity=this.value" placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
       </div>
     </div>`;
   }).join('');
