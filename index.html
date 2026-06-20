@@ -384,8 +384,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--gm);margin-bottom:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         <p id="email-drop-label">Drag & drop or click to select the email PDF</p>
         <small>Exported Gmail/Outlook thread · PDF only</small>
-        <input type="file" id="email-file-input" accept="application/pdf"/>
       </div>
+      <input type="file" id="email-file-input" accept="application/pdf" style="display:none"/>
     </div>
 
     <button class="extract-btn" id="email-extract-btn" onclick="extractPartsFromEmail()">🔍 Extract parts from email</button>
@@ -1475,18 +1475,19 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
 
 function renderPartsPreview() {
   const c = document.getElementById('parts-preview-list');
+  const esc = (v) => (v||'').replace(/"/g,'&quot;');
   c.innerHTML = _previewParts.map((p, i) => {
     const warn = (field) => !p[field] ? ' style="border-color:#e0a000;background:#fffbe8"' : '';
     const warnIcon = (field) => !p[field] ? ' ⚠️' : '';
     return `<div style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:6px">
       <input type="checkbox" ${p.include ? 'checked' : ''} onchange="_previewParts[${i}].include=this.checked" style="margin-top:10px;flex-shrink:0"/>
       <div style="flex:1;display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr 0.7fr;gap:6px">
-        <div class="fg"><label>Nomenclature</label><input type="text" value="${p.nomenclature}" oninput="_previewParts[${i}].nomenclature=this.value" style="font-size:12px;padding:5px 8px"/></div>
-        <div class="fg"><label>PN OFF</label><input type="text" value="${p.pn_off}" oninput="_previewParts[${i}].pn_off=this.value"${warn('pn_off')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
-        <div class="fg"><label>SN OFF${warnIcon('sn_off')}</label><input type="text" value="${p.sn_off}" oninput="_previewParts[${i}].sn_off=this.value"${warn('sn_off')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
-        <div class="fg"><label>PN ON${warnIcon('pn_on')}</label><input type="text" value="${p.pn_on}" oninput="_previewParts[${i}].pn_on=this.value"${warn('pn_on')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
-        <div class="fg"><label>SN ON${warnIcon('sn_on')}</label><input type="text" value="${p.sn_on}" oninput="_previewParts[${i}].sn_on=this.value"${warn('sn_on')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
-        <div class="fg"><label>Qty</label><input type="text" value="${p.quantity}" oninput="_previewParts[${i}].quantity=this.value" placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
+        <div class="fg"><label>Nomenclature</label><input type="text" value="${esc(p.nomenclature)}" oninput="_previewParts[${i}].nomenclature=this.value" style="font-size:12px;padding:5px 8px"/></div>
+        <div class="fg"><label>PN OFF</label><input type="text" value="${esc(p.pn_off)}" oninput="_previewParts[${i}].pn_off=this.value"${warn('pn_off')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
+        <div class="fg"><label>SN OFF${warnIcon('sn_off')}</label><input type="text" value="${esc(p.sn_off)}" oninput="_previewParts[${i}].sn_off=this.value"${warn('sn_off')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
+        <div class="fg"><label>PN ON${warnIcon('pn_on')}</label><input type="text" value="${esc(p.pn_on)}" oninput="_previewParts[${i}].pn_on=this.value"${warn('pn_on')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
+        <div class="fg"><label>SN ON${warnIcon('sn_on')}</label><input type="text" value="${esc(p.sn_on)}" oninput="_previewParts[${i}].sn_on=this.value"${warn('sn_on')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
+        <div class="fg"><label>Qty</label><input type="text" value="${esc(p.quantity)}" oninput="_previewParts[${i}].quantity=this.value" placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
       </div>
     </div>`;
   }).join('');
