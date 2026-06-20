@@ -366,6 +366,33 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
+<!-- PARTS FROM EMAIL -->
+<div class="card">
+  <div class="card-head"><span class="step-badge">PARTS</span><h2>Extract parts from email (optional)</h2></div>
+  <div class="card-body">
+    <div class="grid g2" style="margin-bottom:10px">
+      <button class="btn" id="email-mode-paste" onclick="setEmailInputMode('paste')">📋 Paste email text</button>
+      <button class="btn" id="email-mode-pdf" onclick="setEmailInputMode('pdf')">📎 Upload email PDF</button>
+    </div>
+
+    <div id="email-paste-zone">
+      <textarea id="email-paste-text" style="min-height:140px" placeholder="Paste the email thread text here (part requests, PN/SN mentions, order confirmations…)"></textarea>
+    </div>
+
+    <div id="email-pdf-zone" style="display:none">
+      <div class="drop-zone" id="email-drop-zone" onclick="document.getElementById('email-file-input').click()">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--gm);margin-bottom:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <p id="email-drop-label">Drag & drop or click to select the email PDF</p>
+        <small>Exported Gmail/Outlook thread · PDF only</small>
+        <input type="file" id="email-file-input" accept="application/pdf"/>
+      </div>
+    </div>
+
+    <button class="extract-btn" id="email-extract-btn" onclick="extractPartsFromEmail()">🔍 Extract parts from email</button>
+    <div id="email-status" class="status s-idle"><span id="email-status-txt">Paste text or upload a PDF, then click Extract</span></div>
+  </div>
+</div>
+  
 <!-- PARTS -->
 <div class="card">
   <div class="card-head"><span class="step-badge">PARTS</span><h2>Parts replaced (optional)</h2></div>
@@ -550,6 +577,19 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
+<!-- PARTS PREVIEW MODAL -->
+<div class="modal-bg" id="modal-parts-preview">
+  <div class="modal" style="max-width:760px">
+    <h3>🔧 Parts detected in email — review before adding</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:12px">Uncheck any line you don't want to add. Fields marked ⚠️ were not found in the email — fill them in manually if needed.</p>
+    <div id="parts-preview-list" style="max-height:50vh;overflow-y:auto;margin-bottom:12px"></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('modal-parts-preview')">Cancel</button>
+      <button class="btn primary" onclick="confirmAddPreviewParts()">✓ Add selected parts</button>
+    </div>
+  </div>
+</div>
+  
 <!-- HELP MODAL -->
 <div class="modal-bg" id="modal-help">
   <div class="modal" style="max-width:600px">
@@ -1336,6 +1376,138 @@ function getParts() {
 }
 
 // ══════════════════════════════════════
+//  PARTS EXTRACTION FROM EMAIL
+// ══════════════════════════════════════
+let emailInputMode = 'paste';
+let emailPdfB64 = null;
+let _previewParts = [];
+
+G.setEmailInputMode = function(mode) {
+  emailInputMode = mode;
+  document.getElementById('email-mode-paste').className = 'btn' + (mode === 'paste' ? ' primary' : '');
+  document.getElementById('email-mode-pdf').className = 'btn' + (mode === 'pdf' ? ' primary' : '');
+  document.getElementById('email-paste-zone').style.display = mode === 'paste' ? '' : 'none';
+  document.getElementById('email-pdf-zone').style.display = mode === 'pdf' ? '' : 'none';
+};
+setEmailInputMode('paste');
+
+const emailDropZone = document.getElementById('email-drop-zone');
+const emailFileInput = document.getElementById('email-file-input');
+emailFileInput.addEventListener('change', () => { if (emailFileInput.files[0]) loadEmailFile(emailFileInput.files[0]); });
+emailDropZone.addEventListener('dragover', e => { e.preventDefault(); emailDropZone.classList.add('over'); });
+emailDropZone.addEventListener('dragleave', () => emailDropZone.classList.remove('over'));
+emailDropZone.addEventListener('drop', e => {
+  e.preventDefault(); emailDropZone.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type === 'application/pdf') loadEmailFile(f);
+  else setEmailStatus('err', 'Only PDF files.');
+});
+function loadEmailFile(f) {
+  setEmailStatus('idle', `<b>${f.name}</b> ready — click Extract`);
+  document.getElementById('email-drop-label').textContent = f.name;
+  const r = new FileReader();
+  r.onload = () => { emailPdfB64 = r.result.split(',')[1]; };
+  r.readAsDataURL(f);
+}
+function setEmailStatus(type, msg) {
+  const el = document.getElementById('email-status');
+  el.className = 'status s-' + type;
+  document.getElementById('email-status-txt').innerHTML = msg;
+}
+
+G.extractPartsFromEmail = async function() {
+  const isPdf = emailInputMode === 'pdf';
+  const pastedText = document.getElementById('email-paste-text').value.trim();
+  if (isPdf && !emailPdfB64) { setEmailStatus('err', 'No PDF loaded.'); return; }
+  if (!isPdf && !pastedText) { setEmailStatus('err', 'Paste the email text first.'); return; }
+  if (!ensureGToken()) { setEmailStatus('idle', 'Please sign in with Google first.'); return; }
+
+  const btn = document.getElementById('email-extract-btn');
+  btn.disabled = true; setEmailStatus('load', '<span class="spin"></span> Analyzing email for parts…');
+
+  const prompt = `You will receive an email thread (aviation parts request/order conversation). Extract EVERY distinct physical part mentioned anywhere in the thread — whether it's a major component being replaced (with PN OFF / SN OFF / PN ON / SN ON) or a standard/consumable part (screw, nut, rivet, o-ring, washer, etc.) that has only a nomenclature and a part number, with no OFF/ON or serial number concept.
+
+For each part, extract:
+- nomenclature: a short descriptive name in UPPERCASE (e.g. "BRAKE CONTROL UNIT", "SCREW", "ANCHOR NUT", "RIVET", "O-RING")
+- pn_off: the part number of the unit being REMOVED/replaced, if explicitly stated (e.g. after "P/N OFF:"). Leave "" if not applicable or not found.
+- sn_off: the serial number of the unit being removed, if explicitly stated (e.g. after "S/N OFF:"). Leave "" if not applicable or not found.
+- pn_on: the part number of the unit being INSTALLED (the new/replacement part number). For standard consumable parts (screws, nuts, rivets, o-rings) ordered fresh, use the part number mentioned as pn_on (these don't have a "pn_off" since nothing is being removed). If a correction/clarification was given later in the thread for a part number (e.g. "the correct PN is X"), use the corrected one. Leave "" if genuinely not stated anywhere.
+- sn_on: the serial number of the new/installed unit, if explicitly stated. Leave "" if not applicable or not found (most standard parts won't have one).
+- is_consumable: true if this is a standard/bulk part (screw, nut, rivet, washer, o-ring, etc. with a quantity, no OFF/ON tracking) — false if it's a tracked component (has or could have a serial number, like an LRU/box/unit).
+- quantity: the quantity mentioned, as a string, if stated (e.g. "15 ea", "4ea", "QTY 4"). Leave "" if not found.
+
+Do not invent or guess any value. If a field is genuinely not present anywhere in the thread, return "" for it — do not leave it out of the JSON object, just leave the value empty.
+
+Reply ONLY with valid JSON, no markdown, in this exact shape:
+{"parts":[{"nomenclature":"","pn_off":"","sn_off":"","pn_on":"","sn_on":"","is_consumable":false,"quantity":""}]}`;
+
+  try {
+    const parts_input = isPdf
+      ? [{ inline_data: { mime_type: 'application/pdf', data: emailPdfB64 } }, { text: prompt }]
+      : [{ text: prompt + '\n\nEMAIL THREAD TEXT:\n' + pastedText }];
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${gToken}` },
+      body: JSON.stringify({ contents: [{ parts: parts_input }], generationConfig: { temperature: 0, maxOutputTokens: 2000 } })
+    });
+    const data = await res.json();
+    if (!res.ok) { if (res.status === 401) { gToken = null; updateAuthUI(false); throw new Error('Session expired.'); } throw new Error(data.error?.message || 'API error ' + res.status); }
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+
+    _previewParts = (parsed.parts || []).map(p => ({
+      nomenclature: (p.nomenclature || '').toUpperCase(),
+      pn_off: p.pn_off || '', sn_off: p.sn_off || '',
+      pn_on: p.pn_on || '', sn_on: p.sn_on || '',
+      is_consumable: !!p.is_consumable, quantity: p.quantity || '',
+      include: !p.is_consumable || false // tracked components pre-checked, consumables NOT pre-checked
+    }));
+
+    if (!_previewParts.length) { setEmailStatus('idle', 'No parts found in this email.'); btn.disabled = false; return; }
+
+    renderPartsPreview();
+    openModal('modal-parts-preview');
+    setEmailStatus('done', `✓ ${_previewParts.length} part(s) found — review and confirm.`);
+  } catch (e) {
+    setEmailStatus('err', 'Error: ' + e.message);
+  } finally { btn.disabled = false; }
+};
+
+function renderPartsPreview() {
+  const c = document.getElementById('parts-preview-list');
+  c.innerHTML = _previewParts.map((p, i) => {
+    const warn = (field) => !p[field] ? ' style="border-color:#e0a000;background:#fffbe8"' : '';
+    const warnIcon = (field) => !p[field] ? ' ⚠️' : '';
+    return `<div style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:6px">
+      <input type="checkbox" ${p.include ? 'checked' : ''} onchange="_previewParts[${i}].include=this.checked" style="margin-top:10px;flex-shrink:0"/>
+      <div style="flex:1;display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr 0.7fr;gap:6px">
+        <div class="fg"><label>Nomenclature</label><input type="text" value="${p.nomenclature}" oninput="_previewParts[${i}].nomenclature=this.value" style="font-size:12px;padding:5px 8px"/></div>
+        <div class="fg"><label>PN OFF</label><input type="text" value="${p.pn_off}" oninput="_previewParts[${i}].pn_off=this.value"${warn('pn_off')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
+        <div class="fg"><label>SN OFF${warnIcon('sn_off')}</label><input type="text" value="${p.sn_off}" oninput="_previewParts[${i}].sn_off=this.value"${warn('sn_off')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
+        <div class="fg"><label>PN ON${warnIcon('pn_on')}</label><input type="text" value="${p.pn_on}" oninput="_previewParts[${i}].pn_on=this.value"${warn('pn_on')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
+        <div class="fg"><label>SN ON${warnIcon('sn_on')}</label><input type="text" value="${p.sn_on}" oninput="_previewParts[${i}].sn_on=this.value"${warn('sn_on')} placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
+        <div class="fg"><label>Qty</label><input type="text" value="${p.quantity}" oninput="_previewParts[${i}].quantity=this.value" placeholder="—" style="font-size:12px;padding:5px 8px"/></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+G.confirmAddPreviewParts = function() {
+  const selected = _previewParts.filter(p => p.include);
+  selected.forEach(p => {
+    const sn_on_with_qty = p.is_consumable && p.quantity ? '' : p.sn_on; // consumables typically don't carry a SN, qty shown via nomenclature if needed
+    const label = p.is_consumable && p.quantity ? `${p.nomenclature} (QTY ${p.quantity})` : p.nomenclature;
+    G.addPart(label, p.pn_off, p.sn_off, p.pn_on, sn_on_with_qty);
+  });
+  closeModal('modal-parts-preview');
+  G.autosave();
+  setEmailStatus('done', `✓ ${selected.length} part(s) added to the project.`);
+  document.getElementById('email-paste-text').value = '';
+  document.getElementById('email-drop-label').textContent = 'Drag & drop or click to select the email PDF';
+  emailPdfB64 = null;
+};  
+
+// ══════════════════════════════════════
 //  STEP 6 — TEAM POC
 // ══════════════════════════════════════
 async function renderStep6Me() {
@@ -1561,6 +1733,12 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
     if (regForCert && (!document.getElementById('f_far').value.trim())) {
       const cert = certFromRegistration(regForCert);
       if (cert) document.getElementById('f_far').value = cert;
+    }
+
+    // Country of Registry: derive from aircraft registration prefix too.
+    if (regForCert && (!document.getElementById('f_country').value.trim())) {
+      const ctry = countryFromRegistration(regForCert);
+      if (ctry) document.getElementById('f_country').value = ctry;
     }
 
     // Work items: RFS replaces the list (fresh import). WOD/WCR ADD to existing list, skipping duplicates.
