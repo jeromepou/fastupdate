@@ -1421,7 +1421,6 @@ G.extractPartsFromEmail = async function() {
   const pastedText = document.getElementById('email-paste-text').value.trim();
   if (isPdf && !emailPdfB64) { setEmailStatus('err', 'No PDF loaded.'); return; }
   if (!isPdf && !pastedText) { setEmailStatus('err', 'Paste the email text first.'); return; }
-  if (!ensureGToken()) { setEmailStatus('idle', 'Please sign in with Google first.'); return; }
 
   const btn = document.getElementById('email-extract-btn');
   btn.disabled = true; setEmailStatus('load', '<span class="spin"></span> Analyzing email for parts…');
@@ -1665,7 +1664,6 @@ function setStatus(type,msg){const el=document.getElementById('status');el.class
 
 G.extractPDF = async function() {
   if(!pdfB64){setStatus('err','No PDF loaded.');return;}
-  if(!ensureGToken()){setStatus('idle','Please sign in with Google first.');return;}
   extractBtn.disabled=true;setStatus('load','<span class="spin"></span> Sending PDF to Gemini…');
   const prompt=`You will receive ONE PDF that is ONE of these three Gulfstream document types. First identify which type it is, then extract accordingly.
 
