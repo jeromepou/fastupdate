@@ -1493,29 +1493,32 @@ G.extractPDF = async function() {
   const prompt=`You will receive ONE PDF that is ONE of these three Gulfstream document types. First identify which type it is, then extract accordingly.
 
 DOCUMENT TYPE 1 — "RFS" (Request For Service / quote-style document with fields like A/C Registry, Model/SN, FBO, Customer info, work scope items):
-Extract all standard fields normally.
+Extract all standard fields normally, including country and far_certification as usually presented in this document type.
 
 DOCUMENT TYPE 2 — "Work Order Detail" (header literally says "Work Order Detail", contains numbered "Item: N" sections each with "Squawk: X.Y" / "Discrepancy:" / "Status:" lines):
 
-STEP A — Read the ENTIRE document top to bottom, including EVERY Item section (1, 2, 3, 4, 5) without skipping any, to extract these metadata fields. Do this BEFORE doing any filtering:
-  - location: scan every single squawk Discrepancy line in the WHOLE document (all Items, not just Item 2) for a 4-letter ICAO airport code. It is commonly found in a travel-related line such as "Travel To & From LEMD" or "Record Airport Location, FBO / Shipping address" — if a specific code like LEMD appears anywhere, that is the location. Use that ICAO code as location.
-  - far_certification: look at the "Repair Station:" field near the top of the document and determine which civil aviation authority issued that approval code, based on its format/prefix:
-    - If the code contains "EASA" (e.g. "EASA.145.1234") → far_certification = "EASA"
-    - If the code starts with "QCAA" (e.g. "QCAA/FAMO/186") → far_certification = "QCAA"
-    - If the code is an FAA-style alphanumeric Repair Station Certificate with no slashes (e.g. "MGTY330K") → far_certification = "FAA"
-    - For any other recognizable national CAA approval code format, output that authority's short acronym based on the code's prefix/format (e.g. "CAAC", "ANAC", "TCCA", "DGCA").
-    Do NOT infer far_certification from generic release-statement legal boilerplate text inside squawk discrepancies (text explaining what a CRS is) — that text never contains the actual authority code. ONLY use the "Repair Station:" field.
-  - work_order (the "Work Order:" field), model/serial (from "Aircraft Serial Number" field; infer model if context allows), customer_name, customer_email, customer_phone (from "Customer Name / E-Mail / Tel" fields).
+METADATA RULES for this type (read the WHOLE document, all Item sections, to find these — do NOT guess or infer beyond what is explicitly stated):
+  - location: scan every squawk Discrepancy line in the WHOLE document (any Item) for an explicit 4-letter ICAO airport code, such as in a line like "Travel To & From LEMD" or "Record Airport Location, FBO / Shipping address". If found, use it. If no explicit ICAO code appears anywhere, leave location as "".
+  - registration: this document type usually does NOT state the A/C registration explicitly. Leave registration as "" unless you see an explicit tail number / registration field.
+  - far_certification: leave this as "" for this document type. Do NOT use the "Repair Station:" code for this field — that is a maintenance facility approval, not the aircraft's regulatory basis, and must not be used here.
+  - country: ALWAYS leave country as "" for this document type. Do NOT infer it from the repair station's physical address (e.g. do not output "United Kingdom" just because the facility is in Farnborough, UK) — the facility location is unrelated to the aircraft's country of registry.
+  - work_order (the "Work Order:" field), model/serial (from "Aircraft Serial Number" field), customer_name, customer_email, customer_phone (from "Customer Name / E-Mail / Tel" fields).
 
-STEP B — ONLY for the work_items array (this filtering does NOT apply to Step A metadata above): extract ONLY squawks belonging to "Item 2" (the item titled "Customer Supplied Tasks" or similar — containing actual customer-requested maintenance tasks). EXCLUDE all squawks from Item 1 (administrative boilerplate: WIP card, tool control, circuit breakers, hours & cycles, tech log review, risk assessment, AMM checklists, release statement) and from Item 3, 4, 5 (administrative use only / no return to service required / associated task cards / RMC service engineering) — these are NOT work items, even though their text was already read in Step A for metadata.
+WORK_ITEMS RULE for this type — READ CAREFULLY, this is strict:
+  This document has multiple sections, each starting with a line "Item: N <title>". Identify the section that starts with "Item: 2" — its title is typically "Customer Supplied Tasks". 
+  Work items come ONLY from squawks physically located between the "Item: 2" header line and the next "Item: 3" header line. 
+  Every squawk located after the "Item: 3" header line (titled "Administrative use only, no return to service required" or similar) — including things like "Outstanding Services", "Back Ordered Parts", "Parts Return", "Parts issued to work order", "FAST Technician expenses", "Prepare for on-site support", "Travel To & From...", "Travel Labour Discount" — is ADMINISTRATIVE and must be EXCLUDED from work_items, with NO exceptions, even though you already read it above for the location metadata.
+  Likewise exclude everything before "Item: 2" (under Item 1: WIP card, tool control, circuit breakers, hours & cycles, tech log, risk assessment, AMM checklists, release statement) and everything in Item 4 / Item 5.
+  Double-check before finalizing: your work_items array must contain ONLY squawks whose Item number is exactly 2. If you are unsure which Item a squawk belongs to, exclude it rather than risk including an administrative task.
 
 DOCUMENT TYPE 3 — "WCR" / "Work Change Request" (header says "WORK CHANGE REQUEST", lists numbered tasks like "2.6 - ...", "2.7 - ..." to be ADDED to an existing work order):
 Extract work_order (from "WORK ORDER:" field), registration (A/C REGISTRATION field), model/serial (A/C TYPE/SERIAL NO. field), customer_name (CUSTOMER REP field), and each numbered task line as a work item. Strip the leading number (e.g. "2.7 -"). If a task starts with a registration/squawk-ID prefix followed by a lead-in like "A7-CGB-260615-1 CREW REPORTED:", strip that whole prefix too and keep only the actual description after it.
+Leave far_certification and country as "" for this document type too.
 
 UNIVERSAL RULE FOR ALL TYPES:
 - Any task/squawk whose text is exactly or essentially just "EIE" (meaning "Entry In Error" — a cancelled/void entry) must be COMPLETELY EXCLUDED from work_items. Do not include it at all.
 - work_items descriptions must be in UPPERCASE, with NO leading squawk/task numbers in the label text.
-- Only include fields you are confident about; leave others as empty string "" if not present or not found in this document.
+- Never invent or infer a value that is not explicitly written in the document. If unsure, use "".
 
 Reply ONLY with valid JSON, no markdown, in this exact shape:
 {"doc_type":"RFS or WORK_ORDER_DETAIL or WCR","work_order":"","model":"e.g. GVIII-G700","serial_number":"","registration":"","location":"ICAO","rts_assist":"RTS or Assist","far_certification":"","country":"","fbo":"","po_number":"","customer_name":"UPPERCASE","customer_phone":"","customer_email":"","estimated_rts":"","next_flight":"UNKWN if unknown","constraints":"","work_items":[{"label":"UPPERCASE"}]}`;
@@ -1543,7 +1546,6 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
     fillOrKeep('f_sn',parsed.serial_number);
     fillOrKeep('f_reg',parsed.registration);
     fillOrKeep('f_loc',parsed.location);
-    fillOrKeep('f_far',parsed.far_certification);
     fillOrKeep('f_country',parsed.country);
     fillOrKeep('f_fbo',parsed.fbo);
     fillOrKeep('f_po',parsed.po_number||'');
@@ -1553,6 +1555,13 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
     fillOrKeep('f_cust_tel',parsed.customer_phone||'');
     fillOrKeep('f_cust_email',parsed.customer_email||'');
     if(!isFollowUp && parsed.rts_assist) document.getElementById('f_rts_assist').value=parsed.rts_assist.toLowerCase().includes('assist')?'Assist':'RTS';
+
+    // FAR / Certification: derive from aircraft registration prefix (country of registry's CAA), not from any document field.
+    const regForCert = (document.getElementById('f_reg')?.value || parsed.registration || '').trim().toUpperCase();
+    if (regForCert && (!document.getElementById('f_far').value.trim())) {
+      const cert = certFromRegistration(regForCert);
+      if (cert) document.getElementById('f_far').value = cert;
+    }
 
     // Work items: RFS replaces the list (fresh import). WOD/WCR ADD to existing list, skipping duplicates.
     const newItems = (parsed.work_items||[]).filter(it => it.label && it.label.trim().toUpperCase() !== 'EIE');
@@ -1573,6 +1582,37 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
     setStatus('done',`✓ ${typeLabel} detected — ${newItems.length} item(s) extracted${isFollowUp ? ' and merged' : ''}.`);
   }catch(e){setStatus('err','Error: '+e.message);}finally{extractBtn.disabled=false;}
 };
+
+// Maps an aircraft registration prefix to its civil aviation authority acronym.
+// Extend this table as you encounter new registration prefixes in your fleet.
+function certFromRegistration(reg) {
+  const map = [
+    [/^A7-/, 'QCAA'],     // Qatar
+    [/^A6-/, 'GCAA'],     // UAE
+    [/^N/,   'FAA'],      // USA
+    [/^G-/,  'UK CAA'],   // United Kingdom
+    [/^D-/,  'EASA'],     // Germany
+    [/^F-/,  'EASA'],     // France
+    [/^I-/,  'EASA'],     // Italy
+    [/^EC-/, 'EASA'],     // Spain
+    [/^OE-/, 'EASA'],     // Austria
+    [/^OY-/, 'EASA'],     // Denmark
+    [/^LX-/, 'EASA'],     // Luxembourg
+    [/^9H-/, 'EASA'],     // Malta
+    [/^T7-/, 'San Marino CAA'],
+    [/^M-/,  'Isle of Man CAA'],
+    [/^VP-B/, 'Bermuda CAA'],
+    [/^VP-C/, 'Cayman Islands CAA'],
+    [/^P4-/, 'Aruba DCA'],
+    [/^HB-/, 'FOCA'],     // Switzerland
+    [/^C-/,  'TCCA'],     // Canada
+    [/^B-/,  'CAAC'],     // China
+    [/^VT-/, 'DGCA'],     // India
+    [/^PP-|^PR-|^PT-/, 'ANAC'], // Brazil
+  ];
+  for (const [re, code] of map) if (re.test(reg)) return code;
+  return '';
+}
 
 // ══════════════════════════════════════
 //  GENERATE TABLE
