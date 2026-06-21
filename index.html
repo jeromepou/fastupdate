@@ -616,19 +616,52 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 <div class="modal-bg" id="modal-help">
   <div class="modal" style="max-width:600px">
     <h3>✈ FAST Update Generator — Help</h3>
+
     <div class="help-section">
-      <h4>🗂 How it works</h4>
+      <h4>🔑 Logging in</h4>
       <ol>
-        <li><strong>Admin setup:</strong> Click "Admin access" on the login screen. Sign in with your admin email/password (created in Firebase console). Then open "Manage Team" to create engineer profiles with PIN.</li>
-        <li><strong>Engineer login:</strong> Click your name → enter your 4-digit PIN.</li>
-        <li><strong>Cloud sync:</strong> All data is saved to Firebase in real time — accessible from any device anywhere.</li>
-        <li><strong>RTS projects:</strong> Mark a project RTS to move it to Archives — always accessible but separate from active projects.</li>
+        <li><strong>Engineers:</strong> tap your name on the login screen, then enter your 4-digit PIN.</li>
+        <li><strong>Admin:</strong> tap "Admin access" and sign in with the admin email/password. From there, "Manage Team" lets you create, edit or remove engineer profiles and reset PINs.</li>
       </ol>
     </div>
+
+    <div class="help-section">
+      <h4>📄 Filling in a project</h4>
+      <ol>
+        <li><strong>Step 1 — PDF upload (optional):</strong> drop an RFS, Work Order Detail or WCR PDF and tap "Extract data" — fields and work items are filled in automatically.</li>
+        <li><strong>Steps 2-3:</strong> check or complete the aircraft details and work items.</li>
+        <li><strong>Step 4 — Daily updates:</strong> tap "+ Today" to add a day. Check off each item you worked on, set its status, and add a note. Toggle "A/C RTS" on the day the aircraft returns to service. The progress bar on each day card shows how many items are checked.</li>
+        <li><strong>Parts:</strong> paste an email thread or upload its PDF, then tap "Extract parts from email" to auto-detect part numbers and serials — review and confirm before they're added.</li>
+        <li><strong>Steps 5-6:</strong> closing details, lead engineer, colleagues and customer info.</li>
+      </ol>
+    </div>
+
+    <div class="help-section">
+      <h4>📧 Sending the update</h4>
+      <ol>
+        <li>Tap "Generate FAST Update table" to build the final table — this is exactly what gets sent, in the company's fixed format.</li>
+        <li>"Copy table" copies it for pasting into any email client.</li>
+        <li>"Draft in Gmail" creates a ready-to-send Gmail draft directly — this requires signing in with your Google account once (separate from your engineer PIN).</li>
+      </ol>
+    </div>
+
+    <div class="help-section">
+      <h4>☁️ Cloud sync & archives</h4>
+      <p>All data is saved to Firebase in real time, accessible from any device. Mark a project as RTS to move it to Archives — it stays accessible but separate from your active projects.</p>
+    </div>
+
+    <div class="help-section">
+      <h4>📱 Install on your phone</h4>
+      <p><strong>Android (Chrome):</strong> open the site, tap the ⋮ menu, then "Add to Home screen" or "Install app".</p>
+      <p><strong>iPhone (Safari):</strong> open the site, tap the Share icon, then "Add to Home Screen".</p>
+      <p>Once installed, the app opens full-screen from your home screen, just like a native app.</p>
+    </div>
+
     <div class="help-section">
       <h4>🔒 Security</h4>
-      <p>Data is stored in Firebase Realtime Database with authentication. Only verified users (admin + engineers via PIN) can access data. All traffic is encrypted (HTTPS).</p>
+      <p>Data is stored in Firebase Realtime Database with authentication. Only verified users (admin + engineers via PIN) can access data. PDF extraction is processed through a private Cloudflare Worker — your API key is never exposed in the app. All traffic is encrypted (HTTPS).</p>
     </div>
+
     <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-help')">Close</button></div>
   </div>
 </div>
@@ -2019,7 +2052,7 @@ G.generate = async function() {
         updContent += `${it?`${iu.num}-${it.label.toUpperCase()}`:`Item ${iu.num}`}${statusHtml}<br>`;
         if(iu.detail) updContent += `<span style="color:#444;font-size:12px">${iu.detail}</span><br>`;
       });
-      if(upd.freeText) updContent += `<span style="color:#444">${upd.freeText}</span><br>`;
+      if(upd.freeText) updContent += `<div style="border-top:1px dashed #c8d8c8;margin-top:6px;padding-top:4px"><span style="color:#444;font-style:italic">${upd.freeText}</span></div>`;
     });
     updRows = `<tr><td class="upd-lbl"><b>Update</b></td><td colspan="4">${updContent}</td></tr>`;
   }
