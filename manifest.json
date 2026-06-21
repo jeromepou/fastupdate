@@ -1,0 +1,14 @@
+{
+  "name": "FAST Update Generator",
+  "short_name": "FAST Update",
+  "description": "Aviation maintenance work order update tool for FAST EMEA / FAST ASIA",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f1f3f5",
+  "theme_color": "#2d5a2d",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
