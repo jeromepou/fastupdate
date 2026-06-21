@@ -917,7 +917,8 @@ async function loginAs(profile) {
   document.getElementById('hdr-profile-name').textContent = profile.name;
   document.getElementById('btn-logout').style.display = '';
   document.getElementById('eng-bar-name').textContent = profile.name;
-  document.getElementById('eng-bar-sub').textContent = [profile.team, profile.email, profile.phone].filter(Boolean).join(' · ');
+  const phoneNoWrap = profile.phone ? profile.phone.replace(/ /g, '\u00A0') : '';
+  document.getElementById('eng-bar-sub').textContent = [profile.team, profile.email, phoneNoWrap].filter(Boolean).join(' · ');
   document.getElementById('sync-badge').style.display = '';
   
   await loadDefaultRecipients(); // <-- Télécharge les derniers destinataires globaux
@@ -2120,7 +2121,35 @@ G.generate = async function() {
 
   document.getElementById('output-section').style.display='block';
   document.getElementById('output-section').scrollIntoView({behavior:'smooth'});
+  setTimeout(fitTableToScreen, 0);
 };
+
+function fitTableToScreen() {
+  const wrap = document.querySelector('.tbl-wrap');
+  const inner = document.getElementById('tbl-out');
+  const tbl = document.getElementById('gen-tbl');
+  if (!wrap || !inner || !tbl) return;
+  inner.style.transform = 'none';
+  wrap.style.height = '';
+  wrap.style.overflowX = 'scroll';
+  const wrapWidth = wrap.clientWidth;
+  const tblWidth = tbl.scrollWidth;
+  if (wrapWidth > 0 && tblWidth > wrapWidth) {
+    const scale = wrapWidth / tblWidth;
+    inner.style.transformOrigin = 'top left';
+    inner.style.transform = `scale(${scale})`;
+    wrap.style.height = (tbl.scrollHeight * scale) + 'px';
+    wrap.style.overflowX = 'hidden';
+  }
+}
+window.addEventListener('resize', () => {
+  const out = document.getElementById('output-section');
+  if (out && out.style.display !== 'none') fitTableToScreen();
+});
+window.addEventListener('orientationchange', () => setTimeout(() => {
+  const out = document.getElementById('output-section');
+  if (out && out.style.display !== 'none') fitTableToScreen();
+}, 200));
 
 G.copyTable = function() {
   const tbl=document.getElementById('gen-tbl');if(!tbl)return;
