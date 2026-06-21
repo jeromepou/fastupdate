@@ -34,6 +34,14 @@ header h1{font-size:15px;font-weight:600;flex:1}
 .step-badge{background:var(--gd);color:#fff;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;letter-spacing:.03em;white-space:nowrap}
 .card-head h2{font-size:13px;font-weight:600;color:var(--g800);flex:1}
 .card-body{padding:1.25rem}
+.card-head{position:relative}
+.acc-chevron{display:none;margin-left:auto;font-size:13px;color:var(--g400);transition:transform .15s}
+@media(max-width:600px){
+  .card-head{cursor:pointer}
+  .acc-chevron{display:inline-block}
+  .card.collapsed .card-body{display:none}
+  .card.collapsed .acc-chevron{transform:rotate(-90deg)}
+}  
 
 /* BUTTONS */
 .btn{padding:7px 13px;border-radius:var(--r);font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--g200);background:#fff;color:var(--g800);display:inline-flex;align-items:center;gap:5px;transition:background .15s;white-space:nowrap}
@@ -214,6 +222,8 @@ table.fast-tbl{width:100%;border-collapse:collapse;font-size:13px;min-width:600p
 @keyframes rot{to{transform:rotate(360deg)}}
 hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 .action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:.5rem}
+.day-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.day-actions .btn{flex:1;min-width:108px;justify-content:center}  
 .err-msg{font-size:12px;color:var(--red);min-height:18px;margin-top:4px}
 
 /* GOOGLE GEMINI AUTH BANNER */
@@ -269,7 +279,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <!-- PIN entry -->
       <div id="view-pin" style="display:none">
         <p style="font-size:13px;color:var(--g600);margin-bottom:12px" id="pin-subtitle">Enter your 4-digit PIN</p>
-        <input type="password" id="pin-input" placeholder="• • • •" maxlength="4"
+        <input type="password" id="pin-input" placeholder="• • • •" maxlength="4" inputmode="numeric" pattern="[0-9]*"
           style="text-align:center;font-size:22px;letter-spacing:.4em;width:100%;margin-bottom:8px"
           oninput="userPinInput()"/>
         <div class="err-msg" id="pin-error"></div>
@@ -367,11 +377,13 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="card-head">
     <span class="step-badge">STEP 4</span>
     <h2>Daily updates</h2>
-    <button class="btn" onclick="addDayBeforeUpdate()" style="margin-left:auto">+ Day before</button>
-    <button class="btn" onclick="addYesterdayUpdate()">+ Yesterday</button>
-    <button class="btn primary" onclick="addTodayUpdate()">+ Today</button>
   </div>
   <div class="card-body">
+    <div class="day-actions">
+      <button class="btn" onclick="addDayBeforeUpdate()">+ Day before</button>
+      <button class="btn" onclick="addYesterdayUpdate()">+ Yesterday</button>
+      <button class="btn primary" onclick="addTodayUpdate()">+ Today</button>
+    </div>
     <div id="updates-container">
       <p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet — click "+ Today"</p>
     </div>
@@ -438,12 +450,17 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="card-head">
     <span class="step-badge">STEP 6</span>
     <h2>Onsite FAST engineers & customer</h2>
-    <button class="btn" onclick="addColleagueSlot()" id="btn-add-poc" style="margin-left:auto">+ Add Colleague</button>
   </div>
   <div class="card-body">
     <p style="font-size:12px;color:var(--g600);margin-bottom:10px">You are automatically assigned as Lead Engineer. Add colleagues if assisting.</p>
     <div id="poc-me-container" class="poc-block me"></div>
     <div id="poc-colleagues-container"></div>
+    <div style="display:flex;justify-content:flex-end;margin:4px 0 10px">
+      <button class="btn" onclick="addColleagueSlot()" id="btn-add-poc">+ Add Colleague</button>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin:4px 0 10px">
+      <button class="btn" onclick="addColleagueSlot()" id="btn-add-poc">+ Add Colleague</button>
+    </div>
     <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--g200)">
       <div style="font-size:12px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Customer info</div>
       <div class="grid g2">
@@ -527,7 +544,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div style="font-size:12px;font-weight:700;color:var(--g800);margin-bottom:8px">Add Team Member</div>
       <div class="grid g2">
         <div class="fg"><label>Full Name</label><input type="text" id="nt_name" placeholder="Full name"/></div>
-        <div class="fg"><label>User PIN (4 digits)</label><input type="password" id="nt_pin" placeholder="e.g. 1234" maxlength="4" style="letter-spacing:.3em"/></div>
+        <div class="fg"><label>User PIN (4 digits)</label><input type="password" id="nt_pin" placeholder="e.g. 1234" maxlength="4" inputmode="numeric" pattern="[0-9]*" style="letter-spacing:.3em"/></div>
         <div class="fg"><label>Phone</label><input type="text" id="nt_phone" placeholder="Cell"/></div>
         <div class="fg"><label>Email</label><input type="email" id="nt_email" placeholder="Email"/></div>
         <div class="fg"><label>Team</label><input type="text" id="nt_team" placeholder="e.g. FAST EMEA"/></div>
@@ -577,7 +594,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="modal" style="max-width:340px;text-align:center">
     <h3>🔑 Reset PIN</h3>
     <p style="font-size:13px;color:var(--g600);margin-bottom:12px" id="reset-pin-name">Engineer name</p>
-    <input type="password" id="reset-pin-input" placeholder="• • • • (new PIN)" maxlength="4"
+    <input type="password" id="reset-pin-input" placeholder="• • • • (new PIN)" maxlength="4" inputmode="numeric" pattern="[0-9]*"
       style="text-align:center;font-size:22px;letter-spacing:.4em;width:100%;margin-bottom:8px"/>
     <div class="err-msg" id="reset-pin-error"></div>
     <div class="modal-btns" style="justify-content:center">
@@ -880,6 +897,7 @@ G.adminEmailLogin = async function() {
 async function showAdminPanel() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = '';
+  setupAccordion();
   document.getElementById('hdr-profile-name').textContent = '⚙️ Admin';
   document.getElementById('btn-logout').style.display = '';
   document.getElementById('eng-bar-name').textContent = '⚙️ Admin Panel';
@@ -895,6 +913,7 @@ async function loginAs(profile) {
   curProfile = profile;
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = '';
+  setupAccordion();
   document.getElementById('hdr-profile-name').textContent = profile.name;
   document.getElementById('btn-logout').style.display = '';
   document.getElementById('eng-bar-name').textContent = profile.name;
@@ -2238,6 +2257,41 @@ G.confirmRTS = async function() {
 G.openModal = function(id){document.getElementById(id).classList.add('open');};
 G.closeModal = function(id){document.getElementById(id).classList.remove('open');};
 document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+function setupAccordion() {
+  const cards = Array.from(document.querySelectorAll('#app-screen > .card'));
+  cards.forEach(card => {
+    const head = card.querySelector('.card-head');
+    if (!head || head.querySelector('.acc-chevron')) return;
+    const chev = document.createElement('span');
+    chev.className = 'acc-chevron';
+    chev.textContent = '▾';
+    head.appendChild(chev);
+    head.addEventListener('click', () => {
+      if (window.innerWidth > 600) return;
+      const isCollapsed = card.classList.contains('collapsed');
+      if (isCollapsed) {
+        cards.forEach(c => c.classList.add('collapsed'));
+        card.classList.remove('collapsed');
+      } else {
+        card.classList.add('collapsed');
+      }
+    });
+  });
+  applyResponsiveCardState(cards);
+}
+
+function applyResponsiveCardState(cards) {
+  if (window.innerWidth <= 600) {
+    cards.forEach(c => c.classList.add('collapsed'));
+  } else {
+    cards.forEach(c => c.classList.remove('collapsed'));
+  }
+}
+
+window.addEventListener('resize', () => {
+  applyResponsiveCardState(Array.from(document.querySelectorAll('#app-screen > .card')));
+});  
 
 // ══════════════════════════════════════
 //  UTILS
