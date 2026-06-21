@@ -8,6 +8,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="FAST Update"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>  
 <style>
 :root{
   --gd:#2d5a2d;--gm:#3a6e3a;--gl:#e8f2e8;--gb:#a8c8a8;
@@ -122,18 +124,39 @@ textarea{resize:vertical}
 .item-label-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .item-label-row input{flex:1;min-width:120px}
 
-/* DAILY UPDATES */
-.update-day{background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:8px;overflow:hidden}
-.update-day-head{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--gl);border-bottom:1px solid var(--gb)}
-.update-day-date{font-size:12px;font-weight:700;color:var(--gd);flex:1}
-.update-day-body{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
-.upd-item-block{background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:8px 10px}
+/* DAILY UPDATES — TIMELINE */
+#updates-container.has-items{position:relative;padding-left:30px;display:flex;flex-direction:column-reverse}
+#updates-container.has-items::before{content:'';position:absolute;left:9px;top:8px;bottom:8px;width:2px;background:var(--g200)}
+.update-day{position:relative;background:#fff;border:1px solid var(--g200);border-radius:var(--rlg);margin-bottom:14px;overflow:hidden}
+.update-day::before{content:'';position:absolute;left:-30px;top:18px;width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid var(--gb)}
+.update-day.is-rts::before{background:var(--gd);border-color:var(--gd)}
+.update-day-progress{height:4px;background:var(--g100)}
+.update-day-progress-fill{height:100%;width:0%;background:var(--gd);transition:width .2s}
+.update-day-head{display:flex;align-items:center;gap:8px;padding:10px 14px 6px;flex-wrap:wrap}
+.update-day-date{font-size:13px;font-weight:700;color:var(--g900)}
+.badge-today{background:var(--g100);color:var(--g600);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.03em}
+.rts-toggle{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;cursor:pointer;padding:3px 9px;border-radius:20px;border:1px solid var(--g200);color:var(--g600);text-transform:none;letter-spacing:.03em}
+.rts-toggle input{width:auto;cursor:pointer}
+.rts-toggle.checked{background:var(--gl);border-color:var(--gb);color:var(--gd)}
+.update-day-del{margin-left:auto;background:none;border:none;cursor:pointer;color:var(--g400);padding:2px;font-size:14px;line-height:1}
+.update-day-del:hover{color:var(--red)}
+.update-day-body{padding:6px 14px 14px;display:flex;flex-direction:column;gap:8px}
+.upd-item-block{background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:8px 10px;transition:background .15s,border-color .15s}
+.upd-item-block.status-done{background:#eafaf0;border-color:#bfe8cf}
+.upd-item-block.status-waiting_parts{background:#fff8e6;border-color:#f0dba3}
+.upd-item-block.status-mel{background:#eaf2fc;border-color:#bcd6f5}
+.upd-item-block.status-cancelled{background:#fdecec;border-color:#f3bcbc}
+.upd-item-block.status-pending{background:#fdf2e9;border-color:#f3c9a3}
 .upd-item-header{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap}
 .upd-item-chk{display:flex;align-items:center;gap:6px;flex:1}
 .upd-item-chk input[type=checkbox]{width:auto;flex-shrink:0;cursor:pointer}
 .upd-item-chk label{font-size:12px;font-weight:600;color:var(--g800);text-transform:none;letter-spacing:0;cursor:pointer;line-height:1.4}
 .upd-status-sel{width:155px;flex-shrink:0;font-size:12px}
 .upd-detail{font-size:12px;min-height:44px;margin-top:5px}
+.update-day-note{display:flex;gap:8px;padding-top:10px;margin-top:2px;border-top:1px solid var(--g200);align-items:flex-start}
+.update-day-note .note-icon{font-size:13px;opacity:.55;margin-top:19px;flex-shrink:0}
+.update-day-note .fg{flex:1}
+.upd-free-global{font-style:italic}
 
 /* PARTS */
 .part-row{background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:6px;padding:8px 10px;display:flex;gap:8px;align-items:flex-start}
@@ -1078,6 +1101,7 @@ function fillFromProj(proj) {
   const cols = Array.isArray(proj.colleagues) ? proj.colleagues : Object.values(proj.colleagues || {});
   cols.forEach(c => addColleagueSlot(c.id));
 
+  document.getElementById('updates-container').classList.remove('has-items');
   document.getElementById('updates-container').innerHTML = '';
   const updates = Array.isArray(proj.updates) ? proj.updates : Object.values(proj.updates || {});
   if (updates.length) updates.forEach(u => renderUpdateBlock(u));
@@ -1096,6 +1120,7 @@ function clearForm() {
   document.getElementById('parts-container').innerHTML = ''; partCount = 0;
   renderStep6Me();
   document.getElementById('poc-colleagues-container').innerHTML = ''; colleagueSlotCount = 0;
+  document.getElementById('updates-container').classList.remove('has-items');
   document.getElementById('updates-container').innerHTML = '<p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet</p>';
   document.getElementById('output-section').style.display = 'none';
   const defaults = [..._defaultRecipients];
@@ -1242,13 +1267,33 @@ function createUpdateBlock(label) {
   G.autosave();
 }
 
+const STATUS_CLASSES = ['status-done','status-waiting_parts','status-mel','status-cancelled','status-pending'];
+function applyStatusClass(block, status) {
+  block.classList.remove(...STATUS_CLASSES);
+  if (status) block.classList.add('status-' + status);
+}
+function updateDayProgress(dayEl) {
+  if (!dayEl) return;
+  const blocks = dayEl.querySelectorAll('.upd-item-block');
+  const total = blocks.length;
+  let done = 0;
+  blocks.forEach(b => { if (b.querySelector('input[type=checkbox]')?.checked) done++; });
+  const pct = total > 0 ? Math.round((done/total)*100) : 0;
+  const fill = dayEl.querySelector('.update-day-progress-fill');
+  if (fill) fill.style.width = pct + '%';
+}
+
 function renderUpdateBlock(upd) {
   const uc = document.getElementById('updates-container');
+  uc.classList.add('has-items');
   const items = getItems();
-  const isNewBlock = !(upd.itemUpdates && (Array.isArray(upd.itemUpdates) ? upd.itemUpdates.length : Object.keys(upd.itemUpdates).length));
-  const d = document.createElement('div'); d.className = 'update-day'; d.id = upd.id; d.dataset.date = upd.date;
-
   const itemUpdatesArr = Array.isArray(upd.itemUpdates) ? upd.itemUpdates : Object.values(upd.itemUpdates || {});
+  const isToday = upd.date === todayLabel();
+  const STATUS_LABEL_CLASS = {done:'status-done',waiting_parts:'status-waiting_parts',mel:'status-mel',cancelled:'status-cancelled',pending:'status-pending'};
+
+  const d = document.createElement('div');
+  d.className = 'update-day' + (upd.isRTS ? ' is-rts' : '');
+  d.id = upd.id; d.dataset.date = upd.date;
 
   const itemsHtml = items.length > 0 ? items.map((it, i) => {
     const saved = itemUpdatesArr.find(u => u.num === (i+1)) || {};
@@ -1264,7 +1309,8 @@ function renderUpdateBlock(upd) {
     };
     return `<option value="${v}" ${(saved.status||'')===v?'selected':''}>${L[v]}</option>`;
   }).join('');
-    return `<div class="upd-item-block" data-item-num="${i+1}">
+    const statusClass = STATUS_LABEL_CLASS[saved.status] || '';
+    return `<div class="upd-item-block ${statusClass}" data-item-num="${i+1}">
       <div class="upd-item-header">
         <div class="upd-item-chk">
           <input type="checkbox" id="uchk_${upd.id}_${i}" ${checked} onchange="onUpdChk(this)" style="width:auto"/>
@@ -1276,23 +1322,28 @@ function renderUpdateBlock(upd) {
     </div>`;
   }).join('') : '<p style="font-size:12px;color:var(--g400)">Add work items in Step 3 first.</p>';
 
-  d.innerHTML = `<div class="update-day-head">
+  d.innerHTML = `<div class="update-day-progress"><div class="update-day-progress-fill"></div></div>
+  <div class="update-day-head">
     <span class="update-day-date">📅 ${upd.date}</span>
-    <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--gd);text-transform:none;letter-spacing:0;cursor:pointer">
-      <input type="checkbox" ${upd.isRTS?'checked':''} id="rts_${d.id}" onchange="autosave()" style="width:auto"/>
+    ${isToday ? '<span class="badge-today">Today</span>' : ''}
+    <label class="rts-toggle${upd.isRTS ? ' checked' : ''}">
+      <input type="checkbox" ${upd.isRTS?'checked':''} id="rts_${d.id}" onchange="onRtsToggle(this)" style="width:auto"/>
       <span id="rts-lbl_${d.id}"></span>
     </label>
-    <button class="btn danger" onclick="removeUpdateBlock('${d.id}')" style="padding:4px 8px;font-size:11px">🗑</button>
+    <button class="update-day-del" onclick="removeUpdateBlock('${d.id}')" aria-label="Delete this day">🗑</button>
   </div>
   <div class="update-day-body">
     ${itemsHtml}
-    <div class="fg">
-      <label style="text-transform:none;font-size:11px;font-weight:600;letter-spacing:0">Global note for this day (optional)</label>
-      <textarea class="upd-free-global" style="min-height:44px" placeholder="e.g. Will travel tomorrow, waiting for parts…" oninput="autosave()">${upd.freeText||''}</textarea>
+    <div class="update-day-note">
+      <span class="note-icon">📝</span>
+      <div class="fg">
+        <label style="text-transform:none;font-size:11px;font-weight:600;letter-spacing:0">Global note for this day (optional)</label>
+        <textarea class="upd-free-global" style="min-height:44px" placeholder="e.g. Will travel tomorrow, waiting for parts…" oninput="autosave()">${upd.freeText||''}</textarea>
+      </div>
     </div>
   </div>`;
   uc.appendChild(d);
-  // Update RTS label based on RTS/Assist selection
+
   function updateRtsLabel(blockId) {
     const isAssist = gv('f_rts_assist') === 'Assist';
     const lbl = document.getElementById('rts-lbl_' + blockId);
@@ -1300,36 +1351,51 @@ function renderUpdateBlock(upd) {
   }
   updateRtsLabel(d.id);
   document.getElementById('f_rts_assist').addEventListener('change', () => updateRtsLabel(d.id));
+  updateDayProgress(d);
 }
+
+G.onRtsToggle = function(chk) {
+  const day = chk.closest('.update-day');
+  const label = chk.closest('.rts-toggle');
+  day.classList.toggle('is-rts', chk.checked);
+  label.classList.toggle('checked', chk.checked);
+  G.autosave();
+};
 
 G.onUpdChk = function(chk) {
   const block = chk.closest('.upd-item-block');
   const sel = block.querySelector('.upd-status-sel');
-  // Décocher manuellement → repasse le statut à vide mais GARDE le texte
   if (!chk.checked) {
     sel.value = '';
   }
+  applyStatusClass(block, sel.value);
+  updateDayProgress(chk.closest('.update-day'));
   G.autosave();
 };
 
 G.onUpdStatusChange = function(sel) {
   const block = sel.closest('.upd-item-block');
   const chk = block.querySelector('input[type=checkbox]');
-  // Repasser à "no status" → décoche la case mais GARDE le texte
   if (sel.value === '') {
     chk.checked = false;
   } else {
     chk.checked = true;
   }
+  applyStatusClass(block, sel.value);
+  updateDayProgress(block.closest('.update-day'));
   G.autosave();
 };
   
 G.removeUpdateBlock = function(id) {
   const el = document.getElementById(id); if(el) el.remove();
   const uc = document.getElementById('updates-container');
-  if (!uc.querySelector('.update-day')) uc.innerHTML = '<p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet</p>';
+  if (!uc.querySelector('.update-day')) {
+    uc.classList.remove('has-items');
+    uc.innerHTML = '<p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet</p>';
+  }
   G.autosave();
 };
+  
 function getUpdatesData() {
   return Array.from(document.querySelectorAll('.update-day')).map(block => ({
     id: block.id, date: block.dataset.date,
@@ -2204,6 +2270,12 @@ G.confirmEditMember = async function() {
   setStatus('done', '✅ Profile updated.');
   renderTeamAdminList();
 };
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
   
 // Init: load picker
 showPicker();
