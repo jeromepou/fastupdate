@@ -6,10 +6,12 @@
 <title>FAST Update Generator</title>
 <meta name="theme-color" content="#2d5a2d"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="FAST Update"/>
 <link rel="manifest" href="manifest.json"/>
-<link rel="apple-touch-icon" href="icon-192.png"/>  
+<link rel="apple-touch-icon" href="icon-192.png"/>
+<link rel="icon" href="icon-192.png"/>
 <style>
 :root{
   --gd:#2d5a2d;--gm:#3a6e3a;--gl:#e8f2e8;--gb:#a8c8a8;
@@ -93,6 +95,8 @@ header h1{font-size:15px;font-weight:600;flex:1}
 .eng-bar{background:#fff;border:1px solid var(--g200);border-radius:var(--rlg);padding:.9rem 1.25rem;margin-bottom:1rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:var(--sh)}
 .eng-bar .eng-name{font-size:14px;font-weight:700;color:var(--gd);flex:1}
 .eng-bar .eng-sub{font-size:12px;color:var(--g600)}
+.btn-start-job{background:var(--gd);color:#fff;border:none;border-radius:var(--r);padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 6px rgba(0,0,0,.15);transition:transform .1s,box-shadow .1s}
+.btn-start-job:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,.2)}
 .sync-indicator{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600}
 .sync-ok{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7}
 .sync-pending{background:var(--al);color:var(--amb);border:1px solid #d4b800}
@@ -239,7 +243,261 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   header h1{font-size:13px}
   .part-fields{grid-template-columns:1fr 1fr}
 }
+
+/* ── KICKOFF PANEL ── */
+#kickoff-panel { display:none }
+
+.ko-header {
+  background: var(--gd);
+  color: #fff;
+  padding: 10px 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 1rem;
+  border-radius: var(--rlg);
+}
+.ko-header .ko-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700;
+  flex-shrink: 0;
+}
+.ko-header .ko-eng-info { flex: 1 }
+.ko-header .ko-eng-name { font-size: 14px; font-weight: 700 }
+.ko-header .ko-eng-sub  { font-size: 11px; opacity: .75 }
+
+/* section cards */
+.ko-card {
+  background: #fff;
+  border: 1px solid var(--g200);
+  border-radius: var(--rlg);
+  margin-bottom: .85rem;
+  overflow: hidden;
+  box-shadow: var(--sh);
+}
+.ko-card-head {
+  background: var(--g50);
+  border-bottom: 1px solid var(--g200);
+  padding: 9px 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ko-card-head h3 { font-size: 13px; font-weight: 700; color: var(--g800); flex: 1 }
+.ko-card-body { padding: 1rem 1.25rem }
+
+/* recipient blocks */
+.ko-recip-block {
+  background: var(--g50);
+  border: 1px solid var(--g200);
+  border-radius: var(--r);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.ko-recip-title {
+  font-size: 11px; font-weight: 700; color: var(--g600);
+  text-transform: uppercase; letter-spacing: .04em;
+  margin-bottom: 7px;
+}
+.ko-tag-wrap { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 7px }
+.ko-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 20px; font-size: 11px;
+}
+.ko-tag-fixed {
+  background: var(--bl); border: 1px solid #b8d0e8; color: var(--blue);
+}
+.ko-tag-fixed .ko-lock { font-size: 10px; opacity: .7 }
+.ko-tag-extra {
+  background: #fff; border: 1px solid var(--g200); color: var(--g800);
+}
+.ko-tag-extra button {
+  background: none; border: none; cursor: pointer;
+  color: var(--g400); font-size: 14px; line-height: 1; padding: 0; margin-left: 2px;
+}
+.ko-tag-extra button:hover { color: var(--red) }
+.ko-tag-qatar {
+  background: #fef3c7; border: 1px solid #d97706; color: #92400e;
+}
+.ko-add-email { display: flex; gap: 6px }
+.ko-add-email input {
+  flex: 1; font-size: 12px; padding: 5px 8px;
+  border: 1px solid var(--g200); border-radius: var(--r);
+  background: #fff; color: var(--g900);
+}
+.ko-add-email button {
+  font-size: 12px; padding: 5px 10px;
+  border: 1px solid var(--g200); border-radius: var(--r);
+  background: #fff; color: var(--g800); cursor: pointer; white-space: nowrap;
+}
+.ko-add-email button:hover { background: var(--g100) }
+
+/* toggle pills */
+.ko-toggles { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px }
+.ko-pill {
+  padding: 5px 13px; font-size: 12px; border-radius: 20px;
+  border: 1px solid var(--g200); background: var(--g100);
+  color: var(--g600); cursor: pointer; transition: all .12s;
+}
+.ko-pill.active-blue {
+  background: var(--bl); border-color: #378ADD; color: var(--blue); font-weight: 700;
+}
+.ko-pill.active-green {
+  background: var(--gl); border-color: var(--gb); color: var(--gd); font-weight: 700;
+}
+
+/* parts table */
+.ko-parts-tbl { width: 100%; border-collapse: collapse; font-size: 12px }
+.ko-parts-tbl th {
+  text-align: left; padding: 6px 7px;
+  color: var(--g600); border-bottom: 1px solid var(--g200); font-weight: 600;
+  font-size: 11px;
+}
+.ko-parts-tbl td { padding: 4px 5px; border-bottom: 1px solid var(--g200) }
+.ko-parts-tbl td input,
+.ko-parts-tbl td select {
+  width: 100%; font-size: 12px; background: transparent;
+  border: none; color: var(--g900); outline: none; padding: 3px 4px;
+  border-radius: var(--r);
+}
+.ko-parts-tbl td input:focus,
+.ko-parts-tbl td select:focus { background: var(--g50) }
+.ko-parts-tbl .rm-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--g400); font-size: 16px; line-height: 1; padding: 0 2px;
+}
+.ko-parts-tbl .rm-btn:hover { color: var(--red) }
+
+/* airline rows */
+.ko-airline-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px }
+.ko-airline-name {
+  font-size: 11px; font-weight: 700; color: var(--blue);
+  background: var(--bl); border-radius: 20px;
+  padding: 3px 10px; flex-shrink: 0; min-width: 110px; text-align: center;
+}
+.ko-airline-input {
+  flex: 1; font-size: 12px; padding: 5px 8px;
+  border: 1px solid var(--g200); border-radius: var(--r);
+  background: var(--g50); color: var(--g900);
+}
+.ko-airline-del {
+  background: none; border: none; cursor: pointer;
+  color: var(--g400); font-size: 18px; line-height: 1; flex-shrink: 0;
+}
+.ko-airline-del:hover { color: var(--red) }
+.ko-add-airline { display: flex; gap: 6px; margin-top: 4px }
+.ko-add-airline input {
+  flex: 1; font-size: 12px; padding: 5px 8px;
+  border: 1px solid var(--g200); border-radius: var(--r);
+  background: var(--g50); color: var(--g900);
+}
+.ko-add-airline button {
+  font-size: 12px; padding: 5px 12px;
+  border: 1px solid var(--g200); border-radius: var(--r);
+  background: #fff; color: var(--g800); cursor: pointer;
+}
+.ko-add-airline button:hover { background: var(--g100) }
+
+/* addr toggle */
+.ko-addr-toggle { display: flex; gap: 6px; margin-bottom: 8px }
+.ko-addr-pill {
+  padding: 4px 12px; font-size: 11px; border-radius: 20px;
+  border: 1px solid var(--g200); background: var(--g100);
+  color: var(--g600); cursor: pointer;
+}
+.ko-addr-pill.on {
+  background: var(--gl); border-color: var(--gb); color: var(--gd); font-weight: 700;
+}
+
+/* draft previews */
+.ko-draft-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 11px; border: 1px solid var(--g200);
+  border-radius: var(--r); margin-bottom: 6px;
+  background: var(--g50); cursor: pointer;
+}
+.ko-draft-row:hover { background: var(--g100) }
+.ko-prev-panel {
+  border: 1px solid var(--g200); border-radius: var(--r);
+  background: #fff; padding: 10px; margin: -2px 0 10px 0;
+}
+.ko-draft-ico {
+  width: 30px; height: 30px; border-radius: var(--r);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.ko-draft-info { flex: 1; min-width: 0 }
+.ko-draft-label { font-size: 13px; font-weight: 700; color: var(--g900) }
+.ko-draft-sub {
+  font-size: 11px; color: var(--g600);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ko-badge {
+  font-size: 10px; font-weight: 700; padding: 2px 8px;
+  border-radius: 20px; flex-shrink: 0;
+}
+.ko-badge-ok  { background: var(--gl); color: var(--gd); border: 1px solid var(--gb) }
+.ko-badge-warn{ background: var(--al); color: var(--amb); border: 1px solid #d4b800 }
+
+/* generate button */
+.ko-gen-btn {
+  width: 100%; padding: 12px 20px;
+  background: var(--gd); color: #fff; border: none;
+  border-radius: var(--rlg); font-size: 14px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center;
+  justify-content: center; gap: 8px; margin-top: .5rem;
+  transition: background .15s;
+}
+.ko-gen-btn:hover:not(:disabled) { background: var(--gm) }
+.ko-gen-btn:disabled { opacity: .45; cursor: not-allowed }
+
+.ko-info-note {
+  font-size: 12px; color: var(--blue);
+  background: var(--bl); border: 1px solid #b8d0e8;
+  border-radius: var(--r); padding: 7px 12px;
+  margin-bottom: 10px; display: flex; align-items: flex-start; gap: 7px;
+}
+
+/* grid helpers */
+.ko-g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px }
+.ko-g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px }
+.ko-fg { display: flex; flex-direction: column; gap: 3px }
+.ko-fg label { font-size: 11px; font-weight: 600; color: var(--g600); text-transform: uppercase; letter-spacing: .04em }
+.ko-fg input, .ko-fg select, .ko-fg textarea {
+  padding: 7px 10px; border: 1px solid var(--g200); border-radius: var(--r);
+  font-size: 13px; font-family: inherit; color: var(--g900); background: #fff;
+  transition: border-color .15s; width: 100%;
+}
+.ko-fg textarea { resize: vertical; min-height: 60px }
+.ko-fg input:focus, .ko-fg select:focus, .ko-fg textarea:focus {
+  outline: 2px solid var(--gm); border-color: var(--gm);
+}
+
+.ko-divider { height: 1px; background: var(--g200); margin: 12px 0 }
+.ko-section-lbl {
+  font-size: 11px; font-weight: 700; color: var(--g600);
+  text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px;
+}
+.ko-status {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 9px 13px; border-radius: var(--r); font-size: 13px; margin-top: 10px;
+}
+.ko-s-idle  { background: var(--g100); color: var(--g600); border: 1px solid var(--g200) }
+.ko-s-load  { background: var(--bl);   color: var(--blue); border: 1px solid #b8d0e8 }
+.ko-s-done  { background: var(--gl);   color: var(--gd);   border: 1px solid var(--gb) }
+.ko-s-err   { background: var(--rl);   color: var(--red);  border: 1px solid #e8b8a0 }
+
+@media (max-width: 600px) {
+  .ko-g3 { grid-template-columns: 1fr 1fr }
+  .ko-g2 { grid-template-columns: 1fr }
+  .ko-parts-tbl th:nth-child(1),
+  .ko-parts-tbl td:nth-child(1) { display: none }
+}
 </style>
+
 </head>
 <body>
 
@@ -310,6 +568,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div class="eng-name" id="eng-bar-name">—</div>
     <div class="eng-sub" id="eng-bar-sub">—</div>
   </div>
+  <button class="btn-start-job" id="btn-start-job" onclick="openKickoff()" style="display:none">🚀 Start Job</button>
 </div>
 
 <!-- Projects panel -->
@@ -458,9 +717,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div style="display:flex;justify-content:flex-end;margin:4px 0 10px">
       <button class="btn" onclick="addColleagueSlot()" id="btn-add-poc">+ Add Colleague</button>
     </div>
-    <div style="display:flex;justify-content:flex-end;margin:4px 0 10px">
-      <button class="btn" onclick="addColleagueSlot()" id="btn-add-poc">+ Add Colleague</button>
-    </div>
     <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--g200)">
       <div style="font-size:12px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Customer info</div>
       <div class="grid g2">
@@ -521,6 +777,353 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 
 </div><!-- /app-screen -->
 
+<div class="main" id="kickoff-panel">
+
+  <!-- En-tête engineer -->
+  <div class="ko-header">
+    <div class="ko-avatar" id="ko-avatar">JP</div>
+    <div class="ko-eng-info">
+      <div class="ko-eng-name" id="ko-eng-name">—</div>
+      <div class="ko-eng-sub" id="ko-eng-sub">Start a job — generate project emails</div>
+    </div>
+    <button class="btn" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff;font-size:12px"
+      onclick="closeKickoff()">← Back</button>
+  </div>
+
+  <!-- AIRCRAFT INFO -->
+  <div class="ko-card">
+    <div class="ko-card-head"><h3>✈️ Aircraft info</h3></div>
+    <div class="ko-card-body">
+      <div class="ko-g3" style="margin-bottom:10px">
+        <div class="ko-fg"><label>Aircraft type</label><input type="text" id="ko_model" placeholder="G650ER"/></div>
+        <div class="ko-fg"><label>MSN</label><input type="text" id="ko_sn" placeholder="6527"/></div>
+        <div class="ko-fg"><label>Registration</label><input type="text" id="ko_reg" placeholder="T7-JMM" oninput="this.value=this.value.toUpperCase()"/></div>
+      </div>
+      <div class="ko-g2">
+        <div class="ko-fg"><label>Work Order (WO)</label><input type="text" id="ko_wo" placeholder="FA32988"/></div>
+        <div class="ko-fg"><label>ICAO airport</label><input type="text" id="ko_icao" placeholder="LFPB" oninput="this.value=this.value.toUpperCase()"/></div>
+      </div>
+      <div class="ko-fg" style="margin-top:10px">
+        <label>Defect / job description</label>
+        <input type="text" id="ko_defect" placeholder="UPS Battery Fail CAS message"/>
+      </div>
+      <div class="ko-divider"></div>
+      <div class="ko-section-lbl">👤 Customer</div>
+      <div class="ko-fg">
+        <label>Customer contact name (used in email greeting)</label>
+        <input type="text" id="ko_cust_name" placeholder="e.g. Joanna Butkiewicz" oninput="koUpdatePreview()"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECIPIENTS -->
+  <div class="ko-card">
+    <div class="ko-card-head"><h3>📬 Recipients per draft</h3></div>
+    <div class="ko-card-body">
+      <div class="ko-info-note">
+        🔒 Blue tags are system-fixed (admin-managed). White tags are yours to add or remove per project.
+      </div>
+
+      <div id="ko-recip-customer" class="ko-recip-block">
+        <div class="ko-recip-title">📧 Customer update</div>
+        <div class="ko-tag-wrap" id="ko-tags-customer"></div>
+        <div class="ko-add-email">
+          <input type="text" placeholder="Add recipient…" id="ko-add-customer-inp"/>
+          <button onclick="koAddRecip('customer')">+ Add</button>
+        </div>
+      </div>
+
+      <div id="ko-recip-travel" class="ko-recip-block">
+        <div class="ko-recip-title">✈️ Travel request</div>
+        <div class="ko-tag-wrap" id="ko-tags-travel"></div>
+        <div class="ko-add-email">
+          <input type="text" placeholder="Add recipient…" id="ko-add-travel-inp"/>
+          <button onclick="koAddRecip('travel')">+ Add</button>
+        </div>
+      </div>
+
+      <div id="ko-recip-parts" class="ko-recip-block">
+        <div class="ko-recip-title">📦 Part request</div>
+        <div class="ko-tag-wrap" id="ko-tags-parts"></div>
+        <div class="ko-add-email">
+          <input type="text" placeholder="Add recipient…" id="ko-add-parts-inp"/>
+          <button onclick="koAddRecip('parts')">+ Add</button>
+        </div>
+      </div>
+
+      <div id="ko-recip-fbo" class="ko-recip-block">
+        <div class="ko-recip-title">🏢 FBO coordination</div>
+        <div class="ko-tag-wrap" id="ko-tags-fbo"></div>
+        <div class="ko-add-email">
+          <input type="text" placeholder="Add FBO email…" id="ko-add-fbo-inp"/>
+          <button onclick="koAddRecip('fbo')">+ Add</button>
+        </div>
+      </div>
+
+      <div class="ko-divider"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;background:var(--al);border:1px solid #d4b800;border-radius:var(--r);padding:8px 10px">
+        <input type="checkbox" id="ko-qatar-toggle" onchange="koToggleQatar(this.checked)"/>
+        <span>⭐ Qatar Executive — add specific recipients to Customer Update &amp; Part Request</span>
+      </label>
+    </div>
+  </div>
+
+  <!-- CUSTOMER UPDATE QUESTIONS -->
+  <div class="ko-card">
+    <div class="ko-card-head"><h3>❓ Customer update — questions to include</h3></div>
+    <div class="ko-card-body">
+      <p style="font-size:12px;color:var(--g600);margin-bottom:10px">Tick the questions you want included in this Customer Update email.</p>
+      <div class="ko-fg" style="margin-bottom:12px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:10px 12px">
+        <label>✈️ My estimated arrival on site (ETA)</label>
+        <input type="text" id="ko_eta" placeholder="e.g. 25 Jun 2026, 14:00 local — or leave blank / N/A if unknown"/>
+      </div>
+      <div class="ko-divider"></div>
+      <div class="ko-section-lbl">Admin & Import</div>
+      <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_broker"/> Broker for import — do they have one or should we use ours?</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_hours"/> Aircraft hours and cycles</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_po"/> Work Order (WO) or Purchase Order (PO) number</label>
+      </div>
+
+      <div class="ko-section-lbl">Access & Logistics</div>
+      <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_keys"/> Location of aircraft keys</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_fbo_mail"/> Ask customer to send an authorisation email to the FBO</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_airside"/> Ask customer to arrange airside access via FBO</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_contact"/> Ask for local contact/crew details on site</label>
+      </div>
+
+      <div class="ko-section-lbl">Troubleshooting</div>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_troubleshoot"/> Ask if the crew has already done troubleshooting / resets</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_cas"/> Ask for CAS messages / CMC active faults pictures</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_fhdb"/> Ask if the FHDB has been downloaded / shared</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_techops"/> Ask if they already have a reply from Techops</label>
+      </div>
+      <div class="ko-divider"></div>
+      <div class="ko-section-lbl">Parts &amp; Logistics</div>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_self_parts"/> Customer is self-sourcing parts — please provide the certificates (FAA 8130-3 / EASA Form 1) as soon as possible, along with the estimated delivery ETA.</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_handcarry"/> Does the customer approve hand carry for parts if required? (Please note this will incur additional costs.)</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_order_before_tshoot"/> Should we proceed with ordering parts in parallel with troubleshooting, or wait for a confirmed diagnosis first?</label>
+      </div>
+      <div class="ko-divider"></div>
+      <div class="ko-fg">
+        <label>Action plan (optional — leave blank to use a generic line)</label>
+        <textarea id="ko_action_plan" placeholder="e.g. Will troubleshoot per AMM XX-XX-XX, swap unit if confirmed faulty…" style="min-height:60px"></textarea>
+      </div>
+      <div class="ko-divider"></div>
+      <div class="ko-section-lbl">My custom questions</div>
+      <div id="ko-custom-questions-list" style="margin-bottom:7px"></div>
+      <div style="display:flex;gap:6px;margin-bottom:7px">
+        <input type="text" id="ko-new-custom-question" placeholder="e.g. - Could you confirm the aircraft tail number on site?" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r)" onkeydown="if(event.key==='Enter'){event.preventDefault();koAddCustomQuestion();}"/>
+        <button class="btn" onclick="koAddCustomQuestion()" style="font-size:12px;padding:5px 10px">+ Add</button>
+      </div>
+      <p style="font-size:11px;color:var(--g400);margin-bottom:10px">Saved to your own profile only — other engineers won't see these.</p>
+
+      <div class="ko-divider"></div>
+      <div class="ko-fg">
+        <label>Other questions (optional, one per line)</label>
+        <textarea id="koq_custom" placeholder="Add any other question or note, one per line…" style="min-height:60px"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- PART REQUEST OPTIONS -->
+  <div class="ko-card">
+    <div class="ko-card-head"><h3>📦 Part request options</h3></div>
+    <div class="ko-card-body">
+      <div class="ko-section-lbl">Email prefix</div>
+      <div class="ko-toggles" id="ko-prefix-toggles">
+        <span class="ko-pill" data-val="PART REQUEST">PART REQUEST</span>
+        <span class="ko-pill" data-val="PARTS REQUEST">PARTS REQUEST</span>
+        <span class="ko-pill" data-val="PART &amp; TOOL REQUEST">PART &amp; TOOL REQUEST</span>
+        <span class="ko-pill" data-val="PARTS &amp; TOOLS REQUEST">PARTS &amp; TOOLS REQUEST</span>
+      </div>
+
+      <div class="ko-divider"></div>
+      <div class="ko-section-lbl">Request type</div>
+      <div class="ko-toggles" id="ko-reqtype-toggles">
+        <span class="ko-pill" data-val="ORDER">Order</span>
+        <span class="ko-pill" data-val="AVAILABILITY">Availability only</span>
+      </div>
+
+      <div class="ko-divider"></div>
+      <div class="ko-section-lbl">Material check — optional</div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:6px">
+        <input type="checkbox" id="ko_part_priority_wh"/> Ask Materials to check priority warehouse first
+      </label>
+      <select id="ko_priority_warehouse" style="display:none;margin:-2px 0 10px 26px;font-size:13px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--r);width:auto">
+        <option value="">No preference — let them choose</option>
+        <option value="Savannah">Savannah</option>
+        <option value="Farnborough">Farnborough</option>
+        <option value="Amsterdam">Amsterdam</option>
+        <option value="Singapore">Singapore</option>
+      </select>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+        <input type="checkbox" id="ko_part_certs"/> Ask for certificates if available
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:6px">
+        <input type="checkbox" id="ko_handcarry_approved"/> ✈️ Customer has approved hand carry (if required)
+      </label>
+
+      <div class="ko-divider"></div>
+      <div class="ko-section-lbl">Shipping address</div>
+      <div class="ko-addr-toggle">
+        <span class="ko-addr-pill" id="ko-addr-auto" onclick="koSetAddr('auto')">Will be provided shortly</span>
+        <span class="ko-addr-pill" id="ko-addr-manual" onclick="koSetAddr('manual')">Enter address</span>
+      </div>
+      <div id="ko-addr-field" style="display:none">
+        <div class="ko-fg">
+          <textarea id="ko_shipping_addr" placeholder="FBO name, address, city, country…" style="min-height:60px"></textarea>
+        </div>
+      </div>
+      <div class="ko-divider"></div>
+      <div class="ko-section-lbl">Customer's broker (if provided)</div>
+      <div class="ko-fg">
+        <textarea id="ko_broker_contact" placeholder="Broker name, contact person, email, phone…" style="min-height:50px"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- PARTS LIST -->
+  <div class="ko-card">
+    <div class="ko-card-head">
+      <h3>🔧 Parts & tools list</h3>
+      <button class="btn" onclick="koAddPartRow()" style="font-size:12px;padding:4px 10px">+ Add row</button>
+    </div>
+    <div class="ko-card-body" style="padding-top:.75rem;overflow-x:auto">
+      <table class="ko-parts-tbl">
+        <thead>
+          <tr>
+            <th style="min-width:150px">Description</th>
+            <th style="min-width:110px">P/N</th>
+            <th style="min-width:80px">S/N</th>
+            <th style="width:50px">Qty</th>
+            <th style="width:100px">Category</th>
+            <th style="min-width:130px">Note</th>
+            <th style="width:28px"></th>
+          </tr>
+        </thead>
+        <tbody id="ko-parts-tbody"></tbody>
+      </table>
+      <button class="btn-add" onclick="koAddPartRow()" style="margin-top:8px">+ Add row</button>
+    </div>
+  </div>
+
+  <!-- TRAVEL -->
+  <div class="ko-card">
+    <div class="ko-card-head"><h3>🛫 Travel</h3></div>
+    <div class="ko-card-body">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:12px;padding:8px;background:var(--g100);border-radius:var(--r)">
+        <input type="checkbox" id="ko_skip_travel"/> Aircraft is already at my home base — don't generate a Travel Request email
+      </label>
+      <div class="ko-g3" style="margin-bottom:10px">
+        <div class="ko-fg"><label>From</label><input type="text" id="ko_travel_from" placeholder="Bangkok (BKK)"/></div>
+        <div class="ko-fg"><label>To (ICAO / city)</label><input type="text" id="ko_travel_to" placeholder="LFPB"/></div>
+        <div class="ko-fg"><label>Desired departure date</label><input type="text" id="ko_travel_date" placeholder="e.g. 25 Jun 2026"/></div>
+      </div>
+      <div class="ko-divider"></div>
+      <div class="ko-section-lbl">Preferred time of departure</div>
+      <div class="ko-toggles" id="ko-time-toggles" style="margin-bottom:10px">
+        <span class="ko-pill" data-val="morning">🌅 Morning</span>
+        <span class="ko-pill" data-val="afternoon">☀️ Afternoon</span>
+        <span class="ko-pill" data-val="evening">🌆 Evening</span>
+        <span class="ko-pill" data-val="night">🌙 Night</span>
+        <span class="ko-pill" data-val="any">Any time</span>
+      </div>
+      <div class="ko-section-lbl">Cabin class</div>
+      <div class="ko-toggles" id="ko-cabin-toggles" style="margin-bottom:10px">
+        <span class="ko-pill" data-val="both">Economy &amp; Business</span>
+        <span class="ko-pill" data-val="eco">Economy only</span>
+        <span class="ko-pill" data-val="business">Business only</span>
+      </div>
+      <div class="ko-toggles" style="margin-bottom:12px">
+        <span class="ko-pill" id="ko-extra-baggage" onclick="this.classList.toggle('active-green');koSaveState()">🧳 Extra baggage (2nd bag)</span>
+      </div>
+      <div class="ko-divider"></div>
+      <div class="ko-section-lbl">Frequent flyer numbers — saved to your profile</div>
+      <div id="ko-airlines-list"></div>
+      <div class="ko-add-airline">
+        <input type="text" id="ko-new-airline-name" placeholder="Airline name (e.g. Air France)"/>
+        <button onclick="koAddAirline()">+ Add airline</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FBO CHECKLIST -->
+  <div class="ko-card">
+    <div class="ko-card-head"><h3>🏢 FBO — equipment &amp; questions</h3></div>
+    <div class="ko-card-body">
+      <p style="font-size:12px;color:var(--g600);margin-bottom:10px">Select what you need the FBO to provide.</p>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_gpu"/> GPU (Ground Power Unit) 115Vac</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_oxygen"/> Oxygen</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_nitrogen_hp"/> Nitrogen — High pressure</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_nitrogen_lp"/> Nitrogen — Low pressure</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_steps"/> Steps / Airstair</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_hangar"/> Hangar space</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_lavatory"/> Lavatory service</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_hpbay"/> High Power Bay</label>
+      </div>
+      <div class="ko-divider"></div>
+      <div class="ko-section-lbl">Questions to include in the FBO email</div>
+      <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_q_days"/> Could you please let me know how many days do you need to have it ready?</label>
+	<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_q_confirm"/> Please note that this intervention is pending authorisation — I will come back to you as soon as I have a confirmation to proceed.</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_q_shipping"/> Could you please provide your shipping address? I may need to send parts required for the Return to Service to your FBO.</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_q_importer"/> Would you be able to act as importer of record for parts we will need to import for this intervention?</label>
+      </div>
+      <div class="ko-divider"></div>
+      <div class="ko-fg">
+        <label>Other equipment / requests (optional, one per line)</label>
+        <textarea id="kofbo_custom" placeholder="Add any other equipment or request, one per line…" style="min-height:60px"></textarea>
+      </div>
+      <div class="ko-fg" style="margin-top:8px">
+        <label>Additional questions to the FBO (one per line)</label>
+        <textarea id="kofbo_custom_questions" placeholder="e.g. Do you have a bonded store available for parts?" style="min-height:60px"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- PREVIEW & GENERATE -->
+  <div class="ko-card">
+    <div class="ko-card-head"><h3>📨 Drafts to generate</h3></div>
+    <div class="ko-card-body">
+      <div id="ko-drafts-preview"></div>
+      <div id="ko-drafts-edit-panels">
+        <div class="ko-prev-panel" id="ko-prev-panel-customer" style="display:none">
+          <div class="ko-fg"><label>Subject</label><input type="text" id="ko-prev-subj-customer"/></div>
+          <div class="ko-fg"><label>Body</label><textarea id="ko-prev-body-customer" style="min-height:220px"></textarea></div>
+          <button class="btn" onclick="koResetDraftPreview('customer')" style="font-size:12px">🔄 Reset to auto-generated</button>
+        </div>
+        <div class="ko-prev-panel" id="ko-prev-panel-travel" style="display:none">
+          <div class="ko-fg"><label>Subject</label><input type="text" id="ko-prev-subj-travel"/></div>
+          <div class="ko-fg"><label>Body</label><textarea id="ko-prev-body-travel" style="min-height:160px"></textarea></div>
+          <button class="btn" onclick="koResetDraftPreview('travel')" style="font-size:12px">🔄 Reset to auto-generated</button>
+        </div>
+        <div class="ko-prev-panel" id="ko-prev-panel-parts" style="display:none">
+          <div class="ko-fg"><label>Subject</label><input type="text" id="ko-prev-subj-parts"/></div>
+          <div class="ko-fg"><label>Body</label><textarea id="ko-prev-body-parts" style="min-height:220px"></textarea></div>
+          <button class="btn" onclick="koResetDraftPreview('parts')" style="font-size:12px">🔄 Reset to auto-generated</button>
+        </div>
+        <div class="ko-prev-panel" id="ko-prev-panel-fbo" style="display:none">
+          <div class="ko-fg"><label>Subject</label><input type="text" id="ko-prev-subj-fbo"/></div>
+          <div class="ko-fg"><label>Body</label><textarea id="ko-prev-body-fbo" style="min-height:180px"></textarea></div>
+          <button class="btn" onclick="koResetDraftPreview('fbo')" style="font-size:12px">🔄 Reset to auto-generated</button>
+        </div>
+      </div>
+      <div class="ko-status ko-s-idle" id="ko-status" style="margin-top:.75rem">
+        <span id="ko-status-txt">Fill in the fields above, then generate drafts.</span>
+      </div>
+      <button class="ko-gen-btn" id="ko-gen-btn" onclick="koGenerate()">
+        📧 Generate Gmail drafts
+      </button>
+    </div>
+  </div>
+
+</div><!-- /kickoff-panel -->
+
 <!-- ═══════════════════════════════════
      ADMIN PANEL MODAL
 ════════════════════════════════════ -->
@@ -534,8 +1137,26 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px">📬 Default email recipients (shared by all engineers)</div>
       <div id="default-recipients-tags" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px"></div>
       <div style="display:flex;gap:6px">
-        <input type="text" id="recipient-input" autocomplete="new-password" placeholder="Add email address…" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r)" onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();addRecipient();}"/>
+        <input type="text" id="default-recipient-input" autocomplete="new-password" placeholder="Add email address…" style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r)" onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();addDefaultRecipient();}"/>
         <button class="btn" onclick="addDefaultRecipient()" style="font-size:12px;padding:5px 10px">+ Add</button>
+      </div>
+    </div>
+
+    <div style="background:#f5f0fe;border:1px solid #c8b8f5;border-radius:var(--r);padding:12px;margin-bottom:14px">
+       <div style="font-size:12px;font-weight:700;color:#5b21b6;margin-bottom:8px">
+        🚀 Start Job — Fixed recipients per draft type
+      </div>
+      <div id="ko-admin-recips">
+        <p style="font-size:12px;color:var(--g400)"><span class="spin" style="vertical-align:middle"></span> Loading…</p>
+      </div>
+    </div>
+
+    <div style="background:#fefbea;border:1px solid #d4b800;border-radius:var(--r);padding:12px;margin-bottom:14px">
+       <div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:8px">
+        ⭐ Qatar Executive — extra recipients (Customer Update &amp; Part Request only)
+      </div>
+      <div id="ko-admin-qatar">
+        <p style="font-size:12px;color:var(--g400)"><span class="spin" style="vertical-align:middle"></span> Loading…</p>
       </div>
     </div>
 
@@ -548,6 +1169,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <div class="fg"><label>Phone</label><input type="text" id="nt_phone" placeholder="Cell"/></div>
         <div class="fg"><label>Email</label><input type="email" id="nt_email" placeholder="Email"/></div>
         <div class="fg"><label>Team</label><input type="text" id="nt_team" placeholder="e.g. FAST EMEA"/></div>
+	<div class="fg"><label>Home base airport</label><input type="text" id="nt_homebase" placeholder="e.g. Bangkok (BKK)"/></div>
         <div class="fg"><label>Role</label>
           <select id="nt_role">
             <option value="engineer">✈️ Engineer</option>
@@ -559,7 +1181,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <button class="btn primary" onclick="addTeamMember()" style="margin-top:8px">+ Create Engineer</button>
     </div>
     <div class="modal-btns">
-      <button class="btn primary" onclick="closeModal('modal-manage-team')">Done</button>
+      <button class="btn primary" onclick="closeModal('modal-manage-team');logout()">Done</button>
     </div>
   </div>
 </div>
@@ -574,6 +1196,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div class="fg"><label>Phone</label><input type="text" id="edit_phone"/></div>
       <div class="fg"><label>Email</label><input type="email" id="edit_email"/></div>
       <div class="fg"><label>Team</label><input type="text" id="edit_team"/></div>
+      <div class="fg"><label>Home base airport</label><input type="text" id="edit_homebase"/></div>
       <div class="fg"><label>Role</label>
         <select id="edit_role">
           <option value="engineer">✈️ Engineer</option>
@@ -896,7 +1519,7 @@ G.adminEmailLogin = async function() {
 
 async function showAdminPanel() {
   document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app-screen').style.display = '';
+  document.getElementById('app-screen').style.display = 'none';
   setupAccordion();
   document.getElementById('hdr-profile-name').textContent = '⚙️ Admin';
   document.getElementById('btn-logout').style.display = '';
@@ -925,6 +1548,7 @@ async function loginAs(profile) {
   
   renderProjList();
   renderStep6Me();
+  G.koShowBtn();
 }
 
 G.logout = async function() {
@@ -977,13 +1601,14 @@ G.addTeamMember = async function() {
     email: document.getElementById('nt_email').value.trim(),
     team: document.getElementById('nt_team').value.trim(),
     phone: document.getElementById('nt_phone').value.trim(),
+    homeBase: document.getElementById('nt_homebase').value.trim(),
     pinHash: hashPin(pin),
     role: document.getElementById('nt_role').value || 'engineer',
     defaultRecipients: document.getElementById('nt_recipients').value.trim(),
     projects: {}
   };
   await set(ref(db, 'team/' + id), member);
-  ['nt_name','nt_email','nt_team','nt_phone','nt_pin','nt_recipients'].forEach(i => document.getElementById(i).value = '');
+  ['nt_name','nt_email','nt_team','nt_phone','nt_pin','nt_recipients','nt_homebase'].forEach(i => document.getElementById(i).value = '');
   document.getElementById('nt_role').value = 'engineer';
   renderTeamAdminList();
 };
@@ -1035,6 +1660,7 @@ async function renderProjList() {
         <div class="proj-item-sub">${[proj.model, proj.sn, proj.reg, proj.loc].filter(Boolean).join(' · ')}</div>
       </div>
       <div class="proj-item-date">${ds}</div>
+      <button class="btn-start-job" style="padding:5px 10px;font-size:11px" onclick="event.stopPropagation();koStartFromProject('${proj.id}')">🚀 Start Job</button>
       <button class="btn danger" onclick="event.stopPropagation();deleteProjUI('${proj.id}')" style="padding:4px 8px;font-size:11px">🗑</button>`;
     div.onclick = () => loadProject(proj.id);
     list.appendChild(div);
@@ -1783,6 +2409,36 @@ function renderGBtn() {
   c.appendChild(b);
 }
 function ensureGToken() { if(gToken&&Date.now()<gTokenExp) return true; tokenClient?.requestAccessToken({prompt:'consent'}); return false; }
+
+// Promise-based version: actually pops up Google sign-in (if needed) and
+// resolves true/false once the user has answered, instead of requiring a
+// second click after the popup closes.
+function ensureGTokenAsync() {
+  return new Promise((resolve) => {
+    if (gToken && Date.now() < gTokenExp) { resolve(true); return; }
+    if (!tokenClient) { resolve(false); return; }
+    const prevCallback = tokenClient.callback;
+    const prevErrorCallback = tokenClient.error_callback;
+    tokenClient.callback = (r) => {
+      tokenClient.callback = prevCallback;
+      tokenClient.error_callback = prevErrorCallback;
+      if (r?.access_token) {
+        gToken = r.access_token;
+        gTokenExp = Date.now() + ((r.expires_in || 3500) * 1000) - 30000;
+        updateAuthUI(true);
+        resolve(true);
+      } else {
+        resolve(false);
+      }
+    };
+    tokenClient.error_callback = (err) => {
+      tokenClient.callback = prevCallback;
+      tokenClient.error_callback = prevErrorCallback;
+      resolve(false);
+    };
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  });
+}
 G.signOutGoogle = function() { if(gToken&&window.google?.accounts?.oauth2?.revoke) google.accounts.oauth2.revoke(gToken,()=>{}); gToken=null;gTokenExp=0;updateAuthUI(false); };
 function updateAuthUI(ok) {
   document.getElementById('auth-badge').textContent=ok?'Connected':'Not connected';
@@ -2363,8 +3019,8 @@ G.promptEditMember = async function(id) {
   document.getElementById('edit_phone').value = p.phone || '';
   document.getElementById('edit_email').value = p.email || '';
   document.getElementById('edit_team').value = p.team || '';
+  document.getElementById('edit_homebase').value = p.homeBase || '';
   document.getElementById('edit_role').value = p.role || 'engineer';
-  document.getElementById('edit_recipients').value = p.defaultRecipients || '';
   document.getElementById('edit-member-error').textContent = '';
   openModal('modal-edit-member');
 };
@@ -2379,8 +3035,9 @@ G.confirmEditMember = async function() {
     phone: document.getElementById('edit_phone').value.trim(),
     email: document.getElementById('edit_email').value.trim(),
     team:  document.getElementById('edit_team').value.trim(),
+    homeBase: document.getElementById('edit_homebase').value.trim(),
     role:  document.getElementById('edit_role').value,
-    defaultRecipients: document.getElementById('edit_recipients').value.trim()
+    defaultRecipients: ''
   });
   closeModal('modal-edit-member');
   setStatus('done', '✅ Profile updated.');
@@ -2391,6 +3048,1294 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   });
+}
+
+// ══════════════════════════════════════
+//  KICKOFF — STATE
+// ══════════════════════════════════════
+const KO = {
+  prefixSel: '',
+  reqType:   '',
+  addrMode:  '',
+  travelTime: '',     // 'morning' | 'afternoon' | 'evening' | 'night' | 'any' | ''
+  cabinClass: '',     // 'both' | 'eco' | 'business'
+  // per-draft recipients {fixed:[...], extra:[...]}
+  recips: {
+    customer: { fixed: [], extra: [], qatar: [] },
+    travel:   { fixed: [], extra: [], qatar: [] },
+    parts:    { fixed: [], extra: [], qatar: [] },
+    fbo:      { fixed: [], extra: [], qatar: [] },
+  },
+  airlines: [],   // [{name, number}]
+  customQuestions: [], // per-engineer custom checkbox questions, saved to their own profile
+  partRows: 0,
+  signature: '',  // built automatically from the engineer's Firebase profile
+};
+
+// ── Build the 4-line email signature from the logged-in engineer's profile
+function koBuildSignature() {
+  const name  = curProfile?.name  || '[ENGINEER]';
+  const phone = curProfile?.phone || '';
+  const lines = [
+    name,
+    phone ? `Mob. Tel. ${phone}` : '',
+    'Head-start Operations Tel. +41 43 588 1516',
+    'Head-start Aviation Systems',
+    'Gulfstream Authorized FAST Service Provider',
+  ];
+  return lines.filter(Boolean).join('\n');
+}
+
+// ── Fixed recipients loaded from Firebase /config/kickoffRecipients
+const KO_FALLBACK_FIXED_RECIPS = {
+  customer: ['fast.update.emea@gulfstream.com', 'fast.management@gulfstream.com'],
+  travel:   ['ops@headstartaviation.com'],
+  parts:    ['parts@headstartaviation.com', 'fast.update.emea@gulfstream.com'],
+  fbo:      ['ops@headstartaviation.com'],
+};
+async function koLoadFixedRecips() {
+  try {
+    const snap = await get(ref(db, 'config/kickoffRecipients'));
+    if (snap.exists()) {
+      const d = snap.val();
+      KO.recips.customer.fixed = d.customer || [];
+      KO.recips.travel.fixed   = d.travel   || [];
+      KO.recips.parts.fixed    = d.parts     || [];
+      KO.recips.fbo.fixed      = d.fbo       || [];
+    } else {
+      // Defaults if admin hasn't configured yet
+      KO.recips.customer.fixed = [...KO_FALLBACK_FIXED_RECIPS.customer];
+      KO.recips.travel.fixed   = [...KO_FALLBACK_FIXED_RECIPS.travel];
+      KO.recips.parts.fixed    = [...KO_FALLBACK_FIXED_RECIPS.parts];
+      KO.recips.fbo.fixed      = [...KO_FALLBACK_FIXED_RECIPS.fbo];
+    }
+  } catch(e) {
+    // Read failed (permissions/network) — fall back to the same defaults
+    // instead of leaving every "fixed" list silently empty.
+    console.warn('koLoadFixedRecips: could not read config/kickoffRecipients, using fallback defaults.', e);
+    KO.recips.customer.fixed = [...KO_FALLBACK_FIXED_RECIPS.customer];
+    KO.recips.travel.fixed   = [...KO_FALLBACK_FIXED_RECIPS.travel];
+    KO.recips.parts.fixed    = [...KO_FALLBACK_FIXED_RECIPS.parts];
+    KO.recips.fbo.fixed      = [...KO_FALLBACK_FIXED_RECIPS.fbo];
+    koSetStatus('err', '⚠️ Could not load admin-fixed recipients from the server — showing fallback defaults instead.');
+  }
+}
+
+// ── Load engineer's airlines from their profile
+async function koLoadAirlines() {
+  if (!curProfile) return;
+  try {
+    const snap = await get(ref(db, 'team/' + curProfile.id + '/airlines'));
+    KO.airlines = snap.exists() ? snap.val() : [
+      { name: 'Thai Airways',    number: '' },
+      { name: 'Swiss Air',   number: '' },
+      { name: 'Air France',        number: '' },
+      { name: 'Lufthansa',   number: '' },
+    ];
+  } catch(e) { KO.airlines = [] }
+  koRenderAirlines();
+}
+
+async function koSaveAirlines() {
+  if (!curProfile) return;
+  try {
+    await set(ref(db, 'team/' + curProfile.id + '/airlines'), KO.airlines);
+  } catch(e) {}
+}
+
+function koEscapeHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Per-engineer custom questions, saved under the engineer's own profile
+// (team/{id}/customQuestions) — each engineer only sees and manages their own.
+async function koLoadCustomQuestions() {
+  if (!curProfile) { KO.customQuestions = []; koRenderCustomQuestions(); return; }
+  try {
+    const snap = await get(ref(db, 'team/' + curProfile.id + '/customQuestions'));
+    KO.customQuestions = snap.exists() ? snap.val() : [];
+  } catch(e) { KO.customQuestions = []; }
+  koRenderCustomQuestions();
+}
+
+async function koSaveCustomQuestions() {
+  if (!curProfile) return;
+  try {
+    await set(ref(db, 'team/' + curProfile.id + '/customQuestions'), KO.customQuestions);
+  } catch(e) {}
+}
+
+function koRenderCustomQuestions() {
+  const wrap = document.getElementById('ko-custom-questions-list');
+  if (!wrap) return;
+  const list = KO.customQuestions || [];
+  wrap.innerHTML = list.length ? list.map((text, i) => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;flex:1">
+        <input type="checkbox" checked id="koq_my_${i}"/> ${koEscapeHtml(text)}
+      </label>
+      <span onclick="koRemoveCustomQuestion(${i})" style="color:var(--g400);cursor:pointer;font-size:14px" title="Remove">✕</span>
+    </div>`).join('') : '<p style="font-size:12px;color:var(--g400);margin-bottom:7px">No custom questions yet — add one below.</p>';
+}
+
+G.koAddCustomQuestion = async function() {
+  const inp = document.getElementById('ko-new-custom-question');
+  const val = (inp?.value || '').trim();
+  if (!val) return;
+  KO.customQuestions = KO.customQuestions || [];
+  KO.customQuestions.push(val);
+  inp.value = '';
+  koRenderCustomQuestions();
+  await koSaveCustomQuestions();
+};
+
+G.koRemoveCustomQuestion = async function(i) {
+  KO.customQuestions.splice(i, 1);
+  koRenderCustomQuestions();
+  await koSaveCustomQuestions();
+};
+
+// ══════════════════════════════════════
+//  KICKOFF — SAVE / RESTORE STATE (Firebase)
+//  Syncs across PC ↔ Phone via the engineer's profile.
+//  State expires automatically after 5 days.
+// ══════════════════════════════════════
+
+async function koSaveState() {
+  const textIds = [
+    'ko_model','ko_sn','ko_reg','ko_wo','ko_icao','ko_defect','ko_cust_name',
+    'ko_eta','ko_travel_from','ko_travel_to','ko_travel_date',
+    'ko_shipping_addr','ko_broker_contact','ko_action_plan',
+    'koq_custom','kofbo_custom','kofbo_custom_questions'
+  ];
+  const cbIds = [
+    'ko_skip_travel','ko_part_priority_wh','ko_part_certs','ko_handcarry_approved',
+    'kofbo_gpu','kofbo_oxygen','kofbo_nitrogen_hp','kofbo_nitrogen_lp',
+    'kofbo_steps','kofbo_hangar','kofbo_lavatory','kofbo_hpbay',
+    'kofbo_q_days','kofbo_q_confirm','kofbo_q_shipping','kofbo_q_importer',
+    'koq_broker','koq_hours','koq_po','koq_keys','koq_fbo_mail',
+    'koq_airside','koq_contact','koq_troubleshoot','koq_cas','koq_fhdb',
+    'koq_techops','koq_self_parts','koq_handcarry','koq_order_before_tshoot'
+  ];
+  const state = {
+    texts: Object.fromEntries(textIds.map(id => [id, document.getElementById(id)?.value || ''])),
+    cbs:   Object.fromEntries(cbIds.map(id => [id, document.getElementById(id)?.checked || false])),
+    prefixSel:    KO.prefixSel,
+    reqType:      KO.reqType,
+    addrMode:     KO.addrMode,
+    travelTime:   KO.travelTime,
+    cabinClass:   KO.cabinClass,
+    extraBaggage: document.getElementById('ko-extra-baggage')?.classList.contains('active-green') || false,
+  };
+  if (!curProfile) return;
+  state.savedAt = Date.now();
+  try { await set(ref(db, 'team/' + curProfile.id + '/koState'), state); } catch(e) {}
+}
+
+async function koRestoreState() {
+      if (!curProfile) return;
+      let state;
+      try {
+        const snap = await get(ref(db, 'team/' + curProfile.id + '/koState'));
+        if (!snap.exists()) return; // first time — nothing pre-selected
+        state = snap.val();
+        // Auto-delete if older than 5 days
+        if (Date.now() - (state.savedAt || 0) > 5 * 24 * 3600 * 1000) {
+          await set(ref(db, 'team/' + curProfile.id + '/koState'), null);
+          return;
+        }
+      } catch(e) { return; }
+
+  // Restore text fields
+  Object.entries(state.texts || {}).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el && val) el.value = val;
+  });
+  // Restore checkboxes
+  Object.entries(state.cbs || {}).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el) el.checked = val;
+  });
+  // Show priority warehouse select if checked
+  const prioSel = document.getElementById('ko_priority_warehouse');
+  if (prioSel) prioSel.style.display = state.cbs?.ko_part_priority_wh ? '' : 'none';
+
+  // Restore toggle pills
+  if (state.prefixSel) {
+    KO.prefixSel = state.prefixSel;
+    document.querySelectorAll('#ko-prefix-toggles .ko-pill').forEach(p =>
+      p.classList.toggle('active-blue', p.dataset.val === state.prefixSel));
+  }
+  if (state.reqType) {
+    KO.reqType = state.reqType;
+    document.querySelectorAll('#ko-reqtype-toggles .ko-pill').forEach(p =>
+      p.classList.toggle('active-green', p.dataset.val === state.reqType));
+  }
+  if (state.travelTime) {
+    KO.travelTime = state.travelTime;
+    document.querySelectorAll('#ko-time-toggles .ko-pill').forEach(p =>
+      p.classList.toggle('active-blue', p.dataset.val === state.travelTime));
+  }
+  if (state.cabinClass) {
+    KO.cabinClass = state.cabinClass;
+    document.querySelectorAll('#ko-cabin-toggles .ko-pill').forEach(p =>
+      p.classList.toggle('active-blue', p.dataset.val === state.cabinClass));
+  }
+  if (state.extraBaggage) {
+    document.getElementById('ko-extra-baggage')?.classList.add('active-green');
+  }
+  if (state.addrMode) {
+    G.koSetAddr(state.addrMode);
+  }
+}
+
+// ══════════════════════════════════════
+//  KICKOFF — OPEN / CLOSE
+// ══════════════════════════════════════
+G.openKickoff = async function() {
+  document.getElementById('app-screen').style.display    = 'none';
+  document.getElementById('kickoff-panel').style.display = 'block';
+  // Fill engineer header
+  if (curProfile) {
+    const initials = (curProfile.name||'').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+    document.getElementById('ko-avatar').textContent  = initials;
+    document.getElementById('ko-eng-name').textContent = curProfile.name;
+    document.getElementById('ko-eng-sub').textContent  = curProfile.team || 'FAST Engineer';
+  }
+  // Pre-fill travel "from" from profile team
+  const travelFrom = document.getElementById('ko_travel_from');
+  if (travelFrom && !travelFrom.value) {
+    travelFrom.value = curProfile?.homeBase || '';
+  }
+
+  // Auto-fill travel "to" from ICAO when user fills aircraft info
+  const icaoField = document.getElementById('ko_icao');
+  const travelTo  = document.getElementById('ko_travel_to');
+  if (icaoField && travelTo) {
+    icaoField.addEventListener('input', () => {
+      if (!travelTo.value) travelTo.value = icaoField.value;
+      koUpdatePreview();
+    });
+  }
+
+  // Setup mobile accordion each time panel opens
+  koSetupAccordion();
+  await koLoadFixedRecips();
+  await koLoadAirlines();
+  await koLoadCustomQuestions();
+  KO.signature = koBuildSignature();
+  koRenderAllRecips();
+  koInitToggles();
+  await koRestoreState();
+  // If Travel "To" is still empty after restore, fill it from ICAO
+  const _icao = document.getElementById('ko_icao');
+  const _travelTo = document.getElementById('ko_travel_to');
+  if (_travelTo && !_travelTo.value && _icao?.value) _travelTo.value = _icao.value;
+  const partPrioCb = document.getElementById('ko_part_priority_wh');
+  const partPrioSel = document.getElementById('ko_priority_warehouse');
+  if (partPrioCb && partPrioSel) {
+    partPrioCb.onchange = () => { partPrioSel.style.display = partPrioCb.checked ? '' : 'none'; };
+  }
+  koUpdatePreview();
+  window.scrollTo({top:0, behavior:'smooth'});
+};
+
+// ── Start Job directly from an existing project (active or archived)
+// Loads the project's Aircraft info into the Start Job panel fields.
+G.koStartFromProject = async function(pid) {
+  if (!curProfile) return;
+  const snap = await get(ref(db, 'team/' + curProfile.id + '/projects/' + pid));
+  if (!snap.exists()) return;
+  const proj = snap.val();
+
+  await G.openKickoff();
+
+  sv('ko_model', proj.model);
+  sv('ko_sn', proj.sn);
+  sv('ko_reg', proj.reg);
+  sv('ko_wo', proj.wo);
+  sv('ko_icao', proj.loc);
+  sv('ko_defect', (proj.items && proj.items[0]?.label) || proj.job_desc || '');
+  sv('ko_cust_name', proj.cust_name || '');
+
+  koUpdatePreview();
+};
+
+G.closeKickoff = function() {
+  document.getElementById('kickoff-panel').style.display = 'none';
+  document.getElementById('app-screen').style.display    = '';
+};
+
+// ══════════════════════════════════════
+//  RECIPIENTS
+// ══════════════════════════════════════
+function koRenderRecips(type) {
+  const wrap = document.getElementById('ko-tags-' + type);
+  if (!wrap) return;
+  const { fixed, extra } = KO.recips[type];
+  wrap.innerHTML = [
+    ...fixed.map(e => `
+      <span class="ko-tag ko-tag-fixed">
+        <span class="ko-lock">🔒</span>${e}
+      </span>`),
+    ...(KO.recips[type].qatar||[]).map(e => `
+      <span class="ko-tag ko-tag-qatar">
+        ⭐ ${e}
+      </span>`),
+    ...extra.map((e, i) => `
+      <span class="ko-tag ko-tag-extra">
+        ${e}
+        <button onclick="koRemoveRecip('${type}',${i})" aria-label="Remove">×</button>
+      </span>`)
+  ].join('');
+}
+function koRenderAllRecips() {
+  ['customer','travel','parts','fbo'].forEach(koRenderRecips);
+}
+
+G.koAddRecip = function(type) {
+  const inp = document.getElementById('ko-add-' + type + '-inp');
+  const val = inp.value.trim().replace(/,$/, '');
+  if (!val || !val.includes('@')) return;
+  const all = [...KO.recips[type].fixed, ...KO.recips[type].extra, ...(KO.recips[type].qatar||[])];
+  if (!all.includes(val)) {
+    KO.recips[type].extra.push(val);
+    koRenderRecips(type);
+  }
+  inp.value = '';
+  koUpdatePreview();
+};
+
+G.koRemoveRecip = function(type, i) {
+  KO.recips[type].extra.splice(i, 1);
+  koRenderRecips(type);
+  koUpdatePreview();
+};
+
+function koGetAllRecips(type) {
+  const base = [...KO.recips[type].fixed, ...KO.recips[type].extra, ...(KO.recips[type].qatar||[])];
+  if (type === 'parts') {
+    const parts = koGetParts();
+    const hasTool = parts.some(p => p.cat === 'Tool');
+    const hasCons = parts.some(p => p.cat === 'Consumable');
+    if (hasTool && !base.includes('fab.tool.crib@gulfstream.com')) base.push('fab.tool.crib@gulfstream.com');
+    if (hasCons && !base.includes('fab.stores@gulfstream.com'))    base.push('fab.stores@gulfstream.com');
+  }
+  return base;
+}
+
+// ══════════════════════════════════════
+//  QATAR EXECUTIVE — extra recipients on Customer Update & Part Request only
+//  Managed from the Admin panel at Firebase: /config/qatarExecutive { customer:[...], parts:[...] }
+// ══════════════════════════════════════
+G.koToggleQatar = async function(checked) {
+  const types = ['customer', 'parts'];
+     if (!checked) {
+       types.forEach(type => {
+         KO.recips[type].qatar = [];
+         koRenderRecips(type);
+       });
+       return;
+     }
+  try {
+    const snap = await get(ref(db, 'config/qatarExecutive'));
+    const data = snap.exists() ? snap.val() : { customer: [], parts: [] };
+    KO._qatarEmails = [...new Set([...(data.customer||[]), ...(data.parts||[])])];
+    types.forEach(type => {
+      KO.recips[type].qatar = (data[type] || []).filter(
+        e => !KO.recips[type].fixed.includes(e)
+      );
+      koRenderRecips(type);
+    });
+  } catch(e) {
+    document.getElementById('ko-qatar-toggle').checked = false;
+  }
+};
+
+// ══════════════════════════════════════
+//  TOGGLES
+// ══════════════════════════════════════
+function koInitToggles() {
+  // skip travel checkbox
+  const skipTravelCb = document.getElementById('ko_skip_travel');
+  if (skipTravelCb) skipTravelCb.onchange = () => koUpdatePreview();
+  // customer name in kickoff
+  const custNameInp = document.getElementById('ko_cust_name');
+  if (custNameInp) custNameInp.oninput = () => koUpdatePreview();
+
+  document.querySelectorAll('#ko-prefix-toggles .ko-pill').forEach(p => {
+    p.onclick = () => {
+      document.querySelectorAll('#ko-prefix-toggles .ko-pill').forEach(x => x.classList.remove('active-blue'));
+      p.classList.add('active-blue');
+      KO.prefixSel = p.dataset.val;
+      koUpdatePreview();
+      koSaveState();
+    };
+  });
+  document.querySelectorAll('#ko-reqtype-toggles .ko-pill').forEach(p => {
+    p.onclick = () => {
+      document.querySelectorAll('#ko-reqtype-toggles .ko-pill').forEach(x => x.classList.remove('active-green'));
+      p.classList.add('active-green');
+      KO.reqType = p.dataset.val;
+      koUpdatePreview();
+      koSaveState();
+    };
+  });
+  document.querySelectorAll('#ko-time-toggles .ko-pill').forEach(p => {
+    p.onclick = () => {
+      const wasActive = p.classList.contains('active-blue');
+      document.querySelectorAll('#ko-time-toggles .ko-pill').forEach(x => x.classList.remove('active-blue'));
+      if (!wasActive) {
+        p.classList.add('active-blue');
+        KO.travelTime = p.dataset.val;
+      } else {
+        KO.travelTime = '';
+      }
+      koUpdatePreview();
+      koSaveState();
+    };
+  });
+  document.querySelectorAll('#ko-cabin-toggles .ko-pill').forEach(p => {
+    p.onclick = () => {
+      document.querySelectorAll('#ko-cabin-toggles .ko-pill').forEach(x => x.classList.remove('active-blue'));
+      p.classList.add('active-blue');
+      KO.cabinClass = p.dataset.val;
+      koUpdatePreview();
+      koSaveState();
+    };
+  });
+}
+
+G.koSetAddr = function(mode) {
+  KO.addrMode = mode;
+  document.getElementById('ko-addr-auto').classList.toggle('on', mode === 'auto');
+  document.getElementById('ko-addr-manual').classList.toggle('on', mode === 'manual');
+  document.getElementById('ko-addr-field').style.display = mode === 'manual' ? '' : 'none';
+  koUpdatePreview();
+  koSaveState();
+};
+
+// ══════════════════════════════════════
+//  PARTS TABLE
+// ══════════════════════════════════════
+G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='Part', note='') {
+  KO.partRows++;
+  const tbody = document.getElementById('ko-parts-tbody');
+  const tr = document.createElement('tr');
+  tr.id = 'ko-part-' + KO.partRows;
+  tr.innerHTML = `
+    <td><input type="text" value="${desc.replace(/"/g,'&quot;')}" placeholder="Description"/></td>
+         <td><input type="text" value="${pn.replace(/"/g,'&quot;')}" placeholder="P/N"/></td>
+          <td><input type="text" value="${sn.replace(/"/g,'&quot;')}" placeholder="S/N off" class="ko-sn-field"/></td>
+    <td><input type="text" value="${qty}" placeholder="1"/></td>
+    <td>
+      <select onchange="koPartCatChange(this)">
+        <option ${cat==='Part'?'selected':''}>Part</option>
+        <option ${cat==='Consumable'?'selected':''}>Consumable</option>
+        <option ${cat==='Tool'?'selected':''}>Tool</option>
+      </select>
+    </td>
+    <td>
+      <label class="ko-smallqty-lbl" style="display:none;align-items:center;gap:4px;font-size:11px;color:var(--g600);white-space:nowrap">
+        <input type="checkbox" class="ko-smallqty-cb"/> small qty — avoid DG
+      </label>
+      <input type="text" value="${note.replace(/"/g,'&quot;')}" placeholder="Note…"/>
+    </td>
+    <td><button class="ko-parts-tbl rm-btn" onclick="document.getElementById('ko-part-${KO.partRows}').remove();koRenderRecips('parts');koUpdatePreview();">×</button></td>`;
+  tbody.appendChild(tr);
+  // Apply initial category state (for pre-set categories like Tool or Consumable)
+  const sel = tr.querySelector('select');
+  if (sel) koPartCatChange(sel);
+};
+
+window.koPartCatChange = function(sel) {
+  const tr = sel.closest('tr');
+  if (!tr) return;
+  const snInput = tr.querySelector('.ko-sn-field');
+  const smallQtyLbl = tr.querySelector('.ko-smallqty-lbl');
+  if (!snInput) return;
+  const cat = sel.value;
+  if (cat === 'Consumable') {
+    snInput.value = '';
+    snInput.disabled = true;
+    snInput.placeholder = 'N/A';
+    snInput.style.background = 'var(--g100)';
+    snInput.style.color = 'var(--g400)';
+    if (smallQtyLbl) smallQtyLbl.style.display = 'flex';
+  } else if (cat === 'Tool') {
+    snInput.disabled = false;
+    snInput.placeholder = 'GUL n°';
+    snInput.style.background = '';
+    snInput.style.color = '';
+    if (smallQtyLbl) smallQtyLbl.style.display = 'none';
+  } else {
+    snInput.disabled = false;
+    snInput.placeholder = 'S/N off';
+    snInput.style.background = '';
+    snInput.style.color = '';
+    if (smallQtyLbl) smallQtyLbl.style.display = 'none';
+  }
+}
+
+function koGetParts() {
+  return Array.from(document.querySelectorAll('#ko-parts-tbody tr')).map(tr => {
+    const inputs = tr.querySelectorAll('input[type="text"]');
+    const cat    = tr.querySelector('select')?.value || 'Part';
+    const smallQty = cat === 'Consumable' && tr.querySelector('.ko-smallqty-cb')?.checked;
+    return { desc: inputs[0]?.value||'', pn: inputs[1]?.value||'', sn: inputs[2]?.value||'', qty: inputs[3]?.value||'', cat, note: inputs[4]?.value||'', smallQty };
+  }).filter(p => p.pn || p.desc);
+}
+
+// ══════════════════════════════════════
+//  AIRLINES
+// ══════════════════════════════════════
+function koRenderAirlines() {
+  const list = document.getElementById('ko-airlines-list');
+  list.innerHTML = '';
+  KO.airlines.forEach((a, i) => {
+    const row = document.createElement('div');
+    row.className = 'ko-airline-row';
+    row.innerHTML = `
+      <span class="ko-airline-name">${a.name}</span>
+      <input class="ko-airline-input" type="text" value="${(a.number||'').replace(/"/g,'&quot;')}"
+        placeholder="Member number…" oninput="KO.airlines[${i}].number=this.value"/>
+      <button class="ko-airline-del" onclick="koDelAirline(${i})" aria-label="Remove ${a.name}">×</button>`;
+    list.appendChild(row);
+  });
+}
+
+G.koAddAirline = function() {
+  const inp = document.getElementById('ko-new-airline-name');
+  const name = inp.value.trim();
+  if (!name) return;
+  KO.airlines.push({ name, number: '' });
+  koRenderAirlines();
+  inp.value = '';
+};
+
+G.koDelAirline = function(i) {
+  KO.airlines.splice(i, 1);
+  koRenderAirlines();
+};
+
+// ══════════════════════════════════════
+//  PREVIEW
+// ══════════════════════════════════════
+function koComputeSubjects() {
+  const wo    = document.getElementById('ko_wo')?.value    || '';
+  const sn    = document.getElementById('ko_sn')?.value    || '';
+  const reg   = document.getElementById('ko_reg')?.value   || '';
+  const icao  = document.getElementById('ko_icao')?.value  || '';
+  const model = document.getElementById('ko_model')?.value || '';
+  const def   = document.getElementById('ko_defect')?.value|| '';
+  const from  = document.getElementById('ko_travel_from')?.value || 'BKK';
+  const to    = document.getElementById('ko_travel_to')?.value   || icao || '';
+  return {
+    customer: `CUSTOMER UPDATE // ${sn} // ${reg} // ${wo} // ${icao} // ${def}`,
+    travel:   `Flight from ${from} to ${to}`,
+    parts:    `${KO.prefixSel} // ${model} // ${sn} // ${reg} // ${wo} // ${icao} // ${def}`,
+    fbo:      `Maintenance ${reg}`,
+  };
+}
+
+function koComputeBodies() {
+  return {
+    customer: koBuildCustomerBody(),
+    travel:   koBuildTravelBody(),
+    parts:    koBuildPartsBody(),
+    fbo:      koBuildFboBody(),
+  };
+}
+
+// Opens/closes the editable subject+body panel for a draft type.
+// First time it's opened, it's pre-filled with the auto-generated text.
+// After that, it's left untouched so edits aren't lost.
+G.koToggleDraftPreview = function(type) {
+  if (type === 'parts') {
+    if (!KO.prefixSel) {
+      alert('⚠️ Veuillez sélectionner un Email Prefix avant de prévisualiser.');
+      return;
+    }
+    if (!KO.reqType) {
+          alert('⚠️ Veuillez sélectionner un Request Type (Order ou Availability only) avant de prévisualiser.');
+       return;
+    }
+   }
+  const panel = document.getElementById('ko-prev-panel-' + type);
+  if (!panel) return;
+  const willOpen = panel.style.display === 'none' || !panel.style.display;
+  panel.style.display = willOpen ? 'block' : 'none';
+  if (willOpen) {
+    const subjEl = document.getElementById('ko-prev-subj-' + type);
+    const bodyEl = document.getElementById('ko-prev-body-' + type);
+    if (subjEl.dataset.populated !== '1') {
+      subjEl.value = koComputeSubjects()[type];
+      bodyEl.value = koComputeBodies()[type];
+      subjEl.dataset.populated = '1';
+      bodyEl.dataset.populated = '1';
+    }
+  }
+};
+
+// Discards manual edits and refills the panel from current field values.
+G.koResetDraftPreview = function(type) {
+  document.getElementById('ko-prev-subj-' + type).value = koComputeSubjects()[type];
+  document.getElementById('ko-prev-body-' + type).value = koComputeBodies()[type];
+};
+
+function koUpdatePreview() {
+  const subs = koComputeSubjects();
+  const icao = document.getElementById('ko_icao')?.value || '';
+
+  const loyalty = KO.airlines.filter(a=>a.number).map(a=>`${a.name}: ${a.number}`).join(', ');
+  const recipSummary = (type) => {
+    const all = koGetAllRecips(type);
+    if (!all.length) return 'No recipients';
+    return all.length <= 2 ? all.join(', ') : `${all[0]} +${all.length-1} more`;
+  };
+  const missingIcao = !icao;
+  const skipTravel = document.getElementById('ko_skip_travel')?.checked;
+
+  document.getElementById('ko-drafts-preview').innerHTML = `
+    <div class="ko-draft-row" onclick="koToggleDraftPreview('customer')">
+      <div class="ko-draft-ico" style="background:var(--bl);color:var(--blue)">📧</div>
+      <div class="ko-draft-info">
+        <div class="ko-draft-label">Customer update</div>
+        <div class="ko-draft-sub" title="${subs.customer}">${subs.customer}</div>
+        <div style="font-size:10px;color:var(--g400);margin-top:2px">→ ${recipSummary('customer')} · tap to preview &amp; edit</div>
+      </div>
+      <span class="ko-badge ko-badge-ok">Ready</span>
+    </div>
+    <div class="ko-draft-row" style="${skipTravel ? 'opacity:.5' : ''}" onclick="koToggleDraftPreview('travel')">
+      <div class="ko-draft-ico" style="background:var(--al);color:var(--amb)">✈️</div>
+      <div class="ko-draft-info">
+        <div class="ko-draft-label">Travel request</div>
+        <div class="ko-draft-sub">${subs.travel}${loyalty ? ' · '+loyalty : ''}</div>
+        <div style="font-size:10px;color:var(--g400);margin-top:2px">→ ${recipSummary('travel')} · tap to preview &amp; edit</div>
+      </div>
+      <span class="ko-badge ${skipTravel ? '' : 'ko-badge-ok'}" style="${skipTravel ? 'background:var(--g100);color:var(--g600);border:1px solid var(--g200)' : ''}">${skipTravel ? 'Skipped' : 'Ready'}</span>
+    </div>
+    <div class="ko-draft-row" onclick="koToggleDraftPreview('parts')">
+      <div class="ko-draft-ico" style="background:var(--gl);color:var(--gd)">📦</div>
+      <div class="ko-draft-info">
+        <div class="ko-draft-label">Part request — ${KO.reqType === 'ORDER' ? 'Order' : 'Availability only'}</div>
+        <div class="ko-draft-sub" title="${subs.parts}">${subs.parts}</div>
+        <div style="font-size:10px;color:var(--g400);margin-top:2px">→ ${recipSummary('parts')} · tap to preview &amp; edit</div>
+      </div>
+      <span class="ko-badge ko-badge-ok">Ready</span>
+    </div>
+    <div class="ko-draft-row" onclick="koToggleDraftPreview('fbo')">
+      <div class="ko-draft-ico" style="background:#eee9fe;color:#534AB7">🏢</div>
+      <div class="ko-draft-info">
+        <div class="ko-draft-label">FBO coordination</div>
+        <div class="ko-draft-sub">${subs.fbo} — ${icao||'[ICAO missing]'}</div>
+        <div style="font-size:10px;color:var(--g400);margin-top:2px">→ ${recipSummary('fbo')} · tap to preview &amp; edit</div>
+      </div>
+      <span class="ko-badge ${missingIcao ? 'ko-badge-warn' : 'ko-badge-ok'}">${missingIcao ? '⚠ ICAO missing' : 'Ready'}</span>
+    </div>`;
+}
+
+
+// ══════════════════════════════════════
+//  BUILD EMAIL BODIES
+// ══════════════════════════════════════
+function koBuildCustomerBody() {
+  const reg    = document.getElementById('ko_reg')?.value    || '[REG]';
+  const icao   = document.getElementById('ko_icao')?.value   || '[ICAO]';
+  const def    = document.getElementById('ko_defect')?.value || '[DEFECT]';
+  const eng  = KO.signature || koBuildSignature();
+
+  const q = id => document.getElementById(id)?.checked;
+  const questions = [];
+  if (q('koq_broker')) questions.push(`- Do you have a broker to handle the import of parts${icao ? ' into ' + icao : ''}? If yes, please provide their details. If not, we can use our own.`);
+  if (q('koq_hours'))  questions.push('- Aircraft hours and cycles');
+  if (q('koq_po'))     questions.push('- Do you have a Work Order (WO) or Purchase Order (PO) number for this input?');
+  if (q('koq_keys'))   questions.push('- Location of the aircraft keys');
+  if (q('koq_fbo_mail')) questions.push(`- Could you please send an authorisation email to the FBO at ${icao || '[ICAO]'} confirming our upcoming maintenance intervention?`);
+  if (q('koq_airside'))  questions.push('- Could you please arrange airside access for me through the FBO?');
+  if (q('koq_contact'))  questions.push('- Could you please provide the name and phone number of the crew member who will meet me at the aircraft?');
+  if (q('koq_troubleshoot')) questions.push('- Has the flight crew performed any troubleshooting or reset attempts so far?');
+  if (q('koq_cas'))      questions.push('- If possible, could you send pictures of the active CAS messages and CMC active faults?');
+  if (q('koq_fhdb'))     questions.push('- Has the FHDB been downloaded? If so, could you share it with us, or confirm if it has already been sent to Techops?');
+  if (q('koq_techops'))  questions.push('- Have you received a reply from Techops yet?');
+  if (q('koq_self_parts'))        questions.push('- Could you confirm whether you have already sourced the parts required for this intervention? If so, please provide the corresponding release certificates (FAA 8130-3 / EASA Form 1) as soon as possible, along with the estimated delivery ETA.');
+  if (q('koq_handcarry'))         questions.push('- Should hand carry be required to expedite parts delivery, do you approve this option? Please note that hand carry will incur additional costs compared to standard freight.');
+  if (q('koq_order_before_tshoot')) questions.push('-Would you like us to proceed with ordering the required parts in parallel with troubleshooting, or would you prefer that we confirm the diagnosis first before placing any order? (Note: This will extend the intervention time as we will have to wait for the parts to arrive on-site).');
+
+  // Engineer's own saved custom questions (checked ones only)
+  (KO.customQuestions || []).forEach((text, i) => {
+    if (q('koq_my_' + i)) questions.push(text.startsWith('-') ? text : `- ${text}`);
+  });
+
+  // Free-text extra questions, one per line
+  const customRaw = document.getElementById('koq_custom')?.value || '';
+  customRaw.split('\n').map(l => l.trim()).filter(Boolean).forEach(l => questions.push(`- ${l}`));
+
+  const questionsBlock = questions.length
+    ? `\nAdditionally, please provide the following as soon as possible:\n${questions.join('\n')}\n`
+    : '';
+
+  // ETA logic: blank or N/A -> nothing. Otherwise -> state the ETA and that updates will follow.
+  // If the field literally contains UNK, fall back to the generic "I will keep you informed" line.
+  const etaRaw = (document.getElementById('ko_eta')?.value || '').trim();
+  let etaLine = '';
+  if (etaRaw && etaRaw.toUpperCase() !== 'N/A') {
+    if (etaRaw.toUpperCase() === 'UNK') {
+      etaLine = 'I will keep you informed of my ETA on site.';
+    } else {
+      etaLine = `My estimated arrival on site is ${etaRaw}. I will keep you informed of my ETA on site.`;
+    }
+  }
+
+  // Action plan: use what the engineer typed, otherwise a generic transition line
+  const actionPlanRaw = (document.getElementById('ko_action_plan')?.value || '').trim();
+  const defectLine = actionPlanRaw
+    ? `I'm scheduled to work on the defect regarding the ${def}.\n\n${actionPlanRaw}`
+    : `I'm scheduled to work on the defect regarding the ${def}, and will share my action plan and progress updates as the intervention proceeds.`;
+
+  return `Dear ${document.getElementById('ko_cust_name')?.value || gv('f_cust_name') || '[Customer name]'},
+
+My name is ${curProfile?.name || '[ENGINEER]'}, the Authorized FAST Service Provider for Gulfstream in this region.
+
+${defectLine}
+${questionsBlock}
+${etaLine}
+
+Regards,
+
+${eng}`;
+}
+
+function koBuildTravelBody() {
+  const from  = document.getElementById('ko_travel_from')?.value || 'Bangkok (BKK)';
+  const to    = document.getElementById('ko_travel_to')?.value   || document.getElementById('ko_icao')?.value || '[DESTINATION]';
+  const date  = document.getElementById('ko_travel_date')?.value || '';
+  const eng  = KO.signature || koBuildSignature();
+  const loys  = KO.airlines.filter(a => a.number);
+  const loyaltyBlock = loys.length
+    ? `\nFor reference, my frequent flyer numbers:\n` + loys.map(a => `- ${a.name}: ${a.number}`).join('\n') + '\n'
+    : '';
+
+  const cabinMap = { both: 'Economy and Business class', eco: 'Economy class only', business: 'Business class only' };
+  const cabinTxt = cabinMap[KO.cabinClass] || 'Economy and Business class';
+
+  const timeMap = { morning: 'in the morning', afternoon: 'in the afternoon', evening: 'in the evening', night: 'at night', any: 'at any time' };
+  const timeLine = KO.travelTime && timeMap[KO.travelTime] ? ` I would prefer to depart ${timeMap[KO.travelTime]}.` : '';
+
+  const dateLine = date ? ` for ${date}` : '';
+
+  const extraBag = document.getElementById('ko-extra-baggage')?.classList.contains('active-green');
+  const bagLine = extraBag
+    ? 'I will be travelling with tools and equipment, so please include 2 checked bags.'
+    : 'I will be travelling with tools and equipment, so please include checked baggage.';
+
+  return `Dear Team,
+
+Could you please book a flight (${cabinTxt}) from ${from} to ${to}${dateLine} for a maintenance mission.${timeLine}
+
+Please prioritise direct flights when possible.
+
+${bagLine}
+${loyaltyBlock}
+Thank you.
+
+Regards,
+
+${eng}`;
+}
+
+function koBuildPartsBody() {
+  const eng  = KO.signature || koBuildSignature();
+  const parts   = koGetParts();
+  const isAvail = KO.reqType === 'AVAILABILITY';
+
+  const addrLine = KO.addrMode === 'auto'
+    ? 'The shipping address will be provided shortly.'
+    : (document.getElementById('ko_shipping_addr')?.value?.trim() || 'The shipping address will be provided shortly.');
+
+  const brokerInfo = (document.getElementById('ko_broker_contact')?.value || '').trim();
+  const brokerLine = brokerInfo ? `\nCustomer's broker contact for import:\n${brokerInfo}\n` : '';
+
+  const intro = isAvail
+    ? `Could you please check availability and lead time ONLY for the following items before placing any order:\n`
+    : `Please process the order for the following parts and tools as soon as possible:\n`;
+
+  // Group by category
+  const bycat = { Part:[], Consumable:[], Tool:[] };
+  parts.forEach(p => { (bycat[p.cat] = bycat[p.cat]||[]).push(p) });
+
+  let partBlock = '';
+  if (!parts.length) {
+    partBlock = '**Parts:**\n- \n\n**Consumables:**\n- \n\n**Tools:**\n- \n';
+  } else {
+    if (bycat.Part?.length) {
+      partBlock += '**Parts:**\n';
+      bycat.Part.forEach(p => {
+                partBlock += `- ${p.desc}${p.pn ? ' — '+p.pn : ''}${p.sn ? ', S/N: '+p.sn : ''}${p.qty ? ', Quantity: '+p.qty : ''}${p.note ? ' ('+p.note+')' : ''}\n`;
+      });
+      partBlock += '\n';
+    }
+    if (bycat.Consumable?.length) {
+      partBlock += '**Consumables:**\n';
+      bycat.Consumable.forEach(p => {
+                const dg = p.smallQty ? ' ⚠️ small quantity — to be shipped to avoid DG classification' : '';
+                partBlock += `- ${p.desc}${p.pn ? ' — '+p.pn : ''}${p.qty ? ', Quantity: '+p.qty : ''}${p.note ? ' ('+p.note+')' : ''}${dg}\n`;
+      });
+      partBlock += '\n';
+    }
+    if (bycat.Tool?.length) {
+      partBlock += '**Tools:**\n';
+      bycat.Tool.forEach(p => {
+                partBlock += `- ${p.desc}${p.pn ? ' — '+p.pn : ''}${p.note ? '\n  '+p.note : ''}\n`;
+      });
+      partBlock += '\n';
+    }
+  }
+
+  const priorityWh = document.getElementById('ko_part_priority_wh')?.checked
+    ? document.getElementById('ko_priority_warehouse')?.value : '';
+  const wantCerts  = document.getElementById('ko_part_certs')?.checked;
+  const handCarryOk = document.getElementById('ko_handcarry_approved')?.checked;
+
+  let extraLines = '';
+  if (priorityWh) extraLines += `Could you please check availability at ${priorityWh} first?\n`;
+  if (wantCerts)  extraLines += `Please provide certificates if available.\n`;
+  if (handCarryOk) extraLines += `The customer has approved hand carry for parts if required.\n`;
+  if (extraLines) extraLines += '\n';
+
+  return `Dear Team,
+
+${intro}
+${partBlock}
+${extraLines}${brokerLine}Shipping Address:
+${addrLine}
+
+Regards,
+
+${eng}`;
+}
+
+function koBuildFboBody() {
+  const reg  = document.getElementById('ko_reg')?.value   || '[REG]';
+  const icao = document.getElementById('ko_icao')?.value  || '[ICAO]';
+  const eng  = KO.signature || koBuildSignature();
+
+  const q = id => document.getElementById(id)?.checked;
+  const equip = [];
+  if (q('kofbo_gpu'))         equip.push('- GPU (Ground Power Unit) 115Vac');
+  if (q('kofbo_oxygen'))      equip.push('- Oxygen');
+  if (q('kofbo_nitrogen_hp')) equip.push('- Nitrogen — High pressure');
+  if (q('kofbo_nitrogen_lp')) equip.push('- Nitrogen — Low pressure');
+  if (q('kofbo_steps'))       equip.push('- Steps / Airstair');
+  if (q('kofbo_hangar'))      equip.push('- Hangar space');
+  if (q('kofbo_lavatory'))    equip.push('- Lavatory service');
+  if (q('kofbo_hpbay'))       equip.push('- High Power Bay');
+
+  const customRaw = document.getElementById('kofbo_custom')?.value || '';
+  customRaw.split('\n').map(l => l.trim()).filter(Boolean).forEach(l => equip.push(`- ${l}`));
+
+  const equipBlock = equip.length
+    ? `\nWould it be possible to arrange the following for us during the intervention?\n${equip.join('\n')}\n`
+    : '';
+
+  // Optional questions
+  const extraQs = [];
+  if (q('kofbo_q_days'))    extraQs.push('Could you please let me know how many days do you need to have it ready?');
+  if (q('kofbo_q_confirm')) extraQs.push('Please note that this intervention is pending authorisation — I will come back to you as soon as I have a confirmation to proceed.');
+  if (q('kofbo_q_shipping')) extraQs.push('Could you please provide your shipping address? I may need to send parts required for the Return to Service directly to your FBO.');
+  if (q('kofbo_q_importer')) extraQs.push('Would you be able to act as importer of record for the parts we will need to import for this intervention?');
+
+  const customQsRaw = document.getElementById('kofbo_custom_questions')?.value || '';
+  customQsRaw.split('\n').map(l => l.trim()).filter(Boolean).forEach(l => extraQs.push(l));
+
+  const extraQsBlock = extraQs.length ? '\n' + extraQs.map(q => q).join('\n') + '\n' : '';
+
+  return `Dear Duty Manager,
+
+My name is ${curProfile?.name || '[ENGINEER]'}, and I am writing to coordinate maintenance for ${reg} at ${icao}.
+
+The aircraft owner has informed us that your team is the FBO. I have attached my passport, photo, and IBAC crew ID for your review. Could you please arrange airside access for me?
+${extraQsBlock}${equipBlock}
+Please let me know if you require any further details.
+
+Kind regards,
+
+${eng}`;
+}
+
+// ══════════════════════════════════════
+//  GENERATE DRAFTS
+// ══════════════════════════════════════
+function koSetStatus(type, msg) {
+  const el = document.getElementById('ko-status');
+  el.className = 'ko-status ko-s-' + type;
+  document.getElementById('ko-status-txt').innerHTML = msg;
+}
+
+G.koGenerate = async function() {
+  // ── Warn if required Part Request options are missing
+  const warnings = [];
+  if (!KO.prefixSel) warnings.push('• Email Prefix (Part request options) : aucune sélection');
+  if (!KO.reqType)   warnings.push('• Request Type (Part request options) : aucune sélection');
+  const skipTravel = document.getElementById('ko_skip_travel')?.checked;
+  if (!skipTravel && !KO.cabinClass) warnings.push('• Cabin Class (Travel) : aucune sélection');
+  if (warnings.length) {
+    const go = confirm('⚠️ Certaines options ne sont pas sélectionnées :\n\n' + warnings.join('\n') + '\n\nGénérer quand même ?');
+    if (!go) return;
+  }
+
+  if (!(gToken && Date.now() < gTokenExp)) {
+    koSetStatus('load', '<span class="spin"></span> Waiting for Google sign-in…');
+    const ok = await ensureGTokenAsync();
+    if (!ok) {
+      koSetStatus('err', '⚠️ Google sign-in was cancelled or failed. Please click "Generate Gmail drafts" again to retry.');
+      return;
+    }
+  }
+
+  // Subjects & bodies: use the auto-generated text, unless the engineer opened
+  // and possibly edited a draft in the preview panels above — in that case
+  // use exactly what's currently in those fields.
+  const autoSubjects = koComputeSubjects();
+  const autoBodies   = koComputeBodies();
+  const subjects = {}, bodies = {};
+  ['customer','travel','parts','fbo'].forEach(type => {
+    const subjEl = document.getElementById('ko-prev-subj-' + type);
+    const bodyEl = document.getElementById('ko-prev-body-' + type);
+    subjects[type] = (subjEl?.dataset.populated === '1') ? subjEl.value : autoSubjects[type];
+    bodies[type]   = (bodyEl?.dataset.populated === '1') ? bodyEl.value : autoBodies[type];
+  });
+
+  const btn = document.getElementById('ko-gen-btn');
+  btn.disabled = true;
+  const order = ['customer','travel','parts','fbo'].filter(t => !(t === 'travel' && document.getElementById('ko_skip_travel')?.checked));
+  koSetStatus('load', `<span class="spin"></span> Creating ${order.length} Gmail draft(s)…`);
+
+  // Save airlines to profile
+  await koSaveAirlines();
+
+  let created = 0, errors = [];
+
+  for (const type of order) {
+    try {
+      const toAddrs = koGetAllRecips(type);
+      const subject = subjects[type];
+      const body    = bodies[type];
+
+      const htmlBody = `<html><body style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;white-space:pre-wrap">${body.replace(/\n/g,'<br>')}</body></html>`;
+      const encSubject = '=?UTF-8?B?' + btoa(unescape(encodeURIComponent(subject))) + '?=';
+      const lines = [
+        toAddrs.length ? `To: ${toAddrs.join(', ')}` : 'To: ',
+        `Subject: ${encSubject}`,
+        'MIME-Version: 1.0',
+        'Content-Type: text/html; charset=UTF-8',
+        'Content-Transfer-Encoding: base64',
+        '',
+        btoa(unescape(encodeURIComponent(htmlBody)))
+      ];
+      const raw = lines.join('\r\n');
+      const encoded = btoa(unescape(encodeURIComponent(raw))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+
+      const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${gToken}` },
+        body: JSON.stringify({ message: { raw: encoded } })
+      });
+
+      if (!res.ok) {
+        if (res.status === 401) { gToken = null; updateAuthUI(false); throw new Error('Session expired'); }
+        const err = await res.json();
+        throw new Error(err.error?.message || 'API error ' + res.status);
+      }
+      created++;
+    } catch(e) {
+      errors.push(type + ': ' + e.message);
+    }
+  }
+
+  btn.disabled = false;
+  if (errors.length === 0) {
+    koSetStatus('done', `✅ ${created} draft(s) created in Gmail — check your Drafts folder.`);
+    btn.textContent = '✅ Done — Generate again';
+  } else {
+    koSetStatus('err', `⚠️ ${created} draft(s) created. Errors: ${errors.join('; ')}`);
+  }
+};
+
+// ══════════════════════════════════════
+//  MOBILE — fermer clavier sur Enter pour les champs courts
+// ══════════════════════════════════════
+(function() {
+  const shortFields = ['ko_wo','ko_sn','ko_reg','ko_icao','ko_model','ko_defect','ko_travel_from','ko_travel_to'];
+  shortFields.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
+  });
+})();
+
+// ── Attach input listeners for live preview update
+document.addEventListener('input', e => {
+  const ids = ['ko_wo','ko_sn','ko_reg','ko_icao','ko_model','ko_defect','ko_travel_from','ko_travel_to'];
+  if (ids.includes(e.target?.id)) koUpdatePreview();
+  // Live-update airline numbers in KO.airlines array
+  if (e.target?.classList.contains('ko-airline-input')) {
+    const rows = document.querySelectorAll('#ko-airlines-list .ko-airline-row');
+    rows.forEach((row, i) => {
+      if (row.querySelector('.ko-airline-input') === e.target && KO.airlines[i]) {
+        KO.airlines[i].number = e.target.value;
+      }
+    });
+  }
+});
+
+// ── Auto-save kickoff state on any input or checkbox change
+(function() {
+  const panel = document.getElementById('kickoff-panel');
+  if (panel) {
+    panel.addEventListener('input', koSaveState);
+    panel.addEventListener('change', koSaveState);
+  }
+})();
+
+// ── Parts table: refresh recipients + preview whenever a row's content or category changes
+// (Tool rows add the Tool Crib email, Consumable rows add the Stores email — see koGetAllRecips)
+document.getElementById('ko-parts-tbody')?.addEventListener('input', () => {
+  koRenderRecips('parts');
+  koUpdatePreview();
+});
+document.getElementById('ko-parts-tbody')?.addEventListener('change', () => {
+  koRenderRecips('parts');
+  koUpdatePreview();
+});
+['customer','travel','parts','fbo'].forEach(type => {
+  const inp = document.getElementById('ko-add-' + type + '-inp');
+  if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); G.koAddRecip(type); } });
+});
+// Enter on new airline name
+const koAirlineInp = document.getElementById('ko-new-airline-name');
+if (koAirlineInp) koAirlineInp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); G.koAddAirline(); } });
+
+// ══════════════════════════════════════
+//  MOBILE ACCORDION for Kickoff cards
+// ══════════════════════════════════════
+function koSetupAccordion() {
+  const cards = Array.from(document.querySelectorAll('#kickoff-panel .ko-card'));
+  cards.forEach(card => {
+    const head = card.querySelector('.ko-card-head');
+    if (!head) return;
+    // Add chevron if not already there
+    if (!head.querySelector('.ko-chev')) {
+      const chev = document.createElement('span');
+      chev.className = 'ko-chev';
+      chev.textContent = '▾';
+      chev.style.cssText = 'font-size:13px;color:var(--g400);transition:transform .15s;margin-left:4px';
+      head.appendChild(chev);
+    }
+    head.style.cursor = 'pointer';
+    head.addEventListener('click', () => {
+      if (window.innerWidth > 600) return; // desktop: always open
+      const body = card.querySelector('.ko-card-body');
+      if (!body) return;
+      const isOpen = body.style.display !== 'none';
+      // Close all
+      cards.forEach(c => {
+        const b = c.querySelector('.ko-card-body');
+        const v = c.querySelector('.ko-chev');
+        if (b) b.style.display = 'none';
+        if (v) v.style.transform = 'rotate(-90deg)';
+      });
+      // Open clicked if it was closed
+      if (!isOpen) {
+        body.style.display = '';
+        const chev = head.querySelector('.ko-chev');
+        if (chev) chev.style.transform = 'rotate(0deg)';
+      }
+    });
+  });
+
+  // On mobile, collapse all except Aircraft info on open
+  function applyMobileState() {
+    const isMobile = window.innerWidth <= 600;
+    cards.forEach((card, i) => {
+      const body = card.querySelector('.ko-card-body');
+      const chev = card.querySelector('.ko-chev');
+      if (!body) return;
+      if (isMobile) {
+        body.style.display = i === 0 ? '' : 'none'; // first card open
+        if (chev) chev.style.transform = i === 0 ? 'rotate(0deg)' : 'rotate(-90deg)';
+      } else {
+        body.style.display = '';
+        if (chev) chev.style.transform = 'rotate(0deg)';
+      }
+    });
+  }
+  applyMobileState();
+  window.addEventListener('resize', applyMobileState);
+}
+
+// ══════════════════════════════════════
+//  ADMIN — Manage kickoff fixed recipients
+//  Ajouter dans le modal-manage-team existant
+// ══════════════════════════════════════
+async function koRenderAdminRecips() {
+  const container = document.getElementById('ko-admin-recips');
+  if (!container) return;
+
+  const snap = await get(ref(db, 'config/kickoffRecipients'));
+  const data = snap.exists() ? snap.val() : {
+    customer: ['fast.update.emea@gulfstream.com','fast.management@gulfstream.com'],
+    travel:   ['ops@headstartaviation.com'],
+    parts:    ['parts@headstartaviation.com','fast.update.emea@gulfstream.com'],
+    fbo:      ['ops@headstartaviation.com'],
+  };
+
+  const labels = {
+    customer: '📧 Customer Update',
+    travel:   '✈️ Travel Request',
+    parts:    '📦 Part Request',
+    fbo:      '🏢 FBO Coordination',
+  };
+
+  container.innerHTML = Object.entries(labels).map(([type, label]) => {
+    const emails = (data[type] || []);
+    return `
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">${label}</div>
+        <div id="ko-admin-tags-${type}" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px">
+          ${emails.map((e,i) => `
+            <span style="display:inline-flex;align-items:center;gap:4px;background:var(--bl);border:1px solid #b8d0e8;border-radius:20px;font-size:11px;padding:3px 9px;color:var(--blue)">
+              🔒 ${e}
+              <button onclick="koAdminRemoveRecip('${type}',${i})" style="background:none;border:none;cursor:pointer;color:#999;font-size:13px;line-height:1;padding:0 0 0 2px">×</button>
+            </span>`).join('')}
+        </div>
+        <div style="display:flex;gap:5px">
+          <input type="text" id="ko-admin-inp-${type}" placeholder="Add email…"
+            style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r)"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();koAdminAddRecip('${type}')}"/>
+          <button class="btn" onclick="koAdminAddRecip('${type}')" style="padding:5px 9px;font-size:11px">+ Add</button>
+        </div>
+      </div>`;
+  }).join('<hr style="margin:8px 0;border:none;border-top:1px solid var(--g200)">');
+}
+
+G.koAdminAddRecip = async function(type) {
+  const inp = document.getElementById('ko-admin-inp-' + type);
+  const val = inp?.value.trim().replace(/,$/,'');
+  if (!val || !val.includes('@')) return;
+  const snap = await get(ref(db, 'config/kickoffRecipients/' + type));
+  const current = snap.exists() ? snap.val() : [];
+  if (!current.includes(val)) {
+    current.push(val);
+    await set(ref(db, 'config/kickoffRecipients/' + type), current);
+    koRenderAdminRecips();
+  }
+  if (inp) inp.value = '';
+};
+
+G.koAdminRemoveRecip = async function(type, i) {
+  const snap = await get(ref(db, 'config/kickoffRecipients/' + type));
+  const current = snap.exists() ? snap.val() : [];
+  current.splice(i, 1);
+  await set(ref(db, 'config/kickoffRecipients/' + type), current);
+  koRenderAdminRecips();
+};
+
+// ── Qatar Executive — extra recipients, admin-managed (Customer Update & Part Request only)
+async function koRenderAdminQatar() {
+  const container = document.getElementById('ko-admin-qatar');
+  if (!container) return;
+
+  const snap = await get(ref(db, 'config/qatarExecutive'));
+  const data = snap.exists() ? snap.val() : { customer: [], parts: [] };
+
+  const labels = {
+    customer: '📧 Customer Update',
+    parts:    '📦 Part Request',
+  };
+
+  container.innerHTML = Object.entries(labels).map(([type, label]) => {
+    const emails = (data[type] || []);
+    return `
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">${label}</div>
+        <div id="ko-admin-qatar-tags-${type}" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px">
+          ${emails.map((e,i) => `
+            <span style="display:inline-flex;align-items:center;gap:4px;background:#fef3c7;border:1px solid #d97706;border-radius:20px;font-size:11px;padding:3px 9px;color:#92400e">
+              ${e}
+              <button onclick="koAdminQatarRemove('${type}',${i})" style="background:none;border:none;cursor:pointer;color:#999;font-size:13px;line-height:1;padding:0 0 0 2px">×</button>
+            </span>`).join('')}
+        </div>
+        <div style="display:flex;gap:5px">
+          <input type="text" id="ko-admin-qatar-inp-${type}" placeholder="Add email…"
+            style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r)"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();koAdminQatarAdd('${type}')}"/>
+          <button class="btn" onclick="koAdminQatarAdd('${type}')" style="padding:5px 9px;font-size:11px">+ Add</button>
+        </div>
+      </div>`;
+  }).join('<hr style="margin:8px 0;border:none;border-top:1px solid var(--g200)">');
+}
+
+G.koAdminQatarAdd = async function(type) {
+  const inp = document.getElementById('ko-admin-qatar-inp-' + type);
+  const val = inp?.value.trim().replace(/,$/,'');
+  if (!val || !val.includes('@')) return;
+  const snap = await get(ref(db, 'config/qatarExecutive/' + type));
+  const current = snap.exists() ? snap.val() : [];
+  if (!current.includes(val)) {
+    current.push(val);
+    await set(ref(db, 'config/qatarExecutive/' + type), current);
+    koRenderAdminQatar();
+  }
+  if (inp) inp.value = '';
+};
+
+G.koAdminQatarRemove = async function(type, i) {
+  const snap = await get(ref(db, 'config/qatarExecutive/' + type));
+  const current = snap.exists() ? snap.val() : [];
+  current.splice(i, 1);
+  await set(ref(db, 'config/qatarExecutive/' + type), current);
+  koRenderAdminQatar();
+};
+
+// ── Patch showAdminPanel to also render kickoff recips
+const _origShowAdminPanel = window.showAdminPanel;
+// Since showAdminPanel is defined inside the module (not on G),
+// we hook via the openModal call for modal-manage-team:
+const _origOpenModal = G.openModal;
+G.openModal = function(id) {
+  _origOpenModal(id);
+  if (id === 'modal-manage-team') {
+    koRenderAdminRecips();
+    koRenderAdminQatar();
+  }
+};
+
+// ══════════════════════════════════════
+//  REVEAL START JOB BUTTON
+// ══════════════════════════════════════
+G.koShowBtn = function() {
+  const btn = document.getElementById('btn-start-job');
+  if (btn) btn.style.display = '';
+};
+
+// MutationObserver fallback
+(function() {
+  const obs = new MutationObserver(() => {
+    const appVisible = document.getElementById('app-screen')?.style.display !== 'none';
+    const btn = document.getElementById('btn-start-job');
+    if (btn && appVisible && curProfile) btn.style.display = '';
+    if (btn && !appVisible) btn.style.display = 'none';
+  });
+  const target = document.getElementById('app-screen');
+  if (target) obs.observe(target, { attributes: true, attributeFilter: ['style'] });
+})();
+
+// Setup accordion when DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', koSetupAccordion);
+} else {
+  koSetupAccordion();
 }
   
 // Init: load picker
