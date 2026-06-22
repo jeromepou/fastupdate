@@ -890,7 +890,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px">
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_keys"/> Location of aircraft keys</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_fbo_mail"/> Ask customer to send an authorisation email to the FBO</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_airside"/> Ask customer to arrange airside access via FBO</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_contact"/> Ask for local contact/crew details on site</label>
       </div>
 
@@ -1090,7 +1089,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_oxygen"/> Oxygen</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_nitrogen_hp"/> Nitrogen — High pressure</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_nitrogen_lp"/> Nitrogen — Low pressure</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_steps"/> Steps / Airstair</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_steps"/> Steps</label>
+<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_steps_engine"/> Engine access steps (tall steps)</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_hangar"/> Hangar space</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_lavatory"/> Lavatory service</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_hpbay"/> High Power Bay</label>
@@ -1102,6 +1102,11 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 	<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_q_confirm"/> Please note that this intervention is pending authorisation — I will come back to you as soon as I have a confirmation to proceed.</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_q_shipping"/> Could you please provide your shipping address? I may need to send parts required for the Return to Service to your FBO.</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_q_importer"/> Would you be able to act as importer of record for parts we will need to import for this intervention?</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_q_transport" onchange="document.getElementById('kofbo_transport_eta_wrap').style.display=this.checked?'flex':'none'"/> Could you please arrange transportation for me upon my arrival at the airport?</label>
+        <div id="kofbo_transport_eta_wrap" style="display:none;align-items:center;gap:8px;margin-left:22px">
+          <span style="font-size:12px;color:var(--g600)">My arrival time at the airport:</span>
+          <input type="text" id="kofbo_transport_eta" placeholder="e.g. 14:30 local" style="width:140px;font-size:12px;padding:4px 8px;border:1px solid var(--g200);border-radius:var(--r)"/>
+        </div>
       </div>
       <div class="ko-divider"></div>
       <div class="ko-fg">
@@ -3376,15 +3381,15 @@ async function koSaveState() {
     'ko_model','ko_sn','ko_reg','ko_wo','ko_icao','ko_defect','ko_cust_name','ko_item_prefix',
     'ko_eta','ko_travel_from','ko_travel_to','ko_travel_date',
     'ko_shipping_addr','ko_broker_contact','ko_action_plan',
-    'koq_custom','kofbo_custom','kofbo_custom_questions'
+    'koq_custom','kofbo_custom','kofbo_custom_questions','kofbo_transport_eta'
   ];
   const cbIds = [
     'ko_skip_travel','ko_part_priority_wh','ko_part_certs','ko_handcarry_approved',
     'kofbo_gpu','kofbo_oxygen','kofbo_nitrogen_hp','kofbo_nitrogen_lp',
-    'kofbo_steps','kofbo_hangar','kofbo_lavatory','kofbo_hpbay',
-    'kofbo_q_days','kofbo_q_confirm','kofbo_q_shipping','kofbo_q_importer',
+    'kofbo_steps','kofbo_steps_engine','kofbo_hangar','kofbo_lavatory','kofbo_hpbay',
+    'kofbo_q_days','kofbo_q_confirm','kofbo_q_shipping','kofbo_q_importer','kofbo_q_transport',
     'koq_broker','koq_hours','koq_po','koq_keys','koq_fbo_mail',
-    'koq_airside','koq_contact','koq_troubleshoot','koq_cas','koq_fhdb',
+    'koq_contact','koq_troubleshoot','koq_cas','koq_fhdb',
     'koq_techops','koq_self_parts','koq_handcarry','koq_order_before_tshoot'
   ];
   const state = {
@@ -3430,6 +3435,9 @@ async function koRestoreState() {
   // Show priority warehouse select if checked
   const prioSel = document.getElementById('ko_priority_warehouse');
   if (prioSel) prioSel.style.display = state.cbs?.ko_part_priority_wh ? '' : 'none';
+    // Show transport ETA field if transport checkbox was checked
+  const transportWrap = document.getElementById('kofbo_transport_eta_wrap');
+  if (transportWrap) transportWrap.style.display = state.cbs?.kofbo_q_transport ? 'flex' : 'none';
 
   // Restore toggle pills
   if (state.prefixSel) {
@@ -3968,7 +3976,6 @@ function koBuildCustomerBody() {
   if (q('koq_po'))     questions.push('- Do you have a Work Order (WO) or Purchase Order (PO) number for this input?');
   if (q('koq_keys'))   questions.push('- Location of the aircraft keys');
   if (q('koq_fbo_mail')) questions.push(`- Could you please send an authorisation email to the FBO at ${icao || '[ICAO]'} confirming our upcoming maintenance intervention?`);
-  if (q('koq_airside'))  questions.push('- Could you please arrange airside access for me through the FBO?');
   if (q('koq_contact'))  questions.push('- Could you please provide the name and phone number of the crew member who will meet me at the aircraft?');
   function sqQuestionsFor(qid, genericText, perSqText) {
     const cb = document.getElementById('koq_' + qid);
@@ -4059,7 +4066,9 @@ ${etaLine}
 
 Regards,
 
-${eng}`;
+${eng}
+
+⚠️ [REMINDER: Attach the FSR to this email before sending]`;
 }
 
 function koBuildTravelBody() {
@@ -4195,7 +4204,9 @@ ${addrLine}
 
 Regards,
 
-${eng}`;
+${eng}
+
+⚠️ [REMINDER: Attach the FSR to this email before sending]`;
 }
 
 function koBuildFboBody() {
@@ -4209,7 +4220,8 @@ function koBuildFboBody() {
   if (q('kofbo_oxygen'))      equip.push('- Oxygen');
   if (q('kofbo_nitrogen_hp')) equip.push('- Nitrogen — High pressure');
   if (q('kofbo_nitrogen_lp')) equip.push('- Nitrogen — Low pressure');
-  if (q('kofbo_steps'))       equip.push('- Steps / Airstair');
+  if (q('kofbo_steps'))        equip.push('- Steps');
+  if (q('kofbo_steps_engine')) equip.push('- Engine access steps (tall steps)');
   if (q('kofbo_hangar'))      equip.push('- Hangar space');
   if (q('kofbo_lavatory'))    equip.push('- Lavatory service');
   if (q('kofbo_hpbay'))       equip.push('- High Power Bay');
@@ -4227,6 +4239,11 @@ function koBuildFboBody() {
   if (q('kofbo_q_confirm')) extraQs.push('Please note that this intervention is pending authorisation — I will come back to you as soon as I have a confirmation to proceed.');
   if (q('kofbo_q_shipping')) extraQs.push('Could you please provide your shipping address? I may need to send parts required for the Return to Service directly to your FBO.');
   if (q('kofbo_q_importer')) extraQs.push('Would you be able to act as importer of record for the parts we will need to import for this intervention?');
+  if (q('kofbo_q_transport')) {
+    const airportEta = (document.getElementById('kofbo_transport_eta')?.value || '').trim();
+    const etaStr = airportEta ? ' I am scheduled to arrive at the airport at ' + airportEta + '.' : ' I will provide my arrival time shortly.';
+    extraQs.push('Could you please arrange transportation for me upon my arrival at the airport?' + etaStr);
+  }
 
   const customQsRaw = document.getElementById('kofbo_custom_questions')?.value || '';
   customQsRaw.split('\n').map(l => l.trim()).filter(Boolean).forEach(l => extraQs.push(l));
