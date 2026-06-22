@@ -3319,7 +3319,6 @@ G.openKickoff = async function() {
   }
 
   // Setup mobile accordion each time panel opens
-  koSetupAccordion();
   await koLoadFixedRecips();
   await koLoadAirlines();
   await koLoadCustomQuestions();
@@ -3337,6 +3336,7 @@ G.openKickoff = async function() {
     partPrioCb.onchange = () => { partPrioSel.style.display = partPrioCb.checked ? '' : 'none'; };
   }
   koUpdatePreview();
+  koSetupAccordion();
   window.scrollTo({top:0, behavior:'smooth'});
 };
 
