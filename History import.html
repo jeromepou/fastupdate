@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FAST — History Import</title>
+<style>
+:root{
+  --gd:#2d5a2d;--gm:#3a6e3a;--gl:#e8f2e8;--gb:#a8c8a8;
+  --red:#8a2e00;--rl:#fdf0eb;--blue:#1a4a7a;--bl:#e8f0f8;
+  --amb:#7a5a00;--al:#fef9e7;
+  --g50:#f8f9fa;--g100:#f1f3f5;--g200:#e9ecef;--g400:#adb5bd;
+  --g600:#6c757d;--g800:#343a40;--g900:#212529;
+  --r:8px;--rlg:12px;--sh:0 1px 3px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--g100);color:var(--g900);font-size:14px;line-height:1.5;min-height:100vh}
+header{background:var(--gd);color:#fff;padding:0 1.25rem;display:flex;align-items:center;gap:10px;height:54px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+header h1{font-size:15px;font-weight:600;flex:1}
+.main{max-width:860px;margin:0 auto;padding:1.25rem 1rem 5rem}
+.card{background:#fff;border-radius:var(--rlg);border:1px solid var(--g200);box-shadow:var(--sh);margin-bottom:1rem;overflow:hidden}
+.card-head{padding:10px 1.25rem;border-bottom:1px solid var(--g200);display:flex;align-items:center;gap:10px;background:var(--g50)}
+.card-head h2{font-size:13px;font-weight:700;color:var(--g800);flex:1}
+.card-body{padding:1.25rem}
+.btn{padding:7px 13px;border-radius:var(--r);font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--g200);background:#fff;color:var(--g800);display:inline-flex;align-items:center;gap:5px;transition:background .15s;white-space:nowrap}
+.btn:hover{background:var(--g100)}
+.btn.primary{background:var(--gd);color:#fff;border-color:var(--gd)}
+.btn.primary:hover{background:var(--gm)}
+.btn.primary:disabled{opacity:.4;cursor:not-allowed}
+.btn.danger{color:var(--red);border-color:#e8b8a0}
+.btn.danger:hover{background:var(--rl)}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:rot .7s linear infinite;flex-shrink:0}
+@keyframes rot{to{transform:rotate(360deg)}}
+.status-bar{padding:9px 13px;border-radius:var(--r);font-size:13px;display:flex;align-items:center;gap:8px}
+.s-idle{background:var(--g100);color:var(--g600);border:1px solid var(--g200)}
+.s-load{background:var(--bl);color:var(--blue);border:1px solid #b8d0e8}
+.s-done{background:var(--gl);color:var(--gd);border:1px solid var(--gb)}
+.s-err{background:var(--rl);color:var(--red);border:1px solid #e8b8a0}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px}
+.badge-ok{background:#e8f5e9;border:1px solid #a5d6a7;color:#2e7d32}
+.badge-ko{background:var(--rl);border:1px solid #e8b8a0;color:var(--red)}
+.badge-warn{background:var(--al);border:1px solid #d4b800;color:var(--amb)}
+.badge-blue{background:var(--bl);border:1px solid #b8d0e8;color:var(--blue)}
+.progress-wrap{background:var(--g200);border-radius:20px;height:8px;overflow:hidden;margin:8px 0}
+.progress-fill{height:100%;background:var(--gd);border-radius:20px;transition:width .3s}
+.email-row{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid var(--g200);border-radius:var(--r);margin-bottom:6px;background:var(--g50)}
+.email-row.status-done{background:#eafaf0;border-color:#bfe8cf}
+.email-row.status-skipped{background:var(--g100);border-color:var(--g200);opacity:.6}
+.email-row.status-error{background:var(--rl);border-color:#e8b8a0}
+.email-row.status-rfs-found{background:#e8f0f8;border-color:#b8d0e8}
+.email-row.status-processing{background:var(--al);border-color:#d4b800}
+.email-row.status-no-rfs{background:#fff8e6;border-color:#f0dba3}
+.email-meta{flex:1;min-width:0}
+.email-fa{font-size:13px;font-weight:700;color:var(--gd)}
+.email-subj{font-size:12px;color:var(--g600);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.email-info{font-size:11px;color:var(--g400);margin-top:2px}
+.email-status{font-size:11px;font-weight:600;flex-shrink:0;text-align:right;min-width:110px}
+.squawk-chip{display:inline-block;background:var(--gl);border:1px solid var(--gb);color:var(--gd);border-radius:20px;font-size:10px;font-weight:700;padding:1px 8px;margin:1px}
+.parts-summary{font-size:11px;color:var(--g600);margin-top:3px}
+.log-area{background:#1a1a2e;color:#a0ffa0;font-family:monospace;font-size:11px;padding:10px;border-radius:var(--r);max-height:180px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
+.section-title{font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+input[type=text],input[type=email],input[type=password]{padding:7px 10px;border:1px solid var(--g200);border-radius:var(--r);font-size:13px;font-family:inherit;color:var(--g900);background:#fff;width:100%}
+input:focus{outline:2px solid var(--gm);border-color:var(--gm)}
+.fg{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
+label{font-size:11px;font-weight:600;color:var(--g600);text-transform:uppercase;letter-spacing:.04em}
+.stats-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1rem}
+.stat-box{flex:1;min-width:100px;background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:10px 14px;text-align:center;box-shadow:var(--sh)}
+.stat-num{font-size:22px;font-weight:700;color:var(--gd)}
+.stat-lbl{font-size:10px;color:var(--g600);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.review-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:5px}
+.review-row input[type=checkbox]{flex-shrink:0;width:auto;cursor:pointer}
+.review-info{flex:1;min-width:0}
+.review-fa{font-size:12px;font-weight:700;color:var(--gd)}
+.review-squawk{font-size:11px;color:var(--g800)}
+.review-parts{font-size:11px;color:var(--g400)}
+</style>
+</head>
+<body>
+<header>
+  <h1>📦 FAST — Squawk History Import</h1>
+  <span id="auth-badge" class="badge badge-ko">Not connected</span>
+</header>
+
+<div class="main">
+
+  <!-- STEP 1: Auth -->
+  <div class="card" id="card-auth">
+    <div class="card-head"><h2>① Firebase + Google Authentication</h2></div>
+    <div class="card-body">
+      <div class="fg">
+        <label>Firebase Admin Email</label>
+        <input type="email" id="fb-email" placeholder="your@email.com" style="max-width:280px"/>
+      </div>
+      <div class="fg">
+        <label>Firebase Password</label>
+        <input type="password" id="fb-pass" placeholder="••••••••" style="max-width:280px"/>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn primary" onclick="doFirebaseLogin()">🔐 Sign in to Firebase</button>
+        <div id="gsi-btn-wrap" style="display:none">
+          <div id="gsi-btn"></div>
+        </div>
+        <button id="btn-start" class="btn primary" onclick="startImport()" style="display:none;background:var(--blue);border-color:var(--blue)">🚀 Start Gmail Scan</button>
+      </div>
+      <div id="auth-status" class="status-bar s-idle" style="margin-top:10px">Sign in to Firebase first, then connect Google.</div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Scan options -->
+  <div class="card" id="card-options" style="display:none">
+    <div class="card-head"><h2>② Scan Options</h2></div>
+    <div class="card-body">
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div class="fg" style="flex:1;min-width:160px">
+          <label>Max emails to scan</label>
+          <input type="text" id="opt-max" value="200" style="max-width:100px"/>
+          <small style="font-size:11px;color:var(--g400)">Gmail returns max 500/query</small>
+        </div>
+        <div class="fg" style="flex:1;min-width:200px">
+          <label>Subject filter (auto)</label>
+          <input type="text" id="opt-filter" value="Part Request" readonly style="max-width:240px;background:var(--g50)"/>
+          <small style="font-size:11px;color:var(--g400)">Searches for "Part Request" OR "Parts & Tools"</small>
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:8px">
+        <input type="checkbox" id="opt-skip-existing" checked style="width:auto"/>
+        Skip FA numbers already in Firebase squawkHistory
+      </label>
+    </div>
+  </div>
+
+  <!-- STEP 3: Progress -->
+  <div class="card" id="card-progress" style="display:none">
+    <div class="card-head">
+      <h2>③ Import Progress</h2>
+      <button class="btn danger" id="btn-stop" onclick="stopImport()" style="font-size:11px;padding:4px 10px;display:none">⏹ Stop</button>
+    </div>
+    <div class="card-body">
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-num" id="st-scanned">0</div><div class="stat-lbl">Emails scanned</div></div>
+        <div class="stat-box"><div class="stat-num" id="st-fa">0</div><div class="stat-lbl">FA numbers</div></div>
+        <div class="stat-box"><div class="stat-num" id="st-rfs">0</div><div class="stat-lbl">RFS found</div></div>
+        <div class="stat-box"><div class="stat-num" id="st-saved">0</div><div class="stat-lbl">Saved to DB</div></div>
+        <div class="stat-box"><div class="stat-num" id="st-skip">0</div><div class="stat-lbl">Skipped</div></div>
+      </div>
+      <div class="progress-wrap"><div class="progress-fill" id="progress-bar" style="width:0%"></div></div>
+      <div id="progress-status" class="status-bar s-idle" style="margin-bottom:10px">Waiting…</div>
+      <div class="log-area" id="log"></div>
+    </div>
+  </div>
+
+  <!-- STEP 4: Review & Save -->
+  <div class="card" id="card-review" style="display:none">
+    <div class="card-head">
+      <h2>④ Review &amp; Save to Firebase</h2>
+      <span id="review-count" class="badge badge-blue">0 entries</span>
+    </div>
+    <div class="card-body">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn" onclick="reviewSelectAll(true)">✅ Select all</button>
+        <button class="btn" onclick="reviewSelectAll(false)">☐ Deselect all</button>
+        <button class="btn primary" id="btn-save-db" onclick="saveToFirebase()">💾 Save selected to Firebase</button>
+      </div>
+      <div id="review-list"></div>
+      <div id="save-status" class="status-bar s-idle" style="margin-top:10px;display:none"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Firebase + GIS -->
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-auth.js";
+import { getDatabase, ref, get, set, update } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA5PS5Dy-RJJTC71DX2wiBm83yl4D98cFI",
+  authDomain: "fast-update-46079.firebaseapp.com",
+  databaseURL: "https://fast-update-46079-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "fast-update-46079",
+  storageBucket: "fast-update-46079.firebasestorage.app",
+  messagingSenderId: "178536566816",
+  appId: "1:178536566816:web:e1c2b103fc198a94d72c45"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const auth  = getAuth(fbApp);
+const db    = getDatabase(fbApp);
+
+// ── Google OAuth (gmail.readonly + gmail.compose) ──
+const GCID   = '624747295284-rpktnnbk5kugn7jhero0e267soidb2oj.apps.googleusercontent.com';
+const GSCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
+const WORKER = 'https://orange-snow-95f7.jeromepoupinel.workers.dev';
+
+let gToken = null, gTokenExp = 0, fbUser = null;
+let tokenClient = null;
+let importResults = []; // [{faNumber, squawk, parts, tools, consumables, acModel, acSN, acWO, addedBy}]
+let stopFlag = false;
+let stats = {scanned:0, fa:0, rfs:0, saved:0, skip:0};
+
+// ── expose to window for onclick ──
+window.doFirebaseLogin = doFirebaseLogin;
+window.startImport     = startImport;
+window.stopImport      = stopImport;
+window.saveToFirebase  = saveToFirebase;
+window.reviewSelectAll = reviewSelectAll;
+
+// ─────────────────────────────────────────
+//  FIREBASE LOGIN
+// ─────────────────────────────────────────
+async function doFirebaseLogin() {
+  const email = document.getElementById('fb-email').value.trim();
+  const pass  = document.getElementById('fb-pass').value;
+  setAuthStatus('load', '<span class="spin"></span> Signing in to Firebase…');
+  try {
+    const cred = await signInWithEmailAndPassword(auth, email, pass);
+    fbUser = cred.user;
+    setAuthStatus('done', `✅ Firebase: signed in as ${fbUser.email}`);
+    // Now init Google
+    initGoogleClient();
+  } catch(e) {
+    setAuthStatus('err', '❌ Firebase: ' + e.message);
+  }
+}
+
+function initGoogleClient() {
+  const wrap = document.getElementById('gsi-btn-wrap');
+  wrap.style.display = '';
+  const waitGIS = setInterval(() => {
+    if (!window.google?.accounts?.oauth2) return;
+    clearInterval(waitGIS);
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GCID,
+      scope: GSCOPE,
+      callback: (r) => {
+        if (r?.access_token) {
+          gToken    = r.access_token;
+          gTokenExp = Date.now() + ((r.expires_in || 3500) * 1000) - 30000;
+          document.getElementById('auth-badge').textContent = 'Connected';
+          document.getElementById('auth-badge').className   = 'badge badge-ok';
+          setAuthStatus('done', '✅ Firebase + Google connected. Ready to scan.');
+          document.getElementById('btn-start').style.display = '';
+          document.getElementById('card-options').style.display = '';
+          wrap.style.display = 'none';
+        } else {
+          setAuthStatus('err', '❌ Google sign-in failed or cancelled.');
+        }
+      },
+      error_callback: (e) => setAuthStatus('err', '❌ Google error: ' + (e?.message || JSON.stringify(e)))
+    });
+    // Render a proper GSI button
+    google.accounts.id.initialize({ client_id: GCID });
+    // Manual button since we need token flow
+    wrap.innerHTML = '<button class="btn" onclick="window._requestGToken()" style="border-color:var(--blue);color:var(--blue)">🔗 Connect Google (Gmail)</button>';
+    window._requestGToken = () => tokenClient.requestAccessToken({ prompt: 'consent' });
+  }, 200);
+}
+
+function ensureToken() {
+  if (gToken && Date.now() < gTokenExp) return Promise.resolve(true);
+  return new Promise(res => {
+    const prev = tokenClient.callback;
+    tokenClient.callback = (r) => {
+      tokenClient.callback = prev;
+      if (r?.access_token) {
+        gToken = r.access_token;
+        gTokenExp = Date.now() + ((r.expires_in||3500)*1000) - 30000;
+        res(true);
+      } else res(false);
+    };
+    tokenClient.requestAccessToken({ prompt: '' });
+  });
+}
+
+// ─────────────────────────────────────────
+//  GMAIL HELPERS
+// ─────────────────────────────────────────
+async function gmailSearch(q, maxResults=200) {
+  await ensureToken();
+  let ids = [], pageToken = null;
+  do {
+    let url = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${Math.min(maxResults-ids.length,500)}&q=${encodeURIComponent(q)}`;
+    if (pageToken) url += '&pageToken=' + pageToken;
+    const r = await fetch(url, { headers: { Authorization: 'Bearer ' + gToken } });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error?.message || 'Gmail search error');
+    (d.messages||[]).forEach(m => ids.push(m.id));
+    pageToken = d.nextPageToken;
+  } while (pageToken && ids.length < maxResults);
+  return ids;
+}
+
+async function gmailGetMeta(id) {
+  await ensureToken();
+  const r = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=metadata&metadataHeaders=Subject&metadataHeaders=Date`, {
+    headers: { Authorization: 'Bearer ' + gToken }
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error?.message || 'Gmail meta error');
+  const subj = (d.payload?.headers||[]).find(h=>h.name==='Subject')?.value || '';
+  const date = (d.payload?.headers||[]).find(h=>h.name==='Date')?.value || '';
+  return { id, subj, date, threadId: d.threadId };
+}
+
+async function gmailGetBody(id) {
+  await ensureToken();
+  const r = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=full`, {
+    headers: { Authorization: 'Bearer ' + gToken }
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error?.message || 'Gmail body error');
+  return extractTextFromPayload(d.payload);
+}
+
+function extractTextFromPayload(payload) {
+  if (!payload) return '';
+  const parts = payload.parts || [payload];
+  let text = '';
+  for (const p of parts) {
+    if (p.mimeType === 'text/plain' && p.body?.data) {
+      text += atob(p.body.data.replace(/-/g,'+').replace(/_/g,'/')) + '\n';
+    } else if (p.parts) {
+      text += extractTextFromPayload(p);
+    }
+  }
+  return text;
+}
+
+async function gmailGetAttachmentPDFBase64(messageId) {
+  // Return first PDF attachment as base64 string, or null
+  await ensureToken();
+  const r = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`, {
+    headers: { Authorization: 'Bearer ' + gToken }
+  });
+  const d = await r.json();
+  if (!r.ok) return null;
+  return findPDFInPayload(d.payload, messageId);
+}
+
+async function findPDFInPayload(payload, msgId) {
+  if (!payload) return null;
+  const parts = payload.parts || [payload];
+  for (const p of parts) {
+    if (p.mimeType === 'application/pdf' || (p.filename && p.filename.toLowerCase().endsWith('.pdf'))) {
+      const attachId = p.body?.attachmentId;
+      if (attachId) {
+        await ensureToken();
+        const ar = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgId}/attachments/${attachId}`, {
+          headers: { Authorization: 'Bearer ' + gToken }
+        });
+        const ad = await ar.json();
+        return ad.data ? ad.data.replace(/-/g,'+').replace(/_/g,'/') : null;
+      } else if (p.body?.data) {
+        return p.body.data.replace(/-/g,'+').replace(/_/g,'/');
+      }
+    }
+    if (p.parts) {
+      const found = await findPDFInPayload(p, msgId);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+// ─────────────────────────────────────────
+//  AI HELPERS (via Cloudflare Worker)
+// ─────────────────────────────────────────
+async function extractPartsFromEmailText(emailBody, faNumber) {
+  const prompt = `You will receive an aviation email thread (part request or parts & tools request).
+This email is about FA number: ${faNumber}.
+
+Extract EVERY distinct physical part mentioned. For each part extract:
+- nomenclature: short name in UPPERCASE
+- pn_off: part number being removed, or ""
+- sn_off: serial number being removed, or ""
+- pn_on: part number being installed/ordered, or ""
+- sn_on: serial number of new unit, or ""
+- cat: "Part", "Tool", or "Consumable"
+- quantity: quantity as string, or ""
+
+Also extract if present:
+- acModel: aircraft model (e.g. "GVIII-G700"), or ""
+- acSN: aircraft serial number, or ""
+- acWO: work order number (e.g. "WO12345"), or ""
+
+Reply ONLY with valid JSON, no markdown:
+{"acModel":"","acSN":"","acWO":"","parts":[{"nomenclature":"","pn_off":"","sn_off":"","pn_on":"","sn_on":"","cat":"Part","quantity":""}]}`;
+
+  const res = await fetch(WORKER + '/chat', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model: 'mistral-small-latest',
+      temperature: 0,
+      messages: [{ role: 'user', content: prompt + '\n\nEMAIL THREAD:\n' + emailBody.slice(0,8000) }],
+      response_format: { type: 'json_object' }
+    })
+  });
+  const d = await res.json();
+  if (!res.ok) throw new Error(d.message || 'Chat error');
+  const raw = d.choices[0].message.content;
+  return JSON.parse(raw.replace(/```json|```/g,'').trim());
+}
+
+async function extractSquawkFromRFSText(rfsText, faNumber) {
+  const prompt = `You will receive the text of a Gulfstream RFS (Request For Service) document for intervention FA${faNumber}.
+
+Extract the following:
+- squawks: array of work item descriptions (all defects/tasks to be fixed), each as a short UPPERCASE string
+- acModel: aircraft model, or ""
+- acSN: aircraft serial number, or ""
+- acWO: work order number if present, or ""
+
+Reply ONLY with valid JSON, no markdown:
+{"squawks":["UPPERCASE SQUAWK DESCRIPTION"],"acModel":"","acSN":"","acWO":""}`;
+
+  const res = await fetch(WORKER + '/chat', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model: 'mistral-small-latest',
+      temperature: 0,
+      messages: [{ role: 'user', content: prompt + '\n\nRFS TEXT:\n' + rfsText.slice(0,10000) }],
+      response_format: { type: 'json_object' }
+    })
+  });
+  const d = await res.json();
+  if (!res.ok) throw new Error(d.message || 'Chat error RFS');
+  const raw = d.choices[0].message.content;
+  return JSON.parse(raw.replace(/```json|```/g,'').trim());
+}
+
+async function ocrPDF(base64) {
+  const res = await fetch(WORKER + '/ocr', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model: 'mistral-ocr-latest',
+      document: { type: 'document_url', document_url: `data:application/pdf;base64,${base64}` }
+    })
+  });
+  const d = await res.json();
+  if (!res.ok) throw new Error(d.message || 'OCR error');
+  return d.pages.map(p => p.markdown).join('\n\n');
+}
+
+// ─────────────────────────────────────────
+//  SQUAWK TOKENIZER (same as main app)
+// ─────────────────────────────────────────
+function squawkTokenize(label) {
+  const STOP = new Set(['AND','OR','THE','A','AN','OF','FOR','TO','IN','ON','AT','WITH','BY','IS','ARE','WAS','HAS','HAVE','NOT','NO','BE','AS','FROM','THAT','THIS','IT']);
+  return [...new Set(label.toUpperCase().replace(/[^A-Z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>2&&!STOP.has(w)))];
+}
+
+function squawkScore(tokA, tokB) {
+  const setB = new Set(tokB);
+  return tokA.filter(t=>setB.has(t)).length;
+}
+
+// ─────────────────────────────────────────
+//  MAIN IMPORT FLOW
+// ─────────────────────────────────────────
+async function startImport() {
+  if (!fbUser) { alert('Sign in to Firebase first.'); return; }
+  if (!gToken)  { alert('Connect Google first.'); return; }
+
+  stopFlag = false;
+  importResults = [];
+  stats = {scanned:0, fa:0, rfs:0, saved:0, skip:0};
+  updateStats();
+
+  document.getElementById('card-progress').style.display = '';
+  document.getElementById('card-review').style.display = 'none';
+  document.getElementById('btn-stop').style.display = '';
+  document.getElementById('btn-start').disabled = true;
+  document.getElementById('log').textContent = '';
+
+  const maxEmails    = parseInt(document.getElementById('opt-max').value) || 200;
+  const skipExisting = document.getElementById('opt-skip-existing').checked;
+
+  setProgress('load', '<span class="spin"></span> Searching Gmail for Part Request emails…', 0);
+
+  try {
+    // Load existing squawkHistory keys from Firebase to skip duplicates
+    let existingFAs = new Set();
+    if (skipExisting) {
+      const snap = await get(ref(db, 'squawkHistory'));
+      if (snap.exists()) {
+        Object.values(snap.val()).forEach(e => {
+          if (e.faNumber) existingFAs.add(e.faNumber);
+        });
+      }
+      log(`ℹ️ ${existingFAs.size} FA numbers already in Firebase — will skip.`);
+    }
+
+    // Search Gmail
+    const queries = [
+      'subject:"Part Request" FA',
+      'subject:"Parts Request" FA',
+      'subject:"Part and Tool Request" FA',
+      'subject:"Parts and Tool Request" FA',
+      'subject:"Part & Tool Request" FA',
+      'subject:"Parts & Tool Request" FA',
+      'subject:"Parts and Tools Request" FA',
+      'subject:"Part and Tools Request" FA',
+      'subject:"Parts & Tools Request" FA',
+      'subject:"Part & Tools Request" FA',
+    ];
+    const allIdSet = new Set();
+    for (const q of queries) {
+      if (stopFlag) break;
+      log(`🔍 Searching: "${q}"`);
+      const ids = await gmailSearch(q, maxEmails);
+      ids.forEach(id => allIdSet.add(id));
+    }
+    const allIds = [...allIdSet];
+    log(`📬 Found ${allIds.length} candidate email(s). Processing…`);
+    stats.scanned = allIds.length;
+    updateStats();
+
+    // Group by FA number
+    const faMap = {}; // faNumber -> { partEmailIds: [], faNumber }
+    const FA_RE = /FA(\d{5})/i;
+
+    setProgress('load', '<span class="spin"></span> Reading email subjects…', 5);
+    for (let i = 0; i < allIds.length; i++) {
+      if (stopFlag) break;
+      const meta = await gmailGetMeta(allIds[i]);
+      const match = FA_RE.exec(meta.subj);
+      if (!match) continue;
+      const fa = 'FA' + match[1];
+      if (!faMap[fa]) faMap[fa] = { faNumber: fa, partEmailIds: [], date: meta.date };
+      faMap[fa].partEmailIds.push(meta.id);
+    }
+
+    const faList = Object.keys(faMap);
+    stats.fa = faList.length;
+    updateStats();
+    log(`🏷️ ${faList.length} distinct FA number(s) found: ${faList.join(', ')}`);
+
+    // For each FA number: extract parts from email + find RFS
+    for (let fi = 0; fi < faList.length; fi++) {
+      if (stopFlag) break;
+      const fa = faList[fi];
+      const entry = faMap[fa];
+      const pct = 10 + Math.round((fi / faList.length) * 85);
+      setProgress('load', `<span class="spin"></span> Processing ${fa} (${fi+1}/${faList.length})…`, pct);
+
+      if (skipExisting && existingFAs.has(fa)) {
+        log(`⏭️ ${fa} — already in Firebase, skipped.`);
+        stats.skip++;
+        updateStats();
+        continue;
+      }
+
+      log(`\n── ${fa} ──`);
+
+      // 1) Extract parts from the Part Request email body
+      let parsedParts = null;
+      let acModel = '', acSN = '', acWO = '';
+      try {
+        const body = await gmailGetBody(entry.partEmailIds[0]);
+        log(`  📧 Email body read (${body.length} chars)`);
+        parsedParts = await extractPartsFromEmailText(body, fa);
+        acModel = parsedParts.acModel || '';
+        acSN    = parsedParts.acSN    || '';
+        acWO    = parsedParts.acWO    || '';
+        const pCount = parsedParts.parts?.length || 0;
+        log(`  📦 ${pCount} part(s) extracted. Model:${acModel||'?'} SN:${acSN||'?'} WO:${acWO||'?'}`);
+      } catch(e) {
+        log(`  ⚠️ Parts extraction failed: ${e.message}`);
+        stats.skip++;
+        updateStats();
+        continue;
+      }
+
+      if (!parsedParts?.parts?.length) {
+        log(`  ⚠️ No parts found — skipping.`);
+        stats.skip++;
+        updateStats();
+        continue;
+      }
+
+      // 2) Search for RFS email containing this FA number + PDF attachment
+      log(`  🔍 Searching RFS for ${fa}…`);
+      let squawks = [];
+      try {
+        const rfsIds = await gmailSearch(`subject:${fa} has:attachment filename:pdf`, 10);
+        // also try body search
+        const rfsIds2 = await gmailSearch(`${fa} RFS has:attachment filename:pdf`, 10);
+        const allRfsIds = [...new Set([...rfsIds, ...rfsIds2])];
+        log(`  📎 ${allRfsIds.length} potential RFS email(s) found.`);
+
+        for (const rfsId of allRfsIds) {
+          const pdfB64 = await gmailGetAttachmentPDFBase64(rfsId);
+          if (!pdfB64) continue;
+          log(`  📄 PDF found — running OCR…`);
+          const rfsText = await ocrPDF(pdfB64);
+          // Check that this PDF actually mentions this FA
+          if (!rfsText.toUpperCase().includes(fa.toUpperCase())) {
+            log(`  ↩️ PDF doesn't mention ${fa} — skipping.`);
+            continue;
+          }
+          log(`  🤖 Extracting squawks from RFS…`);
+          const rfsData = await extractSquawkFromRFSText(rfsText, fa);
+          squawks = rfsData.squawks || [];
+          if (!acModel && rfsData.acModel) acModel = rfsData.acModel;
+          if (!acSN    && rfsData.acSN)    acSN    = rfsData.acSN;
+          if (!acWO    && rfsData.acWO)    acWO    = rfsData.acWO;
+          log(`  ✅ ${squawks.length} squawk(s): ${squawks.join(' | ')}`);
+          stats.rfs++;
+          updateStats();
+          break; // use first valid RFS
+        }
+      } catch(e) {
+        log(`  ⚠️ RFS search error: ${e.message}`);
+      }
+
+      if (!squawks.length) {
+        log(`  ℹ️ No RFS/squawk found — will store parts without squawk label.`);
+      }
+
+      // 3) Build result entries (one per squawk, or one generic if no squawk)
+      const allParts       = (parsedParts.parts||[]).filter(p=>p.cat==='Part'||!p.cat);
+      const allTools       = (parsedParts.parts||[]).filter(p=>p.cat==='Tool');
+      const allConsumables = (parsedParts.parts||[]).filter(p=>p.cat==='Consumable');
+
+      const squawkList = squawks.length ? squawks : [`FA${fa.replace('FA','')} PARTS REQUEST`];
+      squawkList.forEach(sq => {
+        importResults.push({
+          faNumber: fa,
+          squawkRaw: sq,
+          keywords: squawkTokenize(sq),
+          acModel, acSN, acWO,
+          parts:       allParts.map(p=>({pn:p.pn_on||p.pn_off||'',sn:p.sn_on||p.sn_off||'',name:p.nomenclature||'',cat:'Part'})),
+          tools:       allTools.map(p=>({pn:p.pn_on||p.pn_off||'',sn:p.sn_on||p.sn_off||'',name:p.nomenclature||'',cat:'Tool'})),
+          consumables: allConsumables.map(p=>({pn:p.pn_on||p.pn_off||'',sn:'',name:p.nomenclature||'',cat:'Consumable'})),
+          addedBy: 'History Import',
+          lastUsed: Date.now(),
+          selected: true
+        });
+      });
+      log(`  💾 Ready to import: ${squawkList.length} entry(ies) queued.`);
+    }
+
+    setProgress('done', `✅ Scan complete — ${importResults.length} entry(ies) ready for review.`, 100);
+    document.getElementById('btn-stop').style.display = 'none';
+    document.getElementById('btn-start').disabled = false;
+    renderReview();
+
+  } catch(e) {
+    setProgress('err', '❌ ' + e.message, 0);
+    document.getElementById('btn-stop').style.display = 'none';
+    document.getElementById('btn-start').disabled = false;
+  }
+}
+
+function stopImport() {
+  stopFlag = true;
+  log('\n⏹ Stop requested — finishing current item…');
+  document.getElementById('btn-stop').disabled = true;
+}
+
+// ─────────────────────────────────────────
+//  REVIEW UI
+// ─────────────────────────────────────────
+function renderReview() {
+  if (!importResults.length) return;
+  document.getElementById('card-review').style.display = '';
+  document.getElementById('review-count').textContent = importResults.length + ' entries';
+
+  const list = document.getElementById('review-list');
+  list.innerHTML = importResults.map((r, i) => {
+    const partsCount = (r.parts?.length||0) + (r.tools?.length||0) + (r.consumables?.length||0);
+    const partsSummary = [
+      r.parts?.length ? `${r.parts.length} part(s)` : '',
+      r.tools?.length ? `${r.tools.length} tool(s)` : '',
+      r.consumables?.length ? `${r.consumables.length} consumable(s)` : ''
+    ].filter(Boolean).join(', ');
+    return `<div class="review-row">
+      <input type="checkbox" ${r.selected?'checked':''} onchange="importResults[${i}].selected=this.checked"/>
+      <div class="review-info">
+        <div class="review-fa">${r.faNumber} <span style="font-size:10px;font-weight:400;color:var(--blue)">${r.acModel||''} ${r.acSN?'/ '+r.acSN:''} ${r.acWO?'· WO:'+r.acWO:''}</span></div>
+        <div class="review-squawk">${r.squawkRaw}</div>
+        <div class="review-parts">${partsSummary || 'No parts'}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function reviewSelectAll(v) {
+  importResults.forEach(r => r.selected = v);
+  renderReview();
+}
+
+// ─────────────────────────────────────────
+//  SAVE TO FIREBASE
+// ─────────────────────────────────────────
+async function saveToFirebase() {
+  const toSave = importResults.filter(r => r.selected);
+  if (!toSave.length) { alert('Nothing selected.'); return; }
+
+  const btn = document.getElementById('btn-save-db');
+  btn.disabled = true;
+  const saveStatus = document.getElementById('save-status');
+  saveStatus.style.display = '';
+  saveStatus.className = 'status-bar s-load';
+  saveStatus.innerHTML = `<span class="spin"></span> Saving ${toSave.length} entry(ies) to Firebase…`;
+
+  try {
+    // Load existing history to merge
+    const snap = await get(ref(db, 'squawkHistory'));
+    const existing = snap.exists() ? snap.val() : {};
+    const mergeParts = (oldList, newList) => {
+      const merged = [...(oldList||[])];
+      (newList||[]).forEach(p => { if(p.pn&&!merged.find(x=>x.pn===p.pn)) merged.push(p); });
+      return merged;
+    };
+
+    let savedCount = 0;
+    for (const entry of toSave) {
+      const tokens = entry.keywords;
+      // Check for existing match
+      let existingKey = null;
+      let bestScore = 0;
+      Object.entries(existing).forEach(([key,e]) => {
+        const score = squawkScore(tokens, e.keywords||[]);
+        if (score >= 3 && score > bestScore && e.faNumber === entry.faNumber) {
+          bestScore = score; existingKey = key;
+        }
+      });
+
+      const entryData = {
+        faNumber:   entry.faNumber,
+        keywords:   entry.keywords,
+        squawkRaw:  entry.squawkRaw,
+        parts:      entry.parts,
+        tools:      entry.tools,
+        consumables:entry.consumables,
+        lastUsed:   entry.lastUsed || Date.now(),
+        addedBy:    entry.addedBy,
+        acModel:    entry.acModel || '',
+        acSN:       entry.acSN    || '',
+        acWO:       entry.acWO    || '',
+        usageCount: 1,
+        importedFromHistory: true
+      };
+
+      if (existingKey) {
+        const ex = existing[existingKey];
+        await update(ref(db, 'squawkHistory/' + existingKey), {
+          ...entryData,
+          parts:       mergeParts(ex.parts, entry.parts),
+          tools:       mergeParts(ex.tools, entry.tools),
+          consumables: mergeParts(ex.consumables, entry.consumables),
+          usageCount:  (ex.usageCount||1) + 1
+        });
+      } else {
+        const newKey = 'sq_import_' + entry.faNumber + '_' + Date.now() + '_' + savedCount;
+        await set(ref(db, 'squawkHistory/' + newKey), entryData);
+        existing[newKey] = entryData; // keep local copy up to date for next iterations
+      }
+      savedCount++;
+      stats.saved++;
+      updateStats();
+    }
+
+    saveStatus.className = 'status-bar s-done';
+    saveStatus.textContent = `✅ ${savedCount} entry(ies) saved to Firebase squawkHistory.`;
+    btn.textContent = '✅ Saved!';
+  } catch(e) {
+    saveStatus.className = 'status-bar s-err';
+    saveStatus.textContent = '❌ ' + e.message;
+    btn.disabled = false;
+  }
+}
+
+// ─────────────────────────────────────────
+//  UI HELPERS
+// ─────────────────────────────────────────
+function setAuthStatus(type, html) {
+  const el = document.getElementById('auth-status');
+  el.className = 'status-bar s-' + type;
+  el.innerHTML = html;
+}
+
+function setProgress(type, html, pct) {
+  const el = document.getElementById('progress-status');
+  el.className = 'status-bar s-' + type;
+  el.innerHTML = html;
+  document.getElementById('progress-bar').style.width = pct + '%';
+}
+
+function updateStats() {
+  document.getElementById('st-scanned').textContent = stats.scanned;
+  document.getElementById('st-fa').textContent      = stats.fa;
+  document.getElementById('st-rfs').textContent     = stats.rfs;
+  document.getElementById('st-saved').textContent   = stats.saved;
+  document.getElementById('st-skip').textContent    = stats.skip;
+}
+
+function log(msg) {
+  const el = document.getElementById('log');
+  el.textContent += msg + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+</script>
+</body>
+</html>
