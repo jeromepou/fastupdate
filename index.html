@@ -1746,11 +1746,11 @@ G.addTeamMember = async function() {
     homeBase: document.getElementById('nt_homebase').value.trim(),
     pinHash: hashPin(pin),
     role: document.getElementById('nt_role').value || 'engineer',
-    defaultRecipients: document.getElementById('nt_recipients').value.trim(),
+    defaultRecipients: '',
     projects: {}
   };
   await set(ref(db, 'team/' + id), member);
-  ['nt_name','nt_email','nt_team','nt_phone','nt_pin','nt_recipients','nt_homebase'].forEach(i => document.getElementById(i).value = '');
+  ['nt_name','nt_email','nt_team','nt_phone','nt_pin','nt_homebase'].forEach(i => { const el=document.getElementById(i); if(el) el.value=''; });
   document.getElementById('nt_role').value = 'engineer';
   renderTeamAdminList();
 };
