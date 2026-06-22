@@ -1286,6 +1286,69 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     </div>
 
     <div class="help-section">
+      <h4>🚀 Start Job — Generate your Customer Updte, Part Request, Travel and FBO emails</h4>
+      <p>The <strong>Start Job</strong> button appears in the engineer bar once you are logged in. It opens a dedicated panel that lets you configure and generate up to 4 Gmail draft emails in one click, covering everything you need to send at the start of a new AOG intervention — customer introduction, travel booking, parts order, and FBO coordination.</p>
+      <p>You can also launch Start Job directly from any project card in the project list (active or archived) using the 🚀 button — the aircraft details are pre-filled automatically from that project.</p>
+
+      <h4 style="margin-top:1rem">✈️ Aircraft info</h4>
+      <p>Fill in the aircraft type, MSN, registration, Work Order number, ICAO airport code, and a brief defect description. These fields populate the subject lines and body of all four draft emails automatically. The ICAO field also pre-fills the Travel "To" destination.</p>
+      <p>The <strong>Customer contact name</strong> field is used in the greeting line of the Customer Update email ("Dear [name],").</p>
+
+      <h4 style="margin-top:1rem">📬 Recipients per draft</h4>
+      <p>Each of the four drafts has its own recipient list. <strong>Blue locked tags</strong> are fixed recipients set by your admin — you cannot remove them. <strong>White tags</strong> are extras you add yourself for this job only.</p>
+      <p>The <strong>⭐ Qatar Executive</strong> toggle adds a specific set of additional recipients to the Customer Update and Part Request drafts — use it when the operator is Qatar Executive.</p>
+      <p>Part Request recipients are also adjusted automatically based on your parts list: adding a Tool row adds the Tool Crib address; adding a Consumable row adds the Stores address.</p>
+
+      <h4 style="margin-top:1rem">📧 Customer Update</h4>
+      <p>This email introduces you to the customer and opens communication for the intervention. It includes:</p>
+      <ul>
+        <li>A personalised greeting using the customer contact name you entered.</li>
+        <li>A statement of the defect and your action plan — either typed manually in the Action plan field, or a generic line if left blank.</li>
+        <li>Your <strong>ETA on site</strong> — if filled in, it is included as a sentence. Leave it blank or write N/A to omit it. Write UNK for a generic "I will keep you informed" line.</li>
+        <li>A list of <strong>questions to include</strong> — tick only the ones relevant to this job: broker for import, aircraft hours and cycles, PO number, keys location, FBO access authorisation, airside access, local contact, troubleshooting already done, CAS messages, FHDB download, Techops reply, self-sourced parts certificates, hand carry approval, order before or after diagnosis.</li>
+        <li>Your <strong>own saved custom questions</strong> — add any recurring question you always ask (saved permanently to your profile, invisible to other engineers). Tick the ones to include per job.</li>
+        <li>A free-text field for any other one-off question, one per line.</li>
+        <li>Your email signature, built automatically from your profile (name, mobile number, Head-start contact).</li>
+      </ul>
+
+      <h4 style="margin-top:1rem">✈️ Travel Request</h4>
+      <p>This email asks OPS to book your flight to the aircraft location. Configure it with:</p>
+      <ul>
+        <li><strong>From / To / Date</strong> — your departure city (pre-filled from your profile home base), destination ICAO or city, and desired travel date.</li>
+        <li><strong>Preferred time of departure</strong> — Morning, Afternoon, Evening, Night, or Any time. Tap again to deselect.</li>
+        <li><strong>Cabin class</strong> — Economy and Business, Economy only, or Business only.</li>
+        <li><strong>Extra baggage</strong> — toggle on if you are carrying tools and need 2 checked bags.</li>
+        <li><strong>Frequent flyer numbers</strong> — add your airline loyalty numbers once (saved permanently to your profile). They appear in the email automatically whenever they are filled in. You can add or remove airlines at any time.</li>
+      </ul>
+      <p>Tick <strong>"Aircraft is at my home base"</strong> to skip this draft entirely — it will be marked as Skipped and not created in Gmail.</p>
+
+      <h4 style="margin-top:1rem">📦 Part Request</h4>
+      <p>This email requests parts, consumables, and/or tools from the Materials team. Configure it with:</p>
+      <ul>
+        <li><strong>Email prefix</strong> — choose between PART REQUEST, PARTS REQUEST, PART &amp; TOOL REQUEST, or PARTS &amp; TOOLS REQUEST. This sets the start of the email subject line.</li>
+        <li><strong>Request type</strong> — Order (place the order immediately) or Availability only (check stock and lead time before committing).</li>
+        <li><strong>Parts &amp; tools table</strong> — add one row per item. For each row, fill in the description, part number, serial number (or GUL number for tools), quantity, category (Part / Consumable / Tool), and an optional note. Consumable rows disable the serial number field automatically. Tool rows add a specific note field for the GUL reference.</li>
+        <li>For <strong>Consumables</strong>, a "small quantity — avoid DG" checkbox avoids dangerous goods classification for small shipments.</li>
+        <li><strong>Priority warehouse</strong> — optionally ask Materials to check a specific warehouse first (Savannah, Farnborough, Amsterdam, Singapore).</li>
+        <li><strong>Certificates, hand carry approval</strong> — tick to include the relevant sentences in the email.</li>
+        <li><strong>Shipping address</strong> — either "Will be provided shortly" (default) or enter the full FBO address manually.</li>
+        <li><strong>Customer's broker</strong> — paste broker contact details if the customer has provided one for import.</li>
+      </ul>
+
+      <h4 style="margin-top:1rem">🏢 FBO Coordination</h4>
+      <p>This email contacts the FBO at the aircraft location to introduce yourself and arrange ground support. Configure it with:</p>
+      <ul>
+        <li><strong>Equipment checklist</strong> — tick what you need the FBO to provide: GPU (115Vac), Oxygen, Nitrogen (High or Low pressure), Steps/Airstair, Hangar space, Lavatory service, High Power Bay. A free-text field lets you add anything else.</li>
+        <li><strong>Optional questions</strong> — tick to include: how many days they need to arrange it, a note that the intervention is pending authorisation, a request for their shipping address (for parts delivery), or a request to act as importer of record for imported parts. Add further custom questions in the free-text field.</li>
+      </ul>
+
+      <h4 style="margin-top:1rem">📨 Preview, edit &amp; generate</h4>
+      <p>At the bottom of the panel, the <strong>Drafts to generate</strong> section shows all four emails with their subject lines and recipient summaries. Tap any row to open an inline editable preview — you can manually adjust the subject and body before generating. Tap <strong>🔄 Reset</strong> to restore the auto-generated version if you want to start over.</p>
+      <p>Click <strong>Generate Gmail drafts</strong> to create all drafts in your Gmail Drafts folder in one click. You will be prompted to sign in with Google if not already connected. The Travel draft is skipped automatically if you ticked the home base option.</p>
+      <p>Your panel state (checkboxes, toggles, selections, text fields) is saved to your profile automatically and restored the next time you open Start Job, even from a different device. The saved state expires after 5 days.</p>
+    </div>	  
+
+    <div class="help-section">
       <h4>☁️ Cloud sync & archives</h4>
       <p>All data is saved to Firebase in real time, accessible from any device. Mark a project as RTS to move it to Archives — it stays accessible but separate from your active projects.</p>
     </div>
