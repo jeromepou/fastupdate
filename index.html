@@ -1354,6 +1354,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <li>A statement of the defect and your action plan — either typed manually in the Action plan field, or a generic line if left blank.</li>
         <li>Your <strong>ETA on site</strong> — if filled in, it is included as a sentence. Leave it blank or write N/A to omit it. Write UNK for a generic "I will keep you informed" line.</li>
         <li>A list of <strong>questions to include</strong> — tick only the ones relevant to this job: broker for import, aircraft hours and cycles, PO number, keys location, FBO access authorisation, airside access, local contact, troubleshooting already done, CAS messages, FHDB download, Techops reply, self-sourced parts certificates, hand carry approval, order before or after diagnosis.</li>
+        <li>For troubleshooting questions (CAS, FHDB, Techops, previous troubleshooting): if you tick the question AND then select specific work items in the sub-list that appears, the question is asked once per selected item — e.g. "Regarding item 2.1 (APU FAIL) — has any troubleshooting been carried out?". If no item is selected, the question is asked generically.</li>
         <li>Your <strong>own saved custom questions</strong> — add any recurring question you always ask (saved permanently to your profile, invisible to other engineers). Tick the ones to include per job.</li>
         <li>A free-text field for any other one-off question, one per line.</li>
         <li>Your email signature, built automatically from your profile (name, mobile number, Head-start contact).</li>
@@ -1394,6 +1395,18 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <p>At the bottom of the panel, the <strong>Drafts to generate</strong> section shows all four emails with their subject lines and recipient summaries. Tap any row to open an inline editable preview — you can manually adjust the subject and body before generating. Tap <strong>🔄 Reset</strong> to restore the auto-generated version if you want to start over.</p>
       <p>Click <strong>Generate Gmail drafts</strong> to create all drafts in your Gmail Drafts folder in one click. You will be prompted to sign in with Google if not already connected. The Travel draft is skipped automatically if you ticked the home base option.</p>
       <p>Your panel state (checkboxes, toggles, selections, text fields) is saved to your profile automatically and restored the next time you open Start Job, even from a different device. The saved state expires after 5 days.</p>
+
+      <h4 style="margin-top:1rem">🔧 Parts history — search past interventions</h4>
+      <p>Every time you click <strong>Generate Gmail drafts</strong>, the parts and tools you entered are automatically saved to a shared database, indexed by the squawk description, aircraft type, serial number, and Work Order number. This builds up a searchable history of parts used across all past interventions by all engineers on the team.</p>
+      <p>To use it, go to the <strong>Parts &amp; tools list</strong> section inside Start Job, then use the <strong>🔍 Search squawk history</strong> bar at the top of the table:</p>
+      <ul>
+        <li>Select one of your current work items from the dropdown — this is the squawk you want to find historical parts for.</li>
+        <li>Click <strong>🔍 Search</strong>. The system compares the keywords in your squawk description against all previously saved entries.</li>
+        <li>A popup opens showing the best matches. Each result displays: the squawk text, aircraft type, serial number, <strong>Work Order number (FAXXXXX)</strong>, who entered the data, how many times those parts were used, and the last date used.</li>
+        <li>Results are split into two groups: <strong>Same aircraft type</strong> (highest confidence — same model as the current job) and <strong>Other aircraft types</strong> (collapsed by default — expand only if no same-type result is found, and always verify P/N applicability).</li>
+        <li>Each result lists the parts, tools, and consumables that were used. Tick the ones you want to add and click <strong>✓ Add selected to parts list</strong> — they are inserted directly into the parts table.</li>
+      </ul>
+      <p><strong>Important:</strong> the history is a starting point only. Always cross-check any suggested part number against the current AMM, IPC, and applicable release documentation before ordering or installing.</p>
     </div>	  
 
     <div class="help-section">
@@ -4630,7 +4643,7 @@ function squawkShowSuggestionModal(results, curModel, searchedLabel) {
       window._sqSuggestItems.push(...allItems.map(p=>({...p,srcKey:r.key})));
       const info=document.createElement('div');
       info.style.cssText='margin-bottom:8px;padding:8px 10px;background:#fff;border:1px solid var(--g200);border-radius:var(--r)';
-      info.innerHTML=`<div style="font-size:11px;color:var(--g600);margin-bottom:5px">Match: <b>${r.score}</b> keyword(s) · used <b>${e.usageCount||1}</b>× · last ${d} · by ${e.addedBy||'?'}${e.acSN?' · SN: '+e.acSN:''}</div>${renderItems(e,'same-'+ri)}`;
+      info.innerHTML=`<div style="font-size:11px;color:var(--g600);margin-bottom:5px">Match: <b>${r.score}</b> keyword(s) · used <b>${e.usageCount||1}</b>× · last ${d} · by ${e.addedBy||'?'}${e.acWO?' · <span style="font-weight:700;color:var(--gd)">WO: '+e.acWO+'</span>':''}${e.acSN?' · SN: '+e.acSN:''}</div>${renderItems(e,'same-'+ri)}`;
       sameEl.appendChild(info);
     });
   } else {
@@ -4653,7 +4666,7 @@ function squawkShowSuggestionModal(results, curModel, searchedLabel) {
       window._sqOtherItems.push(...allItems.map(p=>({...p,srcKey:r.key})));
       const warn=document.createElement('div');
       warn.style.cssText='margin-bottom:8px;padding:8px 10px;background:#fff;border:1px solid var(--g200);border-radius:var(--r);opacity:.85';
-      warn.innerHTML=`<div style="font-size:11px;margin-bottom:4px"><span style="background:var(--al);color:var(--amb);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">⚠️ ${e.acModel||'Unknown type'}</span> <span style="color:var(--g600)">· used ${e.usageCount||1}× · last ${d}${e.acSN?' · SN: '+e.acSN:''}</span></div><div style="font-size:11px;color:var(--amb);margin-bottom:5px">⚠️ Different aircraft type — verify P/N applicability before use</div>${renderItems(e,'other-'+ri)}`;
+      warn.innerHTML=`<div style="font-size:11px;margin-bottom:4px"><span style="background:var(--al);color:var(--amb);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">⚠️ ${e.acModel||'Unknown type'}</span> <span style="color:var(--g600)">· used ${e.usageCount||1}× · last ${d}${e.acWO?' · <b>WO: '+e.acWO+'</b>':''}${e.acSN?' · SN: '+e.acSN:''}</span></div><div style="font-size:11px;color:var(--amb);margin-bottom:5px">⚠️ Different aircraft type — verify P/N applicability before use</div>${renderItems(e,'other-'+ri)}`;
       otherEl.appendChild(warn);
     });
   } else {
