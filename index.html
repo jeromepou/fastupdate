@@ -807,6 +807,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <label>Defect / job description</label>
         <input type="text" id="ko_defect" placeholder="UPS Battery Fail CAS message"/>
       </div>
+      <input type="hidden" id="ko_item_prefix" value="2"/>
       <div class="ko-divider"></div>
       <div class="ko-section-lbl">👤 Customer</div>
       <div class="ko-fg">
@@ -895,10 +896,30 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 
       <div class="ko-section-lbl">Troubleshooting</div>
       <div style="display:flex;flex-direction:column;gap:7px">
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_troubleshoot"/> Ask if the crew has already done troubleshooting / resets</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_cas"/> Ask for CAS messages / CMC active faults pictures</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_fhdb"/> Ask if the FHDB has been downloaded / shared</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_techops"/> Ask if they already have a reply from Techops</label>
+        <div style="border:1px solid var(--g200);border-radius:var(--r);padding:8px 10px;margin-bottom:4px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:0" onclick="koToggleSqQuestion('troubleshoot')">
+            <input type="checkbox" id="koq_troubleshoot" onclick="event.stopPropagation();koToggleSqQuestion('troubleshoot')"/> Ask if  any troubleshooting been carried out previously? Have the crew attempted any resets?
+          </label>
+          <div id="koq-sq-troubleshoot" style="display:none;margin-top:7px;margin-left:22px"></div>
+        </div>
+        <div style="border:1px solid var(--g200);border-radius:var(--r);padding:8px 10px;margin-bottom:4px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:0" onclick="koToggleSqQuestion('cas')">
+            <input type="checkbox" id="koq_cas" onclick="event.stopPropagation();koToggleSqQuestion('cas')"/> Ask for CAS messages / CMC active faults pictures
+          </label>
+          <div id="koq-sq-cas" style="display:none;margin-top:7px;margin-left:22px"></div>
+        </div>
+        <div style="border:1px solid var(--g200);border-radius:var(--r);padding:8px 10px;margin-bottom:4px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:0" onclick="koToggleSqQuestion('fhdb')">
+            <input type="checkbox" id="koq_fhdb" onclick="event.stopPropagation();koToggleSqQuestion('fhdb')"/> Ask if the FHDB has been downloaded / shared
+          </label>
+          <div id="koq-sq-fhdb" style="display:none;margin-top:7px;margin-left:22px"></div>
+        </div>
+        <div style="border:1px solid var(--g200);border-radius:var(--r);padding:8px 10px;margin-bottom:4px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:0" onclick="koToggleSqQuestion('techops')">
+            <input type="checkbox" id="koq_techops" onclick="event.stopPropagation();koToggleSqQuestion('techops')"/> Ask if they already have a reply from Techops
+          </label>
+          <div id="koq-sq-techops" style="display:none;margin-top:7px;margin-left:22px"></div>
+        </div>
       </div>
       <div class="ko-divider"></div>
       <div class="ko-section-lbl">Parts &amp; Logistics</div>
@@ -993,15 +1014,23 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <button class="btn" onclick="koAddPartRow()" style="font-size:12px;padding:4px 10px">+ Add row</button>
     </div>
     <div class="ko-card-body" style="padding-top:.75rem;overflow-x:auto">
+      <div style="background:var(--bl);border:1px solid #b8d0e8;border-radius:var(--r);padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--blue);flex:1">🔍 Search squawk history to find parts used for similar defects</span>
+        <select id="ko-sq-history-select" style="font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;min-width:200px">
+          <option value="">— select a squawk to search —</option>
+        </select>
+        <button class="btn" onclick="koSearchSquawkHistory()" style="font-size:12px;padding:5px 10px">🔍 Search</button>
+      </div>
       <table class="ko-parts-tbl">
         <thead>
           <tr>
-            <th style="min-width:150px">Description</th>
-            <th style="min-width:110px">P/N</th>
-            <th style="min-width:80px">S/N</th>
-            <th style="width:50px">Qty</th>
-            <th style="width:100px">Category</th>
-            <th style="min-width:130px">Note</th>
+            <th style="min-width:130px">Description</th>
+            <th style="min-width:100px">P/N</th>
+            <th style="min-width:70px">S/N</th>
+            <th style="width:45px">Qty</th>
+            <th style="width:90px">Category</th>
+            <th style="min-width:110px">Note</th>
+            <th style="min-width:120px">Squawk / item</th>
             <th style="width:28px"></th>
           </tr>
         </thead>
@@ -1161,6 +1190,14 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     </div>
 
     <div id="team-list" style="max-height:220px;overflow-y:auto;margin-bottom:12px;padding-right:4px"></div>
+
+    <div id="squawk-history-section" style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--g200)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="font-size:12px;font-weight:700;color:var(--gd)">🔧 Squawk parts history</div>
+        <button class="btn" onclick="renderSquawkHistory()" style="padding:3px 8px;font-size:11px;margin-left:auto">🔄 Refresh</button>
+      </div>
+      <div id="squawk-history-list" style="max-height:240px;overflow-y:auto"></div>
+    </div>
 
     <div id="login-log-section" style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--g200)">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
@@ -3270,6 +3307,38 @@ function koRenderCustomQuestions() {
     </div>`).join('') : '<p style="font-size:12px;color:var(--g400);margin-bottom:7px">No custom questions yet — add one below.</p>';
 }
 
+function koRenderSqQuestionList(qid) {
+  const wrap = document.getElementById('koq-sq-' + qid);
+  if (!wrap) return;
+  const items = koGetWorkItems();
+  if (!items.length) {
+    wrap.innerHTML = '<p style="font-size:11px;color:var(--g400)">No work items yet — go back to Step 3 to add them first.</p>';
+    return;
+  }
+  wrap.innerHTML = '<div style="font-size:11px;color:var(--g600);margin-bottom:5px">For which defect(s)?</div>' +
+    items.map(it => `
+      <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:5px 9px;margin-bottom:4px">
+        <input type="checkbox" class="koq-sq-item-cb" data-qid="${qid}" data-num="${it.num}" data-label="${it.label.replace(/"/g,'&quot;')}"/>
+        <span style="font-weight:700;color:var(--g600)">${it.num}</span> — ${it.label}
+      </label>`).join('');
+}
+
+G.koToggleSqQuestion = function(qid) {
+  const cb = document.getElementById('koq_' + qid);
+  const wrap = document.getElementById('koq-sq-' + qid);
+  if (!cb || !wrap) return;
+  wrap.style.display = cb.checked ? '' : 'none';
+  if (cb.checked) koRenderSqQuestionList(qid);
+};
+
+function koRefreshTroubleshootingSquawks() {
+  ['troubleshoot','cas','fhdb','techops'].forEach(qid => {
+    const cb = document.getElementById('koq_' + qid);
+    if (cb?.checked) koRenderSqQuestionList(qid);
+  });
+  koRefreshHistorySelect();
+}
+
 G.koAddCustomQuestion = async function() {
   const inp = document.getElementById('ko-new-custom-question');
   const val = (inp?.value || '').trim();
@@ -3295,7 +3364,7 @@ G.koRemoveCustomQuestion = async function(i) {
 
 async function koSaveState() {
   const textIds = [
-    'ko_model','ko_sn','ko_reg','ko_wo','ko_icao','ko_defect','ko_cust_name',
+    'ko_model','ko_sn','ko_reg','ko_wo','ko_icao','ko_defect','ko_cust_name','ko_item_prefix',
     'ko_eta','ko_travel_from','ko_travel_to','ko_travel_date',
     'ko_shipping_addr','ko_broker_contact','ko_action_plan',
     'koq_custom','kofbo_custom','kofbo_custom_questions'
@@ -3312,6 +3381,7 @@ async function koSaveState() {
   const state = {
     texts: Object.fromEntries(textIds.map(id => [id, document.getElementById(id)?.value || ''])),
     cbs:   Object.fromEntries(cbIds.map(id => [id, document.getElementById(id)?.checked || false])),
+    parts: koGetParts(),
     prefixSel:    KO.prefixSel,
     reqType:      KO.reqType,
     addrMode:     KO.addrMode,
@@ -3379,6 +3449,14 @@ async function koRestoreState() {
   if (state.addrMode) {
     G.koSetAddr(state.addrMode);
   }
+  // Restore parts table
+  if (state.parts?.length) {
+    document.getElementById('ko-parts-tbody').innerHTML = '';
+    KO.partRows = 0;
+    state.parts.forEach(p => {
+      G.koAddPartRow(p.pn||'', p.desc||'', p.sn||'', p.qty||'', p.cat||'Part', p.note||'', p.sqLabel||'');
+    });
+  }
 }
 
 // ══════════════════════════════════════
@@ -3431,6 +3509,8 @@ G.openKickoff = async function() {
   }
   koUpdatePreview();
   G.koApplyMobileState();
+  koRefreshHistorySelect();
+  G.koRefreshSquawkSelects();
   window.scrollTo({top:0, behavior:'smooth'});
 };
 
@@ -3612,15 +3692,40 @@ G.koSetAddr = function(mode) {
 // ══════════════════════════════════════
 //  PARTS TABLE
 // ══════════════════════════════════════
-G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='Part', note='') {
+function koGetWorkItems() {
+  const prefix = (document.getElementById('ko_item_prefix')?.value || '2').trim();
+  return Array.from(document.querySelectorAll('#items-container .item-row')).map((r, i) => ({
+    num: i + 1,
+    displayNum: prefix ? prefix + '.' + (i + 1) : String(i + 1),
+    label: r.querySelector('input')?.value || ''
+  })).filter(it => it.label.trim());
+}
+
+function koSquawkSelectOptions(selectedLabel='') {
+  const items = koGetWorkItems();
+  if (!items.length) return '<option value="">— no work items yet —</option>';
+  return '<option value="">— select squawk —</option>' +
+    items.map(it => `<option value="${it.displayNum}|${it.label.replace(/"/g,'&quot;')}" ${selectedLabel===it.label?'selected':''}>${it.displayNum} — ${it.label}</option>`).join('');
+}
+
+G.koRefreshSquawkSelects = window.koRefreshSquawkSelects = function() {
+  document.querySelectorAll('#ko-parts-tbody .ko-sq-sel').forEach(sel => {
+    const cur = sel.value;
+    sel.innerHTML = koSquawkSelectOptions();
+    if (cur) sel.value = cur;
+  });
+  koRefreshTroubleshootingSquawks();
+};
+
+G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='Part', note='', sqLabel='') {
   KO.partRows++;
   const tbody = document.getElementById('ko-parts-tbody');
   const tr = document.createElement('tr');
   tr.id = 'ko-part-' + KO.partRows;
   tr.innerHTML = `
     <td><input type="text" value="${desc.replace(/"/g,'&quot;')}" placeholder="Description"/></td>
-         <td><input type="text" value="${pn.replace(/"/g,'&quot;')}" placeholder="P/N"/></td>
-          <td><input type="text" value="${sn.replace(/"/g,'&quot;')}" placeholder="S/N off" class="ko-sn-field"/></td>
+    <td><input type="text" value="${pn.replace(/"/g,'&quot;')}" placeholder="P/N"/></td>
+    <td><input type="text" value="${sn.replace(/"/g,'&quot;')}" placeholder="S/N off" class="ko-sn-field"/></td>
     <td><input type="text" value="${qty}" placeholder="1"/></td>
     <td>
       <select onchange="koPartCatChange(this)">
@@ -3635,9 +3740,13 @@ G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='Part', note='') {
       </label>
       <input type="text" value="${note.replace(/"/g,'&quot;')}" placeholder="Note…"/>
     </td>
+    <td>
+      <select class="ko-sq-sel" style="font-size:11px;padding:2px 4px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;color:var(--g900);width:100%;min-width:110px">
+        ${koSquawkSelectOptions(sqLabel)}
+      </select>
+    </td>
     <td><button class="ko-parts-tbl rm-btn" onclick="document.getElementById('ko-part-${KO.partRows}').remove();koRenderRecips('parts');koUpdatePreview();">×</button></td>`;
   tbody.appendChild(tr);
-  // Apply initial category state (for pre-set categories like Tool or Consumable)
   const sel = tr.querySelector('select');
   if (sel) koPartCatChange(sel);
 };
@@ -3676,7 +3785,11 @@ function koGetParts() {
     const inputs = tr.querySelectorAll('input[type="text"]');
     const cat    = tr.querySelector('select')?.value || 'Part';
     const smallQty = cat === 'Consumable' && tr.querySelector('.ko-smallqty-cb')?.checked;
-    return { desc: inputs[0]?.value||'', pn: inputs[1]?.value||'', sn: inputs[2]?.value||'', qty: inputs[3]?.value||'', cat, note: inputs[4]?.value||'', smallQty };
+    const sqVal  = tr.querySelector('.ko-sq-sel')?.value || '';
+    const sqParts = sqVal.split('|');
+    const sqNum  = sqParts[0] || '';
+    const sqLabel= sqParts.slice(1).join('|') || '';
+    return { desc: inputs[0]?.value||'', pn: inputs[1]?.value||'', sn: inputs[2]?.value||'', qty: inputs[3]?.value||'', cat, note: inputs[4]?.value||'', smallQty, sqNum, sqLabel };
   }).filter(p => p.pn || p.desc);
 }
 
@@ -3848,10 +3961,30 @@ function koBuildCustomerBody() {
   if (q('koq_fbo_mail')) questions.push(`- Could you please send an authorisation email to the FBO at ${icao || '[ICAO]'} confirming our upcoming maintenance intervention?`);
   if (q('koq_airside'))  questions.push('- Could you please arrange airside access for me through the FBO?');
   if (q('koq_contact'))  questions.push('- Could you please provide the name and phone number of the crew member who will meet me at the aircraft?');
-  if (q('koq_troubleshoot')) questions.push('- Has the flight crew performed any troubleshooting or reset attempts so far?');
-  if (q('koq_cas'))      questions.push('- If possible, could you send pictures of the active CAS messages and CMC active faults?');
-  if (q('koq_fhdb'))     questions.push('- Has the FHDB been downloaded? If so, could you share it with us, or confirm if it has already been sent to Techops?');
-  if (q('koq_techops'))  questions.push('- Have you received a reply from Techops yet?');
+  function sqQuestionsFor(qid, genericText, perSqText) {
+    const cb = document.getElementById('koq_' + qid);
+    if (!cb?.checked) return;
+    const cbs = document.querySelectorAll(`.koq-sq-item-cb[data-qid="${qid}"]:checked`);
+    if (!cbs.length) {
+      questions.push(`- ${genericText}`);
+    } else {
+      cbs.forEach(c => {
+        questions.push(`- Regarding item ${c.dataset.num} (${c.dataset.label}) — ${perSqText}`);
+      });
+    }
+  }
+  sqQuestionsFor('troubleshoot',
+    'Has any troubleshooting been carried out previously on this defect? Have the crew attempted any resets?',
+    'has any troubleshooting been carried out previously? Have the crew attempted any resets?');
+  sqQuestionsFor('cas',
+    'If possible, could you send pictures of the active CAS messages and CMC active faults?',
+    'could you please send pictures of the active CAS messages and CMC active faults?');
+  sqQuestionsFor('fhdb',
+    'Has the FHDB been downloaded? If so, could you share it with us, or confirm if it has already been sent to Techops?',
+    'has the FHDB been downloaded? If so, could you share it with us, or confirm if it has already been sent to Techops?');
+  sqQuestionsFor('techops',
+    'Have you received a reply from Techops yet?',
+    'have you received a reply from Techops yet?');
   if (q('koq_self_parts'))        questions.push('- Could you confirm whether you have already sourced the parts required for this intervention? If so, please provide the corresponding release certificates (FAA 8130-3 / EASA Form 1) as soon as possible, along with the estimated delivery ETA.');
   if (q('koq_handcarry'))         questions.push('- Should hand carry be required to expedite parts delivery, do you approve this option? Please note that hand carry will incur additional costs compared to standard freight.');
   if (q('koq_order_before_tshoot')) questions.push('-Would you like us to proceed with ordering the required parts in parallel with troubleshooting, or would you prefer that we confirm the diagnosis first before placing any order? (Note: This will extend the intervention time as we will have to wait for the parts to arrive on-site).');
@@ -3865,9 +3998,29 @@ function koBuildCustomerBody() {
   const customRaw = document.getElementById('koq_custom')?.value || '';
   customRaw.split('\n').map(l => l.trim()).filter(Boolean).forEach(l => questions.push(`- ${l}`));
 
-  const questionsBlock = questions.length
-    ? `\nAdditionally, please provide the following as soon as possible:\n${questions.join('\n')}\n`
-    : '';
+  // Regrouper les questions par item (ex: "item 1 (label) — q1 / q2")
+  const perItem = {};
+  const generic = [];
+  questions.forEach(q => {
+    const m = q.match(/^- Regarding item (\d+) \(([^)]+)\) — (.+)$/);
+    if (m) {
+      const key = m[1] + '|' + m[2];
+      if (!perItem[key]) perItem[key] = [];
+      perItem[key].push(m[3]);
+    } else {
+      generic.push(q);
+    }
+  });
+  let questionsBlock = '';
+  if (questions.length) {
+    const grouped = [];
+    Object.entries(perItem).sort((a,b)=>parseInt(a[0])-parseInt(b[0])).forEach(([key, qs]) => {
+      const [num, label] = key.split('|');
+      grouped.push(`- Regarding item ${num} (${label}):\n${qs.map(q=>`   • ${q}`).join('\n')}`);
+    });
+    generic.forEach(q => grouped.push(q));
+    questionsBlock = `\nAdditionally, please provide the following as soon as possible:\n\n${grouped.join('\n\n')}\n`;
+  }
 
   // ETA logic: blank or N/A -> nothing. Otherwise -> state the ETA and that updates will follow.
   // If the field literally contains UNK, fall back to the generic "I will keep you informed" line.
@@ -3954,38 +4107,6 @@ function koBuildPartsBody() {
     ? `Could you please check availability and lead time ONLY for the following items before placing any order:\n`
     : `Please process the order for the following parts and tools as soon as possible:\n`;
 
-  // Group by category
-  const bycat = { Part:[], Consumable:[], Tool:[] };
-  parts.forEach(p => { (bycat[p.cat] = bycat[p.cat]||[]).push(p) });
-
-  let partBlock = '';
-  if (!parts.length) {
-    partBlock = '**Parts:**\n- \n\n**Consumables:**\n- \n\n**Tools:**\n- \n';
-  } else {
-    if (bycat.Part?.length) {
-      partBlock += '**Parts:**\n';
-      bycat.Part.forEach(p => {
-                partBlock += `- ${p.desc}${p.pn ? ' — '+p.pn : ''}${p.sn ? ', S/N: '+p.sn : ''}${p.qty ? ', Quantity: '+p.qty : ''}${p.note ? ' ('+p.note+')' : ''}\n`;
-      });
-      partBlock += '\n';
-    }
-    if (bycat.Consumable?.length) {
-      partBlock += '**Consumables:**\n';
-      bycat.Consumable.forEach(p => {
-                const dg = p.smallQty ? ' ⚠️ small quantity — to be shipped to avoid DG classification' : '';
-                partBlock += `- ${p.desc}${p.pn ? ' — '+p.pn : ''}${p.qty ? ', Quantity: '+p.qty : ''}${p.note ? ' ('+p.note+')' : ''}${dg}\n`;
-      });
-      partBlock += '\n';
-    }
-    if (bycat.Tool?.length) {
-      partBlock += '**Tools:**\n';
-      bycat.Tool.forEach(p => {
-                partBlock += `- ${p.desc}${p.pn ? ' — '+p.pn : ''}${p.note ? '\n  '+p.note : ''}\n`;
-      });
-      partBlock += '\n';
-    }
-  }
-
   const priorityWh = document.getElementById('ko_part_priority_wh')?.checked
     ? document.getElementById('ko_priority_warehouse')?.value : '';
   const wantCerts  = document.getElementById('ko_part_certs')?.checked;
@@ -3996,6 +4117,65 @@ function koBuildPartsBody() {
   if (wantCerts)  extraLines += `Please provide certificates if available.\n`;
   if (handCarryOk) extraLines += `The customer has approved hand carry for parts if required.\n`;
   if (extraLines) extraLines += '\n';
+
+  // Group by squawk, then by category
+  const bySq = {};
+  const noSq = { Part:[], Consumable:[], Tool:[] };
+  parts.forEach(p => {
+    if (p.sqLabel) {
+      const key = p.sqNum + '|' + p.sqLabel;
+      if (!bySq[key]) bySq[key] = { Part:[], Consumable:[], Tool:[], sqNum:p.sqNum, sqLabel:p.sqLabel };
+      (bySq[key][p.cat] = bySq[key][p.cat]||[]).push(p);
+    } else {
+      (noSq[p.cat] = noSq[p.cat]||[]).push(p);
+    }
+  });
+
+  function formatPart(p) {
+    if (p.cat==='Part')       return `- ${p.desc}${p.pn?' — P/N: '+p.pn:''}${p.sn?', S/N Off: '+p.sn:''}${p.qty?', Quantity: '+p.qty:''}${p.note?' ('+p.note+')':''}\n`;
+    if (p.cat==='Consumable') { const dg=p.smallQty?' ⚠️ small quantity — to be shipped to avoid DG classification':''; return `- ${p.desc}${p.pn?' — P/N: '+p.pn:''}${p.qty?', Quantity: '+p.qty:''}${p.note?' ('+p.note+')':''}${dg}\n`; }
+    if (p.cat==='Tool')       return `- ${p.desc}${p.pn?' — P/N: '+p.pn:''}${p.note?'\n  '+p.note:''}\n`;
+    return '';
+  }
+
+  function formatGroup(grp) {
+    let out = '';
+    const cats = ['Part','Consumable','Tool'];
+    const labels = { Part:'**PARTS:**', Consumable:'**CONSUMABLES:**', Tool:'**TOOLS:**' };
+    cats.forEach(cat => {
+      if (grp[cat]?.length) {
+        out += labels[cat] + '\n';
+        grp[cat].forEach(p => { out += formatPart(p); });
+        out += '\n';
+      }
+    });
+    return out;
+  }
+
+  let partBlock = '';
+  const sqKeys = Object.keys(bySq).sort((a,b)=>parseInt(a)-parseInt(b));
+
+  // Pour chaque catégorie : PARTS, TOOLS, CONSUMABLES
+  const catLabels = { Part:'**PARTS:**', Tool:'**TOOLS:**', Consumable:'**CONSUMABLES:**' };
+  ['Part','Tool','Consumable'].forEach(cat => {
+    const lines = [];
+    // Items avec squawk
+    sqKeys.forEach(key => {
+      const grp = bySq[key];
+      if (grp[cat]?.length) {
+        lines.push(`Sq ${grp.sqNum} — ${grp.sqLabel}`);
+        grp[cat].forEach(p => { lines.push(formatPart(p).trimEnd()); });
+      }
+    });
+    // Items sans squawk
+    if (noSq[cat]?.length) {
+      noSq[cat].forEach(p => { lines.push(formatPart(p).trimEnd()); });
+    }
+    if (lines.length) {
+      partBlock += catLabels[cat] + '\n' + lines.join('\n') + '\n\n';
+    }
+  });
+  if (!partBlock) partBlock = '**PARTS:**\n- \n\n**TOOLS:**\n- \n';
 
   return `Dear Team,
 
@@ -4108,6 +4288,21 @@ G.koGenerate = async function() {
   // Save airlines to profile
   await koSaveAirlines();
 
+  // Save squawk history — grouped by squawk
+  const acModel = document.getElementById('ko_model')?.value || '';
+  const acSN    = document.getElementById('ko_sn')?.value    || '';
+  const allParts = koGetParts();
+  const bySqSave = {};
+  allParts.forEach(p => {
+    if (p.sqLabel) {
+      if (!bySqSave[p.sqLabel]) bySqSave[p.sqLabel] = [];
+      bySqSave[p.sqLabel].push(p);
+    }
+  });
+  Object.entries(bySqSave).forEach(([label, pts]) => {
+    squawkHistorySave(label, pts, acModel, acSN);
+  });
+
   let created = 0, errors = [];
 
   for (const type of order) {
@@ -4194,9 +4389,8 @@ document.addEventListener('input', e => {
 
 // ── Parts table: refresh recipients + preview whenever a row's content or category changes
 // (Tool rows add the Tool Crib email, Consumable rows add the Stores email — see koGetAllRecips)
-document.getElementById('ko-parts-tbody')?.addEventListener('input', () => {
-  koRenderRecips('parts');
-  koUpdatePreview();
+document.getElementById('items-container')?.addEventListener('input', () => {
+  koRefreshTroubleshootingSquawks();
 });
 document.getElementById('ko-parts-tbody')?.addEventListener('change', () => {
   koRenderRecips('parts');
@@ -4317,7 +4511,245 @@ G.clearLoginLogs = async function() {
   await remove(ref(db, 'logs/logins'));
   renderLoginLogs();
 };
-	
+
+// ══════════════════════════════════════
+//  SQUAWK HISTORY
+// ══════════════════════════════════════
+const SQUAWK_STOP_WORDS = new Set([
+  'the','a','an','and','for','with','to','of','in','on','at','by','is','was',
+  'has','have','been','be','are','as','or','from','cas','message','reported',
+  'crew','fault','fail','failure','failed','warning','caution','advisory',
+  'light','lights','during','flight','ground','after','before','not','no',
+  'will','would','could','should','please','check','found','noted'
+]);
+
+function squawkTokenize(text) {
+  return (text||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>=3&&!SQUAWK_STOP_WORDS.has(w)&&!/^\d+$/.test(w));
+}
+
+function squawkScore(tokensA, tokensB) {
+  const setB = new Set(tokensB);
+  return tokensA.filter(t=>setB.has(t)).length;
+}
+
+G.koSearchSquawkHistory = async function() {
+  const sel = document.getElementById('ko-sq-history-select');
+  const val = sel?.value;
+  if (!val) { alert('Please select a squawk to search.'); return; }
+  const label = val.split('|').slice(1).join('|');
+  const tokens = squawkTokenize(label);
+  if (tokens.length < 2) { alert('Squawk description too short to search.'); return; }
+  try {
+    const snap = await get(ref(db, 'squawkHistory'));
+    if (!snap.exists()) { alert('No squawk history found yet.'); return; }
+    const curModel = (document.getElementById('ko_model')?.value||'').trim().toUpperCase();
+    const results = [];
+    Object.entries(snap.val()).forEach(([key, entry]) => {
+      const score = squawkScore(tokens, entry.keywords||[]);
+      if (score >= 2) results.push({key, entry, score});
+    });
+    results.sort((a,b)=>b.score-a.score||(b.entry.usageCount||0)-(a.entry.usageCount||0));
+    if (!results.length) { alert('No similar squawk found in history.'); return; }
+    squawkShowSuggestionModal(results, curModel, label);
+  } catch(e) { alert('Search error: '+e.message); }
+};
+
+function koRefreshHistorySelect() {
+  const sel = document.getElementById('ko-sq-history-select');
+  if (!sel) return;
+  const items = koGetWorkItems();
+  sel.innerHTML = '<option value="">— select a squawk to search —</option>' +
+    items.map(it=>`<option value="${it.displayNum}|${it.label.replace(/"/g,'&quot;')}">${it.displayNum} — ${it.label}</option>`).join('');
+}
+
+function squawkShowSuggestionModal(results, curModel, searchedLabel) {
+  let modal = document.getElementById('modal-squawk-suggest');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.className = 'modal-bg';
+    modal.id = 'modal-squawk-suggest';
+    modal.innerHTML = `
+      <div class="modal" style="max-width:620px">
+        <h3>🔧 Parts suggestion — from history</h3>
+        <div id="sq-suggest-warning" style="background:#fef3c7;border:1px solid #d97706;border-radius:var(--r);padding:9px 12px;margin-bottom:12px;font-size:12px;color:#92400e;display:flex;gap:8px">
+          <span style="flex-shrink:0">⚠️</span>
+          <span><b>For information only.</b> Always verify against the applicable AMM, IPC and release documentation before ordering or installing any part. This history is not a substitute for engineering documentation.</span>
+        </div>
+        <div id="sq-suggest-info" style="font-size:12px;color:var(--g600);margin-bottom:10px"></div>
+        <div id="sq-same-type-section"></div>
+        <div id="sq-other-type-header" style="display:none;cursor:pointer;padding:7px 10px;background:var(--g100);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:5px;font-size:12px;font-weight:700;color:var(--g600)" onclick="koToggleOtherTypes()">
+          ▶ Other aircraft types <span id="sq-other-count"></span>
+        </div>
+        <div id="sq-other-type-section" style="display:none"></div>
+        <div class="modal-btns">
+          <button class="btn" onclick="closeModal('modal-squawk-suggest')">Ignore</button>
+          <button class="btn primary" onclick="squawkConfirmAdd()">✓ Add selected to parts list</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});
+  }
+
+  document.getElementById('sq-suggest-info').innerHTML =
+    `Searched: <b>"${searchedLabel}"</b> — ${results.length} match(es) found`;
+
+  const colorCat={Part:'var(--gd)',Tool:'var(--blue)',Consumable:'var(--amb)'};
+  const bgCat={Part:'var(--gl)',Tool:'var(--bl)',Consumable:'var(--al)'};
+
+  function renderItems(entry, idPrefix) {
+    const allItems=[
+      ...(entry.parts||[]).map(p=>({...p,cat:'Part'})),
+      ...(entry.tools||[]).map(p=>({...p,cat:'Tool'})),
+      ...(entry.consumables||[]).map(p=>({...p,cat:'Consumable'}))
+    ].filter(p=>p.pn||p.desc);
+    return allItems.map((p,i)=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:4px">
+        <input type="checkbox" checked id="${idPrefix}-item-${i}" style="flex-shrink:0"/>
+        <span style="background:${bgCat[p.cat]};color:${colorCat[p.cat]};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0">${p.cat}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600">${p.desc||'—'}</div>
+          <div style="font-size:11px;color:var(--g600)">${[p.pn?'P/N: '+p.pn:'',p.sn?'S/N: '+p.sn:'',p.qty?'Qty: '+p.qty:''].filter(Boolean).join(' · ')}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  // Split same type vs other types
+  const sameType = results.filter(r=>(r.entry.acModel||'').toUpperCase()===curModel.toUpperCase()||!r.entry.acModel);
+  const otherType = results.filter(r=>r.entry.acModel&&(r.entry.acModel||'').toUpperCase()!==curModel.toUpperCase());
+
+  // Same type section
+  const sameEl = document.getElementById('sq-same-type-section');
+  if (sameType.length) {
+    window._sqSuggestItems = [];
+    sameEl.innerHTML = `<div style="font-size:11px;font-weight:700;color:var(--gd);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Same aircraft type${curModel?' — '+curModel:''}</div>`;
+    sameType.forEach((r,ri)=>{
+      const e=r.entry;
+      const d=new Date(e.lastUsed||0).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});
+      const allItems=[...(e.parts||[]).map(p=>({...p,cat:'Part'})),...(e.tools||[]).map(p=>({...p,cat:'Tool'})),...(e.consumables||[]).map(p=>({...p,cat:'Consumable'}))].filter(p=>p.pn||p.desc);
+      const startIdx=window._sqSuggestItems.length;
+      window._sqSuggestItems.push(...allItems.map(p=>({...p,srcKey:r.key})));
+      const info=document.createElement('div');
+      info.style.cssText='margin-bottom:8px;padding:8px 10px;background:#fff;border:1px solid var(--g200);border-radius:var(--r)';
+      info.innerHTML=`<div style="font-size:11px;color:var(--g600);margin-bottom:5px">Match: <b>${r.score}</b> keyword(s) · used <b>${e.usageCount||1}</b>× · last ${d} · by ${e.addedBy||'?'}${e.acSN?' · SN: '+e.acSN:''}</div>${renderItems(e,'same-'+ri)}`;
+      sameEl.appendChild(info);
+    });
+  } else {
+    sameEl.innerHTML = `<div style="font-size:12px;color:var(--g400);padding:8px 0">No history for ${curModel||'this type'} — check other types below.</div>`;
+    window._sqSuggestItems = [];
+  }
+
+  // Other type section
+  const otherHeader=document.getElementById('sq-other-type-header');
+  const otherEl=document.getElementById('sq-other-type-section');
+  document.getElementById('sq-other-count').textContent=`(${otherType.length} result${otherType.length>1?'s':''})`;
+  if (otherType.length) {
+    otherHeader.style.display='';
+    otherEl.innerHTML='';
+    window._sqOtherItems=[];
+    otherType.forEach((r,ri)=>{
+      const e=r.entry;
+      const d=new Date(e.lastUsed||0).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});
+      const allItems=[...(e.parts||[]).map(p=>({...p,cat:'Part'})),...(e.tools||[]).map(p=>({...p,cat:'Tool'})),...(e.consumables||[]).map(p=>({...p,cat:'Consumable'}))].filter(p=>p.pn||p.desc);
+      window._sqOtherItems.push(...allItems.map(p=>({...p,srcKey:r.key})));
+      const warn=document.createElement('div');
+      warn.style.cssText='margin-bottom:8px;padding:8px 10px;background:#fff;border:1px solid var(--g200);border-radius:var(--r);opacity:.85';
+      warn.innerHTML=`<div style="font-size:11px;margin-bottom:4px"><span style="background:var(--al);color:var(--amb);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">⚠️ ${e.acModel||'Unknown type'}</span> <span style="color:var(--g600)">· used ${e.usageCount||1}× · last ${d}${e.acSN?' · SN: '+e.acSN:''}</span></div><div style="font-size:11px;color:var(--amb);margin-bottom:5px">⚠️ Different aircraft type — verify P/N applicability before use</div>${renderItems(e,'other-'+ri)}`;
+      otherEl.appendChild(warn);
+    });
+  } else {
+    otherHeader.style.display='none';
+  }
+
+  G.openModal('modal-squawk-suggest');
+}
+
+G.koToggleOtherTypes = function() {
+  const sec=document.getElementById('sq-other-type-section');
+  const hdr=document.getElementById('sq-other-type-header');
+  const open=sec.style.display!=='none';
+  sec.style.display=open?'none':'';
+  hdr.textContent=(open?'▶':'▼')+' Other aircraft types ';
+  const cnt=document.createElement('span');
+  cnt.id='sq-other-count';
+  cnt.textContent=document.getElementById('sq-other-count')?.textContent||'';
+  hdr.appendChild(cnt);
+};
+
+G.squawkConfirmAdd = function() {
+  const allItems=[...(window._sqSuggestItems||[]),...(window._sqOtherItems||[])];
+  document.querySelectorAll('[id^="same-"][id$="-item-"],[id^="other-"][id$="-item-"]').forEach(cb=>{
+    const idx=parseInt(cb.id.split('-item-')[1]);
+    const isSame=cb.id.startsWith('same-');
+    const list=isSame?window._sqSuggestItems:window._sqOtherItems;
+    if(cb.checked&&list[idx]) {
+      const p=list[idx];
+      G.koAddPartRow(p.pn||'',p.desc||'',p.sn||'',p.qty||'',p.cat||'Part',p.note||'');
+    }
+  });
+  closeModal('modal-squawk-suggest');
+};
+
+async function squawkHistorySave(squawkLabel, parts, acModel, acSN) {
+  if (!squawkLabel||!parts.length) return;
+  const tokens=squawkTokenize(squawkLabel);
+  if (tokens.length<2) return;
+  const allParts=parts.filter(p=>p.cat==='Part');
+  const allTools=parts.filter(p=>p.cat==='Tool');
+  const allConsumables=parts.filter(p=>p.cat==='Consumable');
+  try {
+    const snap=await get(ref(db,'squawkHistory'));
+    let existingKey=null;
+    if (snap.exists()) {
+      let bestScore=0;
+      Object.entries(snap.val()).forEach(([key,entry])=>{
+        const score=squawkScore(tokens,entry.keywords||[]);
+        if (score>=3&&score>bestScore){bestScore=score;existingKey=key;}
+      });
+    }
+    const acWO = document.getElementById('ko_wo')?.value || '';
+    const entryData={keywords:tokens,squawkRaw:squawkLabel,parts:allParts,tools:allTools,consumables:allConsumables,lastUsed:Date.now(),addedBy:curProfile?.name||'Unknown',acModel:acModel||'',acSN:acSN||'',acWO:acWO};
+    if (existingKey) {
+      const existing=(await get(ref(db,'squawkHistory/'+existingKey))).val();
+      const mergeParts=(oldList,newList)=>{const merged=[...(oldList||[])];newList.forEach(p=>{if(!merged.find(x=>x.pn===p.pn&&x.pn))merged.push(p);});return merged;};
+      await update(ref(db,'squawkHistory/'+existingKey),{...entryData,parts:mergeParts(existing.parts,allParts),tools:mergeParts(existing.tools,allTools),consumables:mergeParts(existing.consumables,allConsumables),usageCount:(existing.usageCount||1)+1});
+    } else {
+      await set(ref(db,'squawkHistory/sq_'+Date.now()),{...entryData,usageCount:1});
+    }
+  } catch(e){console.warn('squawkHistorySave error:',e);}
+}
+
+async function renderSquawkHistory() {
+  const MY_UID='43oyona7f0SgVwWH6JZUp5rqIbI3';
+  const section=document.getElementById('squawk-history-section');
+  if (!section) return;
+  if (auth.currentUser?.uid!==MY_UID){section.style.display='none';return;}
+  section.style.display='';
+  const container=document.getElementById('squawk-history-list');
+  container.innerHTML='<p style="color:var(--g400);font-size:12px"><span class="spin" style="vertical-align:middle"></span> Loading…</p>';
+  try {
+    const snap=await get(ref(db,'squawkHistory'));
+    if (!snap.exists()){container.innerHTML='<p style="color:var(--g400);font-size:12px">No history yet.</p>';return;}
+    const entries=Object.entries(snap.val()).sort((a,b)=>(b[1].lastUsed||0)-(a[1].lastUsed||0));
+    container.innerHTML=entries.map(([key,e])=>{
+      const total=(e.parts?.length||0)+(e.tools?.length||0)+(e.consumables?.length||0);
+      const d=new Date(e.lastUsed||0).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});
+      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:5px;flex-wrap:wrap">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:700;color:var(--g900)">${e.squawkRaw||'—'} <span style="font-size:10px;font-weight:400;color:var(--blue)">${e.acModel||''} ${e.acSN?'/ '+e.acSN:''}</span></div>
+          <div style="font-size:11px;color:var(--g600)">${total} item(s) · used ${e.usageCount||1}× · last ${d} · by ${e.addedBy||'?'}</div>
+        </div>
+        <button class="btn danger" onclick="squawkHistoryDelete('${key}')" style="padding:4px 8px;font-size:11px">🗑</button>
+      </div>`;
+    }).join('');
+  } catch(e){container.innerHTML=`<p style="color:var(--red);font-size:12px">Error: ${e.message}</p>`;}
+}
+
+G.squawkHistoryDelete = async function(key) {
+  if (!confirm('Delete this squawk history entry?')) return;
+  await remove(ref(db,'squawkHistory/'+key));
+  renderSquawkHistory();
+};
+
 async function koRenderAdminRecips() {
   const container = document.getElementById('ko-admin-recips');
   if (!container) return;
@@ -4448,7 +4880,8 @@ G.openModal = function(id) {
   if (id === 'modal-manage-team') {
     koRenderAdminRecips();
     koRenderAdminQatar();
-	renderLoginLogs();
+	  renderLoginLogs();
+    renderSquawkHistory();
   }
 };
 
