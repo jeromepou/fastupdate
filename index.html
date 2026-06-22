@@ -1161,6 +1161,17 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     </div>
 
     <div id="team-list" style="max-height:220px;overflow-y:auto;margin-bottom:12px;padding-right:4px"></div>
+
+    <div id="login-log-section" style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--g200)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="font-size:12px;font-weight:700;color:#5b21b6">📊 Connection log</div>
+        <span id="login-count-badge" style="background:#ede9fe;border:1px solid #c4b5fd;color:#5b21b6;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px">— logins</span>
+        <button class="btn danger" onclick="clearLoginLogs()" style="padding:3px 8px;font-size:11px;margin-left:auto">🗑 Clear</button>
+      </div>
+      <div id="login-log-list" style="max-height:260px;overflow-y:auto;font-size:12px;display:flex;flex-direction:column;gap:5px">
+        <p style="color:var(--g400)">Loading…</p>
+      </div>
+    </div>
     <div style="padding-top:12px;border-top:1px solid var(--g200)">
       <div style="font-size:12px;font-weight:700;color:var(--g800);margin-bottom:8px">Add Team Member</div>
       <div class="grid g2">
@@ -1580,6 +1591,23 @@ G.adminEmailLogin = async function() {
   }
 };
 
+async function logLoginEvent(profile) {
+  try {
+    let location = '?';
+    try {
+      const r = await fetch('https://ipapi.co/json/');
+      const d = await r.json();
+      location = [d.city, d.country_name].filter(Boolean).join(', ');
+    } catch(e) {}
+    const entry = {
+      ts: Date.now(),
+      date: new Date().toISOString(),
+      location
+    };
+    await set(ref(db, 'logs/logins/' + Date.now() + '_' + Math.random().toString(36).slice(2,6)), entry);
+  } catch(e) {}
+}
+	
 async function showAdminPanel() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'none';
@@ -1608,6 +1636,7 @@ async function loginAs(profile) {
   document.getElementById('sync-badge').style.display = '';
   
   await loadDefaultRecipients(); // <-- Télécharge les derniers destinataires globaux
+  logLoginEvent(profile);
   
   renderProjList();
   renderStep6Me();
@@ -4250,6 +4279,45 @@ if (!window._koResizeListenerSet) {
 //  ADMIN — Manage kickoff fixed recipients
 //  Ajouter dans le modal-manage-team existant
 // ══════════════════════════════════════
+
+async function renderLoginLogs() {
+  const MY_UID = '43oyona7f0SgVwWH6JZUp5rqIbI3';
+  const currentUid = auth.currentUser?.uid;
+  const section = document.getElementById('login-log-section');
+  if (!section) return;
+  if (currentUid !== MY_UID) { section.style.display = 'none'; return; }
+  section.style.display = '';
+
+  const list = document.getElementById('login-log-list');
+  const badge = document.getElementById('login-count-badge');
+  try {
+    const snap = await get(ref(db, 'logs/logins'));
+    if (!snap.exists()) {
+      list.innerHTML = '<p style="color:var(--g400)">No logins yet.</p>';
+      if (badge) badge.textContent = '0 logins';
+      return;
+    }
+    const entries = Object.values(snap.val()).sort((a,b) => b.ts - a.ts);
+    if (badge) badge.textContent = entries.length + ' login' + (entries.length > 1 ? 's' : '');
+    list.innerHTML = entries.map(e => {
+      const d = new Date(e.ts);
+      const dateStr = d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) + ' ' + d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r)">
+        <span style="font-size:11px;color:var(--blue)">📍 ${e.location}</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--g400)">${dateStr}</span>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = `<p style="color:var(--red)">Error: ${e.message}</p>`;
+  }
+}
+
+G.clearLoginLogs = async function() {
+  if (!confirm('Delete all login logs?')) return;
+  await remove(ref(db, 'logs/logins'));
+  renderLoginLogs();
+};
+	
 async function koRenderAdminRecips() {
   const container = document.getElementById('ko-admin-recips');
   if (!container) return;
@@ -4380,6 +4448,7 @@ G.openModal = function(id) {
   if (id === 'modal-manage-team') {
     koRenderAdminRecips();
     koRenderAdminQatar();
+	renderLoginLogs();
   }
 };
 
