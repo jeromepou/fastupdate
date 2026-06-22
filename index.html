@@ -1557,10 +1557,6 @@ G.switchPickerTab = function(tab) {
   renderPickerGrid();
 };
 
-G.filterPicker = function() {
-  renderPickerGrid();
-};
-
 function renderPickerGrid() {
   const grid = document.getElementById('picker-grid');
   if (!grid) return;
@@ -4884,7 +4880,6 @@ G.koAdminQatarRemove = async function(type, i) {
 };
 
 // ── Patch showAdminPanel to also render kickoff recips
-const _origShowAdminPanel = window.showAdminPanel;
 // Since showAdminPanel is defined inside the module (not on G),
 // we hook via the openModal call for modal-manage-team:
 const _origOpenModal = G.openModal;
