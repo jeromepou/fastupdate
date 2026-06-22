@@ -3295,6 +3295,7 @@ async function koRestoreState() {
 G.openKickoff = async function() {
   document.getElementById('app-screen').style.display    = 'none';
   document.getElementById('kickoff-panel').style.display = 'block';
+  koSetupAccordion();	
   // Fill engineer header
   if (curProfile) {
     const initials = (curProfile.name||'').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
@@ -3326,6 +3327,7 @@ G.openKickoff = async function() {
   koRenderAllRecips();
   koInitToggles();
   await koRestoreState();
+  koApplyMobileState();
   // If Travel "To" is still empty after restore, fill it from ICAO
   const _icao = document.getElementById('ko_icao');
   const _travelTo = document.getElementById('ko_travel_to');
@@ -3336,7 +3338,7 @@ G.openKickoff = async function() {
     partPrioCb.onchange = () => { partPrioSel.style.display = partPrioCb.checked ? '' : 'none'; };
   }
   koUpdatePreview();
-  koSetupAccordion();
+  G.koApplyMobileState();
   window.scrollTo({top:0, behavior:'smooth'});
 };
 
@@ -4119,12 +4121,34 @@ if (koAirlineInp) koAirlineInp.addEventListener('keydown', e => { if (e.key === 
 // ══════════════════════════════════════
 //  MOBILE ACCORDION for Kickoff cards
 // ══════════════════════════════════════
+function koGetCards() {
+  return Array.from(document.querySelectorAll('#kickoff-panel .ko-card'));
+}
+
+G.koApplyMobileState = function() {
+  const cards = koGetCards();
+  const isMobile = window.innerWidth <= 600;
+  cards.forEach((card, i) => {
+    const body = card.querySelector('.ko-card-body');
+    const chev = card.querySelector('.ko-chev');
+    if (!body) return;
+    if (isMobile) {
+      body.style.display = i === 0 ? '' : 'none';
+      if (chev) chev.style.transform = i === 0 ? 'rotate(0deg)' : 'rotate(-90deg)';
+    } else {
+      body.style.display = '';
+      if (chev) chev.style.transform = 'rotate(0deg)';
+    }
+  });
+};
+
 function koSetupAccordion() {
-  const cards = Array.from(document.querySelectorAll('#kickoff-panel .ko-card'));
+  // Guard: ne setup les listeners qu'une seule fois par card
+  const cards = koGetCards();
   cards.forEach(card => {
     const head = card.querySelector('.ko-card-head');
-    if (!head) return;
-    // Add chevron if not already there
+    if (!head || head.dataset.koAcc === '1') return; // déjà initialisé
+    head.dataset.koAcc = '1';
     if (!head.querySelector('.ko-chev')) {
       const chev = document.createElement('span');
       chev.className = 'ko-chev';
@@ -4134,18 +4158,16 @@ function koSetupAccordion() {
     }
     head.style.cursor = 'pointer';
     head.addEventListener('click', () => {
-      if (window.innerWidth > 600) return; // desktop: always open
+      if (window.innerWidth > 600) return;
       const body = card.querySelector('.ko-card-body');
       if (!body) return;
       const isOpen = body.style.display !== 'none';
-      // Close all
-      cards.forEach(c => {
+      koGetCards().forEach(c => {
         const b = c.querySelector('.ko-card-body');
         const v = c.querySelector('.ko-chev');
         if (b) b.style.display = 'none';
         if (v) v.style.transform = 'rotate(-90deg)';
       });
-      // Open clicked if it was closed
       if (!isOpen) {
         body.style.display = '';
         const chev = head.querySelector('.ko-chev');
@@ -4153,25 +4175,12 @@ function koSetupAccordion() {
       }
     });
   });
+}
 
-  // On mobile, collapse all except Aircraft info on open
-  function applyMobileState() {
-    const isMobile = window.innerWidth <= 600;
-    cards.forEach((card, i) => {
-      const body = card.querySelector('.ko-card-body');
-      const chev = card.querySelector('.ko-chev');
-      if (!body) return;
-      if (isMobile) {
-        body.style.display = i === 0 ? '' : 'none'; // first card open
-        if (chev) chev.style.transform = i === 0 ? 'rotate(0deg)' : 'rotate(-90deg)';
-      } else {
-        body.style.display = '';
-        if (chev) chev.style.transform = 'rotate(0deg)';
-      }
-    });
-  }
-  applyMobileState();
-  window.addEventListener('resize', applyMobileState);
+// Resize listener unique (une seule fois)
+if (!window._koResizeListenerSet) {
+  window._koResizeListenerSet = true;
+  window.addEventListener('resize', () => G.koApplyMobileState());
 }
 
 // ══════════════════════════════════════
@@ -4331,12 +4340,7 @@ G.koShowBtn = function() {
   if (target) obs.observe(target, { attributes: true, attributeFilter: ['style'] });
 })();
 
-// Setup accordion when DOM ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', koSetupAccordion);
-} else {
-  koSetupAccordion();
-}
+// koSetupAccordion est appelé dans openKickoff() après display:block — rien à faire ici
   
 // Init: load picker
 showPicker();
