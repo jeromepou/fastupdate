@@ -611,15 +611,24 @@ async function startImport() {
     const faMap={};
 
     setProgress('load','<span class="spin"></span> Reading email subjects…',5);
-    for (let i=0;i<allIds.length;i++) {
+    // Paralléliser par chunks de 20 pour ne pas saturer l'API Gmail
+    const META_CHUNK = 20;
+    for (let i=0; i<allIds.length; i+=META_CHUNK) {
       if (stopFlag) break;
-      const meta=await gmailGetMeta(allIds[i]);
-      const match=FA_RE.exec(meta.subj);
-      if (!match) continue;
-      const fa='FA'+match[1];
-      if (!faMap[fa]) faMap[fa]={faNumber:fa,partEmailIds:[],partThreadIds:new Set(),date:meta.date,subject:meta.subj};
-      faMap[fa].partEmailIds.push(meta.id);
-      if (meta.threadId) faMap[fa].partThreadIds.add(meta.threadId);
+      const chunk = allIds.slice(i, i+META_CHUNK);
+      const metas = await Promise.allSettled(chunk.map(id => gmailGetMeta(id)));
+      metas.forEach(res => {
+        if (res.status !== 'fulfilled') return;
+        const meta = res.value;
+        const match = FA_RE.exec(meta.subj);
+        if (!match) return;
+        const fa = 'FA'+match[1];
+        if (!faMap[fa]) faMap[fa]={faNumber:fa,partEmailIds:[],partThreadIds:new Set(),date:meta.date,subject:meta.subj};
+        faMap[fa].partEmailIds.push(meta.id);
+        if (meta.threadId) faMap[fa].partThreadIds.add(meta.threadId);
+      });
+      const pct = 5 + Math.round(((i+META_CHUNK)/allIds.length)*30);
+      setProgress('load',`<span class="spin"></span> Reading subjects… ${Math.min(i+META_CHUNK,allIds.length)}/${allIds.length}`,Math.min(pct,35));
     }
 
     const faList=Object.keys(faMap);
