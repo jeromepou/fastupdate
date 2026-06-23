@@ -542,6 +542,45 @@ async function filterThreadMsgsByFilename(msgIds, keywords) {
   return matching;
 }
 
+// Returns all PDF attachments from a message as [{filename, data}]
+async function getAllPDFsFromMessage(messageId) {
+  await ensureToken();
+  const r = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`, {
+    headers: { Authorization: 'Bearer ' + gToken }
+  });
+  const d = await r.json();
+  if (!r.ok) return [];
+  return collectPDFsFromPayload(d.payload, messageId);
+}
+
+async function collectPDFsFromPayload(payload, msgId) {
+  if (!payload) return [];
+  const results = [];
+  const parts = payload.parts || [payload];
+  for (const p of parts) {
+    if (p.mimeType === 'application/pdf' || (p.filename && p.filename.toLowerCase().endsWith('.pdf'))) {
+      const filename = p.filename || 'attachment.pdf';
+      let data = null;
+      if (p.body?.attachmentId) {
+        await ensureToken();
+        const ar = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgId}/attachments/${p.body.attachmentId}`, {
+          headers: { Authorization: 'Bearer ' + gToken }
+        });
+        const ad = await ar.json();
+        data = ad.data ? ad.data.replace(/-/g,'+').replace(/_/g,'/') : null;
+      } else if (p.body?.data) {
+        data = p.body.data.replace(/-/g,'+').replace(/_/g,'/');
+      }
+      if (data) results.push({ filename, data });
+    }
+    if (p.parts) {
+      const sub = await collectPDFsFromPayload(p, msgId);
+      results.push(...sub);
+    }
+  }
+  return results;
+}
+
 async function startImport() {
   if (!fbUser) { alert('Sign in to Firebase first.'); return; }
   if (!gToken)  { alert('Connect Google first.'); return; }
@@ -662,89 +701,56 @@ async function startImport() {
         continue;
       }
 
-      // 2) Find RFS/WCR PDF in the same thread as the Part Request email
-      log(`  🔍 Searching RFS/WCR in the email thread…`);
+      // 2) Find RFS/WCR directly via targeted Gmail searches (fast & precise)
+      log(`  🔍 Searching Work Pack / Business Office Update for ${fa}…`);
       let squawks = [];
       try {
-        // Collect all message IDs from the same thread(s) as the part request emails
-        const threadIds = new Set();
-        for (const emailId of entry.partEmailIds) {
-          const meta = await gmailGetMeta(emailId);
-          if (meta.threadId) threadIds.add(meta.threadId);
-        }
+        // Priority 1: EURO FAST Work pack email (always contains the RFS PDF)
+        const workpackIds = await gmailSearch(`subject:"FAST Work pack" ${fa} has:attachment filename:pdf`, 5);
+        // Priority 2: BUSINESS OFFICE UPDATE email (contains WCR PDFs)
+        const bizofficeIds = await gmailSearch(`subject:"BUSINESS OFFICE UPDATE" ${fa} has:attachment filename:pdf`, 5);
 
-        // Get all messages in those threads
-        const threadMsgIds = [];
-        for (const threadId of threadIds) {
-          await ensureToken();
-          const r = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadId}?format=metadata`, {
-            headers: { Authorization: 'Bearer ' + gToken }
-          });
-          const d = await r.json();
-          if (r.ok && d.messages) d.messages.forEach(m => threadMsgIds.push(m.id));
-        }
-        log(`  📬 ${threadMsgIds.length} message(s) in thread — scanning for PDF attachments…`);
+        const candidateIds = [...new Set([...workpackIds, ...bizofficeIds])];
+        log(`  📬 ${candidateIds.length} targeted email(s) found (Work Pack + Biz Office).`);
 
-        // Scan every message in the thread for a PDF — prioritize RFS/WCR by filename
         let foundPdf = false;
-        // First pass: only PDFs whose filename contains RFS or WCR
-        const priorityMsgIds = await filterThreadMsgsByFilename(threadMsgIds, ['rfs','wcr']);
-        const orderedMsgIds = [...priorityMsgIds, ...threadMsgIds.filter(id => !priorityMsgIds.includes(id))];
-        for (const msgId of orderedMsgIds) {
-          const pdfB64 = await gmailGetAttachmentPDFBase64(msgId);
-          if (!pdfB64) continue;
-          log(`  📄 PDF found in thread — running OCR…`);
-          const rfsText = await ocrPDF(pdfB64);
-          const upper = rfsText.toUpperCase();
-          const mentionsFA = upper.includes(fa.toUpperCase());
-          const looksLikeRFS = upper.includes('REQUEST FOR SERVICE') || upper.includes('WORK CHANGE REQUEST') || upper.includes('RFS-') || upper.includes('WCR') || upper.includes('SQUAWK') || upper.includes('DISCREPANCY');
-          // Must mention the FA number AND look like an RFS/WCR — or strongly look like RFS
-          if (!mentionsFA || !looksLikeRFS) {
-            log(`  ↩️ PDF skipped (mentionsFA:${mentionsFA}, looksLikeRFS:${looksLikeRFS})`);
-            continue;
-          }
-          log(`  🤖 Extracting squawks from RFS/WCR…`);
-          const rfsData = await extractSquawkFromRFSText(rfsText, fa);
-          squawks = rfsData.squawks || [];
-          if (!acModel && rfsData.acModel) acModel = rfsData.acModel;
-          if (!acSN    && rfsData.acSN)    acSN    = rfsData.acSN;
-          if (!acWO    && rfsData.acWO)    acWO    = rfsData.acWO;
-          log(`  ✅ ${squawks.length} squawk(s): ${squawks.join(' | ')}`);
-          stats.rfs++;
-          updateStats();
-          foundPdf = true;
-          break;
-        }
+        for (const msgId of candidateIds) {
+          // Get all PDF attachments from this message, prioritize RFS/WCR by filename
+          const pdfs = await getAllPDFsFromMessage(msgId);
+          // Sort: RFS or WCR filename first
+          pdfs.sort((a, b) => {
+            const aRFS = /rfs|wcr/i.test(a.filename);
+            const bRFS = /rfs|wcr/i.test(b.filename);
+            return (bRFS ? 1 : 0) - (aRFS ? 1 : 0);
+          });
 
-        // Fallback: if no PDF found in thread, search by FA number across all mail
-        if (!foundPdf) {
-          log(`  ℹ️ No RFS PDF in thread — trying fallback search by FA number…`);
-          const fallbackIds = await gmailSearch(`${fa} has:attachment filename:pdf`, 15);
-          for (const msgId of fallbackIds) {
-            if (entry.partEmailIds.includes(msgId)) continue; // already checked
-            const pdfB64 = await gmailGetAttachmentPDFBase64(msgId);
-            if (!pdfB64) continue;
-            const rfsText = await ocrPDF(pdfB64);
+          for (const pdf of pdfs) {
+            log(`  📄 Scanning: ${pdf.filename}…`);
+            const rfsText = await ocrPDF(pdf.data);
             const upper = rfsText.toUpperCase();
-            if (!upper.includes(fa.toUpperCase())) continue;
-            // Exclude Work Order Details and closing documents
+            const mentionsFA = upper.includes(fa.toUpperCase());
             const looksLikeRFS = upper.includes('REQUEST FOR SERVICE') || upper.includes('WORK CHANGE REQUEST') || upper.includes('RFS-') || upper.includes('SQUAWK') || upper.includes('DISCREPANCY');
-            if (!looksLikeRFS) {
-              log(`  ↩️ Fallback PDF doesn't look like RFS/WCR — skipping.`);
+            if (!mentionsFA || !looksLikeRFS) {
+              log(`  ↩️ ${pdf.filename} skipped (FA:${mentionsFA}, RFS:${looksLikeRFS})`);
               continue;
             }
-            log(`  🤖 Fallback: extracting squawks…`);
+            log(`  🤖 Extracting squawks from ${pdf.filename}…`);
             const rfsData = await extractSquawkFromRFSText(rfsText, fa);
             squawks = rfsData.squawks || [];
             if (!acModel && rfsData.acModel) acModel = rfsData.acModel;
             if (!acSN    && rfsData.acSN)    acSN    = rfsData.acSN;
             if (!acWO    && rfsData.acWO)    acWO    = rfsData.acWO;
-            log(`  ✅ ${squawks.length} squawk(s) via fallback: ${squawks.join(' | ')}`);
+            log(`  ✅ ${squawks.length} squawk(s): ${squawks.join(' | ')}`);
             stats.rfs++;
             updateStats();
+            foundPdf = true;
             break;
           }
+          if (foundPdf) break;
         }
+
+        if (!foundPdf) log(`  ℹ️ No RFS/WCR found — parts will have no squawk assigned.`);
+
       } catch(e) {
         log(`  ⚠️ RFS search error: ${e.message}`);
       }
@@ -923,23 +929,6 @@ function renderReview() {
               })()}
             </tbody>
           </table>` : '<div style="font-size:12px;color:var(--g400)">No parts extracted</div>'}
-        </div>
-
-        <!-- Assign squawk -->
-        <div style="margin-top:10px">
-          <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">✏️ Assign to squawk before saving</div>
-          ${r.allSquawksFromRFS?.length > 1 ? `
-          <div style="margin-bottom:6px;font-size:11px;color:var(--amb)">⚠️ Select which squawk these parts belong to:</div>
-          <select onchange="importResults[${i}].squawkRaw=this.value;importResults[${i}].keywords=squawkTokenize(this.value);document.getElementById('sq-input-${i}').value=this.value"
-            style="width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--g200);border-radius:6px;background:#fff;cursor:pointer;margin-bottom:6px">
-            <option value="">— Select a squawk —</option>
-            ${r.allSquawksFromRFS.map(sq=>`<option value="${esc(sq)}" ${r.squawkRaw===sq?'selected':''}>${esc(sq)}</option>`).join('')}
-          </select>
-          <div style="font-size:10px;color:var(--g600);margin-bottom:4px">Or type a custom label:</div>
-          ` : ''}
-          <input type="text" value="${esc(r.squawkRaw)}" id="sq-input-${i}"
-            oninput="importResults[${i}].squawkRaw=this.value;importResults[${i}].keywords=squawkTokenize(this.value)"
-            style="width:100%;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:6px"/>
         </div>
       </div>
     </div>`;
