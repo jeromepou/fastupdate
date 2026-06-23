@@ -522,6 +522,26 @@ function squawkScore(tokA, tokB) {
 // ─────────────────────────────────────────
 //  MAIN IMPORT FLOW
 // ─────────────────────────────────────────
+async function filterThreadMsgsByFilename(msgIds, keywords) {
+  const matching = [];
+  for (const msgId of msgIds) {
+    try {
+      await ensureToken();
+      const r = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgId}?format=metadata`, {
+        headers: { Authorization: 'Bearer ' + gToken }
+      });
+      const d = await r.json();
+      if (!r.ok) continue;
+      const parts = d.payload?.parts || [];
+      const hasMatch = parts.some(p =>
+        p.filename && keywords.some(kw => p.filename.toLowerCase().includes(kw))
+      );
+      if (hasMatch) matching.push(msgId);
+    } catch(e) {}
+  }
+  return matching;
+}
+
 async function startImport() {
   if (!fbUser) { alert('Sign in to Firebase first.'); return; }
   if (!gToken)  { alert('Connect Google first.'); return; }
@@ -665,19 +685,22 @@ async function startImport() {
         }
         log(`  📬 ${threadMsgIds.length} message(s) in thread — scanning for PDF attachments…`);
 
-        // Scan every message in the thread for a PDF (RFS or WCR)
+        // Scan every message in the thread for a PDF — prioritize RFS/WCR by filename
         let foundPdf = false;
-        for (const msgId of threadMsgIds) {
+        // First pass: only PDFs whose filename contains RFS or WCR
+        const priorityMsgIds = await filterThreadMsgsByFilename(threadMsgIds, ['rfs','wcr']);
+        const orderedMsgIds = [...priorityMsgIds, ...threadMsgIds.filter(id => !priorityMsgIds.includes(id))];
+        for (const msgId of orderedMsgIds) {
           const pdfB64 = await gmailGetAttachmentPDFBase64(msgId);
           if (!pdfB64) continue;
           log(`  📄 PDF found in thread — running OCR…`);
           const rfsText = await ocrPDF(pdfB64);
-          // Check that this PDF mentions the FA number or looks like an RFS/WCR
           const upper = rfsText.toUpperCase();
           const mentionsFA = upper.includes(fa.toUpperCase());
-          const looksLikeRFS = upper.includes('REQUEST FOR SERVICE') || upper.includes('WORK CHANGE REQUEST') || upper.includes('RFS-') || upper.includes('WCR');
-          if (!mentionsFA && !looksLikeRFS) {
-            log(`  ↩️ PDF doesn't look like an RFS/WCR for ${fa} — skipping.`);
+          const looksLikeRFS = upper.includes('REQUEST FOR SERVICE') || upper.includes('WORK CHANGE REQUEST') || upper.includes('RFS-') || upper.includes('WCR') || upper.includes('SQUAWK') || upper.includes('DISCREPANCY');
+          // Must mention the FA number AND look like an RFS/WCR — or strongly look like RFS
+          if (!mentionsFA || !looksLikeRFS) {
+            log(`  ↩️ PDF skipped (mentionsFA:${mentionsFA}, looksLikeRFS:${looksLikeRFS})`);
             continue;
           }
           log(`  🤖 Extracting squawks from RFS/WCR…`);
@@ -704,6 +727,12 @@ async function startImport() {
             const rfsText = await ocrPDF(pdfB64);
             const upper = rfsText.toUpperCase();
             if (!upper.includes(fa.toUpperCase())) continue;
+            // Exclude Work Order Details and closing documents
+            const looksLikeRFS = upper.includes('REQUEST FOR SERVICE') || upper.includes('WORK CHANGE REQUEST') || upper.includes('RFS-') || upper.includes('SQUAWK') || upper.includes('DISCREPANCY');
+            if (!looksLikeRFS) {
+              log(`  ↩️ Fallback PDF doesn't look like RFS/WCR — skipping.`);
+              continue;
+            }
             log(`  🤖 Fallback: extracting squawks…`);
             const rfsData = await extractSquawkFromRFSText(rfsText, fa);
             squawks = rfsData.squawks || [];
