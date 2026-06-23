@@ -642,27 +642,45 @@ async function startImport() {
         continue;
       }
 
-      // 2) Search for RFS email containing this FA number + PDF attachment
-      log(`  🔍 Searching RFS for ${fa}…`);
+      // 2) Find RFS/WCR PDF in the same thread as the Part Request email
+      log(`  🔍 Searching RFS/WCR in the email thread…`);
       let squawks = [];
       try {
-        const rfsIds = await gmailSearch(`subject:${fa} has:attachment filename:pdf`, 10);
-        // also try body search
-        const rfsIds2 = await gmailSearch(`${fa} RFS has:attachment filename:pdf`, 10);
-        const allRfsIds = [...new Set([...rfsIds, ...rfsIds2])];
-        log(`  📎 ${allRfsIds.length} potential RFS email(s) found.`);
+        // Collect all message IDs from the same thread(s) as the part request emails
+        const threadIds = new Set();
+        for (const emailId of entry.partEmailIds) {
+          const meta = await gmailGetMeta(emailId);
+          if (meta.threadId) threadIds.add(meta.threadId);
+        }
 
-        for (const rfsId of allRfsIds) {
-          const pdfB64 = await gmailGetAttachmentPDFBase64(rfsId);
+        // Get all messages in those threads
+        const threadMsgIds = [];
+        for (const threadId of threadIds) {
+          await ensureToken();
+          const r = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadId}?format=metadata`, {
+            headers: { Authorization: 'Bearer ' + gToken }
+          });
+          const d = await r.json();
+          if (r.ok && d.messages) d.messages.forEach(m => threadMsgIds.push(m.id));
+        }
+        log(`  📬 ${threadMsgIds.length} message(s) in thread — scanning for PDF attachments…`);
+
+        // Scan every message in the thread for a PDF (RFS or WCR)
+        let foundPdf = false;
+        for (const msgId of threadMsgIds) {
+          const pdfB64 = await gmailGetAttachmentPDFBase64(msgId);
           if (!pdfB64) continue;
-          log(`  📄 PDF found — running OCR…`);
+          log(`  📄 PDF found in thread — running OCR…`);
           const rfsText = await ocrPDF(pdfB64);
-          // Check that this PDF actually mentions this FA
-          if (!rfsText.toUpperCase().includes(fa.toUpperCase())) {
-            log(`  ↩️ PDF doesn't mention ${fa} — skipping.`);
+          // Check that this PDF mentions the FA number or looks like an RFS/WCR
+          const upper = rfsText.toUpperCase();
+          const mentionsFA = upper.includes(fa.toUpperCase());
+          const looksLikeRFS = upper.includes('REQUEST FOR SERVICE') || upper.includes('WORK CHANGE REQUEST') || upper.includes('RFS-') || upper.includes('WCR');
+          if (!mentionsFA && !looksLikeRFS) {
+            log(`  ↩️ PDF doesn't look like an RFS/WCR for ${fa} — skipping.`);
             continue;
           }
-          log(`  🤖 Extracting squawks from RFS…`);
+          log(`  🤖 Extracting squawks from RFS/WCR…`);
           const rfsData = await extractSquawkFromRFSText(rfsText, fa);
           squawks = rfsData.squawks || [];
           if (!acModel && rfsData.acModel) acModel = rfsData.acModel;
@@ -671,7 +689,32 @@ async function startImport() {
           log(`  ✅ ${squawks.length} squawk(s): ${squawks.join(' | ')}`);
           stats.rfs++;
           updateStats();
-          break; // use first valid RFS
+          foundPdf = true;
+          break;
+        }
+
+        // Fallback: if no PDF found in thread, search by FA number across all mail
+        if (!foundPdf) {
+          log(`  ℹ️ No RFS PDF in thread — trying fallback search by FA number…`);
+          const fallbackIds = await gmailSearch(`${fa} has:attachment filename:pdf`, 15);
+          for (const msgId of fallbackIds) {
+            if (entry.partEmailIds.includes(msgId)) continue; // already checked
+            const pdfB64 = await gmailGetAttachmentPDFBase64(msgId);
+            if (!pdfB64) continue;
+            const rfsText = await ocrPDF(pdfB64);
+            const upper = rfsText.toUpperCase();
+            if (!upper.includes(fa.toUpperCase())) continue;
+            log(`  🤖 Fallback: extracting squawks…`);
+            const rfsData = await extractSquawkFromRFSText(rfsText, fa);
+            squawks = rfsData.squawks || [];
+            if (!acModel && rfsData.acModel) acModel = rfsData.acModel;
+            if (!acSN    && rfsData.acSN)    acSN    = rfsData.acSN;
+            if (!acWO    && rfsData.acWO)    acWO    = rfsData.acWO;
+            log(`  ✅ ${squawks.length} squawk(s) via fallback: ${squawks.join(' | ')}`);
+            stats.rfs++;
+            updateStats();
+            break;
+          }
         }
       } catch(e) {
         log(`  ⚠️ RFS search error: ${e.message}`);
@@ -681,31 +724,39 @@ async function startImport() {
         log(`  ℹ️ No RFS/squawk found — will store parts without squawk label.`);
       }
 
-      // 3) Build result entries (one per squawk, or one generic if no squawk)
+      // 3) Build ONE result entry — user will assign parts to squawks manually in Review
       const allParts       = (parsedParts.parts||[]).filter(p=>p.cat==='Part'||!p.cat);
       const allTools       = (parsedParts.parts||[]).filter(p=>p.cat==='Tool');
       const allConsumables = (parsedParts.parts||[]).filter(p=>p.cat==='Consumable');
 
-      const squawkList = squawks.length ? squawks : [`FA${fa.replace('FA','')} PARTS REQUEST`];
-      const allSquawksFromRFS = [...squawkList]; // full list from RFS for context
-      squawkList.forEach(sq => {
-        importResults.push({
-          faNumber: fa,
-          squawkRaw: sq,
-          allSquawksFromRFS,          // all squawks found in RFS
-          emailSubject: entry.subject || '',
-          emailDate:    entry.date    || '',
-          keywords: squawkTokenize(sq),
-          acModel, acSN, acWO,
-          parts:       allParts.map(p=>({pn:p.pn_on||p.pn_off||'',sn:p.sn_on||p.sn_off||'',name:p.nomenclature||'',cat:'Part'})),
-          tools:       allTools.map(p=>({pn:p.pn_on||p.pn_off||'',sn:p.sn_on||p.sn_off||'',name:p.nomenclature||'',cat:'Tool'})),
-          consumables: allConsumables.map(p=>({pn:p.pn_on||p.pn_off||'',sn:'',name:p.nomenclature||'',cat:'Consumable'})),
-          addedBy: 'History Import',
-          lastUsed: Date.now(),
-          selected: true
-        });
+      const allSquawksFromRFS = squawks.length ? [...squawks] : [];
+      // Default squawk label: first squawk if only one, otherwise blank so user must choose
+      const defaultSquawk = squawks.length === 1 ? squawks[0] : '';
+
+      // One entry per PART so user can assign each to a different squawk
+      const allExtractedParts = [
+        ...allParts.map(p=>({pn:p.pn_on||p.pn_off||'',sn:p.sn_on||p.sn_off||'',name:p.nomenclature||'',cat:'Part'})),
+        ...allTools.map(p=>({pn:p.pn_on||p.pn_off||'',sn:p.sn_on||p.sn_off||'',name:p.nomenclature||'',cat:'Tool'})),
+        ...allConsumables.map(p=>({pn:p.pn_on||p.pn_off||'',sn:'',name:p.nomenclature||'',cat:'Consumable'}))
+      ];
+
+      importResults.push({
+        faNumber: fa,
+        squawkRaw: defaultSquawk,
+        allSquawksFromRFS,
+        emailSubject: entry.subject || '',
+        emailDate:    entry.date    || '',
+        keywords: defaultSquawk ? squawkTokenize(defaultSquawk) : [],
+        acModel, acSN, acWO,
+        // Each part has its own squawkAssignment field (set by user in Review)
+        parts:       allParts.map(p=>({pn:p.pn_on||p.pn_off||'',sn:p.sn_on||p.sn_off||'',name:p.nomenclature||'',cat:'Part',    squawk: defaultSquawk})),
+        tools:       allTools.map(p=>({pn:p.pn_on||p.pn_off||'',sn:p.sn_on||p.sn_off||'',name:p.nomenclature||'',cat:'Tool',    squawk: defaultSquawk})),
+        consumables: allConsumables.map(p=>({pn:p.pn_on||p.pn_off||'',sn:'',name:p.nomenclature||'',cat:'Consumable', squawk: defaultSquawk})),
+        addedBy: 'History Import',
+        lastUsed: Date.now(),
+        selected: true
       });
-      log(`  💾 Ready to import: ${squawkList.length} entry(ies) queued.`);
+      log(`  💾 Ready: 1 entry — ${allExtractedParts.length} part(s) — ${squawks.length} squawk(s) to assign manually.`);
     }
 
     setProgress('done', `✅ Scan complete — ${importResults.length} entry(ies) ready for review.`, 100);
@@ -804,17 +855,44 @@ function renderReview() {
           ${allSquawksHtml}
         </div>` : ''}
 
-        <!-- Parts table -->
+        <!-- Parts table with per-part squawk assignment -->
         <div>
-          <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">📦 Parts / Tools / Consumables (${allParts.length})</div>
+          <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">📦 Assign each part to a squawk</div>
           ${allParts.length ? `<table style="width:100%;border-collapse:collapse;background:var(--g50);border-radius:6px;overflow:hidden">
             <thead><tr style="background:var(--g200)">
               <th style="padding:4px 8px;font-size:10px;text-align:left">Cat</th>
               <th style="padding:4px 8px;font-size:10px;text-align:left">Nomenclature</th>
               <th style="padding:4px 8px;font-size:10px;text-align:left">PN</th>
               <th style="padding:4px 8px;font-size:10px;text-align:left">SN</th>
+              <th style="padding:4px 8px;font-size:10px;text-align:left">Squawk</th>
             </tr></thead>
-            <tbody>${partsRows}</tbody>
+            <tbody>
+              ${(() => {
+                let pi = 0, ti = 0, ci = 0;
+                return allParts.map((p) => {
+                  const catArr = p.cat === 'Part' ? 'parts' : p.cat === 'Tool' ? 'tools' : 'consumables';
+                  const subIdx = p.cat === 'Part' ? pi++ : p.cat === 'Tool' ? ti++ : ci++;
+                  const sqOpts = r.allSquawksFromRFS?.length
+                    ? r.allSquawksFromRFS.map(sq => `<option value="${esc(sq)}" ${(p.squawk||r.squawkRaw)===sq?'selected':''}>${esc(sq)}</option>`).join('')
+                    : `<option value="${esc(r.squawkRaw||'')}">${esc(r.squawkRaw||'(no squawk)')}</option>`;
+                  return `<tr>
+                    <td style="padding:4px 8px;font-size:11px">${esc(p.cat)}</td>
+                    <td style="padding:4px 8px;font-size:11px;font-weight:600">${esc(p.name)}</td>
+                    <td style="padding:4px 8px;font-size:11px;font-family:monospace">${esc(p.pn)||'—'}</td>
+                    <td style="padding:4px 8px;font-size:11px;font-family:monospace">${esc(p.sn)||'—'}</td>
+                    <td style="padding:4px 8px">
+                      ${r.allSquawksFromRFS?.length > 1 ? `
+                        <select style="font-size:11px;padding:3px 6px;border:1px solid var(--g200);border-radius:4px;background:#fff;width:100%;min-width:160px"
+                          onchange="importResults[${i}].${catArr}[${subIdx}].squawk=this.value">
+                          <option value="">— choose —</option>
+                          ${sqOpts}
+                        </select>
+                      ` : `<span style="font-size:11px;color:var(--g600)">${esc(r.allSquawksFromRFS?.[0] || '(no squawk)')}</span>`}
+                    </td>
+                  </tr>`;
+                }).join('');
+              })()}
+            </tbody>
           </table>` : '<div style="font-size:12px;color:var(--g400)">No parts extracted</div>'}
         </div>
 
@@ -878,50 +956,63 @@ async function saveToFirebase() {
 
     let savedCount = 0;
     for (const entry of toSave) {
-      const tokens = entry.keywords;
-      // Check for existing match
-      let existingKey = null;
-      let bestScore = 0;
-      Object.entries(existing).forEach(([key,e]) => {
-        const score = squawkScore(tokens, e.keywords||[]);
-        if (score >= 3 && score > bestScore && e.faNumber === entry.faNumber) {
-          bestScore = score; existingKey = key;
-        }
+
+      // Group parts by their assigned squawk
+      const allP = [...(entry.parts||[]), ...(entry.tools||[]), ...(entry.consumables||[])];
+      const bySq = {};
+      allP.forEach(p => {
+        const sq = p.squawk || entry.squawkRaw || `${entry.faNumber} PARTS REQUEST`;
+        if (!bySq[sq]) bySq[sq] = { parts:[], tools:[], consumables:[] };
+        if (p.cat==='Part')        bySq[sq].parts.push(p);
+        else if (p.cat==='Tool')   bySq[sq].tools.push(p);
+        else                       bySq[sq].consumables.push(p);
       });
 
-      const entryData = {
-        faNumber:   entry.faNumber,
-        keywords:   entry.keywords,
-        squawkRaw:  entry.squawkRaw,
-        parts:      entry.parts,
-        tools:      entry.tools,
-        consumables:entry.consumables,
-        lastUsed:   entry.lastUsed || Date.now(),
-        addedBy:    entry.addedBy,
-        acModel:    entry.acModel || '',
-        acSN:       entry.acSN    || '',
-        acWO:       entry.acWO    || '',
-        usageCount: 1,
-        importedFromHistory: true
-      };
+      // Save one Firebase entry per squawk
+      for (const [sq, grp] of Object.entries(bySq)) {
+        const sqTokens = squawkTokenize(sq);
+        let existingKey = null, bestScore = 0;
+        Object.entries(existing).forEach(([key,e]) => {
+          const score = squawkScore(sqTokens, e.keywords||[]);
+          if (score >= 3 && score > bestScore && e.faNumber === entry.faNumber) {
+            bestScore = score; existingKey = key;
+          }
+        });
+
+        const entryData = {
+          faNumber:            entry.faNumber,
+          keywords:            sqTokens,
+          squawkRaw:           sq,
+          parts:               grp.parts,
+          tools:               grp.tools,
+          consumables:         grp.consumables,
+          lastUsed:            entry.lastUsed || Date.now(),
+          addedBy:             entry.addedBy,
+          acModel:             entry.acModel || '',
+          acSN:                entry.acSN    || '',
+          acWO:                entry.acWO    || '',
+          usageCount:          1,
+          importedFromHistory: true
+        };
 
       if (existingKey) {
-        const ex = existing[existingKey];
-        await update(ref(db, 'squawkHistory/' + existingKey), {
-          ...entryData,
-          parts:       mergeParts(ex.parts, entry.parts),
-          tools:       mergeParts(ex.tools, entry.tools),
-          consumables: mergeParts(ex.consumables, entry.consumables),
-          usageCount:  (ex.usageCount||1) + 1
-        });
-      } else {
-        const newKey = 'sq_import_' + entry.faNumber + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
-        await set(ref(db, 'squawkHistory/' + newKey), entryData);
-        existing[newKey] = entryData; // keep local copy up to date for next iterations
-      }
-      savedCount++;
-      stats.saved++;
-      updateStats();
+          const ex = existing[existingKey];
+          await update(ref(db, 'squawkHistory/' + existingKey), {
+            ...entryData,
+            parts:       mergeParts(ex.parts, grp.parts),
+            tools:       mergeParts(ex.tools, grp.tools),
+            consumables: mergeParts(ex.consumables, grp.consumables),
+            usageCount:  (ex.usageCount||1) + 1
+          });
+        } else {
+          const newKey = 'sq_import_' + entry.faNumber + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+          await set(ref(db, 'squawkHistory/' + newKey), entryData);
+          existing[newKey] = entryData;
+        }
+        savedCount++;
+        stats.saved++;
+        updateStats();
+      } // end for bySq
     }
 
     saveStatus.className = 'status-bar s-done';
