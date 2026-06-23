@@ -219,6 +219,7 @@ let stats = {scanned:0, fa:0, rfs:0, saved:0, skip:0};
 let queryItems = [
   { label: 'Part Request',             q: 'subject:"Part Request" FA',             checked: true },
   { label: 'Parts Request',            q: 'subject:"Parts Request" FA',            checked: true },
+  { label: 'Parts & Tools Req.',       q: 'subject:"PARTS & TOOLS REQ" FA',        checked: true },
   { label: 'Part & Tool Request',      q: 'subject:"Part & Tool Request" FA',      checked: true },
   { label: 'Parts & Tools Request',    q: 'subject:"Parts & Tools Request" FA',    checked: true },
   { label: 'Part and Tool Request',    q: 'subject:"Part and Tool Request" FA',    checked: false },
@@ -679,31 +680,38 @@ async function startImport() {
         log(`  ℹ️ No RFS/squawk found — will store parts without squawk label.`);
       }
 
-      // 3) Build result entries (one per squawk, or one generic if no squawk)
+      // 3) Build result entries
       const allParts       = (parsedParts.parts||[]).filter(p=>p.cat==='Part'||!p.cat);
       const allTools       = (parsedParts.parts||[]).filter(p=>p.cat==='Tool');
       const allConsumables = (parsedParts.parts||[]).filter(p=>p.cat==='Consumable');
 
-      const squawkList = squawks.length ? squawks : [`FA${fa.replace('FA','')} PARTS REQUEST`];
-      const allSquawksFromRFS = [...squawkList]; // full list from RFS for context
-      squawkList.forEach(sq => {
-        importResults.push({
-          faNumber: fa,
-          squawkRaw: sq,
-          allSquawksFromRFS,          // all squawks found in RFS
-          emailSubject: entry.subject || '',
-          emailDate:    entry.date    || '',
-          keywords: squawkTokenize(sq),
-          acModel, acSN, acWO,
-          parts:       allParts.map(p=>({pn:p.pn_on||p.pn_off||'',sn:p.sn_on||p.sn_off||'',name:p.nomenclature||'',cat:'Part'})),
-          tools:       allTools.map(p=>({pn:p.pn_on||p.pn_off||'',sn:p.sn_on||p.sn_off||'',name:p.nomenclature||'',cat:'Tool'})),
-          consumables: allConsumables.map(p=>({pn:p.pn_on||p.pn_off||'',sn:'',name:p.nomenclature||'',cat:'Consumable'})),
-          addedBy: 'History Import',
-          lastUsed: Date.now(),
-          selected: true
-        });
+      const allSquawksFromRFS = squawks.length ? [...squawks] : [];
+
+      // If multiple squawks: ONE entry with ambiguous label — user decides in app
+      // If single squawk: direct 1:1 link
+      // If no squawk: generic FA entry
+      const squawkLabel = squawks.length === 1
+        ? squawks[0]
+        : squawks.length > 1
+          ? `${fa} — [MULTIPLE SQUAWKS — select correct one]`
+          : `${fa} PARTS REQUEST`;
+
+      importResults.push({
+        faNumber: fa,
+        squawkRaw: squawkLabel,
+        allSquawksFromRFS,
+        emailSubject: entry.subject || '',
+        emailDate:    entry.date    || '',
+        keywords: squawkTokenize(squawkLabel),
+        acModel, acSN, acWO,
+        parts:       allParts.map(p=>({pn:p.pn_on||p.pn_off||'',sn:p.sn_on||p.sn_off||'',name:p.nomenclature||'',cat:'Part'})),
+        tools:       allTools.map(p=>({pn:p.pn_on||p.pn_off||'',sn:p.sn_on||p.sn_off||'',name:p.nomenclature||'',cat:'Tool'})),
+        consumables: allConsumables.map(p=>({pn:p.pn_on||p.pn_off||'',sn:'',name:p.nomenclature||'',cat:'Consumable'})),
+        addedBy: 'History Import',
+        lastUsed: Date.now(),
+        selected: true
       });
-      log(`  💾 Ready to import: ${squawkList.length} entry(ies) queued.`);
+      log(`  💾 Ready: 1 entry queued${squawks.length > 1 ? ` (${squawks.length} squawks — ambiguous, to resolve manually)` : ''}`);
     }
 
     setProgress('done', `✅ Scan complete — ${importResults.length} entry(ies) ready for review.`, 100);
