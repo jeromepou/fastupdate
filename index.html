@@ -832,6 +832,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
           <input type="text" placeholder="Add recipient…" id="ko-add-customer-inp"/>
           <button onclick="koAddRecip('customer')">+ Add</button>
         </div>
+        <div style="margin-top:6px;font-size:11px;color:#7a5a00;background:#fef9e7;border:1px solid #d4b800;border-radius:6px;padding:5px 9px">⚠️ Remember to attach the FSR before sending</div>        
       </div>
 
       <div id="ko-recip-travel" class="ko-recip-block">
@@ -850,6 +851,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
           <input type="text" placeholder="Add recipient…" id="ko-add-parts-inp"/>
           <button onclick="koAddRecip('parts')">+ Add</button>
         </div>
+        <div style="margin-top:6px;font-size:11px;color:#7a5a00;background:#fef9e7;border:1px solid #d4b800;border-radius:6px;padding:5px 9px">⚠️ Remember to attach the FSR before sending</div>
       </div>
 
       <div id="ko-recip-fbo" class="ko-recip-block">
@@ -3435,7 +3437,7 @@ async function koRestoreState() {
   // Show priority warehouse select if checked
   const prioSel = document.getElementById('ko_priority_warehouse');
   if (prioSel) prioSel.style.display = state.cbs?.ko_part_priority_wh ? '' : 'none';
-    // Show transport ETA field if transport checkbox was checked
+  // Show transport ETA field if transport checkbox was checked
   const transportWrap = document.getElementById('kofbo_transport_eta_wrap');
   if (transportWrap) transportWrap.style.display = state.cbs?.kofbo_q_transport ? 'flex' : 'none';
 
@@ -4066,9 +4068,7 @@ ${etaLine}
 
 Regards,
 
-${eng}
-
-⚠️ [REMINDER: Attach the FSR to this email before sending]`;
+${eng}`;
 }
 
 function koBuildTravelBody() {
@@ -4204,9 +4204,7 @@ ${addrLine}
 
 Regards,
 
-${eng}
-
-⚠️ [REMINDER: Attach the FSR to this email before sending]`;
+${eng}`;
 }
 
 function koBuildFboBody() {
