@@ -110,7 +110,7 @@ label{font-size:11px;font-weight:600;color:var(--g600);text-transform:uppercase;
   <div class="card" id="card-options" style="display:none">
     <div class="card-head"><h2>② Scan Options</h2></div>
     <div class="card-body">
-      <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px">
         <div class="fg" style="flex:1;min-width:160px">
           <label>Date from</label>
           <input type="date" id="opt-date-from" style="max-width:160px"/>
@@ -127,7 +127,17 @@ label{font-size:11px;font-weight:600;color:var(--g600);text-transform:uppercase;
           <small style="font-size:11px;color:var(--g400)">Gmail max 500/query</small>
         </div>
       </div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:8px">
+
+      <div class="section-title">Email types to search — check &amp; drag to reorder by priority</div>
+      <div id="query-list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">
+        <!-- rendered by JS -->
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="btn" onclick="querySelectAll(true)" style="font-size:11px;padding:4px 10px">✅ All</button>
+        <button class="btn" onclick="querySelectAll(false)" style="font-size:11px;padding:4px 10px">☐ None</button>
+      </div>
+
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:4px">
         <input type="checkbox" id="opt-skip-existing" checked style="width:auto"/>
         Skip FA numbers already in Firebase squawkHistory
       </label>
@@ -204,6 +214,49 @@ let tokenClient = null;
 let importResults = []; // [{faNumber, squawk, parts, tools, consumables, acModel, acSN, acWO, addedBy}]
 let stopFlag = false;
 let stats = {scanned:0, fa:0, rfs:0, saved:0, skip:0};
+
+// ── Query list (user can reorder + toggle) ──
+let queryItems = [
+  { label: 'Part Request',             q: 'subject:"Part Request" FA',             checked: true },
+  { label: 'Parts Request',            q: 'subject:"Parts Request" FA',            checked: true },
+  { label: 'Part & Tool Request',      q: 'subject:"Part & Tool Request" FA',      checked: true },
+  { label: 'Parts & Tools Request',    q: 'subject:"Parts & Tools Request" FA',    checked: true },
+  { label: 'Part and Tool Request',    q: 'subject:"Part and Tool Request" FA',    checked: false },
+  { label: 'Parts and Tool Request',   q: 'subject:"Parts and Tool Request" FA',   checked: false },
+  { label: 'Part and Tools Request',   q: 'subject:"Part and Tools Request" FA',   checked: false },
+  { label: 'Parts and Tools Request',  q: 'subject:"Parts and Tools Request" FA',  checked: false },
+  { label: 'Parts & Tool Request',     q: 'subject:"Parts & Tool Request" FA',     checked: false },
+  { label: 'Part & Tools Request',     q: 'subject:"Part & Tools Request" FA',     checked: false },
+];
+
+function renderQueryList() {
+  const el = document.getElementById('query-list');
+  el.innerHTML = queryItems.map((item, i) => `
+    <div draggable="true" data-idx="${i}" ondragstart="qlDragStart(event)" ondragover="qlDragOver(event)" ondrop="qlDrop(event)"
+      style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--g50);border:1px solid var(--g200);border-radius:6px;cursor:grab;user-select:none">
+      <span style="color:var(--g400);font-size:14px">☰</span>
+      <input type="checkbox" ${item.checked?'checked':''} onchange="queryItems[${i}].checked=this.checked" style="width:auto;cursor:pointer"/>
+      <span style="font-size:13px;flex:1">${item.label}</span>
+      <span style="font-size:10px;color:var(--g400)">#${i+1}</span>
+    </div>`).join('');
+}
+
+let dragIdx = null;
+window.qlDragStart = (e) => { dragIdx = +e.currentTarget.dataset.idx; e.dataTransfer.effectAllowed='move'; };
+window.qlDragOver  = (e) => { e.preventDefault(); e.dataTransfer.dropEffect='move'; };
+window.qlDrop      = (e) => {
+  e.preventDefault();
+  const targetIdx = +e.currentTarget.dataset.idx;
+  if (dragIdx === null || dragIdx === targetIdx) return;
+  const moved = queryItems.splice(dragIdx, 1)[0];
+  queryItems.splice(targetIdx, 0, moved);
+  renderQueryList();
+  dragIdx = null;
+};
+window.querySelectAll = (v) => { queryItems.forEach(q => q.checked = v); renderQueryList(); };
+
+// Render on load
+document.addEventListener('DOMContentLoaded', renderQueryList);
 
 // ── expose to window for onclick ──
 window.doFirebaseLogin = doFirebaseLogin;
@@ -510,21 +563,10 @@ async function startImport() {
     }
 
     // Search Gmail
-    const baseQueries = [
-      'subject:"Part Request" FA',
-      'subject:"Parts Request" FA',
-      'subject:"Part and Tool Request" FA',
-      'subject:"Parts and Tool Request" FA',
-      'subject:"Part & Tool Request" FA',
-      'subject:"Parts & Tool Request" FA',
-      'subject:"Parts and Tools Request" FA',
-      'subject:"Part and Tools Request" FA',
-      'subject:"Parts & Tools Request" FA',
-      'subject:"Part & Tools Request" FA',
-    ];
-    const queries = baseQueries.map(q => dateFilter ? q + ' ' + dateFilter : q);
+    const activeQueries = queryItems.filter(q => q.checked).map(q => dateFilter ? q.q + ' ' + dateFilter : q.q);
+    if (!activeQueries.length) { setProgress('err', '❌ No email type selected.', 0); return; }
     const allIdSet = new Set();
-    for (const q of queries) {
+    for (const q of activeQueries) {
       if (stopFlag) break;
       log(`🔍 Searching: "${q}"`);
       const ids = await gmailSearch(q, maxEmails);
@@ -546,7 +588,7 @@ async function startImport() {
       const match = FA_RE.exec(meta.subj);
       if (!match) continue;
       const fa = 'FA' + match[1];
-      if (!faMap[fa]) faMap[fa] = { faNumber: fa, partEmailIds: [], date: meta.date };
+      if (!faMap[fa]) faMap[fa] = { faNumber: fa, partEmailIds: [], date: meta.date, subject: meta.subj };
       faMap[fa].partEmailIds.push(meta.id);
     }
 
@@ -643,10 +685,14 @@ async function startImport() {
       const allConsumables = (parsedParts.parts||[]).filter(p=>p.cat==='Consumable');
 
       const squawkList = squawks.length ? squawks : [`FA${fa.replace('FA','')} PARTS REQUEST`];
+      const allSquawksFromRFS = [...squawkList]; // full list from RFS for context
       squawkList.forEach(sq => {
         importResults.push({
           faNumber: fa,
           squawkRaw: sq,
+          allSquawksFromRFS,          // all squawks found in RFS
+          emailSubject: entry.subject || '',
+          emailDate:    entry.date    || '',
           keywords: squawkTokenize(sq),
           acModel, acSN, acWO,
           parts:       allParts.map(p=>({pn:p.pn_on||p.pn_off||'',sn:p.sn_on||p.sn_off||'',name:p.nomenclature||'',cat:'Part'})),
@@ -686,24 +732,108 @@ function renderReview() {
   document.getElementById('card-review').style.display = '';
   document.getElementById('review-count').textContent = importResults.length + ' entries';
 
+  const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
   const list = document.getElementById('review-list');
   list.innerHTML = importResults.map((r, i) => {
-    const partsCount = (r.parts?.length||0) + (r.tools?.length||0) + (r.consumables?.length||0);
+    const allParts = [...(r.parts||[]), ...(r.tools||[]), ...(r.consumables||[])];
     const partsSummary = [
-      r.parts?.length ? `${r.parts.length} part(s)` : '',
-      r.tools?.length ? `${r.tools.length} tool(s)` : '',
-      r.consumables?.length ? `${r.consumables.length} consumable(s)` : ''
-    ].filter(Boolean).join(', ');
-    return `<div class="review-row">
-      <input type="checkbox" ${r.selected?'checked':''} onchange="importResults[${i}].selected=this.checked"/>
-      <div class="review-info">
-        <div class="review-fa">${r.faNumber} <span style="font-size:10px;font-weight:400;color:var(--blue)">${r.acModel||''} ${r.acSN?'/ '+r.acSN:''} ${r.acWO?'· WO:'+r.acWO:''}</span></div>
-        <div class="review-squawk">${r.squawkRaw}</div>
-        <div class="review-parts">${partsSummary || 'No parts'}</div>
+      r.parts?.length      ? `${r.parts.length} part(s)`        : '',
+      r.tools?.length      ? `${r.tools.length} tool(s)`        : '',
+      r.consumables?.length? `${r.consumables.length} consum.`  : ''
+    ].filter(Boolean).join(' · ') || 'No parts';
+
+    // Explain the link: parts came from the email, squawk came from the RFS PDF
+    const linkExplanation = r.allSquawksFromRFS?.length > 1
+      ? `⚠️ RFS had ${r.allSquawksFromRFS.length} squawks — parts assigned to ALL of them (no individual link possible from email alone)`
+      : r.allSquawksFromRFS?.length === 1
+      ? `✅ RFS had 1 squawk — direct 1:1 link`
+      : `ℹ️ No RFS found — parts assigned to generic FA entry`;
+
+    const partsRows = allParts.map(p => `
+      <tr>
+        <td style="padding:3px 8px;font-size:11px">${esc(p.cat)}</td>
+        <td style="padding:3px 8px;font-size:11px;font-weight:600">${esc(p.name)}</td>
+        <td style="padding:3px 8px;font-size:11px;font-family:monospace">${esc(p.pn)||'—'}</td>
+        <td style="padding:3px 8px;font-size:11px;font-family:monospace">${esc(p.sn)||'—'}</td>
+      </tr>`).join('');
+
+    const allSquawksHtml = (r.allSquawksFromRFS||[]).map((sq,si) =>
+      `<div style="font-size:11px;padding:2px 0;${sq===r.squawkRaw?'font-weight:700;color:var(--gd)':'color:var(--g600)'}">${si+1}. ${esc(sq)}${sq===r.squawkRaw?' ← this entry':''}</div>`
+    ).join('');
+
+    return `<div style="border:1px solid var(--g200);border-radius:var(--r);margin-bottom:8px;overflow:hidden;background:#fff">
+      <!-- Header row -->
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--g50);cursor:pointer" onclick="toggleDetail(${i})">
+        <input type="checkbox" ${r.selected?'checked':''} onchange="importResults[${i}].selected=this.checked" onclick="event.stopPropagation()" style="flex-shrink:0;width:auto"/>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:700;color:var(--gd)">${r.faNumber}</span>
+            <span style="font-size:11px;color:var(--blue)">${esc(r.acModel||'')} ${r.acSN?'/ '+r.acSN:''} ${r.acWO?'· WO:'+r.acWO:''}</span>
+          </div>
+          <div style="font-size:12px;font-weight:600;color:var(--g800);margin-top:2px">${esc(r.squawkRaw)}</div>
+          <div style="display:flex;gap:12px;margin-top:3px;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--g400)">${esc(r.emailDate||'')}</span>
+            <span style="font-size:11px;color:var(--g600)">${partsSummary}</span>
+          </div>
+        </div>
+        <span id="chevron-${i}" style="font-size:12px;color:var(--g400);flex-shrink:0">▼ Detail</span>
+      </div>
+
+      <!-- Detail panel (collapsed by default) -->
+      <div id="detail-${i}" style="display:none;padding:12px;border-top:1px solid var(--g200)">
+
+        <!-- Email source -->
+        <div style="margin-bottom:10px">
+          <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">📧 Email source</div>
+          <div style="font-size:12px;color:var(--g800)">${esc(r.emailSubject||'(subject not stored)')}</div>
+          <div style="font-size:11px;color:var(--g400)">${esc(r.emailDate||'')}</div>
+        </div>
+
+        <!-- Link explanation -->
+        <div style="margin-bottom:10px;padding:7px 10px;background:var(--g100);border-radius:6px;font-size:12px;color:var(--g700)">
+          <strong>How parts were linked to this squawk:</strong><br/>
+          ${linkExplanation}
+        </div>
+
+        <!-- All squawks from RFS -->
+        ${r.allSquawksFromRFS?.length ? `<div style="margin-bottom:10px">
+          <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">📄 All squawks found in RFS (${r.allSquawksFromRFS.length})</div>
+          ${allSquawksHtml}
+        </div>` : ''}
+
+        <!-- Parts table -->
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">📦 Parts / Tools / Consumables (${allParts.length})</div>
+          ${allParts.length ? `<table style="width:100%;border-collapse:collapse;background:var(--g50);border-radius:6px;overflow:hidden">
+            <thead><tr style="background:var(--g200)">
+              <th style="padding:4px 8px;font-size:10px;text-align:left">Cat</th>
+              <th style="padding:4px 8px;font-size:10px;text-align:left">Nomenclature</th>
+              <th style="padding:4px 8px;font-size:10px;text-align:left">PN</th>
+              <th style="padding:4px 8px;font-size:10px;text-align:left">SN</th>
+            </tr></thead>
+            <tbody>${partsRows}</tbody>
+          </table>` : '<div style="font-size:12px;color:var(--g400)">No parts extracted</div>'}
+        </div>
+
+        <!-- Edit squawk label -->
+        <div style="margin-top:10px">
+          <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">✏️ Edit squawk label before saving</div>
+          <input type="text" value="${esc(r.squawkRaw)}" oninput="importResults[${i}].squawkRaw=this.value;importResults[${i}].keywords=squawkTokenize(this.value)"
+            style="width:100%;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:6px"/>
+        </div>
       </div>
     </div>`;
   }).join('');
 }
+
+window.toggleDetail = function(i) {
+  const d = document.getElementById('detail-'+i);
+  const c = document.getElementById('chevron-'+i);
+  const open = d.style.display === 'none';
+  d.style.display = open ? '' : 'none';
+  c.textContent = open ? '▲ Close' : '▼ Detail';
+};
 
 function reviewSelectAll(v) {
   importResults.forEach(r => r.selected = v);
