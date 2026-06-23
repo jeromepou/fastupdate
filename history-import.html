@@ -210,6 +210,9 @@ let queryItems = [
   { label: '⭐ PARTS & TOOLS REQ (encodé)',                            q: 'subject:"PARTS" subject:"TOOLS" subject:"REQ" FA',   checked: true },
   { label: '⭐ PARTS TOOLS FA (ultra large)',                          q: 'subject:PARTS subject:TOOLS FA',     checked: true },
   { label: '⭐ PARTS TOOLS REQ. (avec point)',                         q: 'subject:PARTS subject:TOOLS subject:FA',             checked: true },
+  { label: '⭐ PARTS REQ (ultra large)',                               q: 'subject:"PARTS REQ" subject:FA',     checked: true },
+  { label: '⭐ PARTS REQ. (avec point)',                               q: 'subject:"PARTS REQ."',               checked: true },
+  { label: '⭐ PART REQ. (avec point)',                                q: 'subject:"PART REQ."',                checked: true },
   // Queries ciblées existantes
   { label: 'Part Request',                                             q: 'subject:"Part Request" FA',          checked: true  },
   { label: 'Parts Request',                                            q: 'subject:"Parts Request" FA',         checked: true  },
@@ -440,7 +443,7 @@ async function extractPartsFromEmailText(emailBody, faNumber) {
 This email is about FA number: ${faNumber}.
 
 Extract EVERY distinct physical part mentioned. For each part extract:
-- nomenclature: short name in UPPERCASE
+- nomenclature: short name in UPPERCASE, use spaces not underscores (e.g. "RAGS BLUE ROLL" not "RAGS_BLUE_ROLL")
 - pn_off: part number being removed, or ""
 - sn_off: serial number being removed, or ""
 - pn_on: part number being installed/ordered, or ""
@@ -579,7 +582,7 @@ async function startImport() {
     stats.scanned=allIds.length; updateStats();
 
     // ─── FIX: regex élargi FA[\s\-]?(\d{4,6}) ───
-    const FA_RE=/\bFA[\s\-]?(\d{4,6})\b/i;
+    const FA_RE=/FA[\s\-]?(\d{4,6})/i;
     const faMap={};
 
     setProgress('load','<span class="spin"></span> Reading email subjects…',5);
@@ -821,14 +824,21 @@ function renderReview() {
       const sqCount=(p.squawks||[]).length;
       return `<tr>
         <td style="padding:5px 8px;font-size:11px">
-          <span style="display:inline-block;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700;
+          <select onchange="changeCat(${i},'${catKey}',${subIdx},this.value)"
+            style="font-size:11px;padding:2px 6px;border-radius:20px;font-weight:700;cursor:pointer;
             background:${p.cat==='Part'?'var(--gl)':p.cat==='Tool'?'var(--al)':'var(--bl)'};
             border:1px solid ${p.cat==='Part'?'var(--gb)':p.cat==='Tool'?'#d4b800':'#b8d0e8'};
             color:${p.cat==='Part'?'var(--gd)':p.cat==='Tool'?'var(--amb)':'var(--blue)'}">
-            ${esc(p.cat)}
-          </span>
+            <option value="Part"      ${p.cat==='Part'?'selected':''}>Part</option>
+            <option value="Tool"      ${p.cat==='Tool'?'selected':''}>Tool</option>
+            <option value="Consumable"${p.cat==='Consumable'?'selected':''}>Consumable</option>
+          </select>
         </td>
-        <td style="padding:5px 8px;font-size:11px;font-weight:600;max-width:130px;word-break:break-word">${esc(p.name)}</td>
+        <td style="padding:5px 8px">
+          <input type="text" value="${esc(p.name)}"
+            onchange="importResults[${i}].${catKey}[${subIdx}].name=this.value"
+            style="font-size:11px;font-weight:600;width:100%;min-width:100px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
+        </td>
         <td style="padding:5px 8px;font-size:11px;font-family:monospace;white-space:nowrap">${esc(p.pn)||'—'}</td>
         <td style="padding:5px 8px;font-size:11px;font-family:monospace;white-space:nowrap">${esc(p.sn)||'—'}</td>
         <td style="padding:5px 8px">
@@ -1025,6 +1035,17 @@ function updateStats(){
   document.getElementById('st-skip').textContent=stats.skip;
 }
 function log(msg){const el=document.getElementById('log');el.textContent+=msg+'\n';el.scrollTop=el.scrollHeight;}
+
+window.changeCat=function(entryIdx,catKey,partIdx,newCat) {
+  const entry=importResults[entryIdx];
+  const part={...entry[catKey][partIdx], cat:newCat};
+  entry[catKey].splice(partIdx,1);
+  const destKey=newCat==='Part'?'parts':newCat==='Tool'?'tools':'consumables';
+  if (!entry[destKey]) entry[destKey]=[];
+  entry[destKey].push(part);
+  renderReview();
+};
+
 </script>
 </body>
 </html>
