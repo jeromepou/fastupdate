@@ -681,38 +681,31 @@ async function startImport() {
         log(`  ℹ️ No RFS/squawk found — will store parts without squawk label.`);
       }
 
-      // 3) Build result entries
+      // 3) Build result entries (one per squawk, or one generic if no squawk)
       const allParts       = (parsedParts.parts||[]).filter(p=>p.cat==='Part'||!p.cat);
       const allTools       = (parsedParts.parts||[]).filter(p=>p.cat==='Tool');
       const allConsumables = (parsedParts.parts||[]).filter(p=>p.cat==='Consumable');
 
-      const allSquawksFromRFS = squawks.length ? [...squawks] : [];
-
-      // If multiple squawks: ONE entry with ambiguous label — user decides in app
-      // If single squawk: direct 1:1 link
-      // If no squawk: generic FA entry
-      const squawkLabel = squawks.length === 1
-        ? squawks[0]
-        : squawks.length > 1
-          ? `${fa} — [MULTIPLE SQUAWKS — select correct one]`
-          : `${fa} PARTS REQUEST`;
-
-      importResults.push({
-        faNumber: fa,
-        squawkRaw: squawkLabel,
-        allSquawksFromRFS,
-        emailSubject: entry.subject || '',
-        emailDate:    entry.date    || '',
-        keywords: squawkTokenize(squawkLabel),
-        acModel, acSN, acWO,
-        parts:       allParts.map(p=>({pn:p.pn_on||p.pn_off||'',sn:p.sn_on||p.sn_off||'',name:p.nomenclature||'',cat:'Part'})),
-        tools:       allTools.map(p=>({pn:p.pn_on||p.pn_off||'',sn:p.sn_on||p.sn_off||'',name:p.nomenclature||'',cat:'Tool'})),
-        consumables: allConsumables.map(p=>({pn:p.pn_on||p.pn_off||'',sn:'',name:p.nomenclature||'',cat:'Consumable'})),
-        addedBy: 'History Import',
-        lastUsed: Date.now(),
-        selected: true
+      const squawkList = squawks.length ? squawks : [`FA${fa.replace('FA','')} PARTS REQUEST`];
+      const allSquawksFromRFS = [...squawkList]; // full list from RFS for context
+      squawkList.forEach(sq => {
+        importResults.push({
+          faNumber: fa,
+          squawkRaw: sq,
+          allSquawksFromRFS,          // all squawks found in RFS
+          emailSubject: entry.subject || '',
+          emailDate:    entry.date    || '',
+          keywords: squawkTokenize(sq),
+          acModel, acSN, acWO,
+          parts:       allParts.map(p=>({pn:p.pn_on||p.pn_off||'',sn:p.sn_on||p.sn_off||'',name:p.nomenclature||'',cat:'Part'})),
+          tools:       allTools.map(p=>({pn:p.pn_on||p.pn_off||'',sn:p.sn_on||p.sn_off||'',name:p.nomenclature||'',cat:'Tool'})),
+          consumables: allConsumables.map(p=>({pn:p.pn_on||p.pn_off||'',sn:'',name:p.nomenclature||'',cat:'Consumable'})),
+          addedBy: 'History Import',
+          lastUsed: Date.now(),
+          selected: true
+        });
       });
-      log(`  💾 Ready: 1 entry queued${squawks.length > 1 ? ` (${squawks.length} squawks — ambiguous, to resolve manually)` : ''}`);
+      log(`  💾 Ready to import: ${squawkList.length} entry(ies) queued.`);
     }
 
     setProgress('done', `✅ Scan complete — ${importResults.length} entry(ies) ready for review.`, 100);
@@ -825,23 +818,21 @@ function renderReview() {
           </table>` : '<div style="font-size:12px;color:var(--g400)">No parts extracted</div>'}
         </div>
 
-        <!-- Edit squawk label -->
+        <!-- Assign squawk -->
         <div style="margin-top:10px">
           <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">✏️ Assign to squawk before saving</div>
           ${r.allSquawksFromRFS?.length > 1 ? `
-          <div style="margin-bottom:6px;font-size:11px;color:var(--amb)">⚠️ Select which squawk this part belongs to:</div>
-          <select onchange="importResults[${i}].squawkRaw=this.value;importResults[${i}].keywords=squawkTokenize(this.value)"
-            style="width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--g200);border-radius:6px;background:#fff;cursor:pointer">
-            <option value="${esc('FA'+r.faNumber.replace('FA','')+' — [UNASSIGNED — select a squawk]')}" ${r.squawkRaw.includes('MULTIPLE')?'selected':''}>
-              — Select a squawk —
-            </option>
+          <div style="margin-bottom:6px;font-size:11px;color:var(--amb)">⚠️ Select which squawk these parts belong to:</div>
+          <select onchange="importResults[${i}].squawkRaw=this.value;importResults[${i}].keywords=squawkTokenize(this.value);document.getElementById('sq-input-${i}').value=this.value"
+            style="width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--g200);border-radius:6px;background:#fff;cursor:pointer;margin-bottom:6px">
+            <option value="">— Select a squawk —</option>
             ${r.allSquawksFromRFS.map(sq=>`<option value="${esc(sq)}" ${r.squawkRaw===sq?'selected':''}>${esc(sq)}</option>`).join('')}
           </select>
-          <div style="margin-top:6px;font-size:11px;color:var(--g600)">Or type a custom label:</div>
+          <div style="font-size:10px;color:var(--g600);margin-bottom:4px">Or type a custom label:</div>
           ` : ''}
           <input type="text" value="${esc(r.squawkRaw)}" id="sq-input-${i}"
             oninput="importResults[${i}].squawkRaw=this.value;importResults[${i}].keywords=squawkTokenize(this.value)"
-            style="width:100%;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:6px;margin-top:${r.allSquawksFromRFS?.length>1?'4':'0'}px"/>
+            style="width:100%;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:6px"/>
         </div>
       </div>
     </div>`;
