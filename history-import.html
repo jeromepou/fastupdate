@@ -585,13 +585,11 @@ async function startImport() {
     }
 
     const activeQueries=queryItems.filter(q=>q.checked).map(q=>dateFilter?q.q+' '+dateFilter:q.q);
-    if (!activeQueries.length){setProgress('err','❌ No email type selected.',0);return;}
-
-    const allIdSet=new Set();
-
-    // Recherche par sujets manuels
     const manualSubjects=document.getElementById('manual-subjects').value
       .split('\n').map(s=>s.trim()).filter(Boolean);
+    if (!activeQueries.length && !manualSubjects.length){setProgress('err','❌ No email type selected.',0);return;}
+
+    const allIdSet=new Set();
     for (const subj of manualSubjects) {
       if (stopFlag) break;
       log(`🔍 Manual subject: "${subj}"`);
