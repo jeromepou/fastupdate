@@ -207,7 +207,8 @@ let queryItems = [
   { label: '⭐ PARTS & TOOL (large)',                                  q: 'subject:"PARTS & TOOL" FA',          checked: true  },
   { label: '⭐ PART & TOOLS (large)',                                  q: 'subject:"PART & TOOLS" FA',          checked: true  },
   { label: '⭐ PARTS TOOLS REQ (sans &)',                              q: 'subject:PARTS subject:TOOLS subject:REQ subject:FA', checked: true },
-  { label: '⭐ PARTS & TOOLS REQ (encodé)',                            q: 'subject:"PARTS" subject:"TOOLS" subject:"REQ" FA', checked: true },
+  { label: '⭐ PARTS & TOOLS REQ (encodé)',                            q: 'subject:"PARTS" subject:"TOOLS" subject:"REQ" FA',   checked: true },
+  { label: '⭐ PARTS TOOLS FA (ultra large)',                          q: 'subject:PARTS subject:TOOLS FA',     checked: true },
   // Queries ciblées existantes
   { label: 'Part Request',                                             q: 'subject:"Part Request" FA',          checked: true  },
   { label: 'Parts Request',                                            q: 'subject:"Parts Request" FA',         checked: true  },
@@ -250,6 +251,7 @@ window.qlDrop      = (e) => {
   renderQueryList(); dragIdx=null;
 };
 window.querySelectAll = (v) => { queryItems.forEach(q=>q.checked=v); renderQueryList(); };
+window.queryItems = queryItems;
 document.addEventListener('DOMContentLoaded', renderQueryList);
 
 window.doFirebaseLogin = doFirebaseLogin;
@@ -654,29 +656,27 @@ async function startImport() {
         // On prend les premiers résultats et on lit leur corps
         if (updIds.length>0) {
           log(`  📬 ${updIds.length} UPDATE email(s) found.`);
-          // Lire le corps du premier UPDATE email trouvé (le plus récent = meilleur résumé)
-          const updMeta=await gmailGetMeta(updIds[0]);
-          log(`  📧 UPDATE subject: "${updMeta.subj}"`);
-          // Vérification: doit contenir UPDATE et le FA, et ne pas être un customer update
-          const subjUp=updMeta.subj.toUpperCase();
-          const isCustomerUpdate=subjUp.includes('CUSTOMER');
-          if (!isCustomerUpdate && subjUp.includes(fa.toUpperCase())) {
-            // Lire le thread de l'update pour avoir le contexte complet
-            const updBody=updMeta.threadId
-              ? await gmailGetThreadBody(updMeta.threadId)
-              : extractTextFromPayload((await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${updIds[0]}?format=full`,
-                  {headers:{Authorization:'Bearer '+gToken}}).then(r=>r.json())).payload);
-            log(`  📄 UPDATE body: ${updBody.length} chars. Extracting summary…`);
-            const updData=await extractSummaryFromUpdateEmail(updBody, fa);
-            updateSummary=updData.summary||'';
-            // Compléter les infos avion si manquantes
-            if (!acModel&&updData.acModel) acModel=updData.acModel;
-            if (!acSN   &&updData.acSN)    acSN   =updData.acSN;
-            if (!acReg  &&updData.acReg)   acReg  =updData.acReg;
-            if (!station&&updData.station)  station=updData.station;
-            if (updateSummary) { log(`  📝 Summary extracted.`); stats.upd++; updateStats(); }
-          } else {
-            log(`  ↩️ UPDATE email skipped (customer update or subject mismatch).`);
+          for (const updId of updIds) {
+            const updMeta=await gmailGetMeta(updId);
+            log(`  📧 UPDATE subject: "${updMeta.subj}"`);
+            const subjUp=updMeta.subj.toUpperCase();
+            const isCustomerUpdate=subjUp.includes('CUSTOMER');
+            if (!isCustomerUpdate && subjUp.includes(fa.toUpperCase())) {
+              const updBody=updMeta.threadId
+                ? await gmailGetThreadBody(updMeta.threadId)
+                : extractTextFromPayload((await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${updId}?format=full`,
+                    {headers:{Authorization:'Bearer '+gToken}}).then(r=>r.json())).payload);
+              log(`  📄 UPDATE body: ${updBody.length} chars. Extracting summary…`);
+              const updData=await extractSummaryFromUpdateEmail(updBody, fa);
+              updateSummary=updData.summary||'';
+              if (!acModel&&updData.acModel) acModel=updData.acModel;
+              if (!acSN   &&updData.acSN)    acSN   =updData.acSN;
+              if (!acReg  &&updData.acReg)   acReg  =updData.acReg;
+              if (!station&&updData.station)  station=updData.station;
+              if (updateSummary) { log(`  📝 Summary extracted.`); stats.upd++; updateStats(); break; }
+            } else {
+              log(`  ↩️ skipped: "${updMeta.subj}"`);
+            }
           }
         } else {
           log(`  ℹ️ No UPDATE email found for ${fa}.`);
