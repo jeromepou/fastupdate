@@ -112,14 +112,19 @@ label{font-size:11px;font-weight:600;color:var(--g600);text-transform:uppercase;
     <div class="card-body">
       <div style="display:flex;gap:16px;flex-wrap:wrap">
         <div class="fg" style="flex:1;min-width:160px">
-          <label>Max emails to scan</label>
-          <input type="text" id="opt-max" value="200" style="max-width:100px"/>
-          <small style="font-size:11px;color:var(--g400)">Gmail returns max 500/query</small>
+          <label>Date from</label>
+          <input type="date" id="opt-date-from" style="max-width:160px"/>
+          <small style="font-size:11px;color:var(--g400)">Leave blank = no start limit</small>
         </div>
-        <div class="fg" style="flex:1;min-width:200px">
-          <label>Subject filter (auto)</label>
-          <input type="text" id="opt-filter" value="Part Request" readonly style="max-width:240px;background:var(--g50)"/>
-          <small style="font-size:11px;color:var(--g400)">Searches for "Part Request" OR "Parts & Tools"</small>
+        <div class="fg" style="flex:1;min-width:160px">
+          <label>Date to</label>
+          <input type="date" id="opt-date-to" style="max-width:160px"/>
+          <small style="font-size:11px;color:var(--g400)">Leave blank = today</small>
+        </div>
+        <div class="fg" style="flex:1;min-width:160px">
+          <label>Max emails per query</label>
+          <input type="text" id="opt-max" value="200" style="max-width:100px"/>
+          <small style="font-size:11px;color:var(--g400)">Gmail max 500/query</small>
         </div>
       </div>
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:8px">
@@ -480,6 +485,15 @@ async function startImport() {
   const maxEmails    = parseInt(document.getElementById('opt-max').value) || 200;
   const skipExisting = document.getElementById('opt-skip-existing').checked;
 
+  // Build Gmail date filters (format: YYYY/MM/DD)
+  const dateFrom = document.getElementById('opt-date-from').value; // e.g. "2024-01-15"
+  const dateTo   = document.getElementById('opt-date-to').value;
+  const dateFilter = [
+    dateFrom ? 'after:'  + dateFrom.replace(/-/g, '/') : '',
+    dateTo   ? 'before:' + dateTo.replace(/-/g, '/')   : ''
+  ].filter(Boolean).join(' ');
+  if (dateFilter) log('📅 Date filter: ' + dateFilter);
+
   setProgress('load', '<span class="spin"></span> Searching Gmail for Part Request emails…', 0);
 
   try {
@@ -496,7 +510,7 @@ async function startImport() {
     }
 
     // Search Gmail
-    const queries = [
+    const baseQueries = [
       'subject:"Part Request" FA',
       'subject:"Parts Request" FA',
       'subject:"Part and Tool Request" FA',
@@ -508,6 +522,7 @@ async function startImport() {
       'subject:"Parts & Tools Request" FA',
       'subject:"Part & Tools Request" FA',
     ];
+    const queries = baseQueries.map(q => dateFilter ? q + ' ' + dateFilter : q);
     const allIdSet = new Set();
     for (const q of queries) {
       if (stopFlag) break;
