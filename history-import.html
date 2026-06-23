@@ -826,9 +826,21 @@ function renderReview() {
 
         <!-- Edit squawk label -->
         <div style="margin-top:10px">
-          <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">✏️ Edit squawk label before saving</div>
-          <input type="text" value="${esc(r.squawkRaw)}" oninput="importResults[${i}].squawkRaw=this.value;importResults[${i}].keywords=squawkTokenize(this.value)"
-            style="width:100%;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:6px"/>
+          <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">✏️ Assign to squawk before saving</div>
+          ${r.allSquawksFromRFS?.length > 1 ? `
+          <div style="margin-bottom:6px;font-size:11px;color:var(--amb)">⚠️ Select which squawk this part belongs to:</div>
+          <select onchange="importResults[${i}].squawkRaw=this.value;importResults[${i}].keywords=squawkTokenize(this.value)"
+            style="width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--g200);border-radius:6px;background:#fff;cursor:pointer">
+            <option value="${esc('FA'+r.faNumber.replace('FA','')+' — [UNASSIGNED — select a squawk]')}" ${r.squawkRaw.includes('MULTIPLE')?'selected':''}>
+              — Select a squawk —
+            </option>
+            ${r.allSquawksFromRFS.map(sq=>`<option value="${esc(sq)}" ${r.squawkRaw===sq?'selected':''}>${esc(sq)}</option>`).join('')}
+          </select>
+          <div style="margin-top:6px;font-size:11px;color:var(--g600)">Or type a custom label:</div>
+          ` : ''}
+          <input type="text" value="${esc(r.squawkRaw)}" id="sq-input-${i}"
+            oninput="importResults[${i}].squawkRaw=this.value;importResults[${i}].keywords=squawkTokenize(this.value)"
+            style="width:100%;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:6px;margin-top:${r.allSquawksFromRFS?.length>1?'4':'0'}px"/>
         </div>
       </div>
     </div>`;
