@@ -209,6 +209,7 @@ let queryItems = [
   { label: '⭐ PARTS TOOLS REQ (sans &)',                              q: 'subject:PARTS subject:TOOLS subject:REQ subject:FA', checked: true },
   { label: '⭐ PARTS & TOOLS REQ (encodé)',                            q: 'subject:"PARTS" subject:"TOOLS" subject:"REQ" FA',   checked: true },
   { label: '⭐ PARTS TOOLS FA (ultra large)',                          q: 'subject:PARTS subject:TOOLS FA',     checked: true },
+  { label: '⭐ PARTS TOOLS REQ. (avec point)',                         q: 'subject:PARTS subject:TOOLS subject:FA',             checked: true },
   // Queries ciblées existantes
   { label: 'Part Request',                                             q: 'subject:"Part Request" FA',          checked: true  },
   { label: 'Parts Request',                                            q: 'subject:"Parts Request" FA',         checked: true  },
@@ -651,7 +652,7 @@ async function startImport() {
       try {
         log(`  🔍 Searching UPDATE email for ${fa}…`);
         // Recherche: subject:UPDATE + FA, exclure "customer update" via -subject:customer
-        const updIds=await gmailSearch(`subject:UPDATE ${fa}`, 10);
+        const updIds=await gmailSearch(`subject:UPDATE subject:${fa}`, 10);
         // Aussi essai avec "FAST Update" exclus (nos propres updates générés)
         // On prend les premiers résultats et on lit leur corps
         if (updIds.length>0) {
