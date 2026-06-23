@@ -851,8 +851,12 @@ function renderReview() {
       const subIdx=p.cat==='Part'?pi++:p.cat==='Tool'?ti++:ci++;
       const sqCount=(p.squawks||[]).length;
       return `<tr>
-        <td style="padding:5px 8px;font-size:11px">
-          <select onchange="changeCat(${i},'${catKey}',${subIdx},this.value)"
+            <td style="padding:5px 4px">
+              <button onclick="deletePartRow(${i},'${catKey}',${subIdx})" 
+                style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--red);padding:0">🗑️</button>
+            </td>
+            <td style="padding:5px 8px;font-size:11px">
+              <select onchange="changeCat(${i},'${catKey}',${subIdx},this.value)"
             style="font-size:11px;padding:2px 6px;border-radius:20px;font-weight:700;cursor:pointer;
             background:${p.cat==='Part'?'var(--gl)':p.cat==='Tool'?'var(--al)':'var(--bl)'};
             border:1px solid ${p.cat==='Part'?'var(--gb)':p.cat==='Tool'?'#d4b800':'#b8d0e8'};
@@ -867,8 +871,22 @@ function renderReview() {
             onchange="importResults[${i}].${catKey}[${subIdx}].name=this.value"
             style="font-size:11px;font-weight:600;width:100%;min-width:100px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
         </td>
-        <td style="padding:5px 8px;font-size:11px;font-family:monospace;white-space:nowrap">${esc(p.pn)||'—'}</td>
-        <td style="padding:5px 8px;font-size:11px;font-family:monospace;white-space:nowrap">${esc(p.sn)||'—'}</td>
+        <td style="padding:5px 8px">
+          <input type="text" value="${esc(p.pn)}"
+            onchange="importResults[${i}].${catKey}[${subIdx}].pn=this.value"
+            style="font-size:11px;font-family:monospace;width:100%;min-width:90px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
+        </td>
+        <td style="padding:5px 8px">
+          <input type="text" value="${esc(p.sn)}"
+            onchange="importResults[${i}].${catKey}[${subIdx}].sn=this.value"
+            style="font-size:11px;font-family:monospace;width:100%;min-width:90px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
+        </td>
+        <td style="padding:5px 8px">
+          <input type="text" value="${esc(p.gul||'')}"
+            onchange="importResults[${i}].${catKey}[${subIdx}].gul=this.value"
+            placeholder="GUL#"
+            style="font-size:11px;font-family:monospace;width:80px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
+        </td>
         <td style="padding:5px 8px">
           ${sqCheckboxes(catKey,subIdx,p)}
           ${sqCount>1?`<div style="font-size:10px;color:var(--blue);margin-top:3px;font-weight:700">→ ${sqCount} squawk(s) → ${sqCount} Firebase entries</div>`:''}
@@ -923,14 +941,21 @@ function renderReview() {
           </div>
           ${allParts.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;background:var(--g50);border-radius:6px;overflow:hidden;min-width:500px">
             <thead><tr style="background:var(--g200)">
+              <th style="padding:5px 4px;width:24px"></th>
               <th style="padding:5px 8px;font-size:10px;text-align:left">Cat</th>
               <th style="padding:5px 8px;font-size:10px;text-align:left">Nomenclature</th>
               <th style="padding:5px 8px;font-size:10px;text-align:left">PN</th>
               <th style="padding:5px 8px;font-size:10px;text-align:left">SN</th>
+              <th style="padding:5px 8px;font-size:10px;text-align:left">GUL#</th>
               <th style="padding:5px 8px;font-size:10px;text-align:left">Squawk(s)</th>
             </tr></thead>
             <tbody>${partRows}</tbody>
-          </table></div>`:'<div style="font-size:12px;color:var(--g400)">No parts extracted</div>'}
+          </table></div>
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <button onclick="addPartRow(${i},'parts')" class="btn" style="font-size:11px;padding:4px 10px">➕ Part</button>
+            <button onclick="addPartRow(${i},'tools')" class="btn" style="font-size:11px;padding:4px 10px">➕ Tool</button>
+            <button onclick="addPartRow(${i},'consumables')" class="btn" style="font-size:11px;padding:4px 10px">➕ Consumable</button>
+          </div>`:'<div style="font-size:12px;color:var(--g400)">No parts extracted</div>'}
         </div>
       </div>
     </div>`;
@@ -986,7 +1011,7 @@ async function saveToFirebase() {
       const addToGroup=(sq,part)=>{
         if (!bySq[sq]) bySq[sq]={parts:[],tools:[],consumables:[]};
         const dest=part.cat==='Part'?'parts':part.cat==='Tool'?'tools':'consumables';
-        bySq[sq][dest].push({pn:part.pn,sn:part.sn,name:part.name,cat:part.cat});
+        bySq[sq][dest].push({pn:part.pn,sn:part.sn,gul:part.gul||'',name:part.name,cat:part.cat});
       };
 
       allP.forEach(p=>{
@@ -1063,6 +1088,18 @@ function updateStats(){
   document.getElementById('st-skip').textContent=stats.skip;
 }
 function log(msg){const el=document.getElementById('log');el.textContent+=msg+'\n';el.scrollTop=el.scrollHeight;}
+
+window.deletePartRow=function(entryIdx,catKey,partIdx) {
+  importResults[entryIdx][catKey].splice(partIdx,1);
+  renderReview();
+};
+
+window.addPartRow=function(entryIdx,catKey) {
+  const cat=catKey==='parts'?'Part':catKey==='tools'?'Tool':'Consumable';
+  if (!importResults[entryIdx][catKey]) importResults[entryIdx][catKey]=[];
+  importResults[entryIdx][catKey].push({name:'',pn:'',sn:'',gul:'',cat,squawks:[]});
+  renderReview();
+};
 
 window.changeCat=function(entryIdx,catKey,partIdx,newCat) {
   const entry=importResults[entryIdx];
