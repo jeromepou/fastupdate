@@ -657,19 +657,18 @@ async function startImport() {
       try {
         const threadIds=[...entry.partThreadIds];
         let bodyToAnalyze='';
-        // FAST PATH: lire seulement le 1er message (3-5x plus rapide)
-        const firstMsgId = entry.partEmailIds[0];
-        log(`  📧 Reading first message (fast path)…`);
-        const fmR = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${firstMsgId}?format=full`,
-          {headers:{Authorization:'Bearer '+gToken}});
-        const fmD = await fmR.json();
-        bodyToAnalyze = extractTextFromPayload(fmD.payload);
-        log(`  📄 Message body: ${bodyToAnalyze.length} chars`);
-        // FALLBACK: si le corps est trop court, lire le thread complet
-        if (bodyToAnalyze.length < 200 && threadIds.length > 0) {
-          log(`  📧 Body too short — fallback: reading full thread…`);
+        // Lire le thread complet — le 1er message du thread = email original avec les pièces
+        if (threadIds.length > 0) {
+          log(`  📧 Reading thread (oldest message first)…`);
           bodyToAnalyze = await gmailGetThreadBody(threadIds[0]);
           log(`  📄 Thread body: ${bodyToAnalyze.length} chars`);
+        } else {
+          log(`  📧 No threadId — reading message body…`);
+          const fmR = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${entry.partEmailIds[0]}?format=full`,
+            {headers:{Authorization:'Bearer '+gToken}});
+          const fmD = await fmR.json();
+          bodyToAnalyze = extractTextFromPayload(fmD.payload);
+          log(`  📄 Message body: ${bodyToAnalyze.length} chars`);
         }
 
         parsedParts=await extractPartsFromEmailText(bodyToAnalyze, fa);
