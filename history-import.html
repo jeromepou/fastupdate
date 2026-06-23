@@ -268,7 +268,7 @@ window.qlDrop      = (e) => {
   renderQueryList(); dragIdx=null;
 };
 window.querySelectAll = (v) => { queryItems.forEach(q=>q.checked=v); renderQueryList(); };
-window.queryItems = queryItems;
+window.importResults = importResults;
 document.addEventListener('DOMContentLoaded', renderQueryList);
 
 window.doFirebaseLogin = doFirebaseLogin;
@@ -867,17 +867,17 @@ function renderReview() {
         <td style="padding:5px 8px">
           <input type="text" value="${esc(p.name)}"
             onchange="importResults[${i}].${catKey}[${subIdx}].name=this.value"
-            style="font-size:11px;font-weight:600;width:100%;min-width:100px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
+            style="font-size:11px;font-weight:600;width:100%;min-width:160px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
         </td>
         <td style="padding:5px 8px">
           <input type="text" value="${esc(p.pn)}"
             onchange="importResults[${i}].${catKey}[${subIdx}].pn=this.value"
-            style="font-size:11px;font-family:monospace;width:100%;min-width:90px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
+            style="font-size:11px;font-family:monospace;width:100%;min-width:130px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
         </td>
         <td style="padding:5px 8px">
           <input type="text" value="${esc(p.sn)}"
             onchange="importResults[${i}].${catKey}[${subIdx}].sn=this.value"
-            style="font-size:11px;font-family:monospace;width:100%;min-width:90px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
+            sstyle="font-size:11px;font-family:monospace;width:100%;min-width:130px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
         </td>
         <td style="padding:5px 8px">
           <input type="text" value="${esc(p.gul||'')}"
@@ -941,8 +941,8 @@ function renderReview() {
             <thead><tr style="background:var(--g200)">
               <th style="padding:5px 4px;width:24px"></th>
               <th style="padding:5px 8px;font-size:10px;text-align:left">Cat</th>
-              <th style="padding:5px 8px;font-size:10px;text-align:left">Nomenclature</th>
-              <th style="padding:5px 8px;font-size:10px;text-align:left">PN</th>
+              <th style="padding:5px 8px;font-size:10px;text-align:left;min-width:160px">Nomenclature</th>
+              <th style="padding:5px 8px;font-size:10px;text-align:left;min-width:130px">PN</th>
               <th style="padding:5px 8px;font-size:10px;text-align:left">SN</th>
               <th style="padding:5px 8px;font-size:10px;text-align:left">GUL#</th>
               <th style="padding:5px 8px;font-size:10px;text-align:left">Squawk(s)</th>
