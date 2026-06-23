@@ -587,6 +587,8 @@ async function startImport() {
     const activeQueries=queryItems.filter(q=>q.checked).map(q=>dateFilter?q.q+' '+dateFilter:q.q);
     if (!activeQueries.length){setProgress('err','❌ No email type selected.',0);return;}
 
+    const allIdSet=new Set();
+
     // Recherche par sujets manuels
     const manualSubjects=document.getElementById('manual-subjects').value
       .split('\n').map(s=>s.trim()).filter(Boolean);
@@ -597,7 +599,6 @@ async function startImport() {
       ids.forEach(id=>allIdSet.add(id));
     }
 
-    const allIdSet=new Set();
     for (const q of activeQueries) {
       if (stopFlag) break;
       log(`🔍 Searching: "${q}"`);
