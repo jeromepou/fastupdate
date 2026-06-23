@@ -217,17 +217,17 @@ let stats = {scanned:0, fa:0, rfs:0, saved:0, skip:0};
 
 // ── Query list (user can reorder + toggle) ──
 let queryItems = [
-  { label: 'Part Request',             q: 'subject:"Part Request" FA',             checked: true },
-  { label: 'Parts Request',            q: 'subject:"Parts Request" FA',            checked: true },
-  { label: 'Parts & Tools Req.',       q: 'subject:"PARTS & TOOLS REQ" FA',        checked: true },
-  { label: 'Part & Tool Request',      q: 'subject:"Part & Tool Request" FA',      checked: true },
-  { label: 'Parts & Tools Request',    q: 'subject:"Parts & Tools Request" FA',    checked: true },
-  { label: 'Part and Tool Request',    q: 'subject:"Part and Tool Request" FA',    checked: false },
-  { label: 'Parts and Tool Request',   q: 'subject:"Parts and Tool Request" FA',   checked: false },
-  { label: 'Part and Tools Request',   q: 'subject:"Part and Tools Request" FA',   checked: false },
-  { label: 'Parts and Tools Request',  q: 'subject:"Parts and Tools Request" FA',  checked: false },
-  { label: 'Parts & Tool Request',     q: 'subject:"Parts & Tool Request" FA',     checked: false },
-  { label: 'Part & Tools Request',     q: 'subject:"Part & Tools Request" FA',     checked: false },
+  { label: 'Part Request',             q: 'subject:"Part Request" FA',                              checked: true },
+  { label: 'Parts Request',            q: 'subject:"Parts Request" FA',                             checked: true },
+  { label: 'Parts & Tools Req.',       q: 'subject:PARTS subject:TOOLS subject:REQ FA',             checked: true },
+  { label: 'Part & Tool Request',      q: 'subject:PART subject:TOOL subject:REQUEST FA',           checked: true },
+  { label: 'Parts & Tools Request',    q: 'subject:PARTS subject:TOOLS subject:REQUEST FA',         checked: true },
+  { label: 'Part and Tool Request',    q: 'subject:"Part and Tool Request" FA',                     checked: false },
+  { label: 'Parts and Tool Request',   q: 'subject:"Parts and Tool Request" FA',                    checked: false },
+  { label: 'Part and Tools Request',   q: 'subject:"Part and Tools Request" FA',                    checked: false },
+  { label: 'Parts and Tools Request',  q: 'subject:"Parts and Tools Request" FA',                   checked: false },
+  { label: 'Parts & Tool Request',     q: 'subject:PARTS subject:TOOL subject:REQUEST FA',          checked: false },
+  { label: 'Part & Tools Request',     q: 'subject:PART subject:TOOLS subject:REQUEST FA',          checked: false },
 ];
 
 function renderQueryList() {
@@ -265,6 +265,7 @@ window.startImport     = startImport;
 window.stopImport      = stopImport;
 window.saveToFirebase  = saveToFirebase;
 window.reviewSelectAll = reviewSelectAll;
+window.squawkTokenize  = squawkTokenize;
 
 // ─────────────────────────────────────────
 //  FIREBASE LOGIN
@@ -923,7 +924,7 @@ async function saveToFirebase() {
           usageCount:  (ex.usageCount||1) + 1
         });
       } else {
-        const newKey = 'sq_import_' + entry.faNumber + '_' + Date.now() + '_' + savedCount;
+        const newKey = 'sq_import_' + entry.faNumber + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
         await set(ref(db, 'squawkHistory/' + newKey), entryData);
         existing[newKey] = entryData; // keep local copy up to date for next iterations
       }
