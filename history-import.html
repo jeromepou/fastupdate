@@ -269,6 +269,7 @@ window.qlDrop      = (e) => {
 };
 window.querySelectAll = (v) => { queryItems.forEach(q=>q.checked=v); renderQueryList(); };
 window.importResults = importResults;
+window.queryItems = queryItems;
 document.addEventListener('DOMContentLoaded', renderQueryList);
 
 window.doFirebaseLogin = doFirebaseLogin;
@@ -457,8 +458,8 @@ async function extractPartsFromEmailText(emailBody, faNumber) {
 This email is about FA number: ${faNumber}.
 
 Extract EVERY distinct physical part mentioned. For each part extract:
-- nomenclature: short descriptive name ONLY in UPPERCASE, NO part numbers in this field (e.g. "GASKET" not "GASKET GAG810GG1-49", "AIR DATA PROBE LEFT UPPER" not "AIR DATA PROBE 2015TJA"). Use spaces not underscores.
-- pn_on: the part number if mentioned (e.g. "GAG810GG1-49", "2015TJA"). Part numbers often contain digits and dashes. If the nomenclature contains a part number, move it here.
+- nomenclature: short descriptive name ONLY in UPPERCASE. Must be human-readable words describing the item. Part numbers look like "GAG810GG1-49" or "NAS1581C3R3P" (alphanumeric codes with dashes) — NEVER put these in nomenclature. Positional qualifiers like "(NO. 1 - LEFT UPPER)" are acceptable. Examples: "GASKET" not "GASKET GAG810GG1-49", "BOLT" not "BOLT NAS1581C3R3P", "AIR DATA PROBE LEFT UPPER" is OK. Use spaces not underscores.
+- pn_on: part number being installed/ordered (alphanumeric code, often contains dashes, e.g. "GAG810GG1-49", "NAS1581C3R3P"). If you see such a code mixed into the nomenclature field, move it here instead.
 - pn_off: part number being removed, or ""
 - sn_off: serial number being removed, or ""
 - pn_on: part number being installed/ordered, or ""
@@ -561,7 +562,7 @@ async function startImport() {
   if (!fbUser){alert('Sign in to Firebase first.');return;}
   if (!gToken){alert('Connect Google first.');return;}
 
-  stopFlag=false; importResults=[]; stats={scanned:0,fa:0,rfs:0,upd:0,saved:0,skip:0}; updateStats();
+  stopFlag=false; importResults.length=0; stats={scanned:0,fa:0,rfs:0,upd:0,saved:0,skip:0}; updateStats();
   document.getElementById('card-progress').style.display='';
   document.getElementById('card-review').style.display='none';
   document.getElementById('btn-stop').style.display='';
