@@ -272,12 +272,7 @@ window.importResults = importResults;
 window.queryItems = queryItems;
 document.addEventListener('DOMContentLoaded', renderQueryList);
 
-window.doFirebaseLogin = doFirebaseLogin;
-window.startImport     = startImport;
-window.stopImport      = stopImport;
-window.saveToFirebase  = saveToFirebase;
-window.reviewSelectAll = reviewSelectAll;
-window.squawkTokenize  = squawkTokenize;
+// (supprimé ici — déplacé plus bas)
 
 // ─────────────────────────────────────────
 //  FIREBASE LOGIN
@@ -599,12 +594,14 @@ async function startImport() {
       ids.forEach(id=>allIdSet.add(id));
     }
 
-    for (const q of activeQueries) {
-      if (stopFlag) break;
-      log(`🔍 Searching: "${q}"`);
-      const ids=await gmailSearch(q,maxEmails);
-      ids.forEach(id=>allIdSet.add(id));
-    }
+    log(`🔍 Launching ${activeQueries.length} Gmail queries in parallel…`);
+    const queryResults = await Promise.allSettled(
+      activeQueries.map(q => gmailSearch(q, maxEmails))
+    );
+    queryResults.forEach((res, i) => {
+      if (res.status === 'fulfilled') res.value.forEach(id => allIdSet.add(id));
+      else log(`  ⚠️ Query "${activeQueries[i]}" failed: ${res.reason?.message}`);
+    });
     const allIds=[...allIdSet];
     log(`📬 Found ${allIds.length} candidate email(s). Reading subjects…`);
     stats.scanned=allIds.length; updateStats();
@@ -614,30 +611,42 @@ async function startImport() {
     const faMap={};
 
     setProgress('load','<span class="spin"></span> Reading email subjects…',5);
-    for (let i=0;i<allIds.length;i++) {
+    // Paralléliser par chunks de 20 pour ne pas saturer l'API Gmail
+    const META_CHUNK = 20;
+    for (let i=0; i<allIds.length; i+=META_CHUNK) {
       if (stopFlag) break;
-      const meta=await gmailGetMeta(allIds[i]);
-      const match=FA_RE.exec(meta.subj);
-      if (!match) continue;
-      const fa='FA'+match[1];
-      if (!faMap[fa]) faMap[fa]={faNumber:fa,partEmailIds:[],partThreadIds:new Set(),date:meta.date,subject:meta.subj};
-      faMap[fa].partEmailIds.push(meta.id);
-      if (meta.threadId) faMap[fa].partThreadIds.add(meta.threadId);
+      const chunk = allIds.slice(i, i+META_CHUNK);
+      const metas = await Promise.allSettled(chunk.map(id => gmailGetMeta(id)));
+      metas.forEach(res => {
+        if (res.status !== 'fulfilled') return;
+        const meta = res.value;
+        const match = FA_RE.exec(meta.subj);
+        if (!match) return;
+        const fa = 'FA'+match[1];
+        if (!faMap[fa]) faMap[fa]={faNumber:fa,partEmailIds:[],partThreadIds:new Set(),date:meta.date,subject:meta.subj};
+        faMap[fa].partEmailIds.push(meta.id);
+        if (meta.threadId) faMap[fa].partThreadIds.add(meta.threadId);
+      });
+      const pct = 5 + Math.round(((i+META_CHUNK)/allIds.length)*30);
+      setProgress('load',`<span class="spin"></span> Reading subjects… ${Math.min(i+META_CHUNK,allIds.length)}/${allIds.length}`,Math.min(pct,35));
     }
 
     const faList=Object.keys(faMap);
     stats.fa=faList.length; updateStats();
     log(`🏷️ ${faList.length} distinct FA number(s): ${faList.join(', ')}`);
 
-    for (let fi=0;fi<faList.length;fi++) {
+    const FA_CONCURRENCY = 4; // 4 FA en parallèle
+    for (let fi=0; fi<faList.length; fi+=FA_CONCURRENCY) {
       if (stopFlag) break;
-      const fa=faList[fi];
+      const batch = faList.slice(fi, fi+FA_CONCURRENCY);
+      await Promise.allSettled(batch.map(async (fa) => {
+      if (stopFlag) return;
       const entry=faMap[fa];
       const pct=10+Math.round((fi/faList.length)*85);
       setProgress('load',`<span class="spin"></span> Processing ${fa} (${fi+1}/${faList.length})…`,pct);
 
       if (skipExisting&&existingFAs.has(fa)) {
-        log(`⏭️ ${fa} — already in Firebase, skipped.`); stats.skip++; updateStats(); continue;
+        log(`⏭️ ${fa} — already in Firebase, skipped.`); stats.skip++; updateStats(); return;
       }
       log(`\n── ${fa} ──`);
 
@@ -647,20 +656,20 @@ async function startImport() {
       let acModel='', acSN='', acReg='', acWO='', station='';
       try {
         const threadIds=[...entry.partThreadIds];
-        // Essai 1: lire le thread complet (tous messages = meilleur contexte)
         let bodyToAnalyze='';
-        if (threadIds.length>0) {
-          log(`  📧 Reading full thread (${threadIds[0]})…`);
-          bodyToAnalyze=await gmailGetThreadBody(threadIds[0]);
+        // FAST PATH: lire seulement le 1er message (3-5x plus rapide)
+        const firstMsgId = entry.partEmailIds[0];
+        log(`  📧 Reading first message (fast path)…`);
+        const fmR = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${firstMsgId}?format=full`,
+          {headers:{Authorization:'Bearer '+gToken}});
+        const fmD = await fmR.json();
+        bodyToAnalyze = extractTextFromPayload(fmD.payload);
+        log(`  📄 Message body: ${bodyToAnalyze.length} chars`);
+        // FALLBACK: si le corps est trop court, lire le thread complet
+        if (bodyToAnalyze.length < 200 && threadIds.length > 0) {
+          log(`  📧 Body too short — fallback: reading full thread…`);
+          bodyToAnalyze = await gmailGetThreadBody(threadIds[0]);
           log(`  📄 Thread body: ${bodyToAnalyze.length} chars`);
-        } else {
-          // Fallback: lire le premier message trouvé
-          log(`  📧 No threadId — reading first message body…`);
-          const r=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${entry.partEmailIds[0]}?format=full`,
-            {headers:{Authorization:'Bearer '+gToken}});
-          const d=await r.json();
-          bodyToAnalyze=extractTextFromPayload(d.payload);
-          log(`  📄 Message body: ${bodyToAnalyze.length} chars`);
         }
 
         parsedParts=await extractPartsFromEmailText(bodyToAnalyze, fa);
@@ -670,82 +679,76 @@ async function startImport() {
         const pCount=parsedParts.parts?.length||0;
         log(`  📦 ${pCount} part(s). Model:${acModel||'?'} SN:${acSN||'?'} Reg:${acReg||'?'} Station:${station||'?'}`);
       } catch(e) {
-        log(`  ⚠️ Parts extraction failed: ${e.message}`); stats.skip++; updateStats(); continue;
+        log(`  ⚠️ Parts extraction failed: ${e.message}`); stats.skip++; updateStats(); return;
       }
 
       if (!parsedParts?.parts?.length) {
-        log(`  ⚠️ No parts found — skipping.`); stats.skip++; updateStats(); continue;
+        log(`  ⚠️ No parts found — skipping.`); stats.skip++; updateStats(); return;
       }
 
-      // ─── 2) Chercher l'email UPDATE pour avoir le résumé du chantier ───
-      // Pattern: sujet contient UPDATE + le numéro FA, mais PAS "customer" (éviter customer update)
+      // ─── 2 & 3) UPDATE + RFS/WCR en parallèle ───
       let updateSummary='';
+      let updIds=[], workpackIds=[], bizofficeIds=[];
       try {
-        log(`  🔍 Searching UPDATE email for ${fa}…`);
-        // Recherche: subject:UPDATE + FA, exclure "customer update" via -subject:customer
-        const updIds=await gmailSearch(`subject:UPDATE subject:${fa}`, 10);
-        // Aussi essai avec "FAST Update" exclus (nos propres updates générés)
-        // On prend les premiers résultats et on lit leur corps
+        log(`  🔍 Searching UPDATE & RFS/WCR in parallel…`);
+        const [resUpd,resWp,resBiz]=await Promise.allSettled([
+          gmailSearch(`subject:UPDATE subject:${fa}`,10),
+          gmailSearch(`subject:"FAST Work pack" ${fa} has:attachment filename:pdf`,5),
+          gmailSearch(`subject:"BUSINESS OFFICE UPDATE" ${fa} has:attachment filename:pdf`,5)
+        ]);
+        updIds     =resUpd.status==='fulfilled'?resUpd.value:[];
+        workpackIds=resWp.status ==='fulfilled'?resWp.value :[];
+        bizofficeIds=resBiz.status==='fulfilled'?resBiz.value:[];
+      } catch(e){ log(`  ⚠️ Parallel search error: ${e.message}`); }
+
+      // --- UPDATE ---
+      try {
         if (updIds.length>0) {
           log(`  📬 ${updIds.length} UPDATE email(s) found.`);
           for (const updId of updIds) {
             const updMeta=await gmailGetMeta(updId);
-            log(`  📧 UPDATE subject: "${updMeta.subj}"`);
             const subjUp=updMeta.subj.toUpperCase();
-            const isCustomerUpdate=subjUp.includes('CUSTOMER');
-            if (!isCustomerUpdate && subjUp.includes(fa.toUpperCase())) {
-              const updBody=updMeta.threadId
-                ? await gmailGetThreadBody(updMeta.threadId)
-                : extractTextFromPayload((await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${updId}?format=full`,
-                    {headers:{Authorization:'Bearer '+gToken}}).then(r=>r.json())).payload);
-              log(`  📄 UPDATE body: ${updBody.length} chars. Extracting summary…`);
-              const updData=await extractSummaryFromUpdateEmail(updBody, fa);
-              updateSummary=updData.summary||'';
-              if (!acModel&&updData.acModel) acModel=updData.acModel;
-              if (!acSN   &&updData.acSN)    acSN   =updData.acSN;
-              if (!acReg  &&updData.acReg)   acReg  =updData.acReg;
-              if (!station&&updData.station)  station=updData.station;
-              if (updateSummary) { log(`  📝 Summary extracted.`); stats.upd++; updateStats(); break; }
-            } else {
-              log(`  ↩️ skipped: "${updMeta.subj}"`);
+            const subjNorm=subjUp.replace(/\s+/g,'');
+            if (subjUp.includes('CUSTOMER')||!subjNorm.includes(fa.replace(/\s/g,''))) {
+              log(`  ↩️ skipped: "${updMeta.subj}"`); continue;
             }
+            log(`  📧 UPDATE: "${updMeta.subj}"`);
+            const updBody=updMeta.threadId
+              ?await gmailGetThreadBody(updMeta.threadId)
+              :extractTextFromPayload((await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${updId}?format=full`,
+                  {headers:{Authorization:'Bearer '+gToken}}).then(r=>r.json())).payload);
+            const updData=await extractSummaryFromUpdateEmail(updBody,fa);
+            updateSummary=updData.summary||'';
+            if (!acModel&&updData.acModel) acModel=updData.acModel;
+            if (!acSN   &&updData.acSN)    acSN   =updData.acSN;
+            if (!acReg  &&updData.acReg)   acReg  =updData.acReg;
+            if (!station&&updData.station)  station=updData.station;
+            if (updateSummary){log(`  📝 Summary extracted.`);stats.upd++;updateStats();break;}
           }
-        } else {
-          log(`  ℹ️ No UPDATE email found for ${fa}.`);
-        }
-      } catch(e) {
-        log(`  ⚠️ UPDATE search error: ${e.message}`);
-      }
+        } else { log(`  ℹ️ No UPDATE email for ${fa}.`); }
+      } catch(e){ log(`  ⚠️ UPDATE error: ${e.message}`); }
 
-      // ─── 3) Chercher la RFS/WCR (Work Pack ou Business Office Update) ───
+      // --- RFS/WCR ---
       let squawks=[];
       try {
-        log(`  🔍 Searching RFS/WCR for ${fa}…`);
-        const workpackIds =await gmailSearch(`subject:"FAST Work pack" ${fa} has:attachment filename:pdf`,5);
-        const bizofficeIds=await gmailSearch(`subject:"BUSINESS OFFICE UPDATE" ${fa} has:attachment filename:pdf`,5);
         const candidateIds=[...new Set([...workpackIds,...bizofficeIds])];
-        log(`  📬 ${candidateIds.length} RFS candidate email(s) (Work Pack + Biz Office).`);
-
+        log(`  📬 ${candidateIds.length} RFS candidate(s).`);
         let foundPdf=false;
         for (const msgId of candidateIds) {
-          // Chercher dans tous les messages du thread de cet email
           const meta2=await gmailGetMeta(msgId);
           const pdfs=meta2.threadId
-            ? await gmailGetThreadPDFs(meta2.threadId)
-            : await collectPDFsFromPayload(
+            ?await gmailGetThreadPDFs(meta2.threadId)
+            :await collectPDFsFromPayload(
                 (await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgId}?format=full`,
-                  {headers:{Authorization:'Bearer '+gToken}}).then(r=>r.json())).payload, msgId);
-
-          // Trier: RFS/WCR en premier
+                  {headers:{Authorization:'Bearer '+gToken}}).then(r=>r.json())).payload,msgId);
           pdfs.sort((a,b)=>(/rfs|wcr/i.test(b.filename)?1:0)-(/rfs|wcr/i.test(a.filename)?1:0));
-
           for (const pdf of pdfs) {
             log(`  📄 OCR: ${pdf.filename}…`);
             const rfsText=await ocrPDF(pdf.data);
             const upper=rfsText.toUpperCase();
             const mentionsFA=upper.includes(fa.toUpperCase());
             const looksLikeRFS=upper.includes('REQUEST FOR SERVICE')||upper.includes('WORK CHANGE REQUEST')||upper.includes('RFS-')||upper.includes('SQUAWK')||upper.includes('DISCREPANCY');
-            if (!mentionsFA||!looksLikeRFS){log(`  ↩️ ${pdf.filename} skipped (FA:${mentionsFA}, RFS:${looksLikeRFS})`);continue;}
+            if (!mentionsFA||!looksLikeRFS){log(`  ↩️ ${pdf.filename} skipped`);continue;}
             const rfsData=await extractSquawkFromRFSText(rfsText,fa);
             squawks=rfsData.squawks||[];
             if (!acModel&&rfsData.acModel) acModel=rfsData.acModel;
@@ -753,12 +756,12 @@ async function startImport() {
             if (!acReg  &&rfsData.acReg)   acReg  =rfsData.acReg;
             if (!acWO   &&rfsData.acWO)    acWO   =rfsData.acWO;
             log(`  ✅ ${squawks.length} squawk(s): ${squawks.join(' | ')}`);
-            stats.rfs++; updateStats(); foundPdf=true; break;
+            stats.rfs++;updateStats();foundPdf=true;break;
           }
           if (foundPdf) break;
         }
         if (!foundPdf) log(`  ℹ️ No RFS/WCR PDF found.`);
-      } catch(e) { log(`  ⚠️ RFS search error: ${e.message}`); }
+      } catch(e){ log(`  ⚠️ RFS error: ${e.message}`); }
 
       if (!squawks.length) log(`  ℹ️ No squawk from RFS — parts stored without squawk.`);
 
@@ -791,6 +794,7 @@ async function startImport() {
         selected:true
       });
       log(`  💾 Ready: ${(parsedParts.parts||[]).length} part(s), ${squawks.length} squawk(s).${updateSummary?' Update summary: ✅':''}`);
+    })); // fin Promise.allSettled batch
     }
 
     setProgress('done',`✅ Scan complete — ${importResults.length} entry(ies) ready for review.`,100);
@@ -814,6 +818,12 @@ function stopImport() {
 // ─────────────────────────────────────────
 function renderReview() {
   if (!importResults.length) return;
+  // Mémoriser les accordéons ouverts
+  const openIds=new Set();
+  importResults.forEach((_,i)=>{
+    const d=document.getElementById('detail-'+i);
+    if (d&&d.style.display!=='none') openIds.add(i);
+  });
   document.getElementById('card-review').style.display='';
   document.getElementById('review-count').textContent=importResults.length+' entries';
 
@@ -957,7 +967,13 @@ function renderReview() {
         </div>
       </div>
     </div>`;
-  }).join('');
+    }).join('');
+  // Rouvrir les accordéons qui étaient ouverts
+  openIds.forEach(i=>{
+    const d=document.getElementById('detail-'+i);
+    const c=document.getElementById('chevron-'+i);
+    if (d){d.style.display='';if(c)c.textContent='▲ Close';}
+  });
 }
 
 window.togglePartSquawk=function(entryIdx,catKey,partIdx,squawk,checked) {
@@ -1064,7 +1080,8 @@ async function saveToFirebase() {
 
     saveStatus.className='status-bar s-done';
     saveStatus.textContent=`✅ ${savedCount} entry(ies) saved to Firebase squawkHistory.`;
-    btn.textContent='✅ Saved!';
+    btn.textContent='💾 Save selected to Firebase';
+    btn.disabled=false;
   } catch(e) {
     saveStatus.className='status-bar s-err';
     saveStatus.textContent='❌ '+e.message;
@@ -1108,6 +1125,14 @@ window.changeCat=function(entryIdx,catKey,partIdx,newCat) {
   entry[destKey].push(part);
   renderReview();
 };
+
+// Expose globals après déclaration des fonctions
+window.doFirebaseLogin = doFirebaseLogin;
+window.startImport     = startImport;
+window.stopImport      = stopImport;
+window.saveToFirebase  = saveToFirebase;
+window.reviewSelectAll = reviewSelectAll;
+window.squawkTokenize  = squawkTokenize;
 
 </script>
 </body>
