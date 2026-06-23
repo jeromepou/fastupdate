@@ -457,7 +457,8 @@ async function extractPartsFromEmailText(emailBody, faNumber) {
 This email is about FA number: ${faNumber}.
 
 Extract EVERY distinct physical part mentioned. For each part extract:
-- nomenclature: short name in UPPERCASE, use spaces not underscores (e.g. "RAGS BLUE ROLL" not "RAGS_BLUE_ROLL")
+- nomenclature: short descriptive name ONLY in UPPERCASE, NO part numbers in this field (e.g. "GASKET" not "GASKET GAG810GG1-49", "AIR DATA PROBE LEFT UPPER" not "AIR DATA PROBE 2015TJA"). Use spaces not underscores.
+- pn_on: the part number if mentioned (e.g. "GAG810GG1-49", "2015TJA"). Part numbers often contain digits and dashes. If the nomenclature contains a part number, move it here.
 - pn_off: part number being removed, or ""
 - sn_off: serial number being removed, or ""
 - pn_on: part number being installed/ordered, or ""
