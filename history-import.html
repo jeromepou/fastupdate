@@ -599,12 +599,14 @@ async function startImport() {
       ids.forEach(id=>allIdSet.add(id));
     }
 
-    for (const q of activeQueries) {
-      if (stopFlag) break;
-      log(`🔍 Searching: "${q}"`);
-      const ids=await gmailSearch(q,maxEmails);
-      ids.forEach(id=>allIdSet.add(id));
-    }
+    log(`🔍 Launching ${activeQueries.length} Gmail queries in parallel…`);
+    const queryResults = await Promise.allSettled(
+      activeQueries.map(q => gmailSearch(q, maxEmails))
+    );
+    queryResults.forEach((res, i) => {
+      if (res.status === 'fulfilled') res.value.forEach(id => allIdSet.add(id));
+      else log(`  ⚠️ Query "${activeQueries[i]}" failed: ${res.reason?.message}`);
+    });
     const allIds=[...allIdSet];
     log(`📬 Found ${allIds.length} candidate email(s). Reading subjects…`);
     stats.scanned=allIds.length; updateStats();
@@ -629,9 +631,12 @@ async function startImport() {
     stats.fa=faList.length; updateStats();
     log(`🏷️ ${faList.length} distinct FA number(s): ${faList.join(', ')}`);
 
-    for (let fi=0;fi<faList.length;fi++) {
+    const FA_CONCURRENCY = 4; // 4 FA en parallèle
+    for (let fi=0; fi<faList.length; fi+=FA_CONCURRENCY) {
       if (stopFlag) break;
-      const fa=faList[fi];
+      const batch = faList.slice(fi, fi+FA_CONCURRENCY);
+      await Promise.allSettled(batch.map(async (fa) => {
+      if (stopFlag) return;
       const entry=faMap[fa];
       const pct=10+Math.round((fi/faList.length)*85);
       setProgress('load',`<span class="spin"></span> Processing ${fa} (${fi+1}/${faList.length})…`,pct);
@@ -647,20 +652,20 @@ async function startImport() {
       let acModel='', acSN='', acReg='', acWO='', station='';
       try {
         const threadIds=[...entry.partThreadIds];
-        // Essai 1: lire le thread complet (tous messages = meilleur contexte)
         let bodyToAnalyze='';
-        if (threadIds.length>0) {
-          log(`  📧 Reading full thread (${threadIds[0]})…`);
-          bodyToAnalyze=await gmailGetThreadBody(threadIds[0]);
+        // FAST PATH: lire seulement le 1er message (3-5x plus rapide)
+        const firstMsgId = entry.partEmailIds[0];
+        log(`  📧 Reading first message (fast path)…`);
+        const fmR = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${firstMsgId}?format=full`,
+          {headers:{Authorization:'Bearer '+gToken}});
+        const fmD = await fmR.json();
+        bodyToAnalyze = extractTextFromPayload(fmD.payload);
+        log(`  📄 Message body: ${bodyToAnalyze.length} chars`);
+        // FALLBACK: si le corps est trop court, lire le thread complet
+        if (bodyToAnalyze.length < 200 && threadIds.length > 0) {
+          log(`  📧 Body too short — fallback: reading full thread…`);
+          bodyToAnalyze = await gmailGetThreadBody(threadIds[0]);
           log(`  📄 Thread body: ${bodyToAnalyze.length} chars`);
-        } else {
-          // Fallback: lire le premier message trouvé
-          log(`  📧 No threadId — reading first message body…`);
-          const r=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${entry.partEmailIds[0]}?format=full`,
-            {headers:{Authorization:'Bearer '+gToken}});
-          const d=await r.json();
-          bodyToAnalyze=extractTextFromPayload(d.payload);
-          log(`  📄 Message body: ${bodyToAnalyze.length} chars`);
         }
 
         parsedParts=await extractPartsFromEmailText(bodyToAnalyze, fa);
@@ -791,6 +796,7 @@ async function startImport() {
         selected:true
       });
       log(`  💾 Ready: ${(parsedParts.parts||[]).length} part(s), ${squawks.length} squawk(s).${updateSummary?' Update summary: ✅':''}`);
+    })); // fin Promise.allSettled batch
     }
 
     setProgress('done',`✅ Scan complete — ${importResults.length} entry(ies) ready for review.`,100);
