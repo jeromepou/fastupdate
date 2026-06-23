@@ -202,10 +202,12 @@ let stats = {scanned:0, fa:0, rfs:0, upd:0, saved:0, skip:0};
 // ─────────────────────────────────────────
 let queryItems = [
   // Queries larges avec la chaîne exacte — priorité haute, matchent peu importe ce qui suit
-  { label: '⭐ PARTS & TOOLS (large — matche REQ.//, REQUEST, etc.)', q: 'subject:"PARTS & TOOLS" FA',         checked: true  },
+  { label: '⭐ PARTS & TOOLS (large — matche REQ.//, REQUEST, etc.)',  q: 'subject:"PARTS & TOOLS" FA',         checked: true  },
   { label: '⭐ PART & TOOL (large)',                                   q: 'subject:"PART & TOOL" FA',           checked: true  },
   { label: '⭐ PARTS & TOOL (large)',                                  q: 'subject:"PARTS & TOOL" FA',          checked: true  },
   { label: '⭐ PART & TOOLS (large)',                                  q: 'subject:"PART & TOOLS" FA',          checked: true  },
+  { label: '⭐ PARTS TOOLS REQ (sans &)',                              q: 'subject:PARTS subject:TOOLS subject:REQ subject:FA', checked: true },
+  { label: '⭐ PARTS & TOOLS REQ (encodé)',                            q: 'subject:"PARTS" subject:"TOOLS" subject:"REQ" FA', checked: true },
   // Queries ciblées existantes
   { label: 'Part Request',                                             q: 'subject:"Part Request" FA',          checked: true  },
   { label: 'Parts Request',                                            q: 'subject:"Parts Request" FA',         checked: true  },
@@ -647,7 +649,7 @@ async function startImport() {
       try {
         log(`  🔍 Searching UPDATE email for ${fa}…`);
         // Recherche: subject:UPDATE + FA, exclure "customer update" via -subject:customer
-        const updIds=await gmailSearch(`subject:UPDATE ${fa} -subject:customer`, 10);
+        const updIds=await gmailSearch(`subject:UPDATE ${fa}`, 10);
         // Aussi essai avec "FAST Update" exclus (nos propres updates générés)
         // On prend les premiers résultats et on lit leur corps
         if (updIds.length>0) {
@@ -658,7 +660,7 @@ async function startImport() {
           // Vérification: doit contenir UPDATE et le FA, et ne pas être un customer update
           const subjUp=updMeta.subj.toUpperCase();
           const isCustomerUpdate=subjUp.includes('CUSTOMER');
-          if (!isCustomerUpdate && subjUp.includes('UPDATE') && subjUp.includes(fa.toUpperCase())) {
+          if (!isCustomerUpdate && subjUp.includes(fa.toUpperCase())) {
             // Lire le thread de l'update pour avoir le contexte complet
             const updBody=updMeta.threadId
               ? await gmailGetThreadBody(updMeta.threadId)
