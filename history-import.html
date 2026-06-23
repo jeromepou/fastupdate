@@ -272,12 +272,7 @@ window.importResults = importResults;
 window.queryItems = queryItems;
 document.addEventListener('DOMContentLoaded', renderQueryList);
 
-window.doFirebaseLogin = doFirebaseLogin;
-window.startImport     = startImport;
-window.stopImport      = stopImport;
-window.saveToFirebase  = saveToFirebase;
-window.reviewSelectAll = reviewSelectAll;
-window.squawkTokenize  = squawkTokenize;
+// (supprimé ici — déplacé plus bas)
 
 // ─────────────────────────────────────────
 //  FIREBASE LOGIN
@@ -642,7 +637,7 @@ async function startImport() {
       setProgress('load',`<span class="spin"></span> Processing ${fa} (${fi+1}/${faList.length})…`,pct);
 
       if (skipExisting&&existingFAs.has(fa)) {
-        log(`⏭️ ${fa} — already in Firebase, skipped.`); stats.skip++; updateStats(); continue;
+        log(`⏭️ ${fa} — already in Firebase, skipped.`); stats.skip++; updateStats(); return;
       }
       log(`\n── ${fa} ──`);
 
@@ -675,11 +670,11 @@ async function startImport() {
         const pCount=parsedParts.parts?.length||0;
         log(`  📦 ${pCount} part(s). Model:${acModel||'?'} SN:${acSN||'?'} Reg:${acReg||'?'} Station:${station||'?'}`);
       } catch(e) {
-        log(`  ⚠️ Parts extraction failed: ${e.message}`); stats.skip++; updateStats(); continue;
+        log(`  ⚠️ Parts extraction failed: ${e.message}`); stats.skip++; updateStats(); return;
       }
 
       if (!parsedParts?.parts?.length) {
-        log(`  ⚠️ No parts found — skipping.`); stats.skip++; updateStats(); continue;
+        log(`  ⚠️ No parts found — skipping.`); stats.skip++; updateStats(); return;
       }
 
       // ─── 2) Chercher l'email UPDATE pour avoir le résumé du chantier ───
@@ -1114,6 +1109,14 @@ window.changeCat=function(entryIdx,catKey,partIdx,newCat) {
   entry[destKey].push(part);
   renderReview();
 };
+
+// Expose globals après déclaration des fonctions
+window.doFirebaseLogin = doFirebaseLogin;
+window.startImport     = startImport;
+window.stopImport      = stopImport;
+window.saveToFirebase  = saveToFirebase;
+window.reviewSelectAll = reviewSelectAll;
+window.squawkTokenize  = squawkTokenize;
 
 </script>
 </body>
