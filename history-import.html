@@ -769,6 +769,7 @@ async function startImport() {
         pn:   p.pn_on ||p.pn_off ||'',
         sn:   p.sn_on ||p.sn_off ||'',
         name: p.nomenclature||'',
+        qty:  p.quantity||'',
         cat,
         squawks: defaultSquawk?[defaultSquawk]:[]
       }));
@@ -850,13 +851,14 @@ function renderReview() {
       const catKey=p.cat==='Part'?'parts':p.cat==='Tool'?'tools':'consumables';
       const subIdx=p.cat==='Part'?pi++:p.cat==='Tool'?ti++:ci++;
       const sqCount=(p.squawks||[]).length;
-      return `<tr>
-            <td style="padding:5px 4px">
-              <button onclick="deletePartRow(${i},'${catKey}',${subIdx})" 
-                style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--red);padding:0">🗑️</button>
-            </td>
-            <td style="padding:5px 8px;font-size:11px">
-              <select onchange="changeCat(${i},'${catKey}',${subIdx},this.value)"
+      const sqHtml=sqCheckboxes(catKey,subIdx,p);
+      return `<tr style="border-bottom:1px solid var(--g200)">
+        <td style="padding:5px 4px;vertical-align:top">
+          <button onclick="deletePartRow(${i},'${catKey}',${subIdx})"
+            style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--red);padding:0">🗑️</button>
+        </td>
+        <td style="padding:5px 8px;vertical-align:top">
+          <select onchange="changeCat(${i},'${catKey}',${subIdx},this.value)"
             style="font-size:11px;padding:2px 6px;border-radius:20px;font-weight:700;cursor:pointer;
             background:${p.cat==='Part'?'var(--gl)':p.cat==='Tool'?'var(--al)':'var(--bl)'};
             border:1px solid ${p.cat==='Part'?'var(--gb)':p.cat==='Tool'?'#d4b800':'#b8d0e8'};
@@ -867,29 +869,29 @@ function renderReview() {
           </select>
         </td>
         <td style="padding:5px 8px">
-          <input type="text" value="${esc(p.name)}"
-            onchange="window.importResults[${i}].${catKey}[${subIdx}].name=this.value"
-            style="font-size:11px;font-weight:600;width:100%;min-width:160px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
-        </td>
-        <td style="padding:5px 8px">
-          <input type="text" value="${esc(p.pn)}"
-            onchange="window.importResults[${i}].${catKey}[${subIdx}].pn=this.value"
-            style="font-size:11px;font-family:monospace;width:100%;min-width:130px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
-        </td>
-        <td style="padding:5px 8px">
-          <input type="text" value="${esc(p.sn)}"
-            onchange="window.importResults[${i}].${catKey}[${subIdx}].sn=this.value"
-            style="font-size:11px;font-family:monospace;width:100%;min-width:130px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
-        </td>
-        <td style="padding:5px 8px">
-          <input type="text" value="${esc(p.gul||'')}"
-            onchange="window.importResults[${i}].${catKey}[${subIdx}].gul=this.value"
-            placeholder="GUL#"
-            style="font-size:11px;font-family:monospace;width:80px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
-        </td>
-        <td style="padding:5px 8px">
-          ${sqCheckboxes(catKey,subIdx,p)}
-          ${sqCount>1?`<div style="font-size:10px;color:var(--blue);margin-top:3px;font-weight:700">→ ${sqCount} squawk(s) → ${sqCount} Firebase entries</div>`:''}
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
+            <input type="text" value="${esc(p.name)}"
+              onchange="window.importResults[${i}].${catKey}[${subIdx}].name=this.value"
+              placeholder="Nomenclature"
+              style="font-size:11px;font-weight:600;flex:2;min-width:120px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
+            <input type="text" value="${esc(p.pn)}"
+              onchange="window.importResults[${i}].${catKey}[${subIdx}].pn=this.value"
+              placeholder="PN"
+              style="font-size:11px;font-family:monospace;flex:1;min-width:100px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
+            <input type="text" value="${esc(p.sn)}"
+              onchange="window.importResults[${i}].${catKey}[${subIdx}].sn=this.value"
+              placeholder="SN"
+              style="font-size:11px;font-family:monospace;flex:1;min-width:80px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
+            <input type="text" value="${esc(p.qty||'')}"
+              onchange="window.importResults[${i}].${catKey}[${subIdx}].qty=this.value"
+              placeholder="Qty"
+              style="font-size:11px;font-family:monospace;width:50px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
+            <input type="text" value="${esc(p.gul||'')}"
+              onchange="window.importResults[${i}].${catKey}[${subIdx}].gul=this.value"
+              placeholder="GUL#"
+              style="font-size:11px;font-family:monospace;width:70px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
+          </div>
+          <div>${sqHtml}${sqCount>1?`<div style="font-size:10px;color:var(--blue);margin-top:2px;font-weight:700">→ ${sqCount} squawk(s) → ${sqCount} Firebase entries</div>`:''}</div>
         </td>
       </tr>`;
     }).join('');
@@ -942,12 +944,8 @@ function renderReview() {
           ${allParts.length?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;background:var(--g50);border-radius:6px;overflow:hidden;min-width:500px">
             <thead><tr style="background:var(--g200)">
               <th style="padding:5px 4px;width:24px"></th>
-              <th style="padding:5px 8px;font-size:10px;text-align:left">Cat</th>
-              <th style="padding:5px 8px;font-size:10px;text-align:left;min-width:160px">Nomenclature</th>
-              <th style="padding:5px 8px;font-size:10px;text-align:left;min-width:130px">PN</th>
-              <th style="padding:5px 8px;font-size:10px;text-align:left">SN</th>
-              <th style="padding:5px 8px;font-size:10px;text-align:left">GUL#</th>
-              <th style="padding:5px 8px;font-size:10px;text-align:left">Squawk(s)</th>
+              <th style="padding:5px 8px;font-size:10px;text-align:left;width:120px">Cat</th>
+              <th style="padding:5px 8px;font-size:10px;text-align:left">Nomenclature · PN · SN · Qty · GUL# · Squawk(s)</th>
             </tr></thead>
             <tbody>${partRows}</tbody>
           </table></div>
@@ -1011,7 +1009,7 @@ async function saveToFirebase() {
       const addToGroup=(sq,part)=>{
         if (!bySq[sq]) bySq[sq]={parts:[],tools:[],consumables:[]};
         const dest=part.cat==='Part'?'parts':part.cat==='Tool'?'tools':'consumables';
-        bySq[sq][dest].push({pn:part.pn,sn:part.sn,gul:part.gul||'',name:part.name,cat:part.cat});
+        bySq[sq][dest].push({pn:part.pn,sn:part.sn,gul:part.gul||'',qty:part.qty||'',name:part.name,cat:part.cat});
       };
 
       allP.forEach(p=>{
