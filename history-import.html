@@ -125,6 +125,19 @@ label{font-size:11px;font-weight:600;color:var(--g600);text-transform:uppercase;
     </div>
   </div>
 
+  <!-- STEP 2b: Manual subjects -->
+  <div class="card" id="card-manual" style="display:none">
+    <div class="card-head"><h2>② bis — Ajouter des emails manuellement par sujet</h2></div>
+    <div class="card-body">
+      <div style="font-size:12px;color:var(--g600);margin-bottom:8px">
+        Colle un ou plusieurs sujets d'emails (un par ligne) — ils seront cherchés directement dans Gmail :
+      </div>
+      <textarea id="manual-subjects" rows="6" placeholder="PARTS & TOOLS REQ.// 72011 // FA32959 // N769PT // LFMN // ADS#1 FAIL&#10;PARTS REQ.//87091//T7-NYDJ//FA32912//LFPB//..." 
+        style="width:100%;font-size:12px;font-family:monospace;padding:8px;border:1px solid var(--g200);border-radius:var(--r);resize:vertical"></textarea>
+    </div>
+  </div>
+
+
   <!-- STEP 3: Progress -->
   <div class="card" id="card-progress" style="display:none">
     <div class="card-head">
@@ -296,6 +309,7 @@ function initGoogleClient() {
           setAuthStatus('done','✅ Firebase + Google connected. Ready to scan.');
           document.getElementById('btn-start').style.display='';
           document.getElementById('card-options').style.display='';
+          document.getElementById('card-manual').style.display='';
           wrap.style.display='none';
         } else setAuthStatus('err','❌ Google sign-in failed or cancelled.');
       },
@@ -474,7 +488,10 @@ async function extractSquawkFromRFSText(rfsText, faNumber) {
   const prompt=`You will receive the text of a Gulfstream RFS (Request For Service) document for intervention FA${faNumber}.
 
 Extract the following:
-- squawks: array of work item descriptions (all defects/tasks to be fixed), each as a short UPPERCASE string
+- squawks: array of DEFECT or TASK descriptions specific to this aircraft intervention. 
+  EXCLUDE generic checklist items such as: "RELEASE STATEMENT", "WIP CARD", "TOOL CONTROL", "CIRCUIT BREAKERS", "RECORD HOURS", "TECH LOG", "RISK ASSESSMENT", "AMM AIRFRAME", "COMPLY WITH", "ENSURE ALL", "RECORD AIRPORT".
+  Only keep items describing actual defects, failures, or specific work tasks (e.g. "EVS FAIL", "FUEL TANK SUMPING", "BIRD STRIKE").
+  Each as a short UPPERCASE string.
 - acModel: aircraft model, or ""
 - acSN: aircraft serial number, or ""
 - acReg: aircraft registration, or ""
@@ -569,6 +586,16 @@ async function startImport() {
 
     const activeQueries=queryItems.filter(q=>q.checked).map(q=>dateFilter?q.q+' '+dateFilter:q.q);
     if (!activeQueries.length){setProgress('err','❌ No email type selected.',0);return;}
+
+    // Recherche par sujets manuels
+    const manualSubjects=document.getElementById('manual-subjects').value
+      .split('\n').map(s=>s.trim()).filter(Boolean);
+    for (const subj of manualSubjects) {
+      if (stopFlag) break;
+      log(`🔍 Manual subject: "${subj}"`);
+      const ids=await gmailSearch(`subject:"${subj.slice(0,40)}"`, 5);
+      ids.forEach(id=>allIdSet.add(id));
+    }
 
     const allIdSet=new Set();
     for (const q of activeQueries) {
