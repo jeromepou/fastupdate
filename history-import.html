@@ -435,15 +435,15 @@ async function gmailGetFirstHSAMessage(threadId) {
   const PART_KW = /PARTS?|TOOLS?|REQUIRED?|REQUEST/i;
 
   // Chercher le premier message FROM headstartaviation avec keyword dans le sujet
+  const hsaTexts = [];
   for (const msg of msgs) {
     const from = (msg.payload?.headers||[]).find(h=>h.name==='From')?.value||'';
-    const subj = (msg.payload?.headers||[]).find(h=>h.name==='Subject')?.value||'';
-    if (HSA_DOMAINS.some(domain=>from.includes(domain)) && PART_KW.test(subj)) {
+    if (HSA_DOMAINS.some(domain=>from.includes(domain))) {
       const text = extractTextFromPayload(msg.payload);
-      if (text.length > 100) return text;
+      if (text.length > 50) hsaTexts.push(text);
     }
   }
-  // Fallback : premier message du thread
+  if (hsaTexts.length > 0) return hsaTexts.join('\n\n---\n\n').slice(0, 12000);
   return msgs.length ? extractTextFromPayload(msgs[0].payload) : '';
 }
 
@@ -980,7 +980,7 @@ async function startImport() {
             // ── Étape 1 : chercher une CI xlsx dans le thread (du plus récent au plus ancien) ──
             if (threadIds.length > 0) {
               await ensureToken();
-              const threadR=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadIds[0]}?format=full`,
+              const threadR=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadIds[threadIds.length-1]}?format=full`,
                 {headers:{Authorization:'Bearer '+gToken}});
               const threadD=await threadR.json();
 
