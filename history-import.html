@@ -436,14 +436,15 @@ async function gmailGetFirstHSAMessage(threadId) {
 
   // Chercher le premier message FROM headstartaviation avec keyword dans le sujet
   const hsaTexts = [];
-  for (const msg of msgs) {
+  const sortedMsgs = [...msgs].sort((a, b) => (b.internalDate||0) - (a.internalDate||0));
+  for (const msg of sortedMsgs) {
     const from = (msg.payload?.headers||[]).find(h=>h.name==='From')?.value||'';
     if (HSA_DOMAINS.some(domain=>from.includes(domain))) {
       const text = extractTextFromPayload(msg.payload);
       if (text.length > 50) hsaTexts.push(text);
     }
   }
-  if (hsaTexts.length > 0) return hsaTexts.join('\n\n---\n\n').slice(0, 12000);
+  if (hsaTexts.length > 0) return hsaTexts.join('\n\n---\n\n').slice(0, 16000);
   return msgs.length ? extractTextFromPayload(msgs[0].payload) : '';
 }
 
@@ -1016,8 +1017,12 @@ async function startImport() {
             // ── Étape 2 : lire le vrai message de demande (FROM headstartaviation.com) ──
             let allExtractedParts = [];
             const threadIds2=[...entry.partThreadIds];
-            if (threadIds2.length > 0) {
-              const msgText = await gmailGetFirstHSAMessage(threadIds2[0]);
+            let msgText = '';
+            for (const tid of threadIds2) {
+              const t = await gmailGetFirstHSAMessage(tid);
+              if (t.length > msgText.length) msgText = t; // prendre le plus riche
+            }
+            if (msgText.length >= 50) {
               log(`  📧 HSA request message: ${msgText.length} chars`);
               if (msgText && msgText.length >= 50) {
                 const extracted = await extractPartsFromEmailText(msgText, fa);
@@ -1110,7 +1115,22 @@ async function startImport() {
                 if (!acSN   &&updData.acSN)    acSN   =updData.acSN;
                 if (!acReg  &&updData.acReg)   acReg  =updData.acReg;
                 if (!station&&updData.station)  station=updData.station;
-                if (updateSummary){log(`  📝 Summary extracted.`);stats.upd++;updateStats();break;}
+                if (updateSummary){
+                  log(`  📝 Summary extracted.`);stats.upd++;updateStats();
+                  // Extraire aussi les pièces mentionnées dans l'update
+                  try {
+                    const updPartsData = await extractPartsFromEmailText(updBody, fa);
+                    const updParts = (updPartsData.parts||[]).filter(p=>{
+                      const pn = p.pn_on||p.pn_off||'';
+                      return pn && pn.length > 3;
+                    });
+                    if (updParts.length > 0) {
+                      allExtractedParts.push(...updParts.map(p=>({...p, shipped:false})));
+                      log(`  📦 UPDATE: ${updParts.length} part(s) found in update email`);
+                    }
+                  } catch(e){ log(`  ⚠️ UPDATE parts extraction: ${e.message}`); }
+                  break;
+                }
               }
             }
           } catch(e){ log(`  ⚠️ UPDATE error: ${e.message}`); }
