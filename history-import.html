@@ -452,10 +452,8 @@ async function gmailGetFirstHSAMessage(threadId) {
     }
   }
   if (!hsaMsgs.length) return msgs.length ? extractTextFromPayload(msgs[0].payload) : '';
-  hsaMsgs.sort((a,b) => b.pnCount - a.pnCount);
   if (!hsaMsgs.length) return msgs.length ? stripQuotedText(extractTextFromPayload(msgs[0].payload)) : '';
-  hsaMsgs.sort((a,b) => b.pnCount - a.pnCount);
-  return hsaMsgs.map(m=>m.text).join('\n\n---\n\n').slice(0, 16000);
+  return hsaMsgs.map(m=>m.text).join('\n\n---\n\n').slice(0, 20000);
 }
 
 async function gmailGetLastMessageBody(threadId) {
@@ -606,6 +604,9 @@ DO NOT require specific labels like "P/N:" or "P/N OFF:". Instead, use context:
 - Any alphanumeric code near an item name is likely a part number (e.g. "73P3242001A003", "MS24665-302", "T3030EMU01", "100-1311-01")
 - Words like "order", "request", "needed", "required", "please find", "please order", "kindly order" signal items being requested
 - "availability" or "check availability" alone does NOT mean the item was ordered — only include it if followed by an actual order confirmation or "please order" elsewhere in the email
+- "Backordered Under Warranty" or "Under Warranty" means the item WAS ordered but is being replaced under warranty — always extract these items
+- "See below order" or "WO confirmed" at the start of an email confirms all listed items are ordered
+- P/N OFF means the part number of the unit being removed/replaced — extract it as pn_off
 - Serial numbers follow patterns like "SN:", "s/n:", or appear after a part number
 - Quantities appear as "1x", "5 x", "qty:", "1ea", or just a number before the item name
 
@@ -1216,7 +1217,8 @@ async function startImport() {
                 await delay(1500);
                 const upper=rfsText.toUpperCase();
                 if (!upper.includes(fa.toUpperCase())) continue;
-                if (!upper.includes('REQUEST FOR SERVICE')&&!upper.includes('WORK CHANGE REQUEST')&&!upper.includes('SQUAWK')&&!upper.includes('DISCREPANCY')) continue;
+                const isRfsFilename = /rfs|wcr/i.test(pdf.filename);
+                if (!isRfsFilename && !upper.includes('REQUEST FOR SERVICE')&&!upper.includes('WORK CHANGE REQUEST')&&!upper.includes('SQUAWK')&&!upper.includes('DISCREPANCY')) continue;
                 const rfsData=await extractSquawkFromRFSText(rfsText,fa);
                 squawks=rfsData.squawks||[];
                 if (!acModel&&rfsData.acModel) acModel=rfsData.acModel;
