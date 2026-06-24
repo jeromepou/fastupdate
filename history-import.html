@@ -452,7 +452,6 @@ async function gmailGetFirstHSAMessage(threadId) {
       }
     }
   }
-  if (!hsaMsgs.length) return msgs.length ? extractTextFromPayload(msgs[0].payload) : '';
   if (!hsaMsgs.length) return msgs.length ? stripQuotedText(extractTextFromPayload(msgs[0].payload)) : '';
   return hsaMsgs.map(m=>m.text).join('\n\n---\n\n').slice(0, 20000);
 }
@@ -582,6 +581,7 @@ function findXlsxInPayload(payload, msgId) {
   const parts = payload.parts || [];
   for (const p of parts) {
     const fn = (p.filename||'').toLowerCase();
+    if (fn) log(`  🔎 Attachment found: ${fn} | mime: ${p.mimeType||'?'}`);
     if ((fn.endsWith('.xlsx')||fn.endsWith('.xls')) && p.body?.attachmentId) {
       return { attachmentId: p.body.attachmentId, msgId };
     }
@@ -609,6 +609,7 @@ DO NOT require specific labels like "P/N:" or "P/N OFF:". Instead, use context:
 - "See below order" or "WO confirmed" at the start of an email confirms all listed items are ordered
 - P/N OFF means the part number of the unit being removed/replaced — extract it as pn_off
 - Serial numbers follow patterns like "SN:", "s/n:", or appear after a part number
+- If a part is described as "installed", "fitted", "replaced", "commandé et installé", "installed on", or has an installation date mentioned → set sn_on to "INSTALLED" if no actual SN is given, to mark it as confirmed installed
 - Quantities appear as "1x", "5 x", "qty:", "1ea", or just a number before the item name
 
 For each item found, extract:
@@ -1189,8 +1190,13 @@ async function startImport() {
                     const updParts = (updPartsData.parts||[]).filter(p => (p.pn_on||p.pn_off||'').length > 3);
                     for (const p of updParts) {
                       const pn = p.pn_on||p.pn_off||'';
-                      if (!mergedParts.find(x=>(x.pn_on||x.pn_off||''===pn))) {
-                        mergedParts.push({...p, shipped:false, gul:'', lot:''});
+                      const alreadyHere = mergedParts.find(x=>(x.pn_on||x.pn_off||'')===pn);
+                      if (alreadyHere) {
+                        // Si le UPDATE confirme un SN installé, marquer shipped
+                        if (p.sn_on) { alreadyHere.shipped = true; alreadyHere.sn_on = p.sn_on; }
+                      } else {
+                        const isInstalled = !!(p.sn_on);
+                        mergedParts.push({...p, shipped: isInstalled, gul:'', lot:''});
                       }
                     }
                     if (updParts.length) log(`  📦 UPDATE: ${updParts.length} part(s) added`);
