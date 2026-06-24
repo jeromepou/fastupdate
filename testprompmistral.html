@@ -200,10 +200,33 @@ function clearAll() {
   document.getElementById('result-area').style.display = 'none';
 }
 
+function stripQuotedText(text) {
+  const cutPatterns = [
+    /^On .{10,120} wrote:\s*$/m,
+    /^Le .{5,80} a écrit\s*[:\-]?\s*$/m,
+    /^-{5,}\s*Original Message/m,
+    /^From:\s*.+\nSent:\s*/m,
+    /^_{5,}/m,
+    /^>{1}\s/m,
+    /^De\s*:.+\nDate\s*:/m,
+  ];
+  let cutAt = text.length;
+  for (const pat of cutPatterns) {
+    const m = pat.exec(text);
+    if (m && m.index < cutAt) cutAt = m.index;
+  }
+  return text.slice(0, cutAt).trim();
+}
+
 async function runTest() {
   const worker = document.getElementById('worker').value.trim();
   const fa = document.getElementById('fa-number').value.trim();
-  const emailText = document.getElementById('email-text').value.trim();
+  const rawText   = document.getElementById('email-text').value.trim();
+  const emailText = stripQuotedText(rawText);
+  if (emailText.length < rawText.length) {
+    document.getElementById('raw-result').textContent =
+      `ℹ️ Quoted text stripped: ${rawText.length} → ${emailText.length} chars\n\n`;
+  }
   const promptTemplate = document.getElementById('prompt-text').value;
 
   if (!emailText) { alert('Paste an email text first.'); return; }
