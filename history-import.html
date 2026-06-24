@@ -533,6 +533,8 @@ function extractTextFromPayload(payload) {
   return text;
 }
 
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
 function stripQuotedText(text) {
   const cutPatterns = [
     /^On .{10,120} wrote:\s*$/m,
@@ -984,7 +986,7 @@ async function startImport() {
       stats.fa=faList.length; updateStats();
       log(`🏷️ ${faList.length} distinct FA number(s): ${faList.join(', ')}`);
 
-      const FA_CONCURRENCY = 4;
+      const FA_CONCURRENCY = 1;
       for (let fi=0; fi<faList.length; fi+=FA_CONCURRENCY) {
         if (stopFlag) break;
         const batch = faList.slice(fi, fi+FA_CONCURRENCY);
@@ -1027,11 +1029,33 @@ async function startImport() {
                 const binary=atob(b64);
                 const bytes=new Uint8Array(binary.length);
                 for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
-                const rawText=new TextDecoder('utf-8',{fatal:false}).decode(bytes);
-                const strings=[];
-                const tRe=/<t[^>]*>([^<]*)<\/t>/g; let tm;
-                while((tm=tRe.exec(rawText))!==null) strings.push(tm[1].trim());
-                const ciText=strings.filter(s=>s.length>0).join('\t');
+                // Dézipper le xlsx (c'est un ZIP) pour lire sharedStrings + sheet
+                let ciText = '';
+                try {
+                  const zip = {};
+                  // Chercher les fichiers XML dans le ZIP manuellement
+                  const raw = atob(b64);
+                  const decoder = new TextDecoder('utf-8', {fatal:false});
+                  // Extraire tous les segments texte lisibles > 3 chars
+                  const segments = [];
+                  let buf = '';
+                  for (let i = 0; i < raw.length; i++) {
+                    const c = raw.charCodeAt(i);
+                    if (c >= 32 && c < 127) buf += raw[i];
+                    else if (buf.length > 3) { segments.push(buf); buf = ''; }
+                    else buf = '';
+                  }
+                  if (buf.length > 3) segments.push(buf);
+                  // Extraire les valeurs des balises <t> et <v> dans les segments
+                  const allText = segments.join(' ');
+                  const tRe = /<t[^>]*>([^<]{1,200})<\/t>/g;
+                  const vRe = /<v>([^<]{1,50})<\/v>/g;
+                  const vals = [];
+                  let m;
+                  while ((m = tRe.exec(allText)) !== null) vals.push(m[1].trim());
+                  while ((m = vRe.exec(allText)) !== null) vals.push(m[1].trim());
+                  ciText = vals.filter(s => s.length > 0).join('\t');
+                } catch(e) { ciText = ''; }
                 log(`  📄 CI text: ${ciText.length} chars — sending to AI…`);
                 const ciData=await parseCIExcel(ciText, fa);
                 if (ciData.items?.length) {
@@ -1077,7 +1101,6 @@ async function startImport() {
 
             // ── Étape 3 : fusionner CI + email ──
             const ciPNs = new Set(ciParts.map(p=>p.pn));
-            const mergedParts = [];
 
             // Pièces CI = shipped:true
             for (const p of ciParts) {
@@ -1179,6 +1202,7 @@ async function startImport() {
               for (const pdf of pdfs) {
                 log(`  📄 OCR: ${pdf.filename}…`);
                 const rfsText=await ocrPDF(pdf.data);
+                await delay(1500);
                 const upper=rfsText.toUpperCase();
                 if (!upper.includes(fa.toUpperCase())) continue;
                 if (!upper.includes('REQUEST FOR SERVICE')&&!upper.includes('WORK CHANGE REQUEST')&&!upper.includes('SQUAWK')&&!upper.includes('DISCREPANCY')) continue;
