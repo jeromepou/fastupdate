@@ -894,11 +894,13 @@ async function startImport() {
             let allExtractedParts = [];
             if (threadIds.length > 0) {
               const messages = await gmailGetThreadMessages(threadIds[0]);
-              log(`  📧 ${messages.length} message(s) in thread — reading each…`);
-              for (let mi=0; mi<messages.length; mi++) {
-                const msgText = messages[mi];
+              const msgsToAnalyze = messages.slice(0, 5); // max 5 messages
+              log(`  📧 ${messages.length} message(s) in thread — analysing first ${msgsToAnalyze.length}…`);
+              for (let mi=0; mi<msgsToAnalyze.length; mi++) {
+                const msgText = msgsToAnalyze[mi];
                 if (msgText.length < 50) continue;
                 log(`  📄 Message ${mi+1}: ${msgText.length} chars`);
+                if (mi > 0) await new Promise(r => setTimeout(r, 1200)); // pause anti-ratelimit
                 const extracted = await extractPartsFromEmailText(msgText, fa);
                 if (!acModel && extracted.acModel) acModel=extracted.acModel;
                 if (!acSN    && extracted.acSN)    acSN=extracted.acSN;
