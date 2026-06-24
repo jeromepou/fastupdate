@@ -598,24 +598,32 @@ function findXlsxInPayload(payload, msgId) {
 //  AI HELPERS — PARTS REQUEST
 // ─────────────────────────────────────────
 async function extractPartsFromEmailText(emailBody, faNumber) {
-  const prompt=`You will receive an aviation email thread (part request or parts & tools request).
-This email is about FA number: ${faNumber}.
+  const prompt=`You will receive an aviation maintenance email about FA number: ${faNumber}.
 
-Extract EVERY distinct physical part mentioned. For each part extract:
-- nomenclature: short descriptive name ONLY in UPPERCASE. Must be human-readable words describing the item. Part numbers look like "GAG810GG1-49" or "NAS1581C3R3P" (alphanumeric codes with dashes) — NEVER put these in nomenclature. Positional qualifiers like "(NO. 1 - LEFT UPPER)" are acceptable. Examples: "GASKET" not "GASKET GAG810GG1-49", "BOLT" not "BOLT NAS1581C3R3P", "AIR DATA PROBE LEFT UPPER" is OK. Use spaces not underscores.
-- pn_on: part number being installed/ordered. Look for labels like "PN:", "P/N:", "P/N ON:", or standalone alphanumeric codes (e.g. "GAG810GG1-49", "T3030EMU01"). If ambiguous, put it in pn_on.
-- pn_off: part number being removed. Look for labels like "P/N OFF:", "SN OFF:", "s/n off:". If a part is described as backordered or under warranty with a P/N OFF, put that PN in pn_off.
+Your job is to identify ALL physical items that are being ordered, requested, or mentioned as needed — parts, tools, consumables, or materials.
+
+DO NOT require specific labels like "P/N:" or "P/N OFF:". Instead, use context:
+- Any alphanumeric code near an item name is likely a part number (e.g. "73P3242001A003", "MS24665-302", "T3030EMU01", "100-1311-01")
+- Words like "order", "request", "needed", "required", "please find", "please order", "kindly order" signal items being requested
+- "availability" or "check availability" alone does NOT mean the item was ordered — only include it if followed by an actual order confirmation or "please order" elsewhere in the email
+- Serial numbers follow patterns like "SN:", "s/n:", or appear after a part number
+- Quantities appear as "1x", "5 x", "qty:", "1ea", or just a number before the item name
+
+For each item found, extract:
+- nomenclature: descriptive name in UPPERCASE (e.g. "MAIN WHEEL ASSEMBLY", "UPS BATTERY", "COTTER PIN"). NEVER put part numbers in nomenclature.
+- pn_on: part number of the item being ordered/installed, or ""
+- pn_off: part number of the item being removed (if mentioned), or ""
 - sn_off: serial number being removed, or ""
 - sn_on: serial number of new unit, or ""
-- cat: "Part", "Tool", or "Consumable"
-- quantity: quantity as string, or ""
+- cat: "Part", "Tool", or "Consumable". GSE/tooling items = "Tool". Grease/oil/sealant/fluid = "Consumable". Everything else = "Part".
+- quantity: as string (e.g. "1", "5"), or ""
 
-Also extract if present:
-- acModel: aircraft model (e.g. "G650ER", "GVIII-G700"), or ""
-- acSN: aircraft serial number (e.g. "6527"), or ""
+Also extract if present in the email:
+- acModel: aircraft model (e.g. "G650ER", "G600"), or ""
+- acSN: aircraft serial number (numeric, e.g. "6527"), or ""
 - acReg: aircraft registration (e.g. "T7-JMM"), or ""
-- acWO: work order number (e.g. "WO12345"), or ""
-- station: ICAO airport code (e.g. "LFPB"), or ""
+- acWO: work order number, or ""
+- station: ICAO airport code (e.g. "LFPB", "LSZH"), or ""
 
 Reply ONLY with valid JSON, no markdown:
 {"acModel":"","acSN":"","acReg":"","acWO":"","station":"","parts":[{"nomenclature":"","pn_off":"","sn_off":"","pn_on":"","sn_on":"","cat":"Part","quantity":""}]}`;
@@ -1199,7 +1207,10 @@ async function startImport() {
                     (await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgId}?format=full`,
                       {headers:{Authorization:'Bearer '+gToken}}).then(r=>r.json())).payload,msgId);
               pdfs.sort((a,b)=>(/rfs|wcr/i.test(b.filename)?1:0)-(/rfs|wcr/i.test(a.filename)?1:0));
-              for (const pdf of pdfs) {
+              // Filtrer : garder seulement les PDFs qui ressemblent à un RFS/WCR/Work Order
+              const rfsLike = pdfs.filter(p => /rfs|wcr|work.?order|request.?for.?service/i.test(p.filename));
+              const pdfsToScan = rfsLike.length > 0 ? rfsLike : pdfs.slice(0, 3);
+              for (const pdf of pdfsToScan) {
                 log(`  📄 OCR: ${pdf.filename}…`);
                 const rfsText=await ocrPDF(pdf.data);
                 await delay(1500);
