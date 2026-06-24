@@ -81,22 +81,33 @@ details summary{cursor:pointer;font-size:12px;font-weight:600;color:#495057;marg
 </div>
 
 <script>
-const PROMPT_TEMPLATE = `You will receive an aviation email thread (part request or parts & tools request).
-This email is about FA number: {FA}.
+const PROMPT_TEMPLATE = `You will receive an aviation maintenance email about FA number: {FA}.
 
-Extract EVERY distinct physical part or tool mentioned. For each part extract:
-- nomenclature: short descriptive name ONLY in UPPERCASE. Must be human-readable words describing the item. Part numbers (alphanumeric codes with dashes like "GAG810GG1-49") — NEVER put these in nomenclature. Examples: "GASKET", "BRAKE ASSEMBLY WITH CABLE", "MAIN WHEEL AND TIRE ASSEMBLY LEFT OUTBOARD". Use spaces not underscores.
-- pn_on: part number being installed/ordered. Look for labels like "PN:", "P/N:", "P/N ON:", "Part No:", or a standalone alphanumeric code near the item name (e.g. "90381-08", "T3030EMU01", "73P3242001A003"). If ambiguous, put it in pn_on.
-- pn_off: part number being removed. Look for "P/N OFF:", "S/N OFF:", or parts described as backordered/under warranty with a PN. Put that PN in pn_off.
-- sn_off: serial number being removed (look for "S/N OFF:", "SN off:", "s/n off:"), or ""
-- sn_on: serial number of new unit (look for "S/N installed:", "SN on:"), or ""
-- cat: "Part", "Tool", or "Consumable". Tooling/GSE items (with GSE prefix or described as tooling) = "Tool". Grease/lubricant/consumables = "Consumable". Everything else = "Part".
-- quantity: quantity as string (e.g. "1", "5"), or ""
+Your job is to identify ALL physical items that are being ordered, requested, or mentioned as needed — parts, tools, consumables, or materials.
 
-Also extract if present:
+DO NOT require specific labels like "P/N:" or "P/N OFF:". Instead, use context:
+- Any alphanumeric code near an item name is likely a part number (e.g. "73P3242001A003", "MS24665-302", "T3030EMU01", "100-1311-01")
+- Words like "order", "request", "needed", "required", "please find", "please order", "kindly order" signal items being requested
+- "availability" or "check availability" alone does NOT mean the item was ordered — only include it if followed by an actual order confirmation or "please order" elsewhere in the email
+- "Backordered Under Warranty" or "Under Warranty" means the item WAS ordered but is being replaced under warranty — always extract these items
+- "See below order" or "WO confirmed" at the start of an email confirms all listed items are ordered
+- P/N OFF means the part number of the unit being removed/replaced — extract it as pn_off
+- Serial numbers follow patterns like "SN:", "s/n:", or appear after a part number
+- Quantities appear as "1x", "5 x", "qty:", "1ea", or just a number before the item name
+
+For each item found, extract:
+- nomenclature: descriptive name in UPPERCASE (e.g. "MAIN WHEEL ASSEMBLY", "UPS BATTERY", "COTTER PIN"). NEVER put part numbers in nomenclature.
+- pn_on: part number of the item being ordered/installed, or ""
+- pn_off: part number of the item being removed (if mentioned), or ""
+- sn_off: serial number being removed, or ""
+- sn_on: serial number of new unit, or ""
+- cat: "Part", "Tool", or "Consumable". GSE/tooling items = "Tool". Grease/oil/sealant/fluid = "Consumable". Everything else = "Part".
+- quantity: as string (e.g. "1", "5"), or ""
+
+Also extract if present in the email:
 - acModel: aircraft model (e.g. "G650ER", "G600"), or ""
-- acSN: aircraft serial number (e.g. "6527", "73208"), or ""
-- acReg: aircraft registration (e.g. "T7-JMM", "T7-G600"), or ""
+- acSN: aircraft serial number (numeric, e.g. "6527"), or ""
+- acReg: aircraft registration (e.g. "T7-JMM"), or ""
 - acWO: work order number, or ""
 - station: ICAO airport code (e.g. "LFPB", "LSZH"), or ""
 
