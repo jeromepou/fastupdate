@@ -1133,6 +1133,7 @@ async function startImport() {
               });
             }
             // Pièces email NON dans CI = shipped:false (backordered/annulées)
+            log(`  🔎 ciPNs: ${[...ciPNs].join(', ')||'empty'}`);
             for (const p of allExtractedParts) {
               const pn = p.pn_on||p.pn_off||'';
               if (!pn || ciPNs.has(pn)) continue;
