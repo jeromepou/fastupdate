@@ -442,7 +442,10 @@ async function gmailGetFirstHSAMessage(threadId) {
     if (HSA_DOMAINS.some(domain=>from.includes(domain))) {
       const text = extractTextFromPayload(msg.payload);
       if (text.length > 50) {
-        const pnCount = (text.match(/[A-Z0-9]{3,}-[A-Z0-9]{2,}/g)||[]).length;
+        const pnCount = (text.match(/p\/n[\s:]+[A-Z0-9]/gi)||[]).length
+                      + (text.match(/\bpn[\s:]+[A-Z0-9]/gi)||[]).length
+                      + (text.match(/parts?\s+needed/gi)||[]).length * 3
+                      + (text.match(/tooling\s+needed/gi)||[]).length * 2;
         hsaMsgs.push({text, pnCount});
       }
     }
@@ -578,8 +581,8 @@ This email is about FA number: ${faNumber}.
 
 Extract EVERY distinct physical part mentioned. For each part extract:
 - nomenclature: short descriptive name ONLY in UPPERCASE. Must be human-readable words describing the item. Part numbers look like "GAG810GG1-49" or "NAS1581C3R3P" (alphanumeric codes with dashes) — NEVER put these in nomenclature. Positional qualifiers like "(NO. 1 - LEFT UPPER)" are acceptable. Examples: "GASKET" not "GASKET GAG810GG1-49", "BOLT" not "BOLT NAS1581C3R3P", "AIR DATA PROBE LEFT UPPER" is OK. Use spaces not underscores.
-- pn_on: part number being installed/ordered (alphanumeric code, often contains dashes, e.g. "GAG810GG1-49", "NAS1581C3R3P"). If you see such a code mixed into the nomenclature field, move it here instead.
-- pn_off: part number being removed, or ""
+- pn_on: part number being installed/ordered. Look for labels like "PN:", "P/N:", "P/N ON:", or standalone alphanumeric codes (e.g. "GAG810GG1-49", "T3030EMU01"). If ambiguous, put it in pn_on.
+- pn_off: part number being removed. Look for labels like "P/N OFF:", "SN OFF:", "s/n off:". If a part is described as backordered or under warranty with a P/N OFF, put that PN in pn_off.
 - sn_off: serial number being removed, or ""
 - sn_on: serial number of new unit, or ""
 - cat: "Part", "Tool", or "Consumable"
@@ -979,6 +982,7 @@ async function startImport() {
           let parsedParts=null;
           let acModel='', acSN='', acReg='', acWO='', station='';
           let ciParts = [];
+          let mergedParts = [];
 
           try {
             const threadIds=[...entry.partThreadIds];
@@ -1352,6 +1356,11 @@ function renderReview() {
               style="font-size:12px;font-weight:600;flex:1;min-width:200px;padding:3px 7px;border:1px solid var(--g200);border-radius:4px;color:var(--g800)"/>
             <div id="sq-dropdown-${i}" style="display:none;position:absolute;top:100%;left:0;z-index:50;background:#fff;border:1px solid var(--g200);border-radius:var(--r);box-shadow:0 4px 12px rgba(0,0,0,.12);max-height:180px;overflow-y:auto;min-width:300px;font-size:12px"></div>
           </div>
+          <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
+            <input type="text" id="new-sq-input-${i}" placeholder="Add squawk manually…"
+              style="font-size:12px;flex:1;min-width:200px;padding:3px 7px;border:1px solid var(--g200);border-radius:4px;color:var(--g800)"/>
+            <button onclick="addManualSquawk(${i})" class="btn" style="font-size:11px;padding:3px 9px">➕ Add squawk</button>
+          </div>
           <div style="display:flex;gap:12px;margin-top:3px;flex-wrap:wrap">
             <span style="font-size:11px;color:var(--g400)">${esc(r.emailDate||'')}</span>
             <span style="font-size:11px;color:var(--g600)">${partsSummary}</span>
@@ -1454,6 +1463,19 @@ window.toggleDetail=function(i) {
   const open=d.style.display==='none';
   d.style.display=open?'':'none';
   c.textContent=open?'▲ Close':'▼ Detail';
+};
+
+window.addManualSquawk = function(i) {
+  const inp = document.getElementById('new-sq-input-'+i);
+  const val = (inp?.value||'').trim().toUpperCase();
+  if (!val) return;
+  const r = importResults[i];
+  if (!r.allSquawksFromRFS.includes(val)) {
+    r.allSquawksFromRFS.push(val);
+    if (!r.squawkRaw) { r.squawkRaw = val; r.keywords = squawkTokenize(val); }
+  }
+  inp.value = '';
+  renderReview();
 };
 
 function reviewSelectAll(v) { importResults.forEach(r=>r.selected=v); renderReview(); }
