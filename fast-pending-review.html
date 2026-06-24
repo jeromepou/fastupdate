@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FAST — Pending Review</title>
+<style>
+:root{
+  --gd:#2d5a2d;--gm:#3a6e3a;--gl:#e8f2e8;--gb:#a8c8a8;
+  --red:#8a2e00;--rl:#fdf0eb;
+  --blue:#1a4a7a;--bl:#e8f0f8;
+  --amb:#7a5a00;--al:#fef9e7;
+  --g50:#f8f9fa;--g100:#f1f3f5;--g200:#e9ecef;
+  --g400:#adb5bd;--g600:#6c757d;--g800:#343a40;--g900:#212529;
+  --r:8px;--sh:0 1px 3px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--g100);color:var(--g900);font-size:14px;line-height:1.5;min-height:100vh}
+header{background:var(--gd);color:#fff;padding:0 1.25rem;display:flex;align-items:center;gap:10px;height:54px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+header h1{font-size:15px;font-weight:600;flex:1}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px}
+.badge-ok{background:#e8f5e9;border:1px solid #a5d6a7;color:#2e7d32}
+.badge-ko{background:var(--rl);border:1px solid #e8b8a0;color:var(--red)}
+.badge-warn{background:var(--al);border:1px solid #d4b800;color:var(--amb)}
+.badge-blue{background:var(--bl);border:1px solid #b8d0e8;color:var(--blue)}
+.main{max-width:860px;margin:0 auto;padding:1.25rem 1rem 5rem}
+.card{background:#fff;border-radius:12px;border:1px solid var(--g200);box-shadow:var(--sh);margin-bottom:1rem;overflow:hidden}
+.card-head{padding:10px 1.25rem;border-bottom:1px solid var(--g200);display:flex;align-items:center;gap:10px;background:var(--g50)}
+.card-head h2{font-size:13px;font-weight:700;color:var(--g800);flex:1}
+.card-body{padding:1.25rem}
+.btn{padding:7px 13px;border-radius:var(--r);font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--g200);background:#fff;color:var(--g800);display:inline-flex;align-items:center;gap:5px;transition:background .15s;white-space:nowrap}
+.btn:hover{background:var(--g100)}
+.btn.primary{background:var(--gd);color:#fff;border-color:var(--gd)}
+.btn.primary:hover{background:var(--gm)}
+.btn.danger{background:var(--rl);color:var(--red);border-color:#e8b8a0}
+.btn.danger:hover{background:#fce8df}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:rot .7s linear infinite;flex-shrink:0}
+@keyframes rot{to{transform:rotate(360deg)}}
+.status-bar{padding:9px 13px;border-radius:var(--r);font-size:13px;display:flex;align-items:center;gap:8px}
+.s-idle{background:var(--g100);color:var(--g600);border:1px solid var(--g200)}
+.s-load{background:var(--bl);color:var(--blue);border:1px solid #b8d0e8}
+.s-done{background:var(--gl);color:var(--gd);border:1px solid var(--gb)}
+.s-err{background:var(--rl);color:var(--red);border:1px solid #e8b8a0}
+.entry{border:1px solid var(--g200);border-radius:var(--r);margin-bottom:8px;overflow:visible;background:#fff;transition:opacity .2s}
+.entry.rejected{opacity:.45}
+.entry-head{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--g50);cursor:pointer;position:relative}
+.entry-body{display:none;padding:12px;border-top:1px solid var(--g200)}
+.entry-body.open{display:block}
+.part-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+.part-table th{padding:5px 8px;text-align:left;font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;background:var(--g100);border-bottom:1px solid var(--g200)}
+.part-table td{padding:6px 8px;border-bottom:1px solid var(--g200);vertical-align:top}
+.squawk-input{width:100%;font-size:12px;font-weight:600;padding:4px 8px;border:1px solid var(--g200);border-radius:var(--r);color:var(--g800);font-family:inherit}
+.squawk-input:focus{outline:2px solid var(--gm);border-color:var(--gm)}
+.action-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--g400)}
+.empty-state .icon{font-size:48px;margin-bottom:12px}
+.empty-state p{font-size:14px}
+.stats-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1rem}
+.stat-box{flex:1;min-width:80px;background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:8px 12px;text-align:center;box-shadow:var(--sh)}
+.stat-num{font-size:20px;font-weight:700;color:var(--gd)}
+.stat-lbl{font-size:10px;color:var(--g600);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.cat-part{color:var(--gd);background:var(--gl);border:1px solid var(--gb);border-radius:20px;font-size:10px;font-weight:700;padding:1px 7px}
+.cat-tool{color:var(--amb);background:var(--al);border:1px solid #d4b800;border-radius:20px;font-size:10px;font-weight:700;padding:1px 7px}
+.cat-cons{color:var(--blue);background:var(--bl);border:1px solid #b8d0e8;border-radius:20px;font-size:10px;font-weight:700;padding:1px 7px}
+</style>
+</head>
+<body>
+<header>
+  <h1>✈️ FAST — Pending Review</h1>
+  <span id="auth-badge" class="badge badge-ko">Not signed in</span>
+</header>
+
+<div class="main">
+  <!-- Auth -->
+  <div class="card" id="card-auth">
+    <div class="card-head"><h2>① Sign in</h2></div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:10px;max-width:320px">
+      <input type="email" id="fb-email" placeholder="Firebase email" style="padding:7px 10px;border:1px solid var(--g200);border-radius:var(--r);font-size:13px"/>
+      <input type="password" id="fb-pass" placeholder="Password" style="padding:7px 10px;border:1px solid var(--g200);border-radius:var(--r);font-size:13px"/>
+      <button class="btn primary" onclick="doLogin()">🔐 Sign in</button>
+      <div id="auth-status" class="status-bar s-idle">Enter your Firebase credentials.</div>
+    </div>
+  </div>
+
+  <!-- Review -->
+  <div id="section-review" style="display:none">
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-num" id="st-pending">0</div><div class="stat-lbl">Pending</div></div>
+      <div class="stat-box"><div class="stat-num" id="st-validated">0</div><div class="stat-lbl">Validated</div></div>
+      <div class="stat-box"><div class="stat-num" id="st-rejected">0</div><div class="stat-lbl">Rejected</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>② Review &amp; Validate</h2>
+        <span id="pending-count" class="badge badge-blue">0 entries</span>
+        <button class="btn primary" id="btn-validate-all" onclick="validateAll()" style="margin-left:auto">✅ Validate all</button>
+      </div>
+      <div class="card-body">
+        <div id="entry-list"><div class="empty-state"><div class="icon">📭</div><p>No pending entries.</p></div></div>
+        <div id="global-status" class="status-bar s-idle" style="margin-top:10px;display:none"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp }           from "https://www.gstatic.com/firebasejs/11.9.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-auth.js";
+import { getDatabase, ref, get, set, remove, update } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA5PS5Dy-RJJTC71DX2wiBm83yl4D98cFI",
+  authDomain: "fast-update-46079.firebaseapp.com",
+  databaseURL: "https://fast-update-46079-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "fast-update-46079",
+  storageBucket: "fast-update-46079.firebasestorage.app",
+  messagingSenderId: "178536566816",
+  appId: "1:178536566816:web:e1c2b103fc198a94d72c45"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getDatabase(app);
+
+let pendingEntries = {}; // key → entry
+let stats = { pending: 0, validated: 0, rejected: 0 };
+
+// ── AUTH ──────────────────────────────────────────────────
+window.doLogin = async function() {
+  const email = document.getElementById('fb-email').value.trim();
+  const pass  = document.getElementById('fb-pass').value;
+  setAuthStatus('load','<span class="spin"></span> Signing in…');
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+    setAuthStatus('done','✅ Signed in — loading pending entries…');
+    document.getElementById('auth-badge').textContent = 'Connected';
+    document.getElementById('auth-badge').className = 'badge badge-ok';
+    await loadPending();
+  } catch(e) {
+    setAuthStatus('err','❌ ' + e.message);
+  }
+};
+
+// ── LOAD PENDING ──────────────────────────────────────────
+async function loadPending() {
+  const snap = await get(ref(db, 'squawkPending'));
+  pendingEntries = snap.exists() ? snap.val() : {};
+  stats.pending = Object.keys(pendingEntries).length;
+  updateStats();
+  document.getElementById('section-review').style.display = '';
+  document.getElementById('card-auth').style.display = 'none';
+  renderEntries();
+}
+
+// ── RENDER ────────────────────────────────────────────────
+function renderEntries() {
+  const list = document.getElementById('entry-list');
+  const keys = Object.keys(pendingEntries);
+  document.getElementById('pending-count').textContent = keys.length + ' entries';
+
+  if (!keys.length) {
+    list.innerHTML = `<div class="empty-state"><div class="icon">✅</div><p>All done — nothing pending.</p></div>`;
+    return;
+  }
+
+  list.innerHTML = keys.map(key => {
+    const r = pendingEntries[key];
+    const allParts = [...(r.parts||[]), ...(r.tools||[]), ...(r.consumables||[])];
+    const total = allParts.length;
+    const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    const partRows = allParts.map(p => {
+      const catClass = p.cat === 'Part' ? 'cat-part' : p.cat === 'Tool' ? 'cat-tool' : 'cat-cons';
+      return `<tr>
+        <td><span class="${catClass}">${p.cat||'Part'}</span></td>
+        <td style="font-weight:600">${esc(p.name)}</td>
+        <td style="font-family:monospace">${esc(p.pn)}</td>
+        <td style="font-family:monospace;color:var(--g600)">${esc(p.sn)}</td>
+        <td style="color:var(--g600)">${esc(p.qty)}</td>
+      </tr>`;
+    }).join('');
+
+    return `<div class="entry" id="entry-${key}">
+      <div class="entry-head" onclick="toggleEntry('${key}')">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:700;color:var(--gd)">${esc(r.faNumber)}</span>
+            <span style="font-size:11px;color:var(--blue)">${esc(r.acModel||'')} ${r.acSN?'#'+r.acSN:''} ${r.acReg&&r.acReg!=='UNK'?r.acReg:''} ${r.station?'@ '+r.station:''}</span>
+          </div>
+          <div style="font-size:11px;color:var(--g400);margin-top:2px">${esc(r.emailDate||'')} · ${total} part(s)</div>
+        </div>
+        <span id="chev-${key}" style="font-size:11px;color:var(--g400)">▼</span>
+      </div>
+
+      <div class="entry-body" id="body-${key}">
+        <!-- Squawk -->
+        <div style="margin-bottom:12px">
+          <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Squawk</div>
+          <input class="squawk-input" id="squawk-${key}" value="${esc(r.squawkRaw||'')}" placeholder="Enter squawk description…"/>
+          <div style="font-size:11px;color:var(--g400);margin-top:3px">Leave blank to store parts under ${esc(r.faNumber)} without a squawk label.</div>
+        </div>
+
+        <!-- Parts table -->
+        ${total ? `<div style="overflow-x:auto">
+          <table class="part-table">
+            <thead><tr>
+              <th>Cat</th><th>Nomenclature</th><th>PN</th><th>SN</th><th>Qty</th>
+            </tr></thead>
+            <tbody>${partRows}</tbody>
+          </table>
+        </div>` : `<div style="font-size:12px;color:var(--g400)">No parts extracted.</div>`}
+
+        <!-- Email source -->
+        <div style="margin-top:10px;font-size:11px;color:var(--g400)">${esc(r.emailSubject||'')}</div>
+
+        <!-- Actions -->
+        <div class="action-row">
+          <button class="btn primary" onclick="validateEntry('${key}')">✅ Validate → Firebase</button>
+          <button class="btn danger"  onclick="rejectEntry('${key}')">🗑️ Reject</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── TOGGLE ────────────────────────────────────────────────
+window.toggleEntry = function(key) {
+  const body = document.getElementById('body-' + key);
+  const chev = document.getElementById('chev-' + key);
+  const open = body.classList.toggle('open');
+  chev.textContent = open ? '▲' : '▼';
+};
+
+// ── VALIDATE ONE ──────────────────────────────────────────
+window.validateEntry = async function(key) {
+  const entry = pendingEntries[key];
+  const squawk = document.getElementById('squawk-' + key)?.value.trim() || entry.squawkRaw || '';
+
+  // Tokenizer
+  const STOP = new Set(['AND','OR','THE','A','AN','OF','FOR','TO','IN','ON','AT','WITH','BY','IS','ARE','WAS','HAS','HAVE','NOT','NO','BE','AS','FROM','THAT','THIS','IT']);
+  const tokenize = s => [...new Set(s.toUpperCase().replace(/[^A-Z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>2&&!STOP.has(w)))];
+
+  const allParts = [...(entry.parts||[]), ...(entry.tools||[]), ...(entry.consumables||[])];
+
+  // Construire l'entrée squawkHistory
+  const histEntry = {
+    faNumber:            entry.faNumber,
+    squawkRaw:           squawk || `${entry.faNumber} PARTS REQUEST`,
+    keywords:            tokenize(squawk || entry.faNumber),
+    parts:               (entry.parts||[]).map(p=>({...p, squawks: squawk?[squawk]:[]})),
+    tools:               (entry.tools||[]).map(p=>({...p, squawks: squawk?[squawk]:[]})),
+    consumables:         (entry.consumables||[]).map(p=>({...p, squawks: squawk?[squawk]:[]})),
+    acModel:             entry.acModel||'',
+    acSN:                entry.acSN||'',
+    acReg:               entry.acReg||'',
+    acWO:                entry.acWO||'',
+    station:             entry.station||'',
+    emailSubject:        entry.emailSubject||'',
+    updateSummary:       '',
+    addedBy:             'Daily Agent',
+    importedFromHistory: false,
+    importedFromFSR:     false,
+    lastUsed:            Date.now(),
+    usageCount:          1
+  };
+
+  const newKey = 'sq_agent_' + entry.faNumber + '_' + Date.now();
+
+  try {
+    await set(ref(db, 'squawkHistory/' + newKey), histEntry);
+    await remove(ref(db, 'squawkPending/' + key));
+    delete pendingEntries[key];
+    stats.pending--;
+    stats.validated++;
+    updateStats();
+    renderEntries();
+    showGlobalStatus('done', `✅ ${entry.faNumber} validated and saved to squawkHistory.`);
+  } catch(e) {
+    showGlobalStatus('err', '❌ ' + e.message);
+  }
+};
+
+// ── REJECT ONE ────────────────────────────────────────────
+window.rejectEntry = async function(key) {
+  const entry = pendingEntries[key];
+  if (!confirm(`Reject ${entry.faNumber}? This will delete it permanently.`)) return;
+  try {
+    await remove(ref(db, 'squawkPending/' + key));
+    delete pendingEntries[key];
+    stats.pending--;
+    stats.rejected++;
+    updateStats();
+    renderEntries();
+    showGlobalStatus('done', `🗑️ ${entry.faNumber} rejected and deleted.`);
+  } catch(e) {
+    showGlobalStatus('err', '❌ ' + e.message);
+  }
+};
+
+// ── VALIDATE ALL ──────────────────────────────────────────
+window.validateAll = async function() {
+  const keys = Object.keys(pendingEntries);
+  if (!keys.length) return;
+  if (!confirm(`Validate all ${keys.length} entries?`)) return;
+  document.getElementById('btn-validate-all').disabled = true;
+  for (const key of keys) {
+    await validateEntry(key);
+  }
+  document.getElementById('btn-validate-all').disabled = false;
+};
+
+// ── UI HELPERS ────────────────────────────────────────────
+function setAuthStatus(type, html) {
+  const el = document.getElementById('auth-status');
+  el.className = 'status-bar s-' + type;
+  el.innerHTML = html;
+}
+
+function showGlobalStatus(type, msg) {
+  const el = document.getElementById('global-status');
+  el.style.display = '';
+  el.className = 'status-bar s-' + type;
+  el.textContent = msg;
+  setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+function updateStats() {
+  document.getElementById('st-pending').textContent   = stats.pending;
+  document.getElementById('st-validated').textContent = stats.validated;
+  document.getElementById('st-rejected').textContent  = stats.rejected;
+}
+</script>
+</body>
+</html>
