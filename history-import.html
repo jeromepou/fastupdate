@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>FAST — History Import</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 :root{
   --gd:#2d5a2d;--gm:#3a6e3a;--gl:#e8f2e8;--gb:#a8c8a8;
@@ -1038,33 +1039,37 @@ async function startImport() {
                 const binary=atob(b64);
                 const bytes=new Uint8Array(binary.length);
                 for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
-                // Dézipper le xlsx (c'est un ZIP) pour lire sharedStrings + sheet
                 let ciText = '';
                 try {
-                  const zip = {};
-                  // Chercher les fichiers XML dans le ZIP manuellement
-                  const raw = atob(b64);
-                  const decoder = new TextDecoder('utf-8', {fatal:false});
-                  // Extraire tous les segments texte lisibles > 3 chars
-                  const segments = [];
-                  let buf = '';
-                  for (let i = 0; i < raw.length; i++) {
-                    const c = raw.charCodeAt(i);
-                    if (c >= 32 && c < 127) buf += raw[i];
-                    else if (buf.length > 3) { segments.push(buf); buf = ''; }
-                    else buf = '';
+                  const zip = await JSZip.loadAsync(bytes);
+                  let strings = [];
+                  const ssFile = zip.file('xl/sharedStrings.xml');
+                  if (ssFile) {
+                    const ssXml = await ssFile.async('string');
+                    const tRe = /<t[^>]*>([^<]*)<\/t>/g;
+                    let m;
+                    while ((m = tRe.exec(ssXml)) !== null) strings.push(m[1]);
                   }
-                  if (buf.length > 3) segments.push(buf);
-                  // Extraire les valeurs des balises <t> et <v> dans les segments
-                  const allText = segments.join(' ');
-                  const tRe = /<t[^>]*>([^<]{1,200})<\/t>/g;
-                  const vRe = /<v>([^<]{1,50})<\/v>/g;
-                  const vals = [];
-                  let m;
-                  while ((m = tRe.exec(allText)) !== null) vals.push(m[1].trim());
-                  while ((m = vRe.exec(allText)) !== null) vals.push(m[1].trim());
-                  ciText = vals.filter(s => s.length > 0).join('\t');
-                } catch(e) { ciText = ''; }
+                  const shFile = zip.file('xl/worksheets/sheet1.xml') ||
+                                 zip.file('xl/worksheets/Sheet1.xml');
+                  const rows = [];
+                  if (shFile) {
+                    const shXml = await shFile.async('string');
+                    const rowRe = /<row[^>]*>([\s\S]*?)<\/row>/g;
+                    const cellRe = /<c[^>]*t="s"[^>]*><v>(\d+)<\/v><\/c>|<c[^>]*><v>([^<]*)<\/v><\/c>/g;
+                    let rowM;
+                    while ((rowM = rowRe.exec(shXml)) !== null) {
+                      const cells = [];
+                      let cellM;
+                      while ((cellM = cellRe.exec(rowM[1])) !== null) {
+                        if (cellM[1] !== undefined) cells.push(strings[+cellM[1]] || '');
+                        else cells.push(cellM[2] || '');
+                      }
+                      if (cells.some(c => c.trim())) rows.push(cells.join('\t'));
+                    }
+                  }
+                  ciText = rows.join('\n');
+                } catch(e) { ciText = ''; log(`  ⚠️ xlsx parse error: ${e.message}`); }
                 log(`  📄 CI text: ${ciText.length} chars — sending to AI…`);
                 const ciData=await parseCIExcel(ciText, fa);
                 if (ciData.items?.length) {
