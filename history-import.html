@@ -435,16 +435,21 @@ async function gmailGetFirstHSAMessage(threadId) {
   const PART_KW = /PARTS?|TOOLS?|REQUIRED?|REQUEST/i;
 
   // Chercher le premier message FROM headstartaviation avec keyword dans le sujet
-  const hsaTexts = [];
-  const sortedMsgs = [...msgs].sort((a, b) => (b.internalDate||0) - (a.internalDate||0));
-  for (const msg of sortedMsgs) {
+  const PN_RE = /\bp\/n\b|\bpn\b|\bpart\s*(?:number|no\.?)\b/i;
+  const hsaMsgs = [];
+  for (const msg of msgs) {
     const from = (msg.payload?.headers||[]).find(h=>h.name==='From')?.value||'';
     if (HSA_DOMAINS.some(domain=>from.includes(domain))) {
       const text = extractTextFromPayload(msg.payload);
-      if (text.length > 50) hsaTexts.push(text);
+      if (text.length > 50) {
+        const pnCount = (text.match(/[A-Z0-9]{3,}-[A-Z0-9]{2,}/g)||[]).length;
+        hsaMsgs.push({text, pnCount});
+      }
     }
   }
-  if (hsaTexts.length > 0) return hsaTexts.join('\n\n---\n\n').slice(0, 16000);
+  if (!hsaMsgs.length) return msgs.length ? extractTextFromPayload(msgs[0].payload) : '';
+  hsaMsgs.sort((a,b) => b.pnCount - a.pnCount);
+  return hsaMsgs.map(m=>m.text).join('\n\n---\n\n').slice(0, 16000);
   return msgs.length ? extractTextFromPayload(msgs[0].payload) : '';
 }
 
@@ -1017,11 +1022,12 @@ async function startImport() {
             // ── Étape 2 : lire le vrai message de demande (FROM headstartaviation.com) ──
             let allExtractedParts = [];
             const threadIds2=[...entry.partThreadIds];
-            let msgText = '';
+            const allThreadTexts = [];
             for (const tid of threadIds2) {
               const t = await gmailGetFirstHSAMessage(tid);
-              if (t.length > msgText.length) msgText = t; // prendre le plus riche
+              if (t.length >= 50) allThreadTexts.push(t);
             }
+            const msgText = allThreadTexts.join('\n\n===NEW THREAD===\n\n').slice(0, 20000);
             if (msgText.length >= 50) {
               log(`  📧 HSA request message: ${msgText.length} chars`);
               if (msgText && msgText.length >= 50) {
@@ -1117,18 +1123,17 @@ async function startImport() {
                 if (!station&&updData.station)  station=updData.station;
                 if (updateSummary){
                   log(`  📝 Summary extracted.`);stats.upd++;updateStats();
-                  // Extraire aussi les pièces mentionnées dans l'update
                   try {
                     const updPartsData = await extractPartsFromEmailText(updBody, fa);
-                    const updParts = (updPartsData.parts||[]).filter(p=>{
+                    const updParts = (updPartsData.parts||[]).filter(p => (p.pn_on||p.pn_off||'').length > 3);
+                    for (const p of updParts) {
                       const pn = p.pn_on||p.pn_off||'';
-                      return pn && pn.length > 3;
-                    });
-                    if (updParts.length > 0) {
-                      allExtractedParts.push(...updParts.map(p=>({...p, shipped:false})));
-                      log(`  📦 UPDATE: ${updParts.length} part(s) found in update email`);
+                      if (!mergedParts.find(x=>(x.pn_on||x.pn_off||''===pn))) {
+                        mergedParts.push({...p, shipped:false, gul:'', lot:''});
+                      }
                     }
-                  } catch(e){ log(`  ⚠️ UPDATE parts extraction: ${e.message}`); }
+                    if (updParts.length) log(`  📦 UPDATE: ${updParts.length} part(s) added`);
+                  } catch(e){ log(`  ⚠️ UPDATE parts: ${e.message}`); }
                   break;
                 }
               }
