@@ -245,6 +245,7 @@ const FSR_SENDER = 'SFSR.FldSvcReport@gulfstream.com';
 let gToken = null, gTokenExp = 0, fbUser = null;
 let tokenClient = null;
 let importResults = [];
+let firebaseSquawks = [];
 let stopFlag = false;
 let stats = {scanned:0, fa:0, rfs:0, upd:0, fsr:0, saved:0, skip:0};
 
@@ -400,23 +401,23 @@ async function gmailGetMeta(id) {
   return {id, subj, date, from, threadId:d.threadId};
 }
 
-async function gmailGetThreadBody(threadId) {
+async function gmailGetThreadMessages(threadId) {
   await ensureToken();
   const r=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadId}?format=full`,
     {headers:{Authorization:'Bearer '+gToken}});
   const d=await r.json();
   if (!r.ok) throw new Error(d.error?.message||'Gmail thread error');
-  const messages = d.messages || [];
-  let fullText = '';
-  for (const msg of messages) {
-    const subj=(msg.payload?.headers||[]).find(h=>h.name==='Subject')?.value||'';
-    const from=(msg.payload?.headers||[]).find(h=>h.name==='From')?.value||'';
-    const date=(msg.payload?.headers||[]).find(h=>h.name==='Date')?.value||'';
-    fullText += `\n--- MESSAGE (${date}) FROM: ${from} ---\nSubject: ${subj}\n`;
-    fullText += extractTextFromPayload(msg.payload);
-    fullText += '\n';
-  }
-  return fullText;
+  return (d.messages||[]).map(msg => extractTextFromPayload(msg.payload)).filter(t=>t.trim().length>0);
+}
+
+async function gmailGetLastMessageBody(threadId) {
+  await ensureToken();
+  const r=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadId}?format=full`,
+    {headers:{Authorization:'Bearer '+gToken}});
+  const d=await r.json();
+  if (!r.ok) throw new Error(d.error?.message||'Thread error');
+  const msgs = d.messages||[];
+  return msgs.length ? extractTextFromPayload(msgs[msgs.length-1].payload) : '';
 }
 
 // Lire le body HTML d'un message (pour les FSR qui sont en HTML structuré)
@@ -663,6 +664,20 @@ function squawkTokenize(label) {
 }
 function squawkScore(tokA,tokB) { const s=new Set(tokB); return tokA.filter(t=>s.has(t)).length; }
 
+async function loadFirebaseSquawks() {
+  if (firebaseSquawks.length) return;
+  const snap = await get(ref(db,'squawkHistory'));
+  if (!snap.exists()) return;
+  const seen = new Set();
+  Object.values(snap.val()).forEach(e => {
+    if (e.squawkRaw && !seen.has(e.squawkRaw)) {
+      seen.add(e.squawkRaw);
+      firebaseSquawks.push({ squawk: e.squawkRaw, keywords: e.keywords||[] });
+    }
+  });
+  log(`ℹ️ ${firebaseSquawks.length} existing squawks loaded from Firebase`);
+}
+
 // ─────────────────────────────────────────
 //  FSR IMPORT FLOW
 // ─────────────────────────────────────────
@@ -769,7 +784,8 @@ async function startImport() {
   if (!fbUser){alert('Sign in to Firebase first.');return;}
   if (!gToken){alert('Connect Google first.');return;}
 
-  stopFlag=false; importResults.length=0; stats={scanned:0,fa:0,rfs:0,upd:0,fsr:0,saved:0,skip:0}; updateStats();
+  stopFlag=false; importResults.length=0; firebaseSquawks=[]; stats={scanned:0,fa:0,rfs:0,upd:0,fsr:0,saved:0,skip:0}; updateStats();
+  await loadFirebaseSquawks();
   document.getElementById('card-progress').style.display='';
   document.getElementById('card-review').style.display='none';
   document.getElementById('btn-stop').style.display='';
@@ -875,23 +891,39 @@ async function startImport() {
           let acModel='', acSN='', acReg='', acWO='', station='';
           try {
             const threadIds=[...entry.partThreadIds];
-            let bodyToAnalyze='';
+            let allExtractedParts = [];
             if (threadIds.length > 0) {
-              log(`  📧 Reading thread…`);
-              bodyToAnalyze = await gmailGetThreadBody(threadIds[0]);
-              log(`  📄 Thread body: ${bodyToAnalyze.length} chars`);
+              const messages = await gmailGetThreadMessages(threadIds[0]);
+              log(`  📧 ${messages.length} message(s) in thread — reading each…`);
+              for (let mi=0; mi<messages.length; mi++) {
+                const msgText = messages[mi];
+                if (msgText.length < 50) continue;
+                log(`  📄 Message ${mi+1}: ${msgText.length} chars`);
+                const extracted = await extractPartsFromEmailText(msgText, fa);
+                if (!acModel && extracted.acModel) acModel=extracted.acModel;
+                if (!acSN    && extracted.acSN)    acSN=extracted.acSN;
+                if (!acReg   && extracted.acReg)   acReg=extracted.acReg;
+                if (!acWO    && extracted.acWO)    acWO=extracted.acWO;
+                if (!station && extracted.station) station=extracted.station;
+                for (const p of (extracted.parts||[])) {
+                  const pn = p.pn_on||p.pn_off||'';
+                  if (!pn || !allExtractedParts.find(x=>(x.pn_on||x.pn_off||'')=== pn)) {
+                    allExtractedParts.push(p);
+                  }
+                }
+              }
             } else {
               const fmR = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${entry.partEmailIds[0]}?format=full`,
                 {headers:{Authorization:'Bearer '+gToken}});
               const fmD = await fmR.json();
-              bodyToAnalyze = extractTextFromPayload(fmD.payload);
-              log(`  📄 Message body: ${bodyToAnalyze.length} chars`);
+              const extracted = await extractPartsFromEmailText(extractTextFromPayload(fmD.payload), fa);
+              allExtractedParts = extracted.parts||[];
+              acModel=extracted.acModel||''; acSN=extracted.acSN||'';
+              acReg=extracted.acReg||'';     acWO=extracted.acWO||'';
+              station=extracted.station||'';
             }
-            parsedParts=await extractPartsFromEmailText(bodyToAnalyze, fa);
-            acModel=parsedParts.acModel||''; acSN=parsedParts.acSN||'';
-            acReg=parsedParts.acReg||'';     acWO=parsedParts.acWO||'';
-            station=parsedParts.station||'';
-            log(`  📦 ${parsedParts.parts?.length||0} part(s). Model:${acModel||'?'} SN:${acSN||'?'} Reg:${acReg||'?'}`);
+            parsedParts = { parts: allExtractedParts };
+            log(`  📦 ${allExtractedParts.length} part(s) total. Model:${acModel||'?'} SN:${acSN||'?'} Reg:${acReg||'?'}`);
           } catch(e) {
             log(`  ⚠️ Parts extraction failed: ${e.message}`); stats.skip++; updateStats(); return;
           }
@@ -922,7 +954,7 @@ async function startImport() {
                 if (subjUp.includes('CUSTOMER')||!subjNorm.includes(fa.replace(/\s/g,''))) continue;
                 log(`  📧 UPDATE: "${updMeta.subj}"`);
                 const updBody=updMeta.threadId
-                  ?await gmailGetThreadBody(updMeta.threadId)
+                  ?await gmailGetLastMessageBody(updMeta.threadId)
                   :extractTextFromPayload((await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${updId}?format=full`,
                       {headers:{Authorization:'Bearer '+gToken}}).then(r=>r.json())).payload);
                 const updData=await extractSummaryFromUpdateEmail(updBody,fa);
@@ -1129,7 +1161,14 @@ function renderReview() {
             <span style="font-size:11px;color:var(--blue)">${esc(r.acModel||'')}${r.acReg&&r.acReg!=='UNK'?' '+r.acReg:''} ${r.acSN?'#'+r.acSN:''} ${r.station?'· '+r.station:''}</span>
             ${ataLine}
           </div>
-          <div style="font-size:12px;font-weight:600;color:var(--g800);margin-top:2px">${esc(r.squawkRaw||'— no squawk —')}</div>
+          <div style="margin-top:4px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;position:relative">
+            <input type="text" id="sq-input-${i}" value="${esc(r.squawkRaw||'')}"
+              placeholder="Type squawk or search Firebase…"
+              oninput="filterSquawks(${i},this.value)"
+              onchange="applySquawk(${i},this.value)"
+              style="font-size:12px;font-weight:600;flex:1;min-width:200px;padding:3px 7px;border:1px solid var(--g200);border-radius:4px;color:var(--g800)"/>
+            <div id="sq-dropdown-${i}" style="display:none;position:absolute;top:100%;left:0;z-index:50;background:#fff;border:1px solid var(--g200);border-radius:var(--r);box-shadow:0 4px 12px rgba(0,0,0,.12);max-height:180px;overflow-y:auto;min-width:300px;font-size:12px"></div>
+          </div>
           <div style="display:flex;gap:12px;margin-top:3px;flex-wrap:wrap">
             <span style="font-size:11px;color:var(--g400)">${esc(r.emailDate||'')}</span>
             <span style="font-size:11px;color:var(--g600)">${partsSummary}</span>
@@ -1193,6 +1232,37 @@ window.togglePartSquawk=function(entryIdx,catKey,partIdx,squawk,checked) {
   if (!p.squawks) p.squawks=[];
   if (checked){if(!p.squawks.includes(squawk))p.squawks.push(squawk);}
   else p.squawks=p.squawks.filter(s=>s!==squawk);
+};
+
+window.filterSquawks = function(i, val) {
+  const dd = document.getElementById('sq-dropdown-'+i);
+  if (!val || val.length < 2) { dd.style.display='none'; return; }
+  const terms = val.toUpperCase().split(/\s+/).filter(Boolean);
+  const matches = firebaseSquawks
+    .filter(s => terms.every(t => s.squawk.toUpperCase().includes(t)))
+    .slice(0, 15);
+  if (!matches.length) { dd.style.display='none'; return; }
+  dd.innerHTML = matches.map(s =>
+    `<div onclick="applySquawk(${i},'${s.squawk.replace(/'/g,"\\'")}');document.getElementById('sq-dropdown-${i}').style.display='none'"
+      style="padding:6px 10px;cursor:pointer;border-bottom:1px solid var(--g200)"
+      onmouseover="this.style.background='var(--g100)'" onmouseout="this.style.background=''"
+    >${s.squawk}</div>`
+  ).join('');
+  dd.style.display='';
+};
+
+window.applySquawk = function(i, val) {
+  const r = importResults[i];
+  r.squawkRaw = val;
+  r.keywords = squawkTokenize(val);
+  r.allSquawksFromRFS = val ? [val] : [];
+  ['parts','tools','consumables'].forEach(cat => {
+    (r[cat]||[]).forEach(p => { p.squawks = val ? [val] : []; });
+  });
+  const dd = document.getElementById('sq-dropdown-'+i);
+  if (dd) dd.style.display='none';
+  const inp = document.getElementById('sq-input-'+i);
+  if (inp) inp.value = val;
 };
 
 window.toggleDetail=function(i) {
