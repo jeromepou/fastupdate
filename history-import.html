@@ -440,7 +440,8 @@ async function gmailGetFirstHSAMessage(threadId) {
   for (const msg of msgs) {
     const from = (msg.payload?.headers||[]).find(h=>h.name==='From')?.value||'';
     if (HSA_DOMAINS.some(domain=>from.includes(domain))) {
-      const text = extractTextFromPayload(msg.payload);
+      const rawMsgText = extractTextFromPayload(msg.payload);
+      const text = stripQuotedText(rawMsgText);
       if (text.length > 50) {
         const pnCount = (text.match(/p\/n[\s:]+[A-Z0-9]/gi)||[]).length
                       + (text.match(/\bpn[\s:]+[A-Z0-9]/gi)||[]).length
@@ -452,8 +453,9 @@ async function gmailGetFirstHSAMessage(threadId) {
   }
   if (!hsaMsgs.length) return msgs.length ? extractTextFromPayload(msgs[0].payload) : '';
   hsaMsgs.sort((a,b) => b.pnCount - a.pnCount);
+  if (!hsaMsgs.length) return msgs.length ? stripQuotedText(extractTextFromPayload(msgs[0].payload)) : '';
+  hsaMsgs.sort((a,b) => b.pnCount - a.pnCount);
   return hsaMsgs.map(m=>m.text).join('\n\n---\n\n').slice(0, 16000);
-  return msgs.length ? extractTextFromPayload(msgs[0].payload) : '';
 }
 
 async function gmailGetLastMessageBody(threadId) {
@@ -531,6 +533,24 @@ function extractTextFromPayload(payload) {
   return text;
 }
 
+function stripQuotedText(text) {
+  const cutPatterns = [
+    /^On .{10,120} wrote:\s*$/m,
+    /^Le .{5,80} a écrit\s*[:\-]?\s*$/m,
+    /^-{5,}\s*Original Message/m,
+    /^From:\s*.+\nSent:\s*/m,
+    /^_{5,}/m,
+    /^>{1}\s/m,
+    /^De\s*:.+\nDate\s*:/m,
+  ];
+  let cutAt = text.length;
+  for (const pat of cutPatterns) {
+    const m = pat.exec(text);
+    if (m && m.index < cutAt) cutAt = m.index;
+  }
+  return text.slice(0, cutAt).trim();
+}
+
 async function collectPDFsFromPayload(payload, msgId) {
   if (!payload) return [];
   const results=[];
@@ -600,7 +620,7 @@ Reply ONLY with valid JSON, no markdown:
 
   const res=await fetch(WORKER+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({model:'mistral-small-latest',temperature:0,
-      messages:[{role:'user',content:prompt+'\n\nEMAIL THREAD:\n'+emailBody.slice(0,8000)}],
+      messages:[{role:'user',content:prompt+'\n\nEMAIL THREAD:\n'+emailBody.slice(0,12000)}],
       response_format:{type:'json_object'}})});
   const d=await res.json();
   if (!res.ok) throw new Error(d.message||'Chat error');
