@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Parts Extractor — Test Tool</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f1f3f5;color:#212529;font-size:14px;padding:20px}
+h1{font-size:16px;font-weight:700;margin-bottom:16px;color:#2d5a2d}
+.row{display:flex;gap:16px;align-items:flex-start}
+.col{flex:1;display:flex;flex-direction:column;gap:10px}
+label{font-size:11px;font-weight:700;color:#6c757d;text-transform:uppercase;letter-spacing:.04em}
+textarea{width:100%;padding:10px;border:1px solid #dee2e6;border-radius:8px;font-family:monospace;font-size:12px;resize:vertical;background:#fff}
+input{padding:7px 10px;border:1px solid #dee2e6;border-radius:6px;font-size:13px;width:100%}
+button{padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:#2d5a2d;color:#fff}
+button:hover{background:#3a6e3a}
+button:disabled{opacity:.4;cursor:not-allowed}
+.result{background:#1a1a2e;color:#a0ffa0;font-family:monospace;font-size:12px;padding:12px;border-radius:8px;white-space:pre-wrap;word-break:break-all;min-height:200px;max-height:600px;overflow-y:auto}
+.result.err{color:#ff8080}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+.ok{background:#e8f5e9;border:1px solid #a5d6a7;color:#2e7d32}
+.ko{background:#fdf0eb;border:1px solid #e8b8a0;color:#8a2e00}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #dee2e6}
+th{background:#e9ecef;padding:7px 10px;font-size:11px;text-align:left;font-weight:700;color:#495057}
+td{padding:6px 10px;font-size:12px;border-bottom:1px solid #f1f3f5;vertical-align:top}
+tr:last-child td{border-bottom:none}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:rot .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes rot{to{transform:rotate(360deg)}}
+.prompt-box{background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:10px;font-size:11px;font-family:monospace;white-space:pre-wrap;max-height:300px;overflow-y:auto;color:#333}
+details summary{cursor:pointer;font-size:12px;font-weight:600;color:#495057;margin-bottom:6px}
+</style>
+</head>
+<body>
+<h1>🔬 Parts Extractor — Test Tool</h1>
+
+<div style="display:flex;gap:10px;margin-bottom:14px;align-items:flex-end;flex-wrap:wrap">
+  <div style="flex:1;min-width:200px">
+    <label>Worker URL</label>
+    <input id="worker" value="https://orange-snow-95f7.jeromepoupinel.workers.dev"/>
+  </div>
+  <div style="min-width:100px">
+    <label>FA Number</label>
+    <input id="fa-number" value="FA33043" style="width:120px"/>
+  </div>
+  <button id="btn-run" onclick="runTest()">▶ Run extraction</button>
+  <button onclick="clearAll()" style="background:#6c757d">✕ Clear</button>
+</div>
+
+<div class="row" style="margin-bottom:14px">
+  <div class="col">
+    <label>Email text to test (paste here)</label>
+    <textarea id="email-text" rows="18" placeholder="Paste the raw email text here…"></textarea>
+  </div>
+  <div class="col">
+    <details style="margin-bottom:8px">
+      <summary>📋 Current prompt (editable)</summary>
+      <textarea id="prompt-text" rows="18" style="font-size:11px;background:#fffde7"></textarea>
+    </details>
+  </div>
+</div>
+
+<div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap">
+  <button onclick="loadSample('mauritz')" style="background:#1a4a7a;font-size:12px;padding:6px 12px">📋 Sample: Mauritz (wheel)</button>
+  <button onclick="loadSample('jerome')" style="background:#1a4a7a;font-size:12px;padding:6px 12px">📋 Sample: Jérôme (EVS/LX)</button>
+  <button onclick="loadSample('fa32954')" style="background:#1a4a7a;font-size:12px;padding:6px 12px">📋 Sample: FA32954 (UPS)</button>
+  <button onclick="loadSample('fa32995')" style="background:#1a4a7a;font-size:12px;padding:6px 12px">📋 Sample: FA32995 (EVHM)</button>
+</div>
+
+<div id="result-area" style="display:none">
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+    <span style="font-weight:700">Result</span>
+    <span id="status-badge" class="badge">—</span>
+    <span id="timing" style="font-size:11px;color:#6c757d"></span>
+  </div>
+  <div id="parts-table" style="margin-bottom:10px"></div>
+  <details>
+    <summary>🔍 Raw JSON response</summary>
+    <div class="result" id="raw-result"></div>
+  </details>
+</div>
+
+<script>
+const PROMPT_TEMPLATE = `You will receive an aviation email thread (part request or parts & tools request).
+This email is about FA number: {FA}.
+
+Extract EVERY distinct physical part or tool mentioned. For each part extract:
+- nomenclature: short descriptive name ONLY in UPPERCASE. Must be human-readable words describing the item. Part numbers (alphanumeric codes with dashes like "GAG810GG1-49") — NEVER put these in nomenclature. Examples: "GASKET", "BRAKE ASSEMBLY WITH CABLE", "MAIN WHEEL AND TIRE ASSEMBLY LEFT OUTBOARD". Use spaces not underscores.
+- pn_on: part number being installed/ordered. Look for labels like "PN:", "P/N:", "P/N ON:", "Part No:", or a standalone alphanumeric code near the item name (e.g. "90381-08", "T3030EMU01", "73P3242001A003"). If ambiguous, put it in pn_on.
+- pn_off: part number being removed. Look for "P/N OFF:", "S/N OFF:", or parts described as backordered/under warranty with a PN. Put that PN in pn_off.
+- sn_off: serial number being removed (look for "S/N OFF:", "SN off:", "s/n off:"), or ""
+- sn_on: serial number of new unit (look for "S/N installed:", "SN on:"), or ""
+- cat: "Part", "Tool", or "Consumable". Tooling/GSE items (with GSE prefix or described as tooling) = "Tool". Grease/lubricant/consumables = "Consumable". Everything else = "Part".
+- quantity: quantity as string (e.g. "1", "5"), or ""
+
+Also extract if present:
+- acModel: aircraft model (e.g. "G650ER", "G600"), or ""
+- acSN: aircraft serial number (e.g. "6527", "73208"), or ""
+- acReg: aircraft registration (e.g. "T7-JMM", "T7-G600"), or ""
+- acWO: work order number, or ""
+- station: ICAO airport code (e.g. "LFPB", "LSZH"), or ""
+
+Reply ONLY with valid JSON, no markdown:
+{"acModel":"","acSN":"","acReg":"","acWO":"","station":"","parts":[{"nomenclature":"","pn_off":"","sn_off":"","pn_on":"","sn_on":"","cat":"Part","quantity":""}]}`;
+
+document.getElementById('prompt-text').value = PROMPT_TEMPLATE;
+
+const SAMPLES = {
+  mauritz: {
+    fa: 'FA33043',
+    text: `NEW PARTS REQ // G600 #73208 // T7-G600 // FA33043 // LSZH // HF 1 & 2 ISSUE + AFT Pocket door + RH Seat #2
+
+Dear FastOps,
+Please order the following parts and advise the ETA in Zurich.
+PARTS NEEDED: (Item 2.7)
+
+* MAIN WHEEL AND TIRE ASSEMBLY (LEFT OUTBOARD)
+      P/N: 73P3242001A003    S/N installed: JUN25-1222
+
+* 5 x Cotter Pin PN: MS24665-302
+* 5 x O-ring PN: MS25988/1-013 ••• O-RING
+* 1 x 50 ml - Grease - MIL-PRF-81322 (NOTE: Mobil Aviation Grease SHC 100 can be used as an alternate.)
+(NOTE: Must be the same as used on the wheel bearings)
+
+TOOLING NEEDED:
+(Please book this tooling to M.PLOEG, FN671366)
+
+* Axle nut socket GSE3220961
+* Main landing gear axle thread protector GSE3230657
+* Torque wrench, 0 - 300 foot-pounds GSE5120587 (No Dial, only klick torque wrench)
+* Adaptors to fit the Main wheel nut
+* Tire deflator - GSE1220203 or equivalent
+
+SHIPPING ADDRESS:
+Jet Aviation FBO NORTH
+Att: T7-G600
+Bimenzältenstrasse
+8302 Kloten
+Tel No. +41 43 818 8953`
+  },
+  jerome: {
+    fa: 'FA32988',
+    text: `PART REQUEST // G650ER// 6527 // T7-JMM // FA32988 // LFPB // due task + defects
+
+Dear Team,
+Could you please check the availability only of the following parts? We would prefer to source these from Amsterdam, if possible.
+
+PARTS
+- EVS Window Assy p/n: 50889-101 s/n off: 0835 qty: 01
+- LX Processor p/n: 7011822-906 qty: 01
+- LX Antenna p/n: 7014062-901 qty: 01
+- LX Controller p/n: 7012738-905 qty: 01
+
+Regards
+Jérôme POUPINEL`
+  },
+  fa32954: {
+    fa: 'FA32954',
+    text: `Re: PARTS REQ./72160//LX-NJC//FA32954//LFMN//UPS BATT FAIL, Fuel Tank Sumping, DB Update
+
+Hi FAB Team,
+WO FA32954 is now confirmed and support will take place in Nice.
+See below order:
+
+Material:
+UPS BATTERY CHARGER  P/N OFF: 100-1311-01    S/N OFF: 1225598  ...................Backordered Under Warranty
+UPS BATTERY P/N OFF: 100-2410-07    S/N OFF: 1227248 ...................Backordered Under Warranty
+
+Shipping address:
+AVIA-VIP Attn: LX-NJC Aeroport International Nice Cote d'Azur, Terminal Aviation Affaires, F-06281 Nice Cedex 3`
+  },
+  fa32995: {
+    fa: 'FA32995',
+    text: `PARTS REQ. // 87012// A7-CHB// FA32995// LFPB// FCS MAINT REQ., EVHM
+
+Good evening all
+Could you please advise if we have the following part available:
+T3030EMU01    ENGINE VIBRATION HEALTH MONITORING UNIT    1ea
+S/N off: BX320055
+
+Support location below:
+Jet Aviation FBO
+ATT: A7-CHB
+Paris – Le Bourget Airport
+Rue de Prague – Zone Aviateurs
+95500 Bonneuil-en-France`
+  }
+};
+
+function loadSample(key) {
+  const s = SAMPLES[key];
+  document.getElementById('email-text').value = s.text;
+  document.getElementById('fa-number').value = s.fa;
+}
+
+function clearAll() {
+  document.getElementById('email-text').value = '';
+  document.getElementById('raw-result').textContent = '';
+  document.getElementById('parts-table').innerHTML = '';
+  document.getElementById('result-area').style.display = 'none';
+}
+
+async function runTest() {
+  const worker = document.getElementById('worker').value.trim();
+  const fa = document.getElementById('fa-number').value.trim();
+  const emailText = document.getElementById('email-text').value.trim();
+  const promptTemplate = document.getElementById('prompt-text').value;
+
+  if (!emailText) { alert('Paste an email text first.'); return; }
+
+  const btn = document.getElementById('btn-run');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Running…';
+
+  const prompt = promptTemplate.replace('{FA}', fa);
+  const t0 = Date.now();
+
+  document.getElementById('result-area').style.display = '';
+  document.getElementById('raw-result').textContent = 'Calling Mistral…';
+  document.getElementById('parts-table').innerHTML = '';
+
+  try {
+    const res = await fetch(worker + '/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'mistral-small-latest',
+        temperature: 0,
+        messages: [{ role: 'user', content: prompt + '\n\nEMAIL THREAD:\n' + emailText.slice(0, 8000) }],
+        response_format: { type: 'json_object' }
+      })
+    });
+
+    const d = await res.json();
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(1) + 's';
+    document.getElementById('timing').textContent = elapsed;
+
+    if (!res.ok) throw new Error(d.message || JSON.stringify(d));
+
+    const raw = d.choices[0].message.content.replace(/```json|```/g, '').trim();
+    document.getElementById('raw-result').textContent = JSON.stringify(JSON.parse(raw), null, 2);
+
+    const parsed = JSON.parse(raw);
+    const parts = parsed.parts || [];
+
+    const badge = document.getElementById('status-badge');
+    if (parts.length > 0) {
+      badge.className = 'badge ok';
+      badge.textContent = `✅ ${parts.length} part(s) found`;
+    } else {
+      badge.className = 'badge ko';
+      badge.textContent = '❌ 0 parts found';
+    }
+
+    // Aircraft info
+    const acInfo = [parsed.acModel, parsed.acReg, parsed.acSN ? '#'+parsed.acSN : '', parsed.station]
+      .filter(Boolean).join(' · ');
+
+    let html = '';
+    if (acInfo) html += `<div style="font-size:12px;color:#1a4a7a;margin-bottom:8px;font-weight:600">✈️ ${acInfo}</div>`;
+
+    if (parts.length > 0) {
+      html += `<table>
+        <thead><tr>
+          <th>Nomenclature</th><th>PN on</th><th>PN off</th><th>SN off</th><th>SN on</th><th>Cat</th><th>Qty</th>
+        </tr></thead><tbody>`;
+      for (const p of parts) {
+        const catColor = p.cat === 'Tool' ? '#fef9e7' : p.cat === 'Consumable' ? '#e8f0f8' : '#e8f2e8';
+        html += `<tr style="background:${catColor}">
+          <td><strong>${esc(p.nomenclature)}</strong></td>
+          <td style="font-family:monospace">${esc(p.pn_on)}</td>
+          <td style="font-family:monospace">${esc(p.pn_off)}</td>
+          <td style="font-family:monospace">${esc(p.sn_off)}</td>
+          <td style="font-family:monospace">${esc(p.sn_on)}</td>
+          <td><span style="font-size:10px;font-weight:700">${esc(p.cat)}</span></td>
+          <td>${esc(p.quantity)}</td>
+        </tr>`;
+      }
+      html += '</tbody></table>';
+    } else {
+      html += `<div style="color:#8a2e00;font-weight:600;padding:10px;background:#fdf0eb;border-radius:6px">
+        ❌ No parts extracted. Check the email text and prompt.</div>`;
+    }
+
+    document.getElementById('parts-table').innerHTML = html;
+
+  } catch(e) {
+    document.getElementById('raw-result').className = 'result err';
+    document.getElementById('raw-result').textContent = '❌ Error: ' + e.message;
+    document.getElementById('status-badge').className = 'badge ko';
+    document.getElementById('status-badge').textContent = '❌ Error';
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '▶ Run extraction';
+}
+
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>
