@@ -954,7 +954,7 @@ async function startImport() {
                 if (subjUp.includes('CUSTOMER')||!subjNorm.includes(fa.replace(/\s/g,''))) continue;
                 log(`  📧 UPDATE: "${updMeta.subj}"`);
                 const updBody=updMeta.threadId
-                  ?await gmailGetLastMessageBody(updMeta.threadId)
+                  ?await gmailGetThreadBody(updMeta.threadId)
                   :extractTextFromPayload((await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${updId}?format=full`,
                       {headers:{Authorization:'Bearer '+gToken}}).then(r=>r.json())).payload);
                 const updData=await extractSummaryFromUpdateEmail(updBody,fa);
