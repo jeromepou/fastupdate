@@ -261,30 +261,41 @@ window.switchTab = function(tab) {
 //  QUERY LIST
 // ─────────────────────────────────────────
 let queryItems = [
-  { label: '⭐ PARTS & TOOLS (large — matche REQ.//, REQUEST, etc.)',  q: 'subject:"PARTS & TOOLS" FA',         checked: true  },
-  { label: '⭐ PART & TOOL (large)',                                   q: 'subject:"PART & TOOL" FA',           checked: true  },
-  { label: '⭐ PARTS & TOOL (large)',                                  q: 'subject:"PARTS & TOOL" FA',          checked: true  },
-  { label: '⭐ PART & TOOLS (large)',                                  q: 'subject:"PART & TOOLS" FA',          checked: true  },
-  { label: '⭐ PARTS TOOLS REQ (sans &)',                              q: 'subject:PARTS subject:TOOLS subject:REQ subject:FA', checked: true },
-  { label: '⭐ PARTS & TOOLS REQ (encodé)',                            q: 'subject:"PARTS" subject:"TOOLS" subject:"REQ" FA',   checked: true },
-  { label: '⭐ PARTS TOOLS FA (ultra large)',                          q: 'subject:PARTS subject:TOOLS FA',     checked: true },
-  { label: '⭐ PARTS TOOLS REQ. (avec point)',                         q: 'subject:PARTS subject:TOOLS subject:FA',             checked: true },
-  { label: '⭐ PARTS REQ (ultra large)',                               q: 'subject:"PARTS REQ" subject:FA',     checked: true },
-  { label: '⭐ PARTS REQ. (avec point)',                               q: 'subject:"PARTS REQ."',               checked: true },
-  { label: '⭐ PART REQ. (avec point)',                                q: 'subject:"PART REQ."',                checked: true },
-  { label: 'Part Request',                                             q: 'subject:"Part Request" FA',          checked: true  },
-  { label: 'Parts Request',                                            q: 'subject:"Parts Request" FA',         checked: true  },
-  { label: 'Parts & Tools Req. (mots séparés)',                        q: 'subject:PARTS subject:TOOLS subject:REQ FA',         checked: true  },
-  { label: 'Part & Tool Request (mots séparés)',                       q: 'subject:PART subject:TOOL subject:REQUEST FA',       checked: true  },
-  { label: 'Parts & Tools Request (mots séparés)',                     q: 'subject:PARTS subject:TOOLS subject:REQUEST FA',     checked: true  },
-  { label: 'Part and Tool Request',                                    q: 'subject:"Part and Tool Request" FA', checked: false },
-  { label: 'Parts and Tool Request',                                   q: 'subject:"Parts and Tool Request" FA',checked: false },
-  { label: 'Part and Tools Request',                                   q: 'subject:"Part and Tools Request" FA',checked: false },
-  { label: 'Parts and Tools Request',                                  q: 'subject:"Parts and Tools Request" FA',checked: false},
-  { label: 'Parts & Tool Request (mots séparés)',                      q: 'subject:PARTS subject:TOOL subject:REQUEST FA',      checked: false },
-  { label: 'Part & Tools Request (mots séparés)',                      q: 'subject:PART subject:TOOLS subject:REQUEST FA',      checked: false },
-  { label: '⚠️ Filet large: PARTS REQ + FA',                          q: 'subject:PARTS subject:REQ FA',       checked: false },
-  { label: '⚠️ Filet large: TOOLS REQ + FA',                          q: 'subject:TOOLS subject:REQ FA',       checked: false },
+  { label: '⭐ PARTS & TOOLS (large)',                                  q: 'subject:"PARTS & TOOLS" FA',                          checked: true  },
+  { label: '⭐ PART & TOOL (large)',                                    q: 'subject:"PART & TOOL" FA',                            checked: true  },
+  { label: '⭐ PARTS & TOOL (large)',                                   q: 'subject:"PARTS & TOOL" FA',                           checked: true  },
+  { label: '⭐ PART & TOOLS (large)',                                   q: 'subject:"PART & TOOLS" FA',                           checked: true  },
+  { label: '⭐ PARTS TOOLS REQ (sans &)',                               q: 'subject:PARTS subject:TOOLS subject:REQ subject:FA',   checked: true  },
+  { label: '⭐ PARTS & TOOLS REQ (encodé)',                             q: 'subject:"PARTS" subject:"TOOLS" subject:"REQ" FA',    checked: true  },
+  { label: '⭐ PARTS TOOLS FA (ultra large)',                           q: 'subject:PARTS subject:TOOLS FA',                      checked: true  },
+  { label: '⭐ PARTS TOOLS REQ. (avec point)',                          q: 'subject:PARTS subject:TOOLS subject:FA',              checked: true  },
+  { label: '⭐ PARTS REQ (ultra large)',                                q: 'subject:"PARTS REQ" subject:FA',                      checked: true  },
+  { label: '⭐ PARTS REQ. (avec point)',                                q: 'subject:"PARTS REQ."',                                checked: true  },
+  { label: '⭐ PART REQ. (avec point)',                                 q: 'subject:"PART REQ."',                                 checked: true  },
+  { label: 'Part Request',                                              q: 'subject:"Part Request" FA',                           checked: true  },
+  { label: 'Parts Request',                                             q: 'subject:"Parts Request" FA',                          checked: true  },
+  { label: '⭐ PARTS REQUEST (majuscules)',                             q: 'subject:"PARTS REQUEST" FA',                          checked: true  },
+  { label: '⭐ PART REQUEST (majuscules)',                              q: 'subject:"PART REQUEST" FA',                           checked: true  },
+  { label: 'Parts & Tools Req. (mots séparés)',                         q: 'subject:PARTS subject:TOOLS subject:REQ FA',          checked: true  },
+  { label: 'Part & Tool Request (mots séparés)',                        q: 'subject:PART subject:TOOL subject:REQUEST FA',        checked: true  },
+  { label: 'Parts & Tools Request (mots séparés)',                      q: 'subject:PARTS subject:TOOLS subject:REQUEST FA',      checked: true  },
+  { label: '⭐ PART REQUIRED',                                         q: 'subject:"PART REQUIRED" FA',                          checked: true  },
+  { label: '⭐ PARTS REQUIRED',                                        q: 'subject:"PARTS REQUIRED" FA',                         checked: true  },
+  { label: '⭐ PART & TOOL REQUIRED (mots séparés)',                   q: 'subject:PART subject:TOOL subject:REQUIRED FA',       checked: true  },
+  { label: '⭐ PARTS & TOOLS REQUIRED (mots séparés)',                 q: 'subject:PARTS subject:TOOLS subject:REQUIRED FA',     checked: true  },
+  { label: '⭐ NEW PARTS REQ (toutes déclinaisons)',                   q: 'subject:NEW subject:PARTS subject:REQ FA',            checked: true  },
+  { label: '⭐ NEW PART REQ (toutes déclinaisons)',                    q: 'subject:NEW subject:PART subject:REQ FA',             checked: true  },
+  { label: '⭐ NEW PARTS REQUEST',                                     q: 'subject:NEW subject:PARTS subject:REQUEST FA',        checked: true  },
+  { label: '⭐ NEW PART REQUIRED',                                     q: 'subject:NEW subject:PART subject:REQUIRED FA',        checked: true  },
+  { label: '⭐ NEW PARTS TOOLS REQ (avec TOOLS)',                      q: 'subject:NEW subject:PARTS subject:TOOLS subject:REQ FA', checked: true },
+  { label: 'Part and Tool Request',                                     q: 'subject:"Part and Tool Request" FA',                  checked: false },
+  { label: 'Parts and Tool Request',                                    q: 'subject:"Parts and Tool Request" FA',                 checked: false },
+  { label: 'Part and Tools Request',                                    q: 'subject:"Part and Tools Request" FA',                 checked: false },
+  { label: 'Parts and Tools Request',                                   q: 'subject:"Parts and Tools Request" FA',                checked: false },
+  { label: 'Parts & Tool Request (mots séparés)',                       q: 'subject:PARTS subject:TOOL subject:REQUEST FA',       checked: false },
+  { label: 'Part & Tools Request (mots séparés)',                       q: 'subject:PART subject:TOOLS subject:REQUEST FA',       checked: false },
+  { label: '⚠️ Filet large: PARTS REQ + FA',                          q: 'subject:PARTS subject:REQ FA',                        checked: false },
+  { label: '⚠️ Filet large: TOOLS REQ + FA',                          q: 'subject:TOOLS subject:REQ FA',                        checked: false },
 ];
 
 function renderQueryList() {
@@ -410,6 +421,32 @@ async function gmailGetThreadMessages(threadId) {
   return (d.messages||[]).map(msg => extractTextFromPayload(msg.payload)).filter(t=>t.trim().length>0);
 }
 
+// Retourne le texte du PREMIER message FROM headstartaviation.com
+// Si non trouvé, retourne le premier message du thread
+async function gmailGetFirstHSAMessage(threadId) {
+  await ensureToken();
+  const r=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadId}?format=full`,
+    {headers:{Authorization:'Bearer '+gToken}});
+  const d=await r.json();
+  if (!r.ok) throw new Error(d.error?.message||'Thread error');
+  const msgs = d.messages||[];
+
+  const HSA_DOMAINS = ['headstartaviation.com'];
+  const PART_KW = /PARTS?|TOOLS?|REQUIRED?|REQUEST/i;
+
+  // Chercher le premier message FROM headstartaviation avec keyword dans le sujet
+  for (const msg of msgs) {
+    const from = (msg.payload?.headers||[]).find(h=>h.name==='From')?.value||'';
+    const subj = (msg.payload?.headers||[]).find(h=>h.name==='Subject')?.value||'';
+    if (HSA_DOMAINS.some(domain=>from.includes(domain)) && PART_KW.test(subj)) {
+      const text = extractTextFromPayload(msg.payload);
+      if (text.length > 100) return text;
+    }
+  }
+  // Fallback : premier message du thread
+  return msgs.length ? extractTextFromPayload(msgs[0].payload) : '';
+}
+
 async function gmailGetLastMessageBody(threadId) {
   await ensureToken();
   const r=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadId}?format=full`,
@@ -453,13 +490,8 @@ function extractHtmlFromPayload(payload) {
 function htmlToText(html) {
   const div = document.createElement('div');
   div.innerHTML = html;
-  // Transformer les cellules de tableau en texte structuré
-  div.querySelectorAll('td, th').forEach(cell => {
-    cell.textContent = cell.textContent.trim() + '\t';
-  });
-  div.querySelectorAll('tr').forEach(row => {
-    row.textContent = row.textContent.trim() + '\n';
-  });
+  div.querySelectorAll('td, th').forEach(cell => { cell.textContent = cell.textContent.trim() + '\t'; });
+  div.querySelectorAll('tr').forEach(row => { row.textContent = row.textContent.trim() + '\n'; });
   div.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
   return div.textContent.replace(/\t\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
 }
@@ -514,6 +546,23 @@ async function collectPDFsFromPayload(payload, msgId) {
   return results;
 }
 
+// Cherche récursivement un xlsx dans les parts d'un payload
+function findXlsxInPayload(payload, msgId) {
+  if (!payload) return null;
+  const parts = payload.parts || [];
+  for (const p of parts) {
+    const fn = (p.filename||'').toLowerCase();
+    if ((fn.endsWith('.xlsx')||fn.endsWith('.xls')) && p.body?.attachmentId) {
+      return { attachmentId: p.body.attachmentId, msgId };
+    }
+    if (p.parts) {
+      const sub = findXlsxInPayload(p, msgId);
+      if (sub) return sub;
+    }
+  }
+  return null;
+}
+
 // ─────────────────────────────────────────
 //  AI HELPERS — PARTS REQUEST
 // ─────────────────────────────────────────
@@ -546,6 +595,37 @@ Reply ONLY with valid JSON, no markdown:
       response_format:{type:'json_object'}})});
   const d=await res.json();
   if (!res.ok) throw new Error(d.message||'Chat error');
+  return JSON.parse(d.choices[0].message.content.replace(/```json|```/g,'').trim());
+}
+
+// Parse une CI Gulfstream (texte extrait du xlsx) → retourne les items
+async function parseCIExcel(ciText, faNumber) {
+  const prompt=`You will receive text extracted from a Gulfstream Commercial Invoice (CI) Excel file for FA${faNumber}.
+The text contains tab-separated values from the CI table with columns: Item, Box No, Qty, Part/Tool Number, UOM, Description, Condition, Serial/Gul#, Lot Number, Dangerous Goods, COO, Part has been Installed?, Unit price, Customs Value, HS Code.
+
+Extract ALL line items from the table (ignore header rows and footer text). For each item:
+- pn: Part/Tool Number (exact value, e.g. "73P3242001A003", "M25988/1-013", "NB50-SB")
+- name: Description in UPPERCASE
+- qty: quantity as string
+- sn: Serial/Gul# only if it is NOT "NA" and does NOT start with "GUL", else ""
+- gul: if Serial/Gul# starts with "GUL", put it here (e.g. "GUL12685"), else ""
+- lot: Lot Number if not "NA", else ""
+- cat: "Tool" if Serial/Gul# starts with "GUL", "Consumable" if name contains GREASE/OIL/SEALANT/COMPOUND/FLUID, else "Part"
+- shipped: true
+
+Also extract from the header section:
+- faNumber: value of the "Gulfstream W/O" field (e.g. "FA33043")
+- acReg: value of the "Aircraft Reg / SN" field (e.g. "T7-G600")
+
+Reply ONLY with valid JSON, no markdown, no extra text:
+{"faNumber":"","acReg":"","items":[{"pn":"","name":"","qty":"","sn":"","gul":"","lot":"","cat":"Part","shipped":true}]}`;
+
+  const res=await fetch(WORKER+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'mistral-small-latest',temperature:0,
+      messages:[{role:'user',content:prompt+'\n\nCI TEXT:\n'+ciText.slice(0,6000)}],
+      response_format:{type:'json_object'}})});
+  const d=await res.json();
+  if (!res.ok) throw new Error(d.message||'CI parse error');
   return JSON.parse(d.choices[0].message.content.replace(/```json|```/g,'').trim());
 }
 
@@ -732,11 +812,14 @@ async function runFSRImport(existingFSRs, maxEmails, dateFilter) {
 
       log(`  📦 ${parts.length} part(s) | Squawk: "${squawk}" | Model: ${extracted.acModel||'?'} SN: ${extracted.acSN||'?'}`);
 
-      const buildParts = (list) => list.map(p => ({
+      const buildFSRParts = (list) => list.map(p => ({
         pn:   p.pn_on || p.pn_off || '',
         sn:   p.sn_on || p.sn_off || '',
         name: p.nomenclature || '',
         qty:  '',
+        gul:  '',
+        lot:  '',
+        shipped: true,
         cat:  p.cat || 'Part',
         squawks: squawk ? [squawk] : []
       }));
@@ -755,9 +838,9 @@ async function runFSRImport(existingFSRs, maxEmails, dateFilter) {
         acWO:              woKey,
         station:           '',
         ata:               extracted.ata || '',
-        parts:             buildParts(parts.filter(p => p.cat === 'Part' || !p.cat)),
-        tools:             buildParts(parts.filter(p => p.cat === 'Tool')),
-        consumables:       buildParts(parts.filter(p => p.cat === 'Consumable')),
+        parts:             buildFSRParts(parts.filter(p => p.cat === 'Part' || !p.cat)),
+        tools:             buildFSRParts(parts.filter(p => p.cat === 'Tool')),
+        consumables:       buildFSRParts(parts.filter(p => p.cat === 'Consumable')),
         addedBy:           'FSR Import',
         importedFromFSR:   true,
         fsrNumber:         fsrNum,
@@ -889,45 +972,107 @@ async function startImport() {
 
           let parsedParts=null;
           let acModel='', acSN='', acReg='', acWO='', station='';
+          let ciParts = [];
+
           try {
             const threadIds=[...entry.partThreadIds];
-            let allExtractedParts = [];
+
+            // ── Étape 1 : chercher une CI xlsx dans le thread (du plus récent au plus ancien) ──
             if (threadIds.length > 0) {
-              const messages = await gmailGetThreadMessages(threadIds[0]);
-              const msgsToAnalyze = messages.slice(0, 5); // max 5 messages
-              log(`  📧 ${messages.length} message(s) in thread — analysing first ${msgsToAnalyze.length}…`);
-              for (let mi=0; mi<msgsToAnalyze.length; mi++) {
-                const msgText = msgsToAnalyze[mi];
-                if (msgText.length < 50) continue;
-                log(`  📄 Message ${mi+1}: ${msgText.length} chars`);
-                if (mi > 0) await new Promise(r => setTimeout(r, 1200)); // pause anti-ratelimit
+              await ensureToken();
+              const threadR=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadIds[0]}?format=full`,
+                {headers:{Authorization:'Bearer '+gToken}});
+              const threadD=await threadR.json();
+
+              for (const msg of (threadD.messages||[]).slice().reverse()) {
+                const att = findXlsxInPayload(msg.payload, msg.id);
+                if (!att) continue;
+                log(`  📎 CI found: attachment in msg ${msg.id}`);
+                await ensureToken();
+                const ar=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${att.msgId}/attachments/${att.attachmentId}`,
+                  {headers:{Authorization:'Bearer '+gToken}});
+                const ad=await ar.json();
+                if (!ad.data) continue;
+                const b64=ad.data.replace(/-/g,'+').replace(/_/g,'/');
+                const binary=atob(b64);
+                const bytes=new Uint8Array(binary.length);
+                for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+                const rawText=new TextDecoder('utf-8',{fatal:false}).decode(bytes);
+                const strings=[];
+                const tRe=/<t[^>]*>([^<]*)<\/t>/g; let tm;
+                while((tm=tRe.exec(rawText))!==null) strings.push(tm[1].trim());
+                const ciText=strings.filter(s=>s.length>0).join('\t');
+                log(`  📄 CI text: ${ciText.length} chars — sending to AI…`);
+                const ciData=await parseCIExcel(ciText, fa);
+                if (ciData.items?.length) {
+                  ciParts=ciData.items;
+                  if (!acReg && ciData.acReg) acReg=ciData.acReg;
+                  log(`  ✅ CI: ${ciParts.length} item(s) extracted (shipped)`);
+                }
+                break; // on prend le premier xlsx trouvé
+              }
+            }
+
+            // ── Étape 2 : lire le vrai message de demande (FROM headstartaviation.com) ──
+            let allExtractedParts = [];
+            const threadIds2=[...entry.partThreadIds];
+            if (threadIds2.length > 0) {
+              const msgText = await gmailGetFirstHSAMessage(threadIds2[0]);
+              log(`  📧 HSA request message: ${msgText.length} chars`);
+              if (msgText && msgText.length >= 50) {
                 const extracted = await extractPartsFromEmailText(msgText, fa);
                 if (!acModel && extracted.acModel) acModel=extracted.acModel;
                 if (!acSN    && extracted.acSN)    acSN=extracted.acSN;
                 if (!acReg   && extracted.acReg)   acReg=extracted.acReg;
                 if (!acWO    && extracted.acWO)    acWO=extracted.acWO;
-                if (!station && extracted.station) station=extracted.station;
-                for (const p of (extracted.parts||[])) {
-                  const pn = p.pn_on||p.pn_off||'';
-                  if (!pn || !allExtractedParts.find(x=>(x.pn_on||x.pn_off||'')=== pn)) {
-                    allExtractedParts.push(p);
-                  }
-                }
+                if (!station && extracted.station)  station=extracted.station;
+                allExtractedParts = extracted.parts||[];
+                log(`  📦 Email: ${allExtractedParts.length} part(s) requested`);
               }
             } else {
-              const fmR = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${entry.partEmailIds[0]}?format=full`,
+              const fmR=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${entry.partEmailIds[0]}?format=full`,
                 {headers:{Authorization:'Bearer '+gToken}});
-              const fmD = await fmR.json();
-              const extracted = await extractPartsFromEmailText(extractTextFromPayload(fmD.payload), fa);
-              allExtractedParts = extracted.parts||[];
+              const fmD=await fmR.json();
+              const extracted=await extractPartsFromEmailText(extractTextFromPayload(fmD.payload),fa);
+              allExtractedParts=extracted.parts||[];
               acModel=extracted.acModel||''; acSN=extracted.acSN||'';
               acReg=extracted.acReg||'';     acWO=extracted.acWO||'';
               station=extracted.station||'';
             }
-            parsedParts = { parts: allExtractedParts };
-            log(`  📦 ${allExtractedParts.length} part(s) total. Model:${acModel||'?'} SN:${acSN||'?'} Reg:${acReg||'?'}`);
+
+            // ── Étape 3 : fusionner CI + email ──
+            const ciPNs = new Set(ciParts.map(p=>p.pn));
+            const mergedParts = [];
+
+            // Pièces CI = shipped:true
+            for (const p of ciParts) {
+              mergedParts.push({
+                nomenclature: p.name,
+                pn_on:  p.pn,
+                pn_off: '',
+                sn_on:  p.sn||'',
+                sn_off: '',
+                cat:    p.cat||'Part',
+                quantity: p.qty||'',
+                gul:    p.gul||'',
+                lot:    p.lot||'',
+                shipped: true
+              });
+            }
+            // Pièces email NON dans CI = shipped:false (backordered/annulées)
+            for (const p of allExtractedParts) {
+              const pn = p.pn_on||p.pn_off||'';
+              if (!pn || ciPNs.has(pn)) continue;
+              mergedParts.push({...p, shipped: false, gul:'', lot:''});
+            }
+
+            parsedParts = { parts: mergedParts };
+            const shippedCount = mergedParts.filter(p=>p.shipped).length;
+            const requestedOnly = mergedParts.filter(p=>!p.shipped).length;
+            log(`  📦 ${shippedCount} shipped + ${requestedOnly} requested-only = ${mergedParts.length} total`);
+
           } catch(e) {
-            log(`  ⚠️ Parts extraction failed: ${e.message}`); stats.skip++; updateStats(); return;
+            log(`  ⚠️ Extraction failed: ${e.message}`); stats.skip++; updateStats(); return;
           }
 
           if (!parsedParts?.parts?.length) {
@@ -956,7 +1101,7 @@ async function startImport() {
                 if (subjUp.includes('CUSTOMER')||!subjNorm.includes(fa.replace(/\s/g,''))) continue;
                 log(`  📧 UPDATE: "${updMeta.subj}"`);
                 const updBody=updMeta.threadId
-                  ?await gmailGetThreadBody(updMeta.threadId)
+                  ?await gmailGetLastMessageBody(updMeta.threadId)
                   :extractTextFromPayload((await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${updId}?format=full`,
                       {headers:{Authorization:'Bearer '+gToken}}).then(r=>r.json())).payload);
                 const updData=await extractSummaryFromUpdateEmail(updBody,fa);
@@ -1003,10 +1148,13 @@ async function startImport() {
 
           const defaultSquawk=squawks.length===1?squawks[0]:'';
           const buildParts=(list,cat)=>list.map(p=>({
-            pn:   p.pn_on ||p.pn_off ||'',
-            sn:   p.sn_on ||p.sn_off ||'',
-            name: p.nomenclature||'',
-            qty:  p.quantity||'',
+            pn:      p.pn_on ||p.pn_off ||'',
+            sn:      p.sn_on ||p.sn_off ||p.sn||'',
+            name:    p.nomenclature||'',
+            qty:     p.quantity||p.qty||'',
+            gul:     p.gul||'',
+            lot:     p.lot||'',
+            shipped: p.shipped!==undefined ? p.shipped : true,
             cat,
             squawks: defaultSquawk?[defaultSquawk]:[]
           }));
@@ -1101,6 +1249,9 @@ function renderReview() {
       const subIdx=p.cat==='Part'?pi++:p.cat==='Tool'?ti++:ci++;
       const sqCount=(p.squawks||[]).length;
       const sqHtml=sqCheckboxes(catKey,subIdx,p);
+      const shippedBadge = p.shipped === false
+        ? `<span style="font-size:10px;font-weight:700;color:var(--amb);background:var(--al);border:1px solid #d4b800;border-radius:20px;padding:1px 6px">backordered</span>`
+        : `<span style="font-size:10px;font-weight:700;color:var(--gd);background:var(--gl);border:1px solid var(--gb);border-radius:20px;padding:1px 6px">shipped</span>`;
       return `<tr style="border-bottom:1px solid var(--g200)">
         <td style="padding:5px 4px;vertical-align:top">
           <button onclick="deletePartRow(${i},'${catKey}',${subIdx})"
@@ -1138,7 +1289,12 @@ function renderReview() {
             <input type="text" value="${esc(p.gul||'')}"
               onchange="window.importResults[${i}].${catKey}[${subIdx}].gul=this.value"
               placeholder="GUL#"
-              style="font-size:11px;font-family:monospace;width:70px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
+              style="font-size:11px;font-family:monospace;width:80px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
+            <input type="text" value="${esc(p.lot||'')}"
+              onchange="window.importResults[${i}].${catKey}[${subIdx}].lot=this.value"
+              placeholder="Lot#"
+              style="font-size:11px;font-family:monospace;width:80px;padding:2px 5px;border:1px solid var(--g200);border-radius:4px"/>
+            ${shippedBadge}
           </div>
           <div>${sqHtml}${sqCount>1?`<div style="font-size:10px;color:var(--blue);margin-top:2px;font-weight:700">→ ${sqCount} squawk(s) → ${sqCount} Firebase entries</div>`:''}</div>
         </td>
@@ -1208,7 +1364,7 @@ function renderReview() {
             <thead><tr style="background:var(--g200)">
               <th style="padding:5px 4px;width:24px"></th>
               <th style="padding:5px 8px;font-size:10px;text-align:left;width:120px">Cat</th>
-              <th style="padding:5px 8px;font-size:10px;text-align:left">Nomenclature · PN · SN · Qty · GUL# · Squawk(s)</th>
+              <th style="padding:5px 8px;font-size:10px;text-align:left">Nomenclature · PN · SN · Qty · GUL# · Lot# · Status · Squawk(s)</th>
             </tr></thead>
             <tbody>${partRows}</tbody>
           </table></div>
@@ -1308,7 +1464,11 @@ async function saveToFirebase() {
       const addToGroup=(sq,part)=>{
         if (!bySq[sq]) bySq[sq]={parts:[],tools:[],consumables:[]};
         const dest=part.cat==='Part'?'parts':part.cat==='Tool'?'tools':'consumables';
-        bySq[sq][dest].push({pn:part.pn,sn:part.sn,gul:part.gul||'',qty:part.qty||'',name:part.name,cat:part.cat});
+        bySq[sq][dest].push({
+          pn:part.pn, sn:part.sn, gul:part.gul||'', lot:part.lot||'',
+          qty:part.qty||'', name:part.name, cat:part.cat,
+          shipped:part.shipped!==undefined?part.shipped:true
+        });
       };
 
       allP.forEach(p=>{
@@ -1400,7 +1560,7 @@ window.deletePartRow=function(entryIdx,catKey,partIdx) {
 window.addPartRow=function(entryIdx,catKey) {
   const cat=catKey==='parts'?'Part':catKey==='tools'?'Tool':'Consumable';
   if (!importResults[entryIdx][catKey]) importResults[entryIdx][catKey]=[];
-  importResults[entryIdx][catKey].push({name:'',pn:'',sn:'',gul:'',cat,squawks:[]});
+  importResults[entryIdx][catKey].push({name:'',pn:'',sn:'',gul:'',lot:'',shipped:true,cat,squawks:[]});
   renderReview();
 };
 
