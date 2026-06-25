@@ -1155,6 +1155,7 @@ async function startImport() {
           }
 
           let updateSummary='';
+          let _lastUpdBody=''; 
           let updIds=[], workpackIds=[], bizofficeIds=[];
           try {
             const [resUpd,resWp,resBiz]=await Promise.allSettled([
@@ -1174,7 +1175,7 @@ async function startImport() {
                 const subjUp=updMeta.subj.toUpperCase();
                 const subjNorm=subjUp.replace(/\s+/g,'');
                 if (subjUp.includes('CUSTOMER')||!subjNorm.includes(fa.replace(/\s/g,''))) continue;
-                log(`  📧 UPDATE: "${updMeta.subj}"`);
+                log(`  📧 UPDATE: "${updMeta.subj}" | threadId:${updMeta.threadId||'none'}`);
                 const updBody=updMeta.threadId
                   ?await gmailGetLastMessageBody(updMeta.threadId)
                   :extractTextFromPayload((await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${updId}?format=full`,
@@ -1211,7 +1212,6 @@ async function startImport() {
 
           let squawks=[];
           // Squawks depuis UPDATE si pas de RFS PDF trouvé
-          let _lastUpdBody='';
           try {
             const candidateIds=[...new Set([...workpackIds,...bizofficeIds])];
             if (!candidateIds.length && _lastUpdBody) {
