@@ -1084,23 +1084,14 @@ async function startImport() {
                   if (shFile) {
                     const shXml = await shFile.async('string');
                     const rowRe = /<row[^>]*>([\s\S]*?)<\/row>/g;
-                    // Regex capturant la référence de cellule (ex: r="C5") pour reconstruire les colonnes
-                    const cellRe = /<c\s+r="([A-Z]+)\d+"[^>]*(?:t="s"[^>]*)?>(?:<v>(\d+)<\/v>|<v>([^<]*)<\/v>)?[^<]*(?:<\/c>|<f[^>]*>[^<]*<\/f>\s*(?:<v>([^<]*)<\/v>)?)/g;
-                    const colIdx = s => [...s].reduce((n,c) => n*26 + c.charCodeAt(0) - 64, 0) - 1;
+                    const cellRe = /<c[^>]*t="s"[^>]*><v>(\d+)<\/v><\/c>|<c[^>]*><v>([^<]*)<\/v><\/c>/g;
                     let rowM;
                     while ((rowM = rowRe.exec(shXml)) !== null) {
                       const cells = [];
                       let cellM;
-                      cellRe.lastIndex = 0;
                       while ((cellM = cellRe.exec(rowM[1])) !== null) {
-                        const col = colIdx(cellM[1]);
-                        // Remplir les colonnes vides jusqu'à la position courante
-                        while (cells.length < col) cells.push('');
-                        const val = cellM[2] !== undefined ? (strings[+cellM[2]] || '')
-                                  : cellM[3] !== undefined ? cellM[3]
-                                  : cellM[4] !== undefined ? cellM[4]
-                                  : '';
-                        cells[col] = val;
+                        if (cellM[1] !== undefined) cells.push(strings[+cellM[1]] || '');
+                        else cells.push(cellM[2] || '');
                       }
                       if (cells.some(c => c.trim())) rows.push(cells.join('\t'));
                     }
@@ -1216,17 +1207,10 @@ async function startImport() {
                 if (seenThreadIds.has(updMeta.threadId)) continue;
                 seenThreadIds.add(updMeta.threadId);
                 log(`  📧 UPDATE: "${updMeta.subj}" | threadId:${updMeta.threadId||'none'}`);
-                let updBody='';
-                if (updMeta.threadId) {
-                  // Lire tous les messages HSA du thread UPDATE (comme pour les parts requests)
-                  updBody = await gmailGetFirstHSAMessage(updMeta.threadId);
-                  // Si aucun message HSA trouvé, fallback sur le dernier message du thread
-                  if (!updBody || updBody.length < 50) updBody = await gmailGetLastMessageBody(updMeta.threadId);
-                } else {
-                  updBody = extractTextFromPayload((await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${updId}?format=full`,
-                    {headers:{Authorization:'Bearer '+gToken}}).then(r=>r.json())).payload);
-                }
-                log(`  📄 UPDATE body: ${updBody.length} chars`);
+                const updBody=updMeta.threadId
+                  ?await gmailGetLastMessageBody(updMeta.threadId)
+                  :extractTextFromPayload((await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${updId}?format=full`,
+                      {headers:{Authorization:'Bearer '+gToken}}).then(r=>r.json())).payload);
                 const updData=await extractSummaryFromUpdateEmail(updBody,fa);
                 updateSummary=updData.summary||'';
                 if (!acModel&&updData.acModel) acModel=updData.acModel;
@@ -1237,10 +1221,7 @@ async function startImport() {
                   log(`  📝 Summary extracted.`);stats.upd++;updateStats();
                   try {
                     const updPartsData = await extractPartsFromEmailText(updBody, fa);
-                    const updParts = (updPartsData.parts||[]).filter(p =>
-                      (p.pn_on||p.pn_off||'').length > 3 ||
-                      (p.nomenclature||'').length > 5
-                    );
+                    const updParts = (updPartsData.parts||[]).filter(p => (p.pn_on||p.pn_off||'').length > 3);
                     updParts.forEach(p => log(`    → UPDATE part: ${p.nomenclature} | on:${p.pn_on||'-'} | off:${p.pn_off||'-'} | sn_on:${p.sn_on||'-'}`));
                     for (const p of updParts) {
                       const pn = p.pn_on||p.pn_off||'';
