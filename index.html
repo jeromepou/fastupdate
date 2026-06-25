@@ -4924,8 +4924,9 @@ function squawkTokenize(text) {
 }
 
 function squawkScore(tokensA, tokensB) {
-  const setB = new Set(tokensB);
-  return tokensA.filter(t=>setB.has(t)).length;
+  // Case-insensitive: DB keywords may be UPPERCASE (FSR import) or lowercase (indexv5 save)
+  const setB = new Set((tokensB||[]).map(t=>t.toLowerCase()));
+  return tokensA.filter(t=>setB.has(t.toLowerCase())).length;
 }
 
 G.koSearchSquawkHistory = async function() {
@@ -4962,6 +4963,14 @@ G.koFreeTextLiveSearch = window.koFreeTextLiveSearch = function() {
     : 'Type more words…';
 };
 
+function koRefreshHistorySelect() {
+  const sel = document.getElementById('ko-sq-history-select');
+  if (!sel) return;
+  const items = koGetWorkItems();
+  sel.innerHTML = '<option value="">— select a squawk to search —</option>' +
+    items.map(it=>`<option value="${it.displayNum}|${it.label.replace(/"/g,'&quot;')}">${it.displayNum} — ${it.label}</option>`).join('');
+}
+
 // Free-text search: main search function
 G.koSearchSquawkFreeText = async function() {
   const val = (document.getElementById('ko-sq-freetext')?.value||'').trim();
@@ -4987,14 +4996,6 @@ G.koSearchSquawkFreeText = async function() {
     squawkShowSuggestionModal(results, curModel, val);
   } catch(e) { alert('Search error: '+e.message); }
 };
-
-function koRefreshHistorySelect() {
-  const sel = document.getElementById('ko-sq-history-select');
-  if (!sel) return;
-  const items = koGetWorkItems();
-  sel.innerHTML = '<option value="">— select a squawk to search —</option>' +
-    items.map(it=>`<option value="${it.displayNum}|${it.label.replace(/"/g,'&quot;')}">${it.displayNum} — ${it.label}</option>`).join('');
-}
 
 function squawkShowSuggestionModal(results, curModel, searchedLabel) {
   let modal = document.getElementById('modal-squawk-suggest');
