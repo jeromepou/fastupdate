@@ -3774,7 +3774,7 @@ async function koLoadTeamForSelectors() {
   } catch(e) {}
 }
 
-function koCoEngChange() {
+window.koCoEngChange = function() {
   // Checked from list + manually added
   const fromList = Array.from(document.querySelectorAll('.coeng-cb:checked')).map(cb => cb.value);
   KO._coEngineers = [...fromList, ...(KO._coEngineersManual || [])];
@@ -3852,7 +3852,7 @@ G.koToggleColleague = function(checked) {
 };
 
 // Auto-check the colleague in the co-engineers list when name changes
-function koAutoCheckColleague(name) {
+window.koAutoCheckColleague = function(name) {
   // Uncheck previous auto-selections
   document.querySelectorAll('.coeng-cb.coeng-auto').forEach(cb => {
     cb.checked = false;
