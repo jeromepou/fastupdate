@@ -537,6 +537,14 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <!-- PIN entry -->
       <div id="view-pin" style="display:none">
         <p style="font-size:13px;color:var(--g600);margin-bottom:12px" id="pin-subtitle">Enter your 4-digit PIN</p>
+        <!-- Biometric button — shown only when credential registered on this device -->
+        <button id="btn-biometric" onclick="doBiometricLogin()" style="display:none;width:100%;justify-content:center;margin-bottom:12px;padding:12px;font-size:15px;background:var(--gd);color:#fff;border:none;border-radius:var(--r);cursor:pointer;font-weight:700;gap:8px;align-items:center">
+          <span id="btn-biometric-icon">🪪</span> <span id="btn-biometric-label">Use Face / Touch ID</span>
+        </button>
+        <div id="pin-or-divider" style="display:none;text-align:center;font-size:11px;color:var(--g400);margin-bottom:10px;position:relative">
+          <span style="background:#fff;padding:0 10px;position:relative;z-index:1">or enter PIN</span>
+          <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:var(--g200)"></div>
+        </div>        
         <input type="password" id="pin-input" placeholder="• • • •" maxlength="4" inputmode="numeric" pattern="[0-9]*"
           style="text-align:center;font-size:22px;letter-spacing:.4em;width:100%;margin-bottom:8px"
           oninput="userPinInput()"/>
@@ -1679,7 +1687,27 @@ function showPinEntry(profile) {
   document.getElementById('pin-subtitle').textContent = `Enter PIN for: ${profile.name}`;
   document.getElementById('pin-input').value = '';
   document.getElementById('pin-error').textContent = '';
-  setTimeout(() => document.getElementById('pin-input').focus(), 100);
+  // Show biometric button if credential registered on this device
+  const credId = localStorage.getItem('fast_webauthn_' + profile.id);
+  const bioBtn = document.getElementById('btn-biometric');
+  const bioOr  = document.getElementById('pin-or-divider');
+  if (credId && window.PublicKeyCredential) {
+    // Detect if Touch ID or Face ID likely available (best-effort label)
+    const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+    const isMac    = /Mac/i.test(navigator.platform||navigator.userAgentData?.platform||'');
+    const label    = isMobile ? 'Use Face / Touch ID' : isMac ? 'Use Touch ID' : 'Use Windows Hello / Biometrics';
+    const icon     = isMobile ? '👤' : isMac ? '☝️' : '🪪';
+    document.getElementById('btn-biometric-label').textContent = label;
+    document.getElementById('btn-biometric-icon').textContent  = icon;
+    bioBtn.style.display = 'flex';
+    bioOr.style.display  = '';
+    // Auto-trigger after short delay for smooth UX
+    setTimeout(() => doBiometricLogin(), 300);
+  } else {
+    bioBtn.style.display = 'none';
+    bioOr.style.display  = 'none';
+    setTimeout(() => document.getElementById('pin-input').focus(), 100);
+  }
 }
 
 G.userPinInput = function() {
@@ -1739,7 +1767,7 @@ async function showAdminPanel() {
   renderTeamAdminList();
 }
 
-async function loginAs(profile) {
+async function loginAs(profile, fromBiometric) {
   curProfile = profile;
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = '';
@@ -1753,10 +1781,17 @@ async function loginAs(profile) {
   
   await loadDefaultRecipients(); // <-- Télécharge les derniers destinataires globaux
   logLoginEvent(profile);
-  
   renderProjList();
   renderStep6Me();
   G.koShowBtn();
+  
+  // Offer biometric enrollment after PIN login if not yet registered on this device
+  if (!fromBiometric && window.PublicKeyCredential && !localStorage.getItem('fast_webauthn_' + profile.id)) {
+    try {
+      const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      if (available) offerBiometricEnrollment(profile);
+    } catch(e) {}
+  }
 }
 
 G.logout = async function() {
@@ -3190,6 +3225,119 @@ window.addEventListener('resize', () => {
 //  UTILS
 // ══════════════════════════════════════
 function hashPin(pin){let h=5381;for(let i=0;i<pin.length;i++)h=((h<<5)+h)+pin.charCodeAt(i);return(h>>>0).toString(16);}
+
+// ── WebAuthn / Biometric authentication ─────────────────────────────────────
+
+function offerBiometricEnrollment(profile) {
+  // Small toast-style banner at top of app
+  const banner = document.createElement('div');
+  banner.id = 'bio-enroll-banner';
+  banner.style.cssText = 'position:fixed;top:58px;left:50%;transform:translateX(-50%);z-index:200;background:#fff;border:1px solid var(--gb);border-radius:var(--rlg);box-shadow:0 4px 16px rgba(0,0,0,.15);padding:14px 18px;max-width:420px;width:calc(100% - 2rem);display:flex;align-items:center;gap:12px;animation:slideDown .25s ease';
+  banner.innerHTML = `
+    <span style="font-size:24px">🪪</span>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:700;color:var(--g900)">Enable Face / Touch ID?</div>
+      <div style="font-size:12px;color:var(--g600)">Log in faster on this device without entering your PIN.</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+      <button onclick="startBiometricEnrollment()" style="background:var(--gd);color:#fff;border:none;border-radius:var(--r);padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">Enable</button>
+      <button onclick="document.getElementById('bio-enroll-banner')?.remove()" style="background:none;border:1px solid var(--g200);border-radius:var(--r);padding:5px 12px;font-size:11px;color:var(--g600);cursor:pointer">Not now</button>
+    </div>`;
+  // Add slide-down animation if not already in styles
+  if (!document.getElementById('bio-anim-style')) {
+    const s = document.createElement('style');
+    s.id = 'bio-anim-style';
+    s.textContent = '@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
+    document.head.appendChild(s);
+  }
+  document.body.appendChild(banner);
+  setTimeout(() => banner?.remove(), 20000); // auto-dismiss after 20s
+}
+
+G.startBiometricEnrollment = window.startBiometricEnrollment = async function() {
+  document.getElementById('bio-enroll-banner')?.remove();
+  if (!curProfile) return;
+  try {
+    const challenge = new Uint8Array(32);
+    crypto.getRandomValues(challenge);
+    const credential = await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: { name: 'FAST Update', id: location.hostname },
+        user: {
+          id: new TextEncoder().encode(curProfile.id),
+          name: curProfile.name,
+          displayName: curProfile.name
+        },
+        pubKeyCredParams: [
+          { type: 'public-key', alg: -7  },  // ES256
+          { type: 'public-key', alg: -257 }  // RS256
+        ],
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform',  // device-local only (Touch ID / Face ID / Hello)
+          userVerification: 'required'
+        },
+        timeout: 60000
+      }
+    });
+    // Store credential ID in localStorage (key = profile id)
+    const credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+    localStorage.setItem('fast_webauthn_' + curProfile.id, credId);
+    // Flag in Firebase so other devices know biometric is available somewhere
+    await update(ref(db, 'team/' + curProfile.id), { biometricEnabled: true });
+    // Confirm
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--gd);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:700;z-index:300;box-shadow:0 2px 10px rgba(0,0,0,.2)';
+    toast.textContent = '✓ Biometrics enabled for this device';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  } catch(e) {
+    if (e.name !== 'NotAllowedError') {
+      alert('Could not enable biometrics: ' + e.message);
+    }
+  }
+};
+
+G.doBiometricLogin = window.doBiometricLogin = async function() {
+  const profile = pendingUserToLogin;
+  if (!profile) return;
+  const credIdB64 = localStorage.getItem('fast_webauthn_' + profile.id);
+  if (!credIdB64) return;
+  const pinErr = document.getElementById('pin-error');
+  pinErr.textContent = '';
+  try {
+    const challenge = new Uint8Array(32);
+    crypto.getRandomValues(challenge);
+    // Decode stored credential ID
+    const credIdBytes = Uint8Array.from(atob(credIdB64), c => c.charCodeAt(0));
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        rpId: location.hostname,
+        allowCredentials: [{ type: 'public-key', id: credIdBytes }],
+        userVerification: 'required',
+        timeout: 60000
+      }
+    });
+    // Assertion succeeded — browser verified the user biometrically
+    if (assertion) loginAs(profile, true);
+  } catch(e) {
+    if (e.name === 'NotAllowedError') {
+      // User cancelled or timed out — fall back silently to PIN
+      pinErr.textContent = '';
+      document.getElementById('pin-input').focus();
+    } else if (e.name === 'InvalidStateError' || e.name === 'NotFoundError') {
+      // Credential no longer valid on this device — clear it
+      localStorage.removeItem('fast_webauthn_' + profile.id);
+      document.getElementById('btn-biometric').style.display = 'none';
+      document.getElementById('pin-or-divider').style.display = 'none';
+      pinErr.textContent = 'Biometric credential not found — please use PIN.';
+      document.getElementById('pin-input').focus();
+    } else {
+      pinErr.textContent = 'Biometric error: ' + e.message;
+    }
+  }
+};
 
 document.getElementById('f_rts_assist').addEventListener('change', () => {
   const isAssist = gv('f_rts_assist') === 'Assist';
@@ -5112,7 +5260,7 @@ G.koToggleOtherTypes = function() {
 
 G.squawkConfirmAdd = function() {
   const allItems=[...(window._sqSuggestItems||[]),...(window._sqOtherItems||[])];
-    document.querySelectorAll('[id^="same-"][id*="-item-"],[id^="other-"][id*="-item-"]').forEach(cb=>{
+  document.querySelectorAll('[id^="same-"][id*="-item-"],[id^="other-"][id*="-item-"]').forEach(cb=>{
     const idx=parseInt(cb.id.split('-item-')[1]);
     const isSame=cb.id.startsWith('same-');
     const list=isSame?window._sqSuggestItems:window._sqOtherItems;
