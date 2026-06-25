@@ -868,6 +868,18 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <input type="checkbox" id="ko-qatar-toggle" onchange="koToggleQatar(this.checked)"/>
         <span>⭐ Qatar Executive — add specific recipients to Customer Update &amp; Part Request</span>
       </label>
+
+      <div class="ko-divider" style="margin-top:10px"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;background:var(--bl);border:1px solid #b8d0e8;border-radius:var(--r);padding:8px 10px;margin-top:6px">
+        <input type="checkbox" id="ko-colleague-toggle" onchange="koToggleColleague(this.checked)"/>
+        <span>👷 I am preparing this job for a colleague</span>
+      </label>
+      <div id="ko-colleague-name-wrap" style="display:none;margin-top:6px">
+        <div class="ko-fg">
+          <label>Colleague's name</label>
+          <input type="text" id="ko_colleague_name" placeholder="e.g. George Papadopoulos" oninput="koUpdatePreview()"/>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1110,6 +1122,34 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
           <input type="text" id="kofbo_transport_eta" placeholder="e.g. 14:30 local" style="width:140px;font-size:12px;padding:4px 8px;border:1px solid var(--g200);border-radius:var(--r)"/>
         </div>
       </div>
+      <div class="ko-divider"></div>
+      
+      <!-- CO-ENGINEERS -->
+      <div class="ko-section-lbl">👷 Co-engineers attending on site</div>
+      <p style="font-size:12px;color:var(--g600);margin-bottom:8px">Add the names of other FAST engineers working with you. Their documents will be mentioned as attached in the FBO email.</p>
+      <div id="kofbo_coeng_list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:7px"></div>
+      <div style="display:flex;gap:6px;margin-bottom:4px">
+        <input type="text" id="kofbo_coeng_input" placeholder="Engineer name (e.g. George Papadopoulos)"
+          style="flex:1;font-size:13px;padding:6px 10px;border:1px solid var(--g200);border-radius:var(--r)"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();koFboAddCoEng();}"/>
+        <button class="btn" onclick="koFboAddCoEng()" style="font-size:12px;padding:5px 10px">+ Add</button>
+      </div>
+
+      <div class="ko-divider"></div>
+
+      <!-- DOCUMENTS TO ATTACH -->
+      <div class="ko-section-lbl">📎 Documents to attach</div>
+      <p style="font-size:12px;color:var(--g600);margin-bottom:8px">Select the documents you will attach to this FBO email. The email will list them automatically.</p>
+      <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_doc_passport"/> Passport copy</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_doc_photo"/> Photo ID</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_doc_ibac"/> IBAC crew ID</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_doc_license"/> Aircraft Maintenance License (AML)</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_doc_authorization"/> Gulfstream authorization letter</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_doc_toolbox"/> Toolbox — photos and list attached</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_doc_visa"/> Visa / entry document</label>
+      </div>
+
       <div class="ko-divider"></div>
       <div class="ko-fg">
         <label>Other equipment / requests (optional, one per line)</label>
@@ -3392,7 +3432,9 @@ async function koSaveState() {
     'kofbo_q_days','kofbo_q_confirm','kofbo_q_shipping','kofbo_q_importer','kofbo_q_transport',
     'koq_broker','koq_hours','koq_po','koq_keys','koq_fbo_mail',
     'koq_contact','koq_troubleshoot','koq_cas','koq_fhdb',
-    'koq_techops','koq_self_parts','koq_handcarry','koq_order_before_tshoot'
+    'koq_techops','koq_self_parts','koq_handcarry','koq_order_before_tshoot',
+    'kofbo_doc_passport','kofbo_doc_photo','kofbo_doc_ibac',
+    'kofbo_doc_license','kofbo_doc_authorization','kofbo_doc_toolbox','kofbo_doc_visa'
   ];
   const state = {
     texts: Object.fromEntries(textIds.map(id => [id, document.getElementById(id)?.value || ''])),
@@ -3404,6 +3446,9 @@ async function koSaveState() {
     travelTime:   KO.travelTime,
     cabinClass:   KO.cabinClass,
     extraBaggage: document.getElementById('ko-extra-baggage')?.classList.contains('active-green') || false,
+    colleagueMode: document.getElementById('ko-colleague-toggle')?.checked || false,
+    colleagueName: document.getElementById('ko_colleague_name')?.value || '',
+    coEngineers:  KO._coEngineers || [],
   };
   if (!curProfile) return;
   state.savedAt = Date.now();
@@ -3434,6 +3479,15 @@ async function koRestoreState() {
     const el = document.getElementById(id);
     if (el) el.checked = val;
   });
+  // Restore colleague toggle
+  if (state.colleagueMode) {
+    const cb = document.getElementById('ko-colleague-toggle');
+    if (cb) { cb.checked = true; G.koToggleColleague(true); }
+  }
+  if (state.colleagueName) {
+    const inp = document.getElementById('ko_colleague_name');
+    if (inp) inp.value = state.colleagueName;
+  }
   // Show priority warehouse select if checked
   const prioSel = document.getElementById('ko_priority_warehouse');
   if (prioSel) prioSel.style.display = state.cbs?.ko_part_priority_wh ? '' : 'none';
@@ -3475,6 +3529,11 @@ async function koRestoreState() {
     state.parts.forEach(p => {
       G.koAddPartRow(p.pn||'', p.desc||'', p.sn||'', p.qty||'', p.cat||'Part', p.note||'', p.sqLabel||'');
     });
+  }
+  // Restore co-engineers
+  if (state.coEngineers?.length) {
+    KO._coEngineers = state.coEngineers;
+    koFboRenderCoEngs();
   }
 }
 
@@ -3644,6 +3703,64 @@ G.koToggleQatar = async function(checked) {
     document.getElementById('ko-qatar-toggle').checked = false;
   }
 };
+
+// ══════════════════════════════════════
+//  FBO CO-ENGINEERS
+// ══════════════════════════════════════
+if (!window.KO) window.KO = {};
+KO._coEngineers = KO._coEngineers || [];
+
+G.koFboAddCoEng = function() {
+  const inp = document.getElementById('kofbo_coeng_input');
+  const val = inp?.value.trim();
+  if (!val) return;
+  if (!KO._coEngineers.includes(val)) {
+    KO._coEngineers.push(val);
+    koFboRenderCoEngs();
+    koUpdatePreview();
+    koSaveState();
+  }
+  if (inp) inp.value = '';
+};
+
+function koFboRenderCoEngs() {
+  const list = document.getElementById('kofbo_coeng_list');
+  if (!list) return;
+  list.innerHTML = KO._coEngineers.map((name, i) => `
+    <div style="display:flex;align-items:center;gap:8px;background:var(--bl);border:1px solid #b8d0e8;border-radius:var(--r);padding:6px 10px">
+      <span style="font-size:13px;flex:1;color:var(--blue)">👷 ${name}</span>
+      <button onclick="koFboRemoveCoEng(${i})" style="background:none;border:none;cursor:pointer;color:var(--g400);font-size:16px;line-height:1;padding:0 2px">×</button>
+    </div>`).join('');
+}
+
+G.koFboRemoveCoEng = function(i) {
+  KO._coEngineers.splice(i, 1);
+  koFboRenderCoEngs();
+  koUpdatePreview();
+  koSaveState();
+};
+
+G.koToggleColleague = function(checked) {
+  const wrap = document.getElementById('ko-colleague-name-wrap');
+  if (wrap) wrap.style.display = checked ? '' : 'none';
+  if (!checked) KO._colleaguePhone = '';
+  koUpdatePreview();
+  koSaveState();
+};
+
+// Fetch colleague phone from Firebase team list when name is typed
+// (matches by name — best effort)
+async function koFetchColleaguePhone(name) {
+  if (!name) { KO._colleaguePhone = ''; return; }
+  try {
+    const snap = await get(ref(db, 'team'));
+    if (!snap.exists()) return;
+    const match = Object.values(snap.val()).find(p =>
+      p.name?.toLowerCase().trim() === name.toLowerCase().trim()
+    );
+    KO._colleaguePhone = match?.phone || '';
+  } catch(e) { KO._colleaguePhone = ''; }
+}
 
 // ══════════════════════════════════════
 //  TOGGLES
@@ -4058,10 +4175,17 @@ function koBuildCustomerBody() {
     ? `I'm scheduled to work on the defect regarding the ${def}.\n\n${actionPlanRaw}`
     : `I'm scheduled to work on the defect regarding the ${def}, and will share my action plan and progress updates as the intervention proceeds.`;
 
+  const colleagueMode = document.getElementById('ko-colleague-toggle')?.checked;
+  const colleagueName = document.getElementById('ko_colleague_name')?.value?.trim() || '[COLLEAGUE]';
+  const myName = curProfile?.name || '[ENGINEER]';
+
+  const introLine = colleagueMode
+    ? `My name is ${myName}, and I am writing on behalf of my colleague **${colleagueName}**, who will be attending the aircraft on site as the Authorized FAST Service Provider for Gulfstream.`
+    : `My name is ${myName}, the Authorized FAST Service Provider for Gulfstream in this region.`;
+
   return `Dear ${document.getElementById('ko_cust_name')?.value || gv('f_cust_name') || '[Customer name]'},
 
-My name is ${curProfile?.name || '[ENGINEER]'}, the Authorized FAST Service Provider for Gulfstream in this region.
-
+${introLine}
 ${defectLine}
 ${questionsBlock}
 ${etaLine}
@@ -4248,12 +4372,55 @@ function koBuildFboBody() {
 
   const extraQsBlock = extraQs.length ? '\n' + extraQs.map(q => q).join('\n') + '\n' : '';
 
+  const colleagueModeFbo = document.getElementById('ko-colleague-toggle')?.checked;
+  const colleagueNameFbo = document.getElementById('ko_colleague_name')?.value?.trim() || '[COLLEAGUE]';
+  const myNameFbo = curProfile?.name || '[ENGINEER]';
+
+  const fboIntro = colleagueModeFbo
+    ? `My name is ${myNameFbo}, and I am writing to coordinate maintenance for ${reg} at ${icao} on behalf of my colleague **${colleagueNameFbo}**, who will be attending the aircraft on site.`
+    : `My name is ${myNameFbo}, and I am writing to coordinate maintenance for ${reg} at ${icao}.`;
+
+  // Build colleague info block for FBO if in colleague mode
+  let colleagueInfoBlock = '';
+  if (colleagueModeFbo) {
+    // Try to find the colleague's phone from Firebase team data (loaded in KO._colleaguePhone)
+    const phone = KO._colleaguePhone || '';
+    colleagueInfoBlock = `\nThe engineer attending on site will be:\n${colleagueNameFbo}${phone ? '\nMob. Tel. ' + phone : ''}\n`;
+  }
+
+  // Co-engineers block
+  const coEngs = (KO._coEngineers || []).filter(Boolean);
+  let coEngBlock = '';
+  if (coEngs.length) {
+    const names = coEngs.join(', ');
+    coEngBlock = `\nI will also be working alongside the following colleague${coEngs.length > 1 ? 's' : ''} on this intervention: ${names}. Their documents are also attached for your review.\n`;
+  }
+
+  // Documents block
+  const docLabels = {
+    kofbo_doc_passport:      'Passport copy',
+    kofbo_doc_photo:         'Photo ID',
+    kofbo_doc_ibac:          'IBAC crew ID',
+    kofbo_doc_license:       'Aircraft Maintenance License (AML)',
+    kofbo_doc_authorization: 'Gulfstream authorization letter',
+    kofbo_doc_toolbox:       'Toolbox — photos and list attached',
+    kofbo_doc_visa:          'Visa / entry document',
+  };
+  const selectedDocs = Object.entries(docLabels)
+    .filter(([id]) => document.getElementById(id)?.checked)
+    .map(([, label]) => `- ${label}`);
+  const docsBlock = selectedDocs.length
+    ? `\nFor your review, I have attached the following document${selectedDocs.length > 1 ? 's' : ''}:\n${selectedDocs.join('\n')}\n`
+    : '\nI have attached my documents for your review.\n';
+
+  const accessPerson = colleagueModeFbo ? colleagueNameFbo : 'me';
+
   return `Dear Duty Manager,
 
-My name is ${curProfile?.name || '[ENGINEER]'}, and I am writing to coordinate maintenance for ${reg} at ${icao}.
+${fboIntro}
 
-The aircraft owner has informed us that your team is the FBO. I have attached my passport, photo, and IBAC crew ID for your review. Could you please arrange airside access for me?
-${extraQsBlock}${equipBlock}
+The aircraft owner has informed us that your team is the FBO. Could you please arrange airside access for ${accessPerson}?
+${docsBlock}${colleagueInfoBlock}${coEngBlock}${extraQsBlock}${equipBlock}
 Please let me know if you require any further details.
 
 Kind regards,
@@ -4388,9 +4555,18 @@ G.koGenerate = async function() {
 })();
 
 // ── Attach input listeners for live preview update
+// Also update preview when FBO doc checkboxes change
+document.addEventListener('change', e => {
+  const docIds = ['kofbo_doc_passport','kofbo_doc_photo','kofbo_doc_ibac','kofbo_doc_license','kofbo_doc_authorization','kofbo_doc_toolbox','kofbo_doc_visa'];
+  if (docIds.includes(e.target?.id)) koUpdatePreview();
+});
+
 document.addEventListener('input', e => {
   const ids = ['ko_wo','ko_sn','ko_reg','ko_icao','ko_model','ko_defect','ko_travel_from','ko_travel_to'];
   if (ids.includes(e.target?.id)) koUpdatePreview();
+  if (e.target?.id === 'ko_colleague_name') {
+    koFetchColleaguePhone(e.target.value).then(() => koUpdatePreview());
+  }
   // Live-update airline numbers in KO.airlines array
   if (e.target?.classList.contains('ko-airline-input')) {
     const rows = document.querySelectorAll('#ko-airlines-list .ko-airline-row');
