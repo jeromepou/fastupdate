@@ -5297,6 +5297,21 @@ G.koShowBtn = function() {
 // Init: load picker
 showPicker();
 
+// Expose all ko functions to window for HTML inline handlers
+window.koUpdatePreview = koUpdatePreview;
+window.koSaveState = koSaveState;
+window.koSyncColleagueManual = koSyncColleagueManual;
+window.koSyncColleagueSelect = koSyncColleagueSelect;
+window.koRenderManualCoEngs = koRenderManualCoEngs;
+window.koFboRenderCoEngs = koFboRenderCoEngs;
+window.koGetColleagueName = koGetColleagueName;
+window.koBuildSignature = koBuildSignature;
+window.koRenderCustomQuestions = koRenderCustomQuestions;
+window.koRenderRecips = koRenderRecips;
+window.koRenderAllRecips = koRenderAllRecips;
+window.koRenderAirlines = koRenderAirlines;
+window.koRefreshHistorySelect = koRefreshHistorySelect;
+
 </script>
 </body>
 </html>
