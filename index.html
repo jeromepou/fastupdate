@@ -877,7 +877,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div id="ko-colleague-name-wrap" style="display:none;margin-top:6px">
         <div class="ko-fg">
           <label>Colleague's name — select from team</label>
-          <select id="ko_colleague_name" onchange="koSyncColleagueManual();G.koAutoCheckColleague(this.value);koFetchColleaguePhone(this.value);koUpdatePreview();koSaveState()">
+          <select id="ko_colleague_name" onchange="koSyncColleagueManual();koAutoCheckColleague(this.value);koFetchColleaguePhone(this.value);koUpdatePreview();koSaveState()">
             <option value="">— select a colleague —</option>
           </select>
         </div>
@@ -3852,7 +3852,7 @@ G.koToggleColleague = function(checked) {
 };
 
 // Auto-check the colleague in the co-engineers list when name changes
-G.koAutoCheckColleague = function(name) {
+function koAutoCheckColleague(name) {
   // Uncheck previous auto-selections
   document.querySelectorAll('.coeng-cb.coeng-auto').forEach(cb => {
     cb.checked = false;
