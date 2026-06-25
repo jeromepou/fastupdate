@@ -5112,7 +5112,7 @@ G.koToggleOtherTypes = function() {
 
 G.squawkConfirmAdd = function() {
   const allItems=[...(window._sqSuggestItems||[]),...(window._sqOtherItems||[])];
-  document.querySelectorAll('[id^="same-"][id$="-item-"],[id^="other-"][id$="-item-"]').forEach(cb=>{
+    document.querySelectorAll('[id^="same-"][id*="-item-"],[id^="other-"][id*="-item-"]').forEach(cb=>{
     const idx=parseInt(cb.id.split('-item-')[1]);
     const isSame=cb.id.startsWith('same-');
     const list=isSame?window._sqSuggestItems:window._sqOtherItems;
