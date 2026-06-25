@@ -1130,13 +1130,21 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         </div>
       </div>
       <div class="ko-divider"></div>
-      
+
       <!-- CO-ENGINEERS -->
       <div class="ko-section-lbl">👷 Co-engineers attending on site</div>
       <p style="font-size:12px;color:var(--g600);margin-bottom:8px">Select colleagues working with you on site. Their documents will be mentioned as attached in the FBO email.</p>
-      <div id="kofbo_coeng_list" style="display:flex;flex-direction:column;gap:6px">
+      <div id="kofbo_coeng_list" style="display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto;border:1px solid var(--g200);border-radius:var(--r);padding:6px;margin-bottom:8px">
         <p style="font-size:12px;color:var(--g400)"><span class="spin" style="vertical-align:middle"></span> Loading team…</p>
       </div>
+      <div class="ko-fg" style="margin-bottom:4px">
+        <label>Or add manually (external / not in list)</label>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="kofbo_coeng_manual_input" placeholder="e.g. John Smith — ABC Aviation" style="flex:1;font-size:13px;padding:6px 10px;border:1px solid var(--g200);border-radius:var(--r)"/>
+          <button class="btn" onclick="koCoEngAddManual()" style="font-size:12px;padding:5px 10px">+ Add</button>
+        </div>
+      </div>
+      <div id="kofbo_coeng_manual_list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:4px"></div>
 
       <div class="ko-divider"></div>
 
@@ -3457,6 +3465,7 @@ async function koSaveState() {
     colleagueName: koGetColleagueName(),
     colleagueNameManual: (document.getElementById('ko_colleague_name_manual')?.value || ''),
     coEngineers:  KO._coEngineers || [],
+    coEngineersManual: KO._coEngineersManual || [],    
   };
   if (!curProfile) return;
   state.savedAt = Date.now();
@@ -3546,6 +3555,10 @@ async function koRestoreState() {
   if (state.coEngineers?.length) {
     KO._coEngineers = state.coEngineers;
     koFboRenderCoEngs();
+  }
+  if (state.coEngineersManual?.length) {
+    KO._coEngineersManual = state.coEngineersManual;
+    koRenderManualCoEngs();
   }
 }
 
@@ -3729,7 +3742,7 @@ async function koLoadTeamForSelectors() {
     const snap = await get(ref(db, 'team'));
     if (!snap.exists()) return;
     const team = Object.values(snap.val())
-      .filter(p => p.name && p.id !== curProfile?.id)
+      .filter(p => p.name && p.id !== curProfile?.id && p.role !== 'ops')
       .sort((a, b) => a.name.localeCompare(b.name));
 
     // Populate colleague <select>
@@ -3758,16 +3771,48 @@ async function koLoadTeamForSelectors() {
 }
 
 function koCoEngChange() {
-  KO._coEngineers = Array.from(document.querySelectorAll('.coeng-cb:checked')).map(cb => cb.value);
+  // Checked from list + manually added
+  const fromList = Array.from(document.querySelectorAll('.coeng-cb:checked')).map(cb => cb.value);
+  KO._coEngineers = [...fromList, ...(KO._coEngineersManual || [])];
   koUpdatePreview();
   koSaveState();
+}
+
+G.koCoEngAddManual = function() {
+  const inp = document.getElementById('kofbo_coeng_manual_input');
+  const val = (inp?.value || '').trim();
+  if (!val) return;
+  if (!KO._coEngineersManual) KO._coEngineersManual = [];
+  if (!KO._coEngineersManual.includes(val)) {
+    KO._coEngineersManual.push(val);
+    koRenderManualCoEngs();
+    koCoEngChange();
+  }
+  inp.value = '';
+};
+
+G.koCoEngRemoveManual = function(i) {
+  KO._coEngineersManual.splice(i, 1);
+  koRenderManualCoEngs();
+  koCoEngChange();
+};
+
+function koRenderManualCoEngs() {
+  const list = document.getElementById('kofbo_coeng_manual_list');
+  if (!list) return;
+  list.innerHTML = (KO._coEngineersManual || []).map((name, i) => `
+    <div style="display:flex;align-items:center;gap:8px;background:var(--bl);border:1px solid #b8d0e8;border-radius:var(--r);padding:5px 10px">
+      <span style="font-size:13px;flex:1;color:var(--blue)">👤 ${name}</span>
+      <button onclick="koCoEngRemoveManual(${i})" style="background:none;border:none;cursor:pointer;color:var(--g400);font-size:16px;line-height:1">×</button>
+    </div>`).join('');
 }
 
 // Kept for restore compatibility — re-checks boxes after team is loaded
 function koFboRenderCoEngs() {
   document.querySelectorAll('.coeng-cb').forEach(cb => {
-    cb.checked = KO._coEngineers.includes(cb.value);
+    cb.checked = (KO._coEngineers || []).includes(cb.value);
   });
+  koRenderManualCoEngs();
 }
 
 // Returns the effective colleague name (select takes priority over manual if both filled)
@@ -4242,16 +4287,23 @@ function koBuildCustomerBody() {
 
   // Action plan: use what the engineer typed, otherwise a generic transition line
   const actionPlanRaw = (document.getElementById('ko_action_plan')?.value || '').trim();
-  const defectLine = actionPlanRaw
-    ? `I'm scheduled to work on the defect regarding the ${def}.\n\n${actionPlanRaw}`
-    : `I'm scheduled to work on the defect regarding the ${def}, and will share my action plan and progress updates as the intervention proceeds.`;
-
   const colleagueMode = document.getElementById('ko-colleague-toggle')?.checked;
   const colleagueName = koGetColleagueName() || '[COLLEAGUE]';
   const myName = curProfile?.name || '[ENGINEER]';
+  const defectLine = actionPlanRaw
+    ? (colleagueMode
+        ? `${colleagueName} is scheduled to work on the defect regarding the ${def}.
+
+${actionPlanRaw}`
+        : `I'm scheduled to work on the defect regarding the ${def}.
+
+${actionPlanRaw}`)
+    : (colleagueMode
+        ? `${colleagueName} is scheduled to work on the defect regarding the ${def}, and will share the action plan and progress updates as the intervention proceeds.`
+        : `I'm scheduled to work on the defect regarding the ${def}, and will share my action plan and progress updates as the intervention proceeds.`);
 
   const introLine = colleagueMode
-    ? `My name is ${myName}, and I am writing on behalf of my colleague **${colleagueName}**, who will be attending the aircraft on site as the Authorized FAST Service Provider for Gulfstream.`
+    ? `My name is ${myName}, and I am writing on behalf of my colleague ${colleagueName}, who will be attending the aircraft on site as the Authorized FAST Service Provider for Gulfstream.`
     : `My name is ${myName}, the Authorized FAST Service Provider for Gulfstream in this region.`;
 
   return `Dear ${document.getElementById('ko_cust_name')?.value || gv('f_cust_name') || '[Customer name]'},
@@ -4459,7 +4511,12 @@ function koBuildFboBody() {
   }
 
   // Co-engineers block (only shown when YOU are on site, not in colleague mode)
-  const coEngs = (KO._coEngineers || []).filter(Boolean);
+  // Merge checked list + manual entries, exclude the colleague already named
+  const _colleagueN = koGetColleagueName();
+  const coEngs = [...new Set([
+    ...Array.from(document.querySelectorAll('.coeng-cb:checked')).map(cb => cb.value),
+    ...(KO._coEngineersManual || [])
+  ])].filter(n => n && n !== _colleagueN);
   let coEngBlock = '';
   if (coEngs.length && !colleagueModeFbo) {
     const names = coEngs.join(', ');
