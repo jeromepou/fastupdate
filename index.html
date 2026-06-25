@@ -1034,12 +1034,20 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <button class="btn" onclick="koAddPartRow()" style="font-size:12px;padding:4px 10px">+ Add row</button>
     </div>
     <div class="ko-card-body" style="padding-top:.75rem;overflow-x:auto">
-      <div style="background:var(--bl);border:1px solid #b8d0e8;border-radius:var(--r);padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <span style="font-size:12px;color:var(--blue);flex:1">🔍 Search squawk history to find parts used for similar defects</span>
-        <select id="ko-sq-history-select" style="font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;min-width:200px">
-          <option value="">— select a squawk to search —</option>
-        </select>
-        <button class="btn" onclick="koSearchSquawkHistory()" style="font-size:12px;padding:5px 10px">🔍 Search</button>
+      <div style="background:var(--bl);border:1px solid #b8d0e8;border-radius:var(--r);padding:8px 12px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:12px;color:var(--blue);font-weight:600;flex:1">🔍 Search squawk history</span>
+          <select id="ko-sq-history-select" style="font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;min-width:200px">
+            <option value="">— select a squawk to search —</option>
+          </select>
+          <button class="btn" onclick="koSearchSquawkHistory()" style="font-size:12px;padding:5px 10px">🔍 From list</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:11px;color:var(--blue);white-space:nowrap">Or type keywords:</span>
+          <input type="text" id="ko-sq-freetext" placeholder="e.g. hydraulic leak nose gear…" oninput="koFreeTextLiveSearch()" onkeydown="if(event.key==='Enter')koSearchSquawkFreeText()" style="flex:1;min-width:180px;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r);background:#fff"/>
+          <button class="btn" onclick="koSearchSquawkFreeText()" style="font-size:12px;padding:5px 10px;background:var(--blue);color:#fff;border-color:var(--blue)">🔍 Search</button>
+          <span id="ko-sq-freetext-hint" style="font-size:11px;color:var(--g400)"></span>
+        </div>
       </div>
       <table class="ko-parts-tbl">
         <thead>
@@ -4939,6 +4947,44 @@ G.koSearchSquawkHistory = async function() {
     results.sort((a,b)=>b.score-a.score||(b.entry.usageCount||0)-(a.entry.usageCount||0));
     if (!results.length) { alert('No similar squawk found in history.'); return; }
     squawkShowSuggestionModal(results, curModel, label);
+  } catch(e) { alert('Search error: '+e.message); }
+};
+
+// Free-text search: live hint (count of tokens recognised)
+G.koFreeTextLiveSearch = window.koFreeTextLiveSearch = function() {
+  const val = (document.getElementById('ko-sq-freetext')?.value||'').trim();
+  const hint = document.getElementById('ko-sq-freetext-hint');
+  if (!hint) return;
+  if (!val) { hint.textContent = ''; return; }
+  const tokens = squawkTokenize(val);
+  hint.textContent = tokens.length
+    ? `${tokens.length} keyword${tokens.length>1?'s':''} detected`
+    : 'Type more words…';
+};
+
+// Free-text search: main search function
+G.koSearchSquawkFreeText = async function() {
+  const val = (document.getElementById('ko-sq-freetext')?.value||'').trim();
+  if (!val) { alert('Please type some keywords to search.'); return; }
+  const tokens = squawkTokenize(val);
+  if (tokens.length < 1) { alert('Keywords too short or all filtered — try different words.'); return; }
+  try {
+    const snap = await get(ref(db, 'squawkHistory'));
+    if (!snap.exists()) { alert('No squawk history found yet.'); return; }
+    const curModel = (document.getElementById('ko_model')?.value||'').trim().toUpperCase();
+    const results = [];
+    Object.entries(snap.val()).forEach(([key, entry]) => {
+      const score = squawkScore(tokens, entry.keywords||[]);
+      if (score >= 1) results.push({key, entry, score});
+    });
+    // Sort: same type first (bonus +1000), then by score desc, then by usageCount desc
+    results.sort((a,b) => {
+      const aBonus = (a.entry.acModel||'').toUpperCase()===curModel||!a.entry.acModel ? 1000 : 0;
+      const bBonus = (b.entry.acModel||'').toUpperCase()===curModel||!b.entry.acModel ? 1000 : 0;
+      return (bBonus+b.score+((b.entry.usageCount||0)*0.1)) - (aBonus+a.score+((a.entry.usageCount||0)*0.1));
+    });
+    if (!results.length) { alert('No similar squawk found — try other keywords.'); return; }
+    squawkShowSuggestionModal(results, curModel, val);
   } catch(e) { alert('Search error: '+e.message); }
 };
 
