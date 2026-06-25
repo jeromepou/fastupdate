@@ -1181,16 +1181,6 @@ async function startImport() {
                       {headers:{Authorization:'Bearer '+gToken}}).then(r=>r.json())).payload);
                 const updData=await extractSummaryFromUpdateEmail(updBody,fa);
                 updateSummary=updData.summary||'';
-                // Extraire aussi les squawks depuis l'UPDATE si pas de RFS
-                if (updData.summary && !squawks.length) {
-                  try {
-                    const updSquawkData = await extractSquawkFromRFSText(updBody, fa);
-                    if (updSquawkData.squawks?.length) {
-                      squawks = updSquawkData.squawks;
-                      log(`  📝 Squawks from UPDATE: ${squawks.join(' | ')}`);
-                    }
-                  } catch(e) {}
-                }
                 if (!acModel&&updData.acModel) acModel=updData.acModel;
                 if (!acSN   &&updData.acSN)    acSN   =updData.acSN;
                 if (!acReg  &&updData.acReg)   acReg  =updData.acReg;
@@ -1213,6 +1203,7 @@ async function startImport() {
                     }
                     if (updParts.length) log(`  📦 UPDATE: ${updParts.length} part(s) added`);
                   } catch(e){ log(`  ⚠️ UPDATE parts: ${e.message}`); }
+                  _lastUpdBody=updBody;
                   break;
                 }
               }
@@ -1220,8 +1211,19 @@ async function startImport() {
           } catch(e){ log(`  ⚠️ UPDATE error: ${e.message}`); }
 
           let squawks=[];
+          // Squawks depuis UPDATE si pas de RFS PDF trouvé
+          let _lastUpdBody='';
           try {
             const candidateIds=[...new Set([...workpackIds,...bizofficeIds])];
+            if (!candidateIds.length && _lastUpdBody) {
+              try {
+                const updSquawkData = await extractSquawkFromRFSText(_lastUpdBody, fa);
+                if (updSquawkData.squawks?.length) {
+                  squawks = updSquawkData.squawks;
+                  log(`  📝 Squawks from UPDATE: ${squawks.join(' | ')}`);
+                }
+              } catch(e) {}
+            }
             let foundPdf=false;
             for (const msgId of candidateIds) {
               const meta2=await gmailGetMeta(msgId);
