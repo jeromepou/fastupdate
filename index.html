@@ -3871,7 +3871,7 @@ window.koAutoCheckColleague = function(name) {
 
 // Fetch colleague phone from Firebase team list when name is typed
 // (matches by name — best effort)
-async function koFetchColleaguePhone(name) {
+window.koFetchColleaguePhone = async function(name) {
   if (!name) { KO._colleaguePhone = ''; return; }
   try {
     const snap = await get(ref(db, 'team'));
