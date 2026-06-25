@@ -461,11 +461,19 @@ async function gmailGetFirstHSAMessage(threadId) {
   log(`  🔍 HSA msgs: ${hsaMsgs.length} message(s) capturé(s), total: ${hsaMsgs.map(m=>m.text.length).join('+')} chars`);
   // Trier par score décroissant, puis prendre les messages jusqu'à 20000 chars
   hsaMsgs.sort((a,b) => b.pnCount - a.pnCount);
-  hsaMsgs.forEach((m,i) => log(`  🔍 msg[${i}] score:${m.pnCount} len:${m.text.length} preview:"${m.text.slice(0,80).replace(/\n/g,' ')}"`));
   const selectedTexts = [];
   let totalLen = 0;
+  // Premier passage : inclure tous les messages avec score > 0
   for (const msg of hsaMsgs) {
-    if (totalLen + msg.text.length > 20000) continue; // skip si trop long
+    if (msg.pnCount === 0) continue;
+    if (totalLen + msg.text.length > 20000) continue;
+    selectedTexts.push(msg.text);
+    totalLen += msg.text.length;
+  }
+  // Deuxième passage : compléter avec les messages score 0 si place disponible
+  for (const msg of hsaMsgs) {
+    if (msg.pnCount > 0) continue;
+    if (totalLen + msg.text.length > 20000) continue;
     selectedTexts.push(msg.text);
     totalLen += msg.text.length;
   }
