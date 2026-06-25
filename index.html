@@ -3465,7 +3465,7 @@ async function koSaveState() {
     colleagueName: koGetColleagueName(),
     colleagueNameManual: (document.getElementById('ko_colleague_name_manual')?.value || ''),
     coEngineers:  KO._coEngineers || [],
-    coEngineersManual: KO._coEngineersManual || [],    
+    coEngineersManual: KO._coEngineersManual || [],
   };
   if (!curProfile) return;
   state.savedAt = Date.now();
@@ -4499,35 +4499,39 @@ function koBuildFboBody() {
   const colleagueNameFbo = koGetColleagueName() || '[COLLEAGUE]';
   const myNameFbo = curProfile?.name || '[ENGINEER]';
 
-  const fboIntro = colleagueModeFbo
-    ? `My name is ${myNameFbo}, and I am writing to coordinate maintenance for ${reg} at ${icao} on behalf of my colleague **${colleagueNameFbo}**, who will be attending the aircraft on site.`
-    : `My name is ${myNameFbo}, and I am writing to coordinate maintenance for ${reg} at ${icao}.`;
-
-  // Build colleague info block for FBO if in colleague mode (only if no co-engineers — otherwise coEngBlock handles it)
-  let colleagueInfoBlock = '';
-  if (colleagueModeFbo && !(KO._coEngineers || []).filter(Boolean).length) {
-    const phone = KO._colleaguePhone || '';
-    colleagueInfoBlock = `\nThe engineer attending on site will be:\n${colleagueNameFbo}${phone ? '\nMob. Tel. ' + phone : ''}\n`;
-  }
-
-  // Co-engineers block (only shown when YOU are on site, not in colleague mode)
-  // Merge checked list + manual entries, exclude the colleague already named
-  const _colleagueN = koGetColleagueName();
+  // Merge co-engineers from checkboxes + manual, exclude the named colleague
   const coEngs = [...new Set([
     ...Array.from(document.querySelectorAll('.coeng-cb:checked')).map(cb => cb.value),
     ...(KO._coEngineersManual || [])
-  ])].filter(n => n && n !== _colleagueN);
-  let coEngBlock = '';
-  if (coEngs.length && !colleagueModeFbo) {
-    const names = coEngs.join(', ');
-    coEngBlock = `\nI will also be working alongside the following colleague${coEngs.length > 1 ? 's' : ''} on this intervention: ${names}. Their documents are also attached for your review.\n`;
-  } else if (coEngs.length && colleagueModeFbo) {
-    // In colleague mode: list ALL engineers attending (colleague + co-engineers)
-    const allOnSite = [colleagueNameFbo, ...coEngs];
-    coEngBlock = `\nThe following engineers will be attending on site:\n${allOnSite.map(n => '- ' + n).join('\n')}\nTheir documents are attached for your review.\n`;
+  ])].filter(n => n && n !== colleagueNameFbo);
+
+  // All people going on site
+  const allOnSite = colleagueModeFbo
+    ? [colleagueNameFbo, ...coEngs]   // colleague + co-engineers
+    : coEngs;                          // just co-engineers (I am going myself)
+
+  const multiPerson = allOnSite.length > 1 || (!colleagueModeFbo && allOnSite.length >= 1);
+
+  // Intro
+  const fboIntro = colleagueModeFbo
+    ? `My name is ${myNameFbo}, and I am writing to coordinate maintenance for ${reg} at ${icao} on behalf of my colleague${coEngs.length ? 's' : ''} who will be attending the aircraft on site.`
+    : `My name is ${myNameFbo}, and I am writing to coordinate maintenance for ${reg} at ${icao}.`;
+
+  // Airside access line
+  let accessLine = '';
+  if (colleagueModeFbo && allOnSite.length === 1) {
+    // Single colleague
+    const phone = KO._colleaguePhone || '';
+    accessLine = `The aircraft owner has informed us that your team is the FBO. Could you please arrange airside access for ${colleagueNameFbo}?${phone ? '\nMob. Tel. ' + phone : ''}`;
+  } else if (allOnSite.length > 0) {
+    // Multiple people — list them all
+    accessLine = `The aircraft owner has informed us that your team is the FBO. Could you please arrange airside access for the following engineer${allOnSite.length > 1 ? 's' : ''}:\n${allOnSite.map(n => '- ' + n).join('\n')}`;
+  } else {
+    // Just me
+    accessLine = `The aircraft owner has informed us that your team is the FBO. Could you please arrange airside access for me?`;
   }
 
-  // Documents block
+  // Documents block — "our documents" if multiple people
   const docLabels = {
     kofbo_doc_passport:      'Passport copy',
     kofbo_doc_photo:         'Photo ID',
@@ -4540,18 +4544,30 @@ function koBuildFboBody() {
   const selectedDocs = Object.entries(docLabels)
     .filter(([id]) => document.getElementById(id)?.checked)
     .map(([, label]) => `- ${label}`);
+  const docsOwner = allOnSite.length > 0 ? 'our' : 'my';
   const docsBlock = selectedDocs.length
-    ? `\nFor your review, I have attached the following document${selectedDocs.length > 1 ? 's' : ''}:\n${selectedDocs.join('\n')}\n`
-    : '\nI have attached my documents for your review.\n';
+    ? `\nFor your review, I have attached ${docsOwner} document${selectedDocs.length > 1 ? 's' : ''}:\n${selectedDocs.join('\n')}\n`
+    : `\nI have attached ${docsOwner} documents for your review.\n`;
 
-  const accessPerson = colleagueModeFbo ? colleagueNameFbo : 'me';
+  // Transport line — adapt "me" → "us" if multiple people
+  // (handled below by replacing the static text)
+  const transportPerson = allOnSite.length > 0 ? 'us' : 'me';
+
+  // Rebuild extraQs with adapted transport line
+  const extraQsAdapted = extraQs.map(q => {
+    if (q.startsWith('Could you please arrange transportation for me')) {
+      return q.replace('for me upon my arrival', `for ${transportPerson} upon ${transportPerson === 'us' ? 'our' : 'my'} arrival`);
+    }
+    return q;
+  });
+  const extraQsBlockFinal = extraQsAdapted.length ? '\n' + extraQsAdapted.join('\n') + '\n' : '';
 
   return `Dear Duty Manager,
 
 ${fboIntro}
 
-The aircraft owner has informed us that your team is the FBO. Could you please arrange airside access for ${accessPerson}?
-${docsBlock}${colleagueInfoBlock}${coEngBlock}${extraQsBlock}${equipBlock}
+${accessLine}
+${docsBlock}${extraQsBlockFinal}${equipBlock}
 Please let me know if you require any further details.
 
 Kind regards,
