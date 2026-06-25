@@ -877,14 +877,14 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div id="ko-colleague-name-wrap" style="display:none;margin-top:6px">
         <div class="ko-fg">
           <label>Colleague's name — select from team</label>
-          <select id="ko_colleague_name" onchange="koSyncColleagueManual();koFetchColleaguePhone(this.value);koUpdatePreview();koSaveState()">
+          <select id="ko_colleague_name" onchange="koSyncColleagueManual();koAutoCheckColleague(this.value);koFetchColleaguePhone(this.value);koUpdatePreview();koSaveState()">
             <option value="">— select a colleague —</option>
           </select>
         </div>
         <div class="ko-fg" style="margin-top:6px">
           <label>Or type a name manually (external / not in list)</label>
           <input type="text" id="ko_colleague_name_manual" placeholder="e.g. John Smith — ABC Aviation"
-            oninput="koSyncColleagueSelect();koUpdatePreview();koSaveState()"/>
+            oninput="koSyncColleagueSelect();koAutoCheckColleague('');koUpdatePreview();koSaveState()"/>
         </div>
       </div>
     </div>
@@ -3735,6 +3735,7 @@ G.koToggleQatar = async function(checked) {
 // ══════════════════════════════════════
 if (!window.KO) window.KO = {};
 KO._coEngineers = KO._coEngineers || [];
+KO._coEngineersManual = KO._coEngineersManual || [];
 
 // Called once when kickoff opens — loads team, populates colleague <select> and co-engineer checkboxes
 async function koLoadTeamForSelectors() {
@@ -3835,10 +3836,34 @@ G.koSyncColleagueSelect = function() {
 G.koToggleColleague = function(checked) {
   const wrap = document.getElementById('ko-colleague-name-wrap');
   if (wrap) wrap.style.display = checked ? '' : 'none';
-  if (!checked) KO._colleaguePhone = '';
+  if (!checked) {
+    KO._colleaguePhone = '';
+    // Uncheck all colleague-auto checkboxes
+    document.querySelectorAll('.coeng-cb.coeng-auto').forEach(cb => {
+      cb.checked = false;
+      cb.classList.remove('coeng-auto');
+    });
+  }
   koUpdatePreview();
   koSaveState();
 };
+
+// Auto-check the colleague in the co-engineers list when name changes
+function koAutoCheckColleague(name) {
+  // Uncheck previous auto-selections
+  document.querySelectorAll('.coeng-cb.coeng-auto').forEach(cb => {
+    cb.checked = false;
+    cb.classList.remove('coeng-auto');
+  });
+  if (!name) return;
+  // Find matching checkbox and check it
+  document.querySelectorAll('.coeng-cb').forEach(cb => {
+    if (cb.value === name) {
+      cb.checked = true;
+      cb.classList.add('coeng-auto'); // mark as auto so we can uncheck later
+    }
+  });
+}
 
 // Fetch colleague phone from Firebase team list when name is typed
 // (matches by name — best effort)
@@ -4531,7 +4556,11 @@ function koBuildFboBody() {
     accessLine = `The aircraft owner has informed us that your team is the FBO. Could you please arrange airside access for me?`;
   }
 
-  // Documents block — "our documents" if multiple people
+  // Documents block
+  // - colleague mode        → "their documents" (they go, not me)
+  // - me + co-engineers     → "our documents"
+  // - just me               → "my documents"
+
   const docLabels = {
     kofbo_doc_passport:      'Passport copy',
     kofbo_doc_photo:         'Photo ID',
@@ -4544,30 +4573,35 @@ function koBuildFboBody() {
   const selectedDocs = Object.entries(docLabels)
     .filter(([id]) => document.getElementById(id)?.checked)
     .map(([, label]) => `- ${label}`);
-  const docsOwner = allOnSite.length > 0 ? 'our' : 'my';
+  const docsOwner = colleagueModeFbo ? 'their' : (coEngs.length > 0 ? 'our' : 'my');
   const docsBlock = selectedDocs.length
     ? `\nFor your review, I have attached ${docsOwner} document${selectedDocs.length > 1 ? 's' : ''}:\n${selectedDocs.join('\n')}\n`
     : `\nI have attached ${docsOwner} documents for your review.\n`;
 
-  // Transport line — adapt "me" → "us" if multiple people
-  // (handled below by replacing the static text)
-  const transportPerson = allOnSite.length > 0 ? 'us' : 'me';
+  // Transport + equip: adapt person based on who is going on site
+  // colleague mode → "them/their"  |  me + co-engs → "us/our"  |  just me → "me/my"
+  const transPron  = colleagueModeFbo ? 'them' : (coEngs.length > 0 ? 'us'  : 'me');
+  const transAdj   = colleagueModeFbo ? 'their': (coEngs.length > 0 ? 'our' : 'my');
+  const equipPron  = colleagueModeFbo ? 'them' : (coEngs.length > 0 ? 'us'  : 'us');  // "for us/them during"
 
   // Rebuild extraQs with adapted transport line
   const extraQsAdapted = extraQs.map(q => {
     if (q.startsWith('Could you please arrange transportation for me')) {
-      return q.replace('for me upon my arrival', `for ${transportPerson} upon ${transportPerson === 'us' ? 'our' : 'my'} arrival`);
+      return q
+        .replace('for me upon my arrival', `for ${transPron} upon ${transAdj} arrival`)
+        .replace('I am scheduled to arrive', `${colleagueModeFbo ? allOnSite[0] + ' is' : 'I am'} scheduled to arrive`);
     }
     return q;
   });
   const extraQsBlockFinal = extraQsAdapted.length ? '\n' + extraQsAdapted.join('\n') + '\n' : '';
+  const equipBlockFinal = equipBlock.replace('for us during', `for ${equipPron} during`);
 
   return `Dear Duty Manager,
 
 ${fboIntro}
 
 ${accessLine}
-${docsBlock}${extraQsBlockFinal}${equipBlock}
+${docsBlock}${extraQsBlockFinal}${equipBlockFinal}
 Please let me know if you require any further details.
 
 Kind regards,
