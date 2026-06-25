@@ -3855,14 +3855,15 @@ function koAutoCheckColleague(name) {
     cb.checked = false;
     cb.classList.remove('coeng-auto');
   });
-  if (!name) return;
-  // Find matching checkbox and check it
+  if (!name) { koCoEngChange(); return; }
+  // Find matching checkbox and check it (case-insensitive)
   document.querySelectorAll('.coeng-cb').forEach(cb => {
-    if (cb.value === name) {
+    if (cb.value.toLowerCase().trim() === name.toLowerCase().trim()) {
       cb.checked = true;
-      cb.classList.add('coeng-auto'); // mark as auto so we can uncheck later
+      cb.classList.add('coeng-auto');
     }
   });
+  koCoEngChange(); // sync immediately
 }
 
 // Fetch colleague phone from Firebase team list when name is typed
@@ -4528,7 +4529,7 @@ function koBuildFboBody() {
   const coEngs = [...new Set([
     ...Array.from(document.querySelectorAll('.coeng-cb:checked')).map(cb => cb.value),
     ...(KO._coEngineersManual || [])
-  ])].filter(n => n && n !== colleagueNameFbo);
+  ])].filter(n => n && n.toLowerCase().trim() !== colleagueNameFbo.toLowerCase().trim());
 
   // All people going on site
   const allOnSite = colleagueModeFbo
@@ -4781,7 +4782,9 @@ document.getElementById('ko-parts-tbody')?.addEventListener('change', () => {
 });
 // Enter on new airline name
 const koAirlineInp = document.getElementById('ko-new-airline-name');
-if (koAirlineInp) koAirlineInp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); G.koAddAirline(); } });
+// Enter on manual co-engineer input
+const koManualEngInp = document.getElementById('kofbo_coeng_manual_input');
+if (koManualEngInp) koManualEngInp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); G.koCoEngAddManual(); } });
 
 // ══════════════════════════════════════
 //  MOBILE ACCORDION for Kickoff cards
