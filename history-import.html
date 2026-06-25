@@ -454,7 +454,19 @@ async function gmailGetFirstHSAMessage(threadId) {
   }
   if (!hsaMsgs.length) return msgs.length ? stripQuotedText(extractTextFromPayload(msgs[0].payload)) : '';
   log(`  🔍 HSA msgs: ${hsaMsgs.length} message(s) capturé(s), total: ${hsaMsgs.map(m=>m.text.length).join('+')} chars`);
-  return hsaMsgs.map(m=>m.text).join('\n\n---\n\n').slice(0, 20000);
+  // Trier par score décroissant, puis prendre les messages jusqu'à 20000 chars
+  hsaMsgs.sort((a,b) => b.pnCount - a.pnCount);
+  const selectedTexts = [];
+  let totalLen = 0;
+  for (const msg of hsaMsgs) {
+    if (totalLen + msg.text.length > 20000) continue; // skip si trop long
+    selectedTexts.push(msg.text);
+    totalLen += msg.text.length;
+  }
+  // Si aucun message sélectionné (tous trop longs), prendre le premier tronqué
+  if (!selectedTexts.length) selectedTexts.push(hsaMsgs[0].text.slice(0, 20000));
+  log(`  🔍 Selected: ${selectedTexts.length} msg(s), ${totalLen} chars`);
+  return selectedTexts.join('\n\n---\n\n');
 }
 
 async function gmailGetLastMessageBody(threadId) {
