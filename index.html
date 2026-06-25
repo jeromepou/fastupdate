@@ -876,8 +876,15 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       </label>
       <div id="ko-colleague-name-wrap" style="display:none;margin-top:6px">
         <div class="ko-fg">
-          <label>Colleague's name</label>
-          <input type="text" id="ko_colleague_name" placeholder="e.g. George Papadopoulos" oninput="koUpdatePreview()"/>
+          <label>Colleague's name — select from team</label>
+          <select id="ko_colleague_name" onchange="koSyncColleagueManual();koFetchColleaguePhone(this.value);koUpdatePreview();koSaveState()">
+            <option value="">— select a colleague —</option>
+          </select>
+        </div>
+        <div class="ko-fg" style="margin-top:6px">
+          <label>Or type a name manually (external / not in list)</label>
+          <input type="text" id="ko_colleague_name_manual" placeholder="e.g. John Smith — ABC Aviation"
+            oninput="koSyncColleagueSelect();koUpdatePreview();koSaveState()"/>
         </div>
       </div>
     </div>
@@ -1126,13 +1133,9 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       
       <!-- CO-ENGINEERS -->
       <div class="ko-section-lbl">👷 Co-engineers attending on site</div>
-      <p style="font-size:12px;color:var(--g600);margin-bottom:8px">Add the names of other FAST engineers working with you. Their documents will be mentioned as attached in the FBO email.</p>
-      <div id="kofbo_coeng_list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:7px"></div>
-      <div style="display:flex;gap:6px;margin-bottom:4px">
-        <input type="text" id="kofbo_coeng_input" placeholder="Engineer name (e.g. George Papadopoulos)"
-          style="flex:1;font-size:13px;padding:6px 10px;border:1px solid var(--g200);border-radius:var(--r)"
-          onkeydown="if(event.key==='Enter'){event.preventDefault();koFboAddCoEng();}"/>
-        <button class="btn" onclick="koFboAddCoEng()" style="font-size:12px;padding:5px 10px">+ Add</button>
+      <p style="font-size:12px;color:var(--g600);margin-bottom:8px">Select colleagues working with you on site. Their documents will be mentioned as attached in the FBO email.</p>
+      <div id="kofbo_coeng_list" style="display:flex;flex-direction:column;gap:6px">
+        <p style="font-size:12px;color:var(--g400)"><span class="spin" style="vertical-align:middle"></span> Loading team…</p>
       </div>
 
       <div class="ko-divider"></div>
@@ -1172,21 +1175,25 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
           <div class="ko-fg"><label>Subject</label><input type="text" id="ko-prev-subj-customer"/></div>
           <div class="ko-fg"><label>Body</label><textarea id="ko-prev-body-customer" style="min-height:220px"></textarea></div>
           <button class="btn" onclick="koResetDraftPreview('customer')" style="font-size:12px">🔄 Reset to auto-generated</button>
+          <button class="btn" onclick="koCopyDraft('customer')" style="font-size:12px">📋 Copy text</button>
         </div>
         <div class="ko-prev-panel" id="ko-prev-panel-travel" style="display:none">
           <div class="ko-fg"><label>Subject</label><input type="text" id="ko-prev-subj-travel"/></div>
           <div class="ko-fg"><label>Body</label><textarea id="ko-prev-body-travel" style="min-height:160px"></textarea></div>
           <button class="btn" onclick="koResetDraftPreview('travel')" style="font-size:12px">🔄 Reset to auto-generated</button>
+          <button class="btn" onclick="koCopyDraft('travel')" style="font-size:12px">📋 Copy text</button>
         </div>
         <div class="ko-prev-panel" id="ko-prev-panel-parts" style="display:none">
           <div class="ko-fg"><label>Subject</label><input type="text" id="ko-prev-subj-parts"/></div>
           <div class="ko-fg"><label>Body</label><textarea id="ko-prev-body-parts" style="min-height:220px"></textarea></div>
           <button class="btn" onclick="koResetDraftPreview('parts')" style="font-size:12px">🔄 Reset to auto-generated</button>
+          <button class="btn" onclick="koCopyDraft('parts')" style="font-size:12px">📋 Copy text</button>
         </div>
         <div class="ko-prev-panel" id="ko-prev-panel-fbo" style="display:none">
           <div class="ko-fg"><label>Subject</label><input type="text" id="ko-prev-subj-fbo"/></div>
           <div class="ko-fg"><label>Body</label><textarea id="ko-prev-body-fbo" style="min-height:180px"></textarea></div>
           <button class="btn" onclick="koResetDraftPreview('fbo')" style="font-size:12px">🔄 Reset to auto-generated</button>
+          <button class="btn" onclick="koCopyDraft('fbo')" style="font-size:12px">📋 Copy text</button>
         </div>
       </div>
       <div class="ko-status ko-s-idle" id="ko-status" style="margin-top:.75rem">
@@ -3447,7 +3454,8 @@ async function koSaveState() {
     cabinClass:   KO.cabinClass,
     extraBaggage: document.getElementById('ko-extra-baggage')?.classList.contains('active-green') || false,
     colleagueMode: document.getElementById('ko-colleague-toggle')?.checked || false,
-    colleagueName: document.getElementById('ko_colleague_name')?.value || '',
+    colleagueName: koGetColleagueName(),
+    colleagueNameManual: (document.getElementById('ko_colleague_name_manual')?.value || ''),
     coEngineers:  KO._coEngineers || [],
   };
   if (!curProfile) return;
@@ -3485,8 +3493,12 @@ async function koRestoreState() {
     if (cb) { cb.checked = true; G.koToggleColleague(true); }
   }
   if (state.colleagueName) {
-    const inp = document.getElementById('ko_colleague_name');
-    if (inp) inp.value = state.colleagueName;
+    const sel = document.getElementById('ko_colleague_name');
+    if (sel) sel.value = state.colleagueName;
+  }
+  if (state.colleagueNameManual) {
+    const inp = document.getElementById('ko_colleague_name_manual');
+    if (inp) inp.value = state.colleagueNameManual;
   }
   // Show priority warehouse select if checked
   const prioSel = document.getElementById('ko_priority_warehouse');
@@ -3571,6 +3583,7 @@ G.openKickoff = async function() {
   await koLoadFixedRecips();
   await koLoadAirlines();
   await koLoadCustomQuestions();
+  await koLoadTeamForSelectors();
   KO.signature = koBuildSignature();
   koRenderAllRecips();
   koInitToggles();
@@ -3705,39 +3718,73 @@ G.koToggleQatar = async function(checked) {
 };
 
 // ══════════════════════════════════════
-//  FBO CO-ENGINEERS
+//  FBO CO-ENGINEERS + COLLEAGUE SELECT — load from Firebase
 // ══════════════════════════════════════
 if (!window.KO) window.KO = {};
 KO._coEngineers = KO._coEngineers || [];
 
-G.koFboAddCoEng = function() {
-  const inp = document.getElementById('kofbo_coeng_input');
-  const val = inp?.value.trim();
-  if (!val) return;
-  if (!KO._coEngineers.includes(val)) {
-    KO._coEngineers.push(val);
-    koFboRenderCoEngs();
-    koUpdatePreview();
-    koSaveState();
-  }
-  if (inp) inp.value = '';
-};
+// Called once when kickoff opens — loads team, populates colleague <select> and co-engineer checkboxes
+async function koLoadTeamForSelectors() {
+  try {
+    const snap = await get(ref(db, 'team'));
+    if (!snap.exists()) return;
+    const team = Object.values(snap.val())
+      .filter(p => p.name && p.id !== curProfile?.id)
+      .sort((a, b) => a.name.localeCompare(b.name));
 
-function koFboRenderCoEngs() {
-  const list = document.getElementById('kofbo_coeng_list');
-  if (!list) return;
-  list.innerHTML = KO._coEngineers.map((name, i) => `
-    <div style="display:flex;align-items:center;gap:8px;background:var(--bl);border:1px solid #b8d0e8;border-radius:var(--r);padding:6px 10px">
-      <span style="font-size:13px;flex:1;color:var(--blue)">👷 ${name}</span>
-      <button onclick="koFboRemoveCoEng(${i})" style="background:none;border:none;cursor:pointer;color:var(--g400);font-size:16px;line-height:1;padding:0 2px">×</button>
-    </div>`).join('');
+    // Populate colleague <select>
+    const sel = document.getElementById('ko_colleague_name');
+    if (sel) {
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">— select a colleague —</option>' +
+        team.map(p => `<option value="${p.name}">${p.name}${p.team ? ' · ' + p.team : ''}</option>`).join('');
+      if (cur) sel.value = cur;
+    }
+
+    // Populate co-engineer checkboxes
+    const list = document.getElementById('kofbo_coeng_list');
+    if (list) {
+      list.innerHTML = team.map(p => `
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r);background:var(--g50)">
+          <input type="checkbox" class="coeng-cb" value="${p.name}" onchange="koCoEngChange()"/>
+          👷 ${p.name}${p.team ? ' <span style=\'font-size:11px;color:var(--g400)\'>· ' + p.team + '</span>' : ''}
+        </label>`).join('');
+      // Re-check previously selected
+      list.querySelectorAll('.coeng-cb').forEach(cb => {
+        if (KO._coEngineers.includes(cb.value)) cb.checked = true;
+      });
+    }
+  } catch(e) {}
 }
 
-G.koFboRemoveCoEng = function(i) {
-  KO._coEngineers.splice(i, 1);
-  koFboRenderCoEngs();
+function koCoEngChange() {
+  KO._coEngineers = Array.from(document.querySelectorAll('.coeng-cb:checked')).map(cb => cb.value);
   koUpdatePreview();
   koSaveState();
+}
+
+// Kept for restore compatibility — re-checks boxes after team is loaded
+function koFboRenderCoEngs() {
+  document.querySelectorAll('.coeng-cb').forEach(cb => {
+    cb.checked = KO._coEngineers.includes(cb.value);
+  });
+}
+
+// Returns the effective colleague name (select takes priority over manual if both filled)
+function koGetColleagueName() {
+  const manual = (document.getElementById('ko_colleague_name_manual')?.value || '').trim();
+  const sel    = (document.getElementById('ko_colleague_name')?.value || '').trim();
+  return sel || manual || '';
+}
+// When user picks from select → clear manual field
+G.koSyncColleagueManual = function() {
+  const inp = document.getElementById('ko_colleague_name_manual');
+  if (inp) inp.value = '';
+};
+// When user types manually → reset select to blank
+G.koSyncColleagueSelect = function() {
+  const sel = document.getElementById('ko_colleague_name');
+  if (sel) sel.value = '';
 };
 
 G.koToggleColleague = function(checked) {
@@ -4026,6 +4073,30 @@ G.koResetDraftPreview = function(type) {
   document.getElementById('ko-prev-body-' + type).value = koComputeBodies()[type];
 };
 
+// Copy the subject + body of a draft to clipboard
+G.koCopyDraft = function(type) {
+  const subjEl = document.getElementById('ko-prev-subj-' + type);
+  const bodyEl = document.getElementById('ko-prev-body-' + type);
+  // If panel not yet opened, generate on-the-fly
+  const subj = subjEl?.value || koComputeSubjects()[type];
+  const body = bodyEl?.value || koComputeBodies()[type];
+  const text = 'Subject: ' + subj + '\n\n' + body;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  });
+};
+
 function koUpdatePreview() {
   const subs = koComputeSubjects();
   const icao = document.getElementById('ko_icao')?.value || '';
@@ -4176,7 +4247,7 @@ function koBuildCustomerBody() {
     : `I'm scheduled to work on the defect regarding the ${def}, and will share my action plan and progress updates as the intervention proceeds.`;
 
   const colleagueMode = document.getElementById('ko-colleague-toggle')?.checked;
-  const colleagueName = document.getElementById('ko_colleague_name')?.value?.trim() || '[COLLEAGUE]';
+  const colleagueName = koGetColleagueName() || '[COLLEAGUE]';
   const myName = curProfile?.name || '[ENGINEER]';
 
   const introLine = colleagueMode
@@ -4373,27 +4444,30 @@ function koBuildFboBody() {
   const extraQsBlock = extraQs.length ? '\n' + extraQs.map(q => q).join('\n') + '\n' : '';
 
   const colleagueModeFbo = document.getElementById('ko-colleague-toggle')?.checked;
-  const colleagueNameFbo = document.getElementById('ko_colleague_name')?.value?.trim() || '[COLLEAGUE]';
+  const colleagueNameFbo = koGetColleagueName() || '[COLLEAGUE]';
   const myNameFbo = curProfile?.name || '[ENGINEER]';
 
   const fboIntro = colleagueModeFbo
     ? `My name is ${myNameFbo}, and I am writing to coordinate maintenance for ${reg} at ${icao} on behalf of my colleague **${colleagueNameFbo}**, who will be attending the aircraft on site.`
     : `My name is ${myNameFbo}, and I am writing to coordinate maintenance for ${reg} at ${icao}.`;
 
-  // Build colleague info block for FBO if in colleague mode
+  // Build colleague info block for FBO if in colleague mode (only if no co-engineers — otherwise coEngBlock handles it)
   let colleagueInfoBlock = '';
-  if (colleagueModeFbo) {
-    // Try to find the colleague's phone from Firebase team data (loaded in KO._colleaguePhone)
+  if (colleagueModeFbo && !(KO._coEngineers || []).filter(Boolean).length) {
     const phone = KO._colleaguePhone || '';
     colleagueInfoBlock = `\nThe engineer attending on site will be:\n${colleagueNameFbo}${phone ? '\nMob. Tel. ' + phone : ''}\n`;
   }
 
-  // Co-engineers block
+  // Co-engineers block (only shown when YOU are on site, not in colleague mode)
   const coEngs = (KO._coEngineers || []).filter(Boolean);
   let coEngBlock = '';
-  if (coEngs.length) {
+  if (coEngs.length && !colleagueModeFbo) {
     const names = coEngs.join(', ');
     coEngBlock = `\nI will also be working alongside the following colleague${coEngs.length > 1 ? 's' : ''} on this intervention: ${names}. Their documents are also attached for your review.\n`;
+  } else if (coEngs.length && colleagueModeFbo) {
+    // In colleague mode: list ALL engineers attending (colleague + co-engineers)
+    const allOnSite = [colleagueNameFbo, ...coEngs];
+    coEngBlock = `\nThe following engineers will be attending on site:\n${allOnSite.map(n => '- ' + n).join('\n')}\nTheir documents are attached for your review.\n`;
   }
 
   // Documents block
@@ -4564,9 +4638,7 @@ document.addEventListener('change', e => {
 document.addEventListener('input', e => {
   const ids = ['ko_wo','ko_sn','ko_reg','ko_icao','ko_model','ko_defect','ko_travel_from','ko_travel_to'];
   if (ids.includes(e.target?.id)) koUpdatePreview();
-  if (e.target?.id === 'ko_colleague_name') {
-    koFetchColleaguePhone(e.target.value).then(() => koUpdatePreview());
-  }
+  // ko_colleague_name is now a <select> with onchange — handled inline
   // Live-update airline numbers in KO.airlines array
   if (e.target?.classList.contains('ko-airline-input')) {
     const rows = document.querySelectorAll('#ko-airlines-list .ko-airline-row');
