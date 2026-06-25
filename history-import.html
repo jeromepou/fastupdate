@@ -1103,6 +1103,7 @@ async function startImport() {
                 if (!station && extracted.station)  station=extracted.station;
                 allExtractedParts = extracted.parts||[];
                 log(`  📦 Email: ${allExtractedParts.length} part(s) requested`);
+                allExtractedParts.forEach(p => log(`    → ${p.nomenclature} | on:${p.pn_on||'-'} | off:${p.pn_off||'-'} | sn_on:${p.sn_on||'-'}`));
               }
             } else {
               const fmR=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${entry.partEmailIds[0]}?format=full`,
@@ -1191,6 +1192,7 @@ async function startImport() {
                   try {
                     const updPartsData = await extractPartsFromEmailText(updBody, fa);
                     const updParts = (updPartsData.parts||[]).filter(p => (p.pn_on||p.pn_off||'').length > 3);
+                    updParts.forEach(p => log(`    → UPDATE part: ${p.nomenclature} | on:${p.pn_on||'-'} | off:${p.pn_off||'-'} | sn_on:${p.sn_on||'-'}`));
                     for (const p of updParts) {
                       const pn = p.pn_on||p.pn_off||'';
                       const alreadyHere = mergedParts.find(x=>(x.pn_on||x.pn_off||'')===pn);
