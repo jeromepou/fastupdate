@@ -1021,9 +1021,9 @@ async function startImport() {
             const threadIds=[...entry.partThreadIds];
 
             // ── Étape 1 : chercher une CI xlsx dans le thread (du plus récent au plus ancien) ──
-            if (threadIds.length > 0) {
+            for (const scanThreadId of threadIds) {
               await ensureToken();
-              const threadR=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadIds[threadIds.length-1]}?format=full`,
+              const threadR=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads/${scanThreadId}?format=full`,
                 {headers:{Authorization:'Bearer '+gToken}});
               const threadD=await threadR.json();
 
@@ -1080,6 +1080,7 @@ async function startImport() {
                 }
                 break; // on prend le premier xlsx trouvé
               }
+              if (ciParts.length) break; // xlsx trouvé dans ce thread, inutile de continuer
             }
 
             // ── Étape 2 : lire le vrai message de demande (FROM headstartaviation.com) ──
