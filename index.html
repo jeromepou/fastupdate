@@ -1111,7 +1111,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_nitrogen_hp"/> Nitrogen — High pressure</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_nitrogen_lp"/> Nitrogen — Low pressure</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_steps"/> Steps</label>
-<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_steps_engine"/> Engine access steps (tall steps)</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_steps_engine"/> Engine access steps (tall steps)</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_hangar"/> Hangar space</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_lavatory"/> Lavatory service</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_hpbay"/> High Power Bay</label>
@@ -1120,7 +1120,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div class="ko-section-lbl">Questions to include in the FBO email</div>
       <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px">
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_q_days"/> Could you please let me know how many days do you need to have it ready?</label>
-	<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_q_confirm"/> Please note that this intervention is pending authorisation — I will come back to you as soon as I have a confirmation to proceed.</label>
+	      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_q_confirm"/> Please note that this intervention is pending authorisation — I will come back to you as soon as I have a confirmation to proceed.</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_q_shipping"/> Could you please provide your shipping address? I may need to send parts required for the Return to Service to your FBO.</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_q_importer"/> Would you be able to act as importer of record for parts we will need to import for this intervention?</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_q_transport" onchange="document.getElementById('kofbo_transport_eta_wrap').style.display=this.checked?'flex':'none'"/> Could you please arrange transportation for me upon my arrival at the airport?</label>
@@ -1140,7 +1140,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div class="ko-fg" style="margin-bottom:4px">
         <label>Or add manually (external / not in list)</label>
         <div style="display:flex;gap:6px">
-          <input type="text" id="kofbo_coeng_manual_input" placeholder="e.g. John Smith — ABC Aviation" style="flex:1;font-size:13px;padding:6px 10px;border:1px solid var(--g200);border-radius:var(--r)"/>
+          <input type="text" id="kofbo_coeng_manual_input" placeholder="e.g. John Smith — ABC Aviation" style="flex:1;font-size:13px;padding:6px 10px;border:1px solid var(--g200);border-radius:var(--r)" onkeydown="if(event.key==='Enter'){event.preventDefault();G.koCoEngAddManual();}" onblur="G.koCoEngAddManual()"/>
           <button class="btn" onclick="koCoEngAddManual()" style="font-size:12px;padding:5px 10px">+ Add</button>
         </div>
       </div>
@@ -3767,6 +3767,9 @@ async function koLoadTeamForSelectors() {
       list.querySelectorAll('.coeng-cb').forEach(cb => {
         if (KO._coEngineers.includes(cb.value)) cb.checked = true;
       });
+      // Auto-check colleague if already selected
+      const colleagueVal = document.getElementById('ko_colleague_name')?.value;
+      if (colleagueVal) koAutoCheckColleague(colleagueVal);
     }
   } catch(e) {}
 }
