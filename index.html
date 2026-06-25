@@ -877,7 +877,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div id="ko-colleague-name-wrap" style="display:none;margin-top:6px">
         <div class="ko-fg">
           <label>Colleague's name — select from team</label>
-          <select id="ko_colleague_name" onchange="koSyncColleagueManual();koAutoCheckColleague(this.value);koFetchColleaguePhone(this.value);koUpdatePreview();koSaveState()">
+          <select id="ko_colleague_name" onchange="koSyncColleagueManual();G.koAutoCheckColleague(this.value);koFetchColleaguePhone(this.value);koUpdatePreview();koSaveState()">
             <option value="">— select a colleague —</option>
           </select>
         </div>
@@ -1140,8 +1140,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div class="ko-fg" style="margin-bottom:4px">
         <label>Or add manually (external / not in list)</label>
         <div style="display:flex;gap:6px">
-          <input type="text" id="kofbo_coeng_manual_input" placeholder="e.g. John Smith — ABC Aviation" style="flex:1;font-size:13px;padding:6px 10px;border:1px solid var(--g200);border-radius:var(--r)" onkeydown="if(event.key==='Enter'){event.preventDefault();G.koCoEngAddManual();}" onblur="G.koCoEngAddManual()"/>
-          <button class="btn" onclick="koCoEngAddManual()" style="font-size:12px;padding:5px 10px">+ Add</button>
+          <input type="text" id="kofbo_coeng_manual_input" placeholder="e.g. John Smith — ABC Aviation" style="flex:1;font-size:13px;padding:6px 10px;border:1px solid var(--g200);border-radius:var(--r)"/>
+          <button class="btn" onclick="G.koCoEngAddManual()" style="font-size:12px;padding:5px 10px">+ Add</button>
         </div>
       </div>
       <div id="kofbo_coeng_manual_list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:4px"></div>
@@ -3852,7 +3852,7 @@ G.koToggleColleague = function(checked) {
 };
 
 // Auto-check the colleague in the co-engineers list when name changes
-function koAutoCheckColleague(name) {
+G.koAutoCheckColleague = function(name) {
   // Uncheck previous auto-selections
   document.querySelectorAll('.coeng-cb.coeng-auto').forEach(cb => {
     cb.checked = false;
@@ -4787,7 +4787,10 @@ document.getElementById('ko-parts-tbody')?.addEventListener('change', () => {
 const koAirlineInp = document.getElementById('ko-new-airline-name');
 // Enter on manual co-engineer input
 const koManualEngInp = document.getElementById('kofbo_coeng_manual_input');
-if (koManualEngInp) koManualEngInp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); G.koCoEngAddManual(); } });
+if (koManualEngInp) {
+  koManualEngInp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); G.koCoEngAddManual(); } });
+  koManualEngInp.addEventListener('blur', () => G.koCoEngAddManual());
+}
 
 // ══════════════════════════════════════
 //  MOBILE ACCORDION for Kickoff cards
