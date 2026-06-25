@@ -1158,6 +1158,7 @@ async function startImport() {
           let updateSummary='';
           let _lastUpdBody=''; 
           let updIds=[], workpackIds=[], bizofficeIds=[];
+          const seenThreadIds = new Set();
           try {
             const [resUpd,resWp,resBiz]=await Promise.allSettled([
               gmailSearch(`subject:UPDATE subject:${fa}`,10),
@@ -1176,6 +1177,8 @@ async function startImport() {
                 const subjUp=updMeta.subj.toUpperCase();
                 const subjNorm=subjUp.replace(/\s+/g,'');
                 if (subjUp.includes('CUSTOMER')||!subjNorm.includes(fa.replace(/\s/g,''))) continue;
+                if (seenThreadIds.has(updMeta.threadId)) continue;
+                seenThreadIds.add(updMeta.threadId);
                 log(`  📧 UPDATE: "${updMeta.subj}" | threadId:${updMeta.threadId||'none'}`);
                 const updBody=updMeta.threadId
                   ?await gmailGetLastMessageBody(updMeta.threadId)
@@ -1195,7 +1198,7 @@ async function startImport() {
                     updParts.forEach(p => log(`    → UPDATE part: ${p.nomenclature} | on:${p.pn_on||'-'} | off:${p.pn_off||'-'} | sn_on:${p.sn_on||'-'}`));
                     for (const p of updParts) {
                       const pn = p.pn_on||p.pn_off||'';
-                      const alreadyHere = mergedParts.find(x=>(x.pn_on||x.pn_off||'')===pn);
+                      const alreadyHere = pn ? mergedParts.find(x=>(x.pn_on||x.pn_off||x.nomenclature||'')===pn || (x.nomenclature&&p.nomenclature&&x.nomenclature===p.nomenclature)) : null;
                       if (alreadyHere) {
                         // Si le UPDATE confirme un SN installé, marquer shipped
                         if (p.sn_on) { alreadyHere.shipped = true; alreadyHere.sn_on = p.sn_on; }
