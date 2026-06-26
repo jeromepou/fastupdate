@@ -3643,6 +3643,29 @@ G.koRemoveCustomQuestion = async function(i) {
 //  State expires automatically after 5 days.
 // ══════════════════════════════════════
 
+// Parts Order live save
+async function koSavePartsOrder() {
+  const wo  = (document.getElementById('ko_wo')?.value  || '').trim();
+  if (!wo || !curProfile) return;
+  const parts = koGetParts();
+  if (!parts.length) return;
+  const key = 'WO' + wo.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const payload = {
+    wo,
+    reg:         (document.getElementById('ko_reg')?.value   || '').trim(),
+    sn:          (document.getElementById('ko_sn')?.value    || '').trim(),
+    model:       (document.getElementById('ko_model')?.value || '').trim(),
+    icao:        (document.getElementById('ko_icao')?.value  || '').trim(),
+    defect:      (document.getElementById('ko_defect')?.value|| '').trim(),
+    engineer:    curProfile.name || '',
+    lastUpdated: Date.now(),
+    parts:       parts.filter(p => p.cat === 'Part'),
+    tools:       parts.filter(p => p.cat === 'Tool'),
+    consumables: parts.filter(p => p.cat === 'Consumable'),
+  };
+  try { await set(ref(db, 'orders/' + key), payload); } catch(e) { console.warn('koSavePartsOrder error:', e); }
+}
+
 async function koSaveState() {
   const textIds = [
     'ko_model','ko_sn','ko_reg','ko_wo','ko_icao','ko_defect','ko_cust_name','ko_item_prefix',
@@ -3680,6 +3703,7 @@ async function koSaveState() {
   if (!curProfile) return;
   state.savedAt = Date.now();
   try { await set(ref(db, 'team/' + curProfile.id + '/koState'), state); } catch(e) {}
+  koSavePartsOrder();
 }
 
 async function koRestoreState() {
@@ -4067,11 +4091,22 @@ G.koToggleColleague = function(checked) {
   if (wrap) wrap.style.display = checked ? '' : 'none';
   if (!checked) {
     KO._colleaguePhone = '';
-    // Uncheck all colleague-auto checkboxes
-    document.querySelectorAll('.coeng-cb.coeng-auto').forEach(cb => {
-      cb.checked = false;
-      cb.classList.remove('coeng-auto');
+    KO._colleagueFN = '';
+    // Get the currently selected colleague name (select or manual)
+    const colleagueName = (koGetColleagueName() || '').toLowerCase().trim();
+    // Uncheck ALL co-engineer checkboxes that match the colleague name,
+    // regardless of whether coeng-auto is set (handles restored state)
+    document.querySelectorAll('.coeng-cb').forEach(cb => {
+      if (cb.classList.contains('coeng-auto') || cb.value.toLowerCase().trim() === colleagueName) {
+        cb.checked = false;
+        cb.classList.remove('coeng-auto');
+      }
     });
+    // Also remove from KO._coEngineers
+    if (colleagueName) {
+      KO._coEngineers = (KO._coEngineers || []).filter(n => n.toLowerCase().trim() !== colleagueName);
+    }
+    koCoEngChange();
   }
   koUpdatePreview();
   koSaveState();
@@ -4972,6 +5007,8 @@ G.koGenerate = async function() {
 
   // Save airlines to profile
   await koSaveAirlines();
+
+  await koSavePartsOrder();
 
   // Save squawk history — grouped by squawk
   const acModel = document.getElementById('ko_model')?.value || '';
