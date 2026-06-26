@@ -4806,8 +4806,6 @@ function koBuildFboBody() {
   if (q('kofbo_q_shipping')) extraQs.push('Could you please provide your shipping address? I may need to send parts required for the Return to Service directly to your FBO.');
   if (q('kofbo_q_parts_delivery')) extraQs.push('Parts required for this intervention will be shipped directly to your FBO — could you please confirm your shipping address so we can arrange delivery?');
   if (q('kofbo_q_importer')) extraQs.push('Would you be able to act as importer of record for the parts we will need to import for this intervention?');
-  if (q('kofbo_q_access_docs')) extraQs.push('Could you please let us know what documents are required to access the aircraft airside?');
-  if (q('kofbo_q_toolbox_docs')) extraQs.push('We will be bringing a toolbox on site \u2014 could you please advise what documents or procedures are required to bring it airside?');
   if (q('kofbo_q_transport')) {
     const airportEta = (document.getElementById('kofbo_transport_eta')?.value || '').trim();
     const etaStr = airportEta ? ' I am scheduled to arrive at the airport at ' + airportEta + '.' : ' I will provide my arrival time shortly.';
@@ -4887,6 +4885,17 @@ function koBuildFboBody() {
   const transPron  = colleagueModeFbo ? 'them' : (coEngs.length > 0 ? 'us'  : 'me');
   const transAdj   = colleagueModeFbo ? 'their': (coEngs.length > 0 ? 'our' : 'my');
   const equipPron  = colleagueModeFbo ? 'them' : (coEngs.length > 0 ? 'us'  : 'us');  // "for us/them during"
+
+  // Add pronoun-aware questions
+  if (q('kofbo_q_access_docs')) {
+    const subj = colleagueModeFbo ? 'them' : (coEngs.length > 0 ? 'us' : 'me');
+    const verb = (subj === 'me') ? 'I need' : 'we need';
+    extraQs.push(`Could you please let ${subj === 'me' ? 'me' : 'us'} know what documents are required to access the aircraft airside?`);
+  }
+  if (q('kofbo_q_toolbox_docs')) {
+    const bringSubj = colleagueModeFbo ? 'Our engineer will be' : (coEngs.length > 0 ? 'We will be' : 'I will be');
+    extraQs.push(`${bringSubj} bringing a toolbox on site — could you please advise what documents or procedures are required to bring it airside?`);
+  }
 
   // Rebuild extraQs with adapted transport line
   const extraQsAdapted = extraQs.map(q => {
