@@ -848,6 +848,15 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
             <option value="">— select FSR (optional) —</option>
           </select>
         </div>
+        <div style="margin-top:8px;background:var(--gl);border:1px solid var(--gb);border-radius:var(--r);padding:8px 10px">
+          <div style="font-size:11px;font-weight:700;color:var(--gd);margin-bottom:5px">➕ Add a new FSR to the shared database</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <input type="text" id="ko-fsr-name-new" placeholder="FSR name…" style="flex:1;min-width:120px;font-size:12px;padding:4px 8px;border:1px solid var(--g200);border-radius:var(--r)"/>
+            <input type="email" id="ko-fsr-email-new" placeholder="FSR email…" style="flex:1;min-width:160px;font-size:12px;padding:4px 8px;border:1px solid var(--g200);border-radius:var(--r)"/>
+            <button class="btn" onclick="koAddFSRFromKickoff()" style="font-size:11px;padding:4px 10px">+ Add</button>
+          </div>
+          <div id="ko-fsr-add-err" style="font-size:11px;color:var(--red);margin-top:3px"></div>
+        </div>
         <div style="margin-top:6px;font-size:11px;color:#7a5a00;background:#fef9e7;border:1px solid #d4b800;border-radius:6px;padding:5px 9px">⚠️ Remember to attach the FSR before sending</div>        
       </div>
 
@@ -867,6 +876,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
           <input type="text" placeholder="Add recipient…" id="ko-add-parts-inp"/>
           <button onclick="koAddRecip('parts')">+ Add</button>
         </div>
+        <div style="margin-top:6px;font-size:11px;color:var(--gd)">👤 FSR selection is shared with Customer Update above — select FSR there to add to both.</div>
         <div style="margin-top:6px;font-size:11px;color:#7a5a00;background:#fef9e7;border:1px solid #d4b800;border-radius:6px;padding:5px 9px">⚠️ Remember to attach the FSR before sending</div>
       </div>
 
@@ -1070,13 +1080,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
           </select>
           <button class="btn" onclick="koSearchSquawkHistory()" style="font-size:12px;padding:5px 10px">🔍 From list</button>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;padding:6px 8px;background:var(--al);border:1px solid #d4b800;border-radius:var(--r)">
-          <span style="font-size:11px;color:var(--amb);font-weight:600">⚡ Apply squawk to all empty rows:</span>
-          <select id="ko-bulk-sq-sel" style="font-size:12px;padding:4px 7px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;flex:1;min-width:160px">
-            <option value="">— select squawk —</option>
-          </select>
-          <button class="btn" onclick="koApplyBulkSquawk()" style="font-size:12px;padding:4px 10px;background:var(--amb);color:#fff;border-color:var(--amb)">Apply</button>
-        </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span style="font-size:11px;color:var(--blue);white-space:nowrap">Or type keywords:</span>
           <input type="text" id="ko-sq-freetext" placeholder="e.g. hydraulic leak nose gear…" oninput="koFreeTextLiveSearch()" onkeydown="if(event.key==='Enter')koSearchSquawkFreeText()" style="flex:1;min-width:180px;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r);background:#fff"/>
@@ -1087,6 +1090,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <table class="ko-parts-tbl">
         <thead>
           <tr>
+            <th style="width:28px"><input type="checkbox" id="ko-parts-select-all" onclick="koToggleAllPartRows(this.checked)" title="Select all"/></th>
             <th style="min-width:130px">Description</th>
             <th style="min-width:100px">P/N</th>
             <th style="min-width:70px">S/N</th>
@@ -1100,6 +1104,15 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <tbody id="ko-parts-tbody"></tbody>
       </table>
       <button class="btn-add" onclick="koAddPartRow()" style="margin-top:8px">+ Add row</button>
+      <div id="ko-bulk-sq-bar" style="display:none;margin-top:8px;display:flex;align-items:center;gap:6px;background:var(--bl);border:1px solid #b8d0e8;border-radius:var(--r);padding:7px 10px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--blue);font-weight:600" id="ko-bulk-count">0 rows selected</span>
+        <span style="font-size:12px;color:var(--g600)">→ assign to:</span>
+        <select id="ko-bulk-sq-sel" style="font-size:12px;padding:4px 7px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;flex:1;min-width:160px">
+          <option value="">— select squawk —</option>
+        </select>
+        <button class="btn primary" onclick="koApplyBulkSquawk()" style="font-size:12px;padding:4px 12px">✓ Assign</button>
+        <button class="btn" onclick="koDeselectAllPartRows()" style="font-size:12px;padding:4px 10px">✕ Cancel</button>
+      </div>
     </div>
   </div>
 
@@ -1299,14 +1312,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 
     <div style="background:#f0f9f0;border:1px solid var(--gb);border-radius:var(--r);padding:12px;margin-bottom:14px">
       <div style="font-size:12px;font-weight:700;color:var(--gd);margin-bottom:8px">👤 FSR Database (Gulfstream Field Service Representatives)</div>
-      <p style="font-size:12px;color:var(--g600);margin-bottom:8px">FSRs can be selected in Start Job to automatically add their email to Customer Update and Part Request recipients.</p>
+      <p style="font-size:12px;color:var(--g600);margin-bottom:8px">Admin can delete FSRs. Engineers can add FSRs from the Start Job panel.</p>
       <div id="fsr-list" style="max-height:160px;overflow-y:auto;margin-bottom:8px;display:flex;flex-direction:column;gap:5px"></div>
-      <div class="grid g2" style="margin-bottom:6px">
-        <div class="fg"><label>FSR Name</label><input type="text" id="fsr_name_inp" placeholder="e.g. John Smith"/></div>
-        <div class="fg"><label>FSR Email</label><input type="email" id="fsr_email_inp" placeholder="jsmith@gulfstream.com"/></div>
-      </div>
-      <div class="err-msg" id="fsr-error"></div>
-      <button class="btn primary" onclick="addFSR()" style="margin-top:4px">+ Add FSR</button>
     </div>
 
     <div id="squawk-history-section" style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--g200)">
@@ -3953,6 +3960,7 @@ async function koLoadTeamForSelectors() {
     if (sel) {
       const cur = sel.value;
       sel.innerHTML = '<option value="">— select a colleague —</option>' +
+        '<option value="__not_decided__">⏳ Not decided yet</option>' +
         team.map(p => `<option value="${p.name}">${p.name}${p.team ? ' · ' + p.team : ''}</option>`).join('');
       if (cur) sel.value = cur;
     }
@@ -4183,6 +4191,7 @@ G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='Part', note='', sq
   const tr = document.createElement('tr');
   tr.id = 'ko-part-' + KO.partRows;
   tr.innerHTML = `
+    <td style="text-align:center"><input type="checkbox" class="ko-part-row-cb" onchange="koUpdateBulkBar()"/></td>
     <td><input type="text" value="${desc.replace(/"/g,'&quot;')}" placeholder="Description"/></td>
     <td><input type="text" value="${pn.replace(/"/g,'&quot;')}" placeholder="P/N"/></td>
     <td><input type="text" value="${sn.replace(/"/g,'&quot;')}" placeholder="S/N off" class="ko-sn-field"/></td>
@@ -4238,7 +4247,39 @@ window.koPartCatChange = function(sel) {
     snInput.style.color = '';
     if (smallQtyLbl) smallQtyLbl.style.display = 'none';
   }
+  koSortPartsTable();
 }
+
+function koSortPartsTable() {
+  const tbody = document.getElementById('ko-parts-tbody');
+  if (!tbody) return;
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  const catOrder = { 'Part': 0, 'Consumable': 1, 'Tool': 2 };
+  // Group by squawk value
+  const groups = {};
+  const noSqRows = [];
+  rows.forEach(tr => {
+    const cat = tr.querySelector('select')?.value || 'Part';
+    const sqVal = tr.querySelector('.ko-sq-sel')?.value || '';
+    if (sqVal) {
+      if (!groups[sqVal]) groups[sqVal] = { Part:[], Consumable:[], Tool:[] };
+      groups[sqVal][cat].push(tr);
+    } else {
+      noSqRows.push({ cat, tr });
+    }
+  });
+  // Re-append: for each squawk group, Part first then Consumable then Tool
+  Object.keys(groups).sort().forEach(sqVal => {
+    const grp = groups[sqVal];
+    ['Part','Consumable','Tool'].forEach(cat => {
+      grp[cat].forEach(tr => tbody.appendChild(tr));
+    });
+  });
+  // Then rows without squawk, sorted by category
+  noSqRows.sort((a,b) => (catOrder[a.cat]||0) - (catOrder[b.cat]||0))
+    .forEach(({tr}) => tbody.appendChild(tr));
+}
+window.koSortPartsTable = koSortPartsTable;
 
 function koGetParts() {
   return Array.from(document.querySelectorAll('#ko-parts-tbody tr')).map(tr => {
@@ -4756,7 +4797,7 @@ function koBuildFboBody() {
   const customQsRaw = document.getElementById('kofbo_custom_questions')?.value || '';
   customQsRaw.split('\n').map(l => l.trim()).filter(Boolean).forEach(l => extraQs.push(l));
 
-  const extraQsBlock = extraQs.length ? '\n' + extraQs.map(q => q).join('\n') + '\n' : '';
+  const extraQsBlock = extraQs.length ? '\n' + extraQs.join('\n\n') + '\n' : '';
 
   const colleagueModeFbo = document.getElementById('ko-colleague-toggle')?.checked;
   const colleagueNameFbo = koGetColleagueName() || '[COLLEAGUE]';
@@ -5646,6 +5687,24 @@ G.koApplyFSR = function() {
   koSaveState();
 };
 
+G.koAddFSRFromKickoff = async function() {
+  const name  = document.getElementById('ko-fsr-name-new').value.trim();
+  const email = document.getElementById('ko-fsr-email-new').value.trim();
+  const errEl = document.getElementById('ko-fsr-add-err');
+  errEl.textContent = '';
+  if (!name) { errEl.textContent = 'Name required.'; return; }
+  if (!email || !email.includes('@')) { errEl.textContent = 'Valid email required.'; return; }
+  const snap = await get(ref(db, 'config/fsrDatabase'));
+  const current = snap.exists() ? snap.val() : [];
+  if (current.some(f => f.email === email)) { errEl.textContent = 'Already exists.'; return; }
+  current.push({ name, email });
+  await set(ref(db, 'config/fsrDatabase'), current);
+  document.getElementById('ko-fsr-name-new').value = '';
+  document.getElementById('ko-fsr-email-new').value = '';
+  await koLoadFSRSelector();
+};
+window.koAddFSRFromKickoff = G.koAddFSRFromKickoff;
+
 // ══════════════════════════════════════
 //  BULK SQUAWK ASSIGNMENT
 // ══════════════════════════════════════
@@ -5653,18 +5712,43 @@ G.koApplyBulkSquawk = function() {
   const bulkSel = document.getElementById('ko-bulk-sq-sel');
   if (!bulkSel || !bulkSel.value) return;
   const sqVal = bulkSel.value;
-  let applied = 0;
-  document.querySelectorAll('#ko-parts-tbody .ko-sq-sel').forEach(sel => {
-    if (!sel.value) {
-      // Try to set the value
+  document.querySelectorAll('#ko-parts-tbody .ko-part-row-cb:checked').forEach(cb => {
+    const tr = cb.closest('tr');
+    const sel = tr?.querySelector('.ko-sq-sel');
+    if (sel) {
       const opt = Array.from(sel.options).find(o => o.value === sqVal);
-      if (opt) { sel.value = sqVal; applied++; }
+      if (opt) sel.value = sqVal;
     }
+    cb.checked = false;
   });
-  if (applied > 0) {
-    koUpdatePreview();
-    koSaveState();
-  }
+  koUpdateBulkBar();
+  koSortPartsTable();
+  koUpdatePreview();
+  koSaveState();
+};
+
+function koUpdateBulkBar() {
+  const checked = document.querySelectorAll('#ko-parts-tbody .ko-part-row-cb:checked').length;
+  const bar = document.getElementById('ko-bulk-sq-bar');
+  const count = document.getElementById('ko-bulk-count');
+  if (bar) bar.style.display = checked > 0 ? 'flex' : 'none';
+  if (count) count.textContent = checked + ' row' + (checked > 1 ? 's' : '') + ' selected';
+  const allCb = document.getElementById('ko-parts-select-all');
+  const total = document.querySelectorAll('#ko-parts-tbody .ko-part-row-cb').length;
+  if (allCb) allCb.checked = total > 0 && checked === total;
+}
+window.koUpdateBulkBar = koUpdateBulkBar;
+
+window.koToggleAllPartRows = function(checked) {
+  document.querySelectorAll('#ko-parts-tbody .ko-part-row-cb').forEach(cb => cb.checked = checked);
+  koUpdateBulkBar();
+};
+
+window.koDeselectAllPartRows = function() {
+  document.querySelectorAll('#ko-parts-tbody .ko-part-row-cb').forEach(cb => cb.checked = false);
+  const allCb = document.getElementById('ko-parts-select-all');
+  if (allCb) allCb.checked = false;
+  koUpdateBulkBar();
 };
 
 // Refresh bulk squawk selector when work items change
