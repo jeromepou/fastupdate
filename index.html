@@ -4577,7 +4577,9 @@ function koBuildCustomerBody() {
             : `I'm scheduled to work on the defect regarding the ${def}, and will share my action plan and progress updates as the intervention proceeds.`));
 
   const introLine = colleagueMode
-    ? `My name is ${myName}, and I am writing on behalf of my colleague ${notDecided ? 'our engineer, who will be assigned shortly,' : colleagueName}, who will be attending the aircraft on site as the Authorized FAST Service Provider for Gulfstream.`
+    ? (notDecided
+        ? `My name is ${myName}, and I am writing on behalf of our engineer (who will be assigned shortly) who will be attending the aircraft on site as the Authorized FAST Service Provider for Gulfstream.`
+        : `My name is ${myName}, and I am writing on behalf of my colleague ${colleagueName}, who will be attending the aircraft on site as the Authorized FAST Service Provider for Gulfstream.`)
     : `My name is ${myName}, the Authorized FAST Service Provider for Gulfstream in this region.`;
 
   return `Dear ${document.getElementById('ko_cust_name')?.value || gv('f_cust_name') || '[Customer name]'},
@@ -4727,16 +4729,16 @@ function koBuildPartsBody() {
   sqKeys.forEach(key => {
     const grp = bySq[key];
     partBlock += `Sq ${grp.sqNum} — ${grp.sqLabel}\n`;
-    ['Part','Tool','Consumable'].forEach(cat => {
+    ['Part','Consumable','Tool'].forEach(cat => {
       if (grp[cat]?.length) {
         partBlock += catLabels[cat] + '\n';
         grp[cat].forEach(p => { partBlock += formatPart(p); });
+        partBlock += '\n';
       }
     });
-    partBlock += '\n';
   });
   // Items sans squawk — groupés par catégorie
-  ['Part','Tool','Consumable'].forEach(cat => {
+  ['Part','Consumable','Tool'].forEach(cat => {
     if (noSq[cat]?.length) {
       partBlock += catLabels[cat] + '\n';
       noSq[cat].forEach(p => { partBlock += formatPart(p); });
@@ -4800,7 +4802,9 @@ function koBuildFboBody() {
   const extraQsBlock = extraQs.length ? '\n' + extraQs.join('\n\n') + '\n' : '';
 
   const colleagueModeFbo = document.getElementById('ko-colleague-toggle')?.checked;
-  const colleagueNameFbo = koGetColleagueName() || '[COLLEAGUE]';
+  const colleagueNameFboRaw = koGetColleagueName() || '[COLLEAGUE]';
+  const notDecidedFbo = colleagueNameFboRaw === '__not_decided__';
+  const colleagueNameFbo = notDecidedFbo ? '[ENGINEER TBD]' : colleagueNameFboRaw;
   const myNameFbo = curProfile?.name || '[ENGINEER]';
 
   // Merge co-engineers from checkboxes + manual, exclude the named colleague
@@ -4811,7 +4815,7 @@ function koBuildFboBody() {
 
   // All people going on site
   const allOnSite = colleagueModeFbo
-    ? [colleagueNameFbo, ...coEngs]   // colleague + co-engineers
+    ? (notDecidedFbo ? coEngs : [colleagueNameFbo, ...coEngs])   // if not decided, don't add placeholder to list
     : coEngs;                          // just co-engineers (I am going myself)
 
   const multiPerson = allOnSite.length > 1 || (!colleagueModeFbo && allOnSite.length >= 1);
@@ -4823,8 +4827,11 @@ function koBuildFboBody() {
 
   // Airside access line
   let accessLine = '';
-  if (colleagueModeFbo && allOnSite.length === 1) {
-    // Single colleague
+  if (colleagueModeFbo && notDecidedFbo && coEngs.length === 0) {
+    // Not decided, no co-engineers — generic line
+    accessLine = `The aircraft owner has informed us that your team is the FBO. Could you please arrange airside access for our engineer? The engineer assigned to this intervention has not yet been confirmed — we will provide their details shortly.`;
+  } else if (colleagueModeFbo && !notDecidedFbo && allOnSite.length === 1) {
+    // Single named colleague
     const phone = KO._colleaguePhone || '';
     accessLine = `The aircraft owner has informed us that your team is the FBO. Could you please arrange airside access for ${colleagueNameFbo}?${phone ? '\nMob. Tel. ' + phone : ''}`;
   } else if (allOnSite.length > 0) {
@@ -5615,7 +5622,7 @@ G.koShowBtn = function() {
 async function renderFSRList() {
   const list = document.getElementById('fsr-list');
   if (!list) return;
-  const snap = await get(ref(db, 'config/fsrDatabase'));
+  const snap = await get(ref(db, 'fsrContacts'));
   const fsrs = snap.exists() ? snap.val() : [];
   if (!fsrs.length) {
     list.innerHTML = '<p style="font-size:12px;color:var(--g400)">No FSRs yet — add one below.</p>';
@@ -5640,28 +5647,28 @@ G.addFSR = async function() {
   errEl.textContent = '';
   if (!name) { errEl.textContent = 'Name required.'; return; }
   if (!email || !email.includes('@')) { errEl.textContent = 'Valid email required.'; return; }
-  const snap = await get(ref(db, 'config/fsrDatabase'));
+  const snap = await get(ref(db, 'fsrContacts'));
   const current = snap.exists() ? snap.val() : [];
   if (current.some(f => f.email === email)) { errEl.textContent = 'FSR with this email already exists.'; return; }
   current.push({ name, email });
-  await set(ref(db, 'config/fsrDatabase'), current);
+  await set(ref(db, 'fsrContacts'), current);
   document.getElementById('fsr_name_inp').value = '';
   document.getElementById('fsr_email_inp').value = '';
   renderFSRList();
 };
 
 G.deleteFSR = async function(i) {
-  const snap = await get(ref(db, 'config/fsrDatabase'));
+  const snap = await get(ref(db, 'fsrContacts'));
   const current = snap.exists() ? snap.val() : [];
   current.splice(i, 1);
-  await set(ref(db, 'config/fsrDatabase'), current);
+  await set(ref(db, 'fsrContacts'), current);
   renderFSRList();
 };
 
 async function koLoadFSRSelector() {
   const sel = document.getElementById('ko-fsr-sel');
   if (!sel) return;
-  const snap = await get(ref(db, 'config/fsrDatabase'));
+  const snap = await get(ref(db, 'fsrContacts'));
   const fsrs = snap.exists() ? snap.val() : [];
   sel.innerHTML = '<option value="">— select FSR (optional) —</option>' +
     fsrs.map((f, i) => `<option value="${i}">${f.name} · ${f.email}</option>`).join('');
@@ -5694,11 +5701,11 @@ G.koAddFSRFromKickoff = async function() {
   errEl.textContent = '';
   if (!name) { errEl.textContent = 'Name required.'; return; }
   if (!email || !email.includes('@')) { errEl.textContent = 'Valid email required.'; return; }
-  const snap = await get(ref(db, 'config/fsrDatabase'));
+  const snap = await get(ref(db, 'fsrContacts'));
   const current = snap.exists() ? snap.val() : [];
   if (current.some(f => f.email === email)) { errEl.textContent = 'Already exists.'; return; }
   current.push({ name, email });
-  await set(ref(db, 'config/fsrDatabase'), current);
+  await set(ref(db, 'fsrContacts'), current);
   document.getElementById('ko-fsr-name-new').value = '';
   document.getElementById('ko-fsr-email-new').value = '';
   await koLoadFSRSelector();
