@@ -493,8 +493,6 @@ async function gmailGetLastMessageBody(threadId) {
   return msgs.length ? extractTextFromPayload(msgs[msgs.length-1].payload) : '';
 }
 
-// Pour les UPDATE emails : cherche le message HSA avec le plus de contenu nouveau
-// après stripQuotedText — évite les messages gigantesques avec tout l'historique répété
 async function gmailGetBestUpdateMessage(threadId) {
   await ensureToken();
   const r=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadId}?format=full`,
@@ -506,7 +504,6 @@ async function gmailGetBestUpdateMessage(threadId) {
 
   const HSA_DOMAINS = ['headstartaviation.com'];
   const candidates = [];
-
   for (const msg of msgs) {
     const from = (msg.payload?.headers||[]).find(h=>h.name==='From')?.value||'';
     if (!HSA_DOMAINS.some(domain=>from.includes(domain))) continue;
@@ -517,12 +514,10 @@ async function gmailGetBestUpdateMessage(threadId) {
   }
 
   if (!candidates.length) {
-    // Fallback: dernier message du thread, strippé
     const last = msgs[msgs.length-1];
     return stripQuotedText(extractTextFromPayload(last.payload));
   }
 
-  // Trier par longueur du texte strippé décroissante → le plus riche en contenu nouveau
   candidates.sort((a,b) => b.stripped.length - a.stripped.length);
   log(`  🔍 UPDATE: ${candidates.length} HSA msg(s), best stripped=${candidates[0].stripped.length} chars`);
   return candidates[0].stripped;
@@ -596,22 +591,26 @@ function extractTextFromPayload(payload) {
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 function stripQuotedText(text) {
+  if (!text) return '';
+  const lines = text.split('\n');
   const cutPatterns = [
-    /^On .{10,120} wrote:\s*$/m,
-    /^Le .{5,80} a écrit\s*[:\-]?\s*$/m,
-    /^-{5,}\s*Original Message/m,
-    /^From:\s*.+\nSent:\s*/m,
-    /^From:\s*.+\nDate:\s*/m,        // Gmail format: From: ... \n Date: ...
-    /^_{5,}/m,
-    /^>{1}\s/m,
-    /^De\s*:.+\nDate\s*:/m,
+    /^On .{5,120} wrote:\s*$/i,
+    /^Le .{5,80} a écrit\s*[:\-]?\s*$/i,
+    /^-{3,}\s*(original message|forwarded message|reply|message d'origine)/i,
+    /^From:\s*.{3,}/i,   // "From: Mauritz Ploeg ..." — Gmail/Outlook reply header
+    /^_{5,}/,
+    /^>{1}\s/,
+    /^De\s*:.+/i,
   ];
-  let cutAt = text.length;
-  for (const pat of cutPatterns) {
-    const m = pat.exec(text);
-    if (m && m.index < cutAt) cutAt = m.index;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (cutPatterns.some(p => p.test(line))) {
+      const useful = lines.slice(0, i).join('\n').trim();
+      const nonEmpty = useful.split('\n').filter(l => l.trim()).length;
+      if (nonEmpty >= 3) return useful;
+    }
   }
-  return text.slice(0, cutAt).trim();
+  return text.slice(0, 8000);
 }
 
 async function collectPDFsFromPayload(payload, msgId) {
@@ -704,34 +703,60 @@ Reply ONLY with valid JSON, no markdown:
 }
 
 // Parse une CI Gulfstream (texte extrait du xlsx) → retourne les items
-async function parseCIExcel(ciText, faNumber) {
-  const prompt=`You will receive text extracted from a Gulfstream Commercial Invoice (CI) Excel file for FA${faNumber}.
-The text contains tab-separated values from the CI table with columns: Item, Box No, Qty, Part/Tool Number, UOM, Description, Condition, Serial/Gul#, Lot Number, Dangerous Goods, COO, Part has been Installed?, Unit price, Customs Value, HS Code.
+function parseCIExcel(ciText, faNumber) {
+  // Direct JS parser — Gulfstream CI always has fixed columns:
+  // Col0:Item Col1:BoxNo Col2:Qty Col3:PN Col4:UOM Col5:Description
+  // Col6:Condition Col7:Serial/GUL Col8:Lot Col9:DG Col10:COO
+  // Col11:Installed? Col12:UnitPrice Col13:CustomsValue Col14:HSCode
+  const CONSUMABLE_KW = /GREASE|OIL|SEALANT|COMPOUND|FLUID|SOLVENT|CLEANER|LUBRI/i;
+  const items = [];
+  let acReg = '', faNum = '';
 
-Extract ALL line items from the table (ignore header rows and footer text). For each item:
-- pn: Part/Tool Number (exact value, e.g. "73P3242001A003", "M25988/1-013", "NB50-SB")
-- name: Description in UPPERCASE
-- qty: quantity as string
-- sn: Serial/Gul# only if it is NOT "NA" and does NOT start with "GUL", else ""
-- gul: if Serial/Gul# starts with "GUL", put it here (e.g. "GUL12685"), else ""
-- lot: Lot Number if not "NA", else ""
-- cat: "Tool" if Serial/Gul# starts with "GUL", "Consumable" if name contains GREASE/OIL/SEALANT/COMPOUND/FLUID, else "Part"
-- shipped: true
+  const rows = ciText.split('\n').map(r => r.split('\t').map(c => (c||'').trim()));
 
-Also extract from the header section:
-- faNumber: value of the "Gulfstream W/O" field (e.g. "FA33043")
-- acReg: value of the "Aircraft Reg / SN" field (e.g. "T7-G600")
+  for (const cells of rows) {
+    // Detect header metadata rows (e.g. "Gulfstream W/O" or "Aircraft Reg")
+    const rowText = cells.join(' ');
+    if (/gulfstream\s*w\/o|work\s*order/i.test(rowText)) {
+      // Find the FA number — look for FA followed by digits in any cell
+      for (const c of cells) {
+        const m = /FA\d{4,6}/i.exec(c);
+        if (m) { faNum = m[0].toUpperCase(); break; }
+      }
+    }
+    if (/aircraft\s*reg|registration/i.test(rowText)) {
+      for (const c of cells) {
+        // Registration looks like T7-XXX or N123XX or LX-NJC etc.
+        if (/^[A-Z]{1,2}[-][A-Z0-9]{2,6}$/i.test(c.trim())) { acReg = c.trim(); break; }
+      }
+    }
 
-Reply ONLY with valid JSON, no markdown, no extra text:
-{"faNumber":"","acReg":"","items":[{"pn":"","name":"","qty":"","sn":"","gul":"","lot":"","cat":"Part","shipped":true}]}`;
+    // Data rows: Col0 must be a number (item line number)
+    const itemNo = cells[0];
+    if (!/^\d+$/.test(itemNo)) continue;
 
-  const res=await fetch(WORKER+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({model:'mistral-small-latest',temperature:0,
-      messages:[{role:'user',content:prompt+'\n\nCI TEXT:\n'+ciText.slice(0,6000)}],
-      response_format:{type:'json_object'}})});
-  const d=await res.json();
-  if (!res.ok) throw new Error(d.message||'CI parse error');
-  return JSON.parse(d.choices[0].message.content.replace(/```json|```/g,'').trim());
+    const pn   = cells[3] || '';
+    const desc = (cells[5] || '').toUpperCase();
+    const sn   = cells[7] || '';
+    const lot  = cells[8] || '';
+    const qty  = cells[2] || '';
+
+    if (!pn || pn === 'NA') continue; // skip empty PN rows
+
+    const isGul = /^GUL/i.test(sn);
+    const gul   = isGul ? sn : '';
+    const snClean = (!isGul && sn && sn.toUpperCase() !== 'NA') ? sn : '';
+    const lotClean = (lot && lot.toUpperCase() !== 'NA') ? lot : '';
+
+    let cat = 'Part';
+    if (isGul) cat = 'Tool';
+    else if (CONSUMABLE_KW.test(desc)) cat = 'Consumable';
+
+    items.push({ pn, name: desc, qty, sn: snClean, gul, lot: lotClean, cat, shipped: true });
+  }
+
+  log(`  📋 CI direct parse: ${items.length} item(s) | acReg=${acReg||'?'} | faNum=${faNum||'?'}`);
+  return { faNumber: faNum || faNumber, acReg, items };
 }
 
 async function extractSquawkFromRFSText(rfsText, faNumber) {
@@ -1143,7 +1168,7 @@ async function startImport() {
                   ciText = rows.join('\n');
                 } catch(e) { ciText = ''; log(`  ⚠️ xlsx parse error: ${e.message}`); }
                 log(`  📄 CI text: ${ciText.length} chars — sending to AI…`);
-                const ciData=await parseCIExcel(ciText, fa);
+                const ciData=parseCIExcel(ciText, fa);
                 if (ciData.items?.length) {
                   ciParts=ciData.items;
                   if (!acReg && ciData.acReg) acReg=ciData.acReg;
