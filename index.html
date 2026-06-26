@@ -4858,11 +4858,16 @@ function koBuildFboBody() {
   const colleagueNameFbo = notDecidedFbo ? '[ENGINEER TBD]' : colleagueNameFboRaw;
   const myNameFbo = curProfile?.name || '[ENGINEER]';
 
-  // Merge co-engineers from checkboxes + manual, exclude the named colleague
+  // Merge co-engineers from checkboxes + manual
+  // Only exclude the named colleague when colleague mode is active
   const coEngs = [...new Set([
     ...Array.from(document.querySelectorAll('.coeng-cb:checked')).map(cb => cb.value),
     ...(KO._coEngineersManual || [])
-  ])].filter(n => n && n.toLowerCase().trim() !== colleagueNameFbo.toLowerCase().trim());
+  ])].filter(n => {
+    if (!n) return false;
+    if (!colleagueModeFbo) return true;
+    return n.toLowerCase().trim() !== colleagueNameFbo.toLowerCase().trim();
+  });
 
   // All people going on site
   const allOnSite = colleagueModeFbo
