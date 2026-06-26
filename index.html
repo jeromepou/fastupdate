@@ -1185,6 +1185,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
           <span style="font-size:12px;color:var(--g600)">My arrival time at the airport:</span>
           <input type="text" id="kofbo_transport_eta" placeholder="e.g. 14:30 local" style="width:140px;font-size:12px;padding:4px 8px;border:1px solid var(--g200);border-radius:var(--r)"/>
         </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_q_access_docs"/> Could you please let us know what documents are required to access the aircraft airside?</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="kofbo_q_toolbox_docs"/> We will be bringing a toolbox on site — could you please advise what documents or procedures are required to bring it airside?</label>
       </div>
       <div class="ko-divider"></div>
 
@@ -3652,7 +3654,7 @@ async function koSaveState() {
     'ko_skip_travel','ko_part_priority_wh','ko_part_certs','ko_handcarry_approved','ko_avoid_nff',
     'kofbo_gpu','kofbo_oxygen','kofbo_nitrogen_hp','kofbo_nitrogen_lp',
     'kofbo_steps','kofbo_steps_engine','kofbo_hangar','kofbo_lavatory','kofbo_hpbay',
-    'kofbo_q_days','kofbo_q_confirm','kofbo_q_shipping','kofbo_q_parts_delivery','kofbo_q_importer','kofbo_q_transport',
+    'kofbo_q_days','kofbo_q_confirm','kofbo_q_shipping','kofbo_q_parts_delivery','kofbo_q_importer','kofbo_q_transport','kofbo_q_access_docs','kofbo_q_toolbox_docs',
     'koq_broker','koq_hours','koq_po','koq_keys','koq_fbo_name','koq_fbo_mail',
     'koq_contact','koq_troubleshoot','koq_cas','koq_fhdb',
     'koq_techops','koq_self_parts','koq_handcarry','koq_order_before_tshoot',
@@ -4804,6 +4806,8 @@ function koBuildFboBody() {
   if (q('kofbo_q_shipping')) extraQs.push('Could you please provide your shipping address? I may need to send parts required for the Return to Service directly to your FBO.');
   if (q('kofbo_q_parts_delivery')) extraQs.push('Parts required for this intervention will be shipped directly to your FBO — could you please confirm your shipping address so we can arrange delivery?');
   if (q('kofbo_q_importer')) extraQs.push('Would you be able to act as importer of record for the parts we will need to import for this intervention?');
+  if (q('kofbo_q_access_docs')) extraQs.push('Could you please let us know what documents are required to access the aircraft airside?');
+  if (q('kofbo_q_toolbox_docs')) extraQs.push('We will be bringing a toolbox on site \u2014 could you please advise what documents or procedures are required to bring it airside?');
   if (q('kofbo_q_transport')) {
     const airportEta = (document.getElementById('kofbo_transport_eta')?.value || '').trim();
     const etaStr = airportEta ? ' I am scheduled to arrive at the airport at ' + airportEta + '.' : ' I will provide my arrival time shortly.';
@@ -5812,7 +5816,7 @@ G.koNewJob = async function() {
     'ko_skip_travel','ko_part_priority_wh','ko_part_certs','ko_handcarry_approved','ko_avoid_nff',
     'kofbo_gpu','kofbo_oxygen','kofbo_nitrogen_hp','kofbo_nitrogen_lp',
     'kofbo_steps','kofbo_steps_engine','kofbo_hangar','kofbo_lavatory','kofbo_hpbay',
-    'kofbo_q_days','kofbo_q_confirm','kofbo_q_shipping','kofbo_q_parts_delivery','kofbo_q_importer','kofbo_q_transport',
+    'kofbo_q_days','kofbo_q_confirm','kofbo_q_shipping','kofbo_q_parts_delivery','kofbo_q_importer','kofbo_q_transport','kofbo_q_access_docs','kofbo_q_toolbox_docs',
     'koq_broker','koq_hours','koq_po','koq_keys','koq_fbo_name','koq_fbo_mail',
     'koq_contact','koq_troubleshoot','koq_cas','koq_fhdb',
     'koq_techops','koq_self_parts','koq_handcarry','koq_order_before_tshoot',
