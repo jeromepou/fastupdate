@@ -3810,6 +3810,20 @@ G.openKickoff = async function() {
   koRenderAllRecips();
   koInitToggles();
   await koRestoreState();
+
+  // Auto-add scanned customer email to customer recipients if not already present
+  const scannedCustEmail = (gv('f_cust_email') || '').trim().toLowerCase();
+  if (scannedCustEmail) {
+    const allCustRecips = [
+      ...KO.recips.customer.fixed,
+      ...KO.recips.customer.extra,
+      ...(KO.recips.customer.qatar || [])
+    ].map(e => e.toLowerCase());
+    if (!allCustRecips.includes(scannedCustEmail)) {
+      KO.recips.customer.extra.push(gv('f_cust_email').trim());
+      koRenderRecips('customer');
+    }
+  }
   koApplyMobileState();
   // If Travel "To" is still empty after restore, fill it from ICAO
   const _icao = document.getElementById('ko_icao');
@@ -4068,7 +4082,7 @@ window.koAutoCheckColleague = function(name) {
     cb.checked = false;
     cb.classList.remove('coeng-auto');
   });
-  if (!name) { koCoEngChange(); return; }
+  if (!name || name === '__not_decided__') { koCoEngChange(); return; }
   // Find matching checkbox and check it (case-insensitive)
   document.querySelectorAll('.coeng-cb').forEach(cb => {
     if (cb.value.toLowerCase().trim() === name.toLowerCase().trim()) {
