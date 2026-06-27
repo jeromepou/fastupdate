@@ -1936,7 +1936,7 @@ G.checkSecretAnswer = async function() {
   const stored = (pendingUserToLogin.secretAnswer || '').trim();
   if (!answer) { document.getElementById('secret-answer-error').textContent = 'Please enter your answer.'; return; }
   // Support ancien format (texte clair) ET nouveau format (hash)
-  const answerHash = await hashPin(answer);
+  const answerHash = hashPin(answer);
   const match = (answerHash === stored) || (answer === stored); // fallback pour comptes crées avant le hash
   if (!match) {
     document.getElementById('secret-answer-error').textContent = '❌ Wrong answer.';
@@ -2019,12 +2019,12 @@ function showSecretQuestionSetup() {
   setTimeout(() => document.getElementById('secret-q-answer').focus(), 100);
 }
 
-G.saveSecretQuestion = function() {
+G.saveSecretQuestion = async function() {
   const qIndex = document.getElementById('secret-q-select').value;
   const answer = document.getElementById('secret-q-answer').value.trim();
   if (!answer) { document.getElementById('secret-q-error').textContent = 'Please enter an answer.'; return; }
   const question = SECRET_QUESTIONS[parseInt(qIndex)];
-  const answerHash = await hashPin(answer.toLowerCase()); // hash avant stockage — jamais en clair
+  const answerHash = hashPin(answer.toLowerCase()); // hash avant stockage — jamais en clair
   set(ref(db, 'team/' + pendingUserToLogin.id + '/secretQuestion'), question);
   set(ref(db, 'team/' + pendingUserToLogin.id + '/secretAnswer'), answerHash).then(() => {
     pendingUserToLogin.secretQuestion = question;
@@ -6260,6 +6260,23 @@ G.koNewJob = async function() {
     showPicker();
   }
 })();
+
+// Expose auth functions to window for HTML inline handlers (required for <script type="module"> scope)
+window.userPinInput      = G.userPinInput;
+window.showPicker        = G.showPicker;
+window.showAdminLogin    = G.showAdminLogin;
+window.showForgotPin     = G.showForgotPin;
+window.hideForgotPin     = G.hideForgotPin;
+window.checkSecretAnswer = G.checkSecretAnswer;
+window.saveSecretQuestion= G.saveSecretQuestion;
+window.newPinInput       = G.newPinInput;
+window.doBiometricLogin  = G.doBiometricLogin;
+window.filterPicker      = G.filterPicker;
+window.switchPickerTab   = G.switchPickerTab;
+window.adminEmailLogin   = G.adminEmailLogin;
+window.logout            = G.logout;
+window.openModal         = G.openModal;
+window.closeModal        = G.closeModal;
 
 // Expose all ko functions to window for HTML inline handlers
 window.koUpdatePreview = koUpdatePreview;
