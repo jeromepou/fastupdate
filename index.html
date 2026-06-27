@@ -5079,7 +5079,7 @@ function koBuildPartsBody() {
   // Par squawk d'abord, puis par catégorie à l'intérieur
   sqKeys.forEach(key => {
     const grp = bySq[key];
-    partBlock += `\n\n=== SQUAWK ${grp.sqNum} — ${grp.sqLabel.toUpperCase()} ===\n`;
+    partBlock += `\n=== SQUAWK ${grp.sqNum} — ${grp.sqLabel.toUpperCase()} ===\n`;
     ['Part','Consumable','Tool'].forEach(cat => {
       if (grp[cat]?.length) {
         partBlock += catLabels[cat] + '\n';
@@ -5354,7 +5354,7 @@ G.koGenerate = async function() {
           // **PARTS:** **TOOLS:** **CONSUMABLES:** → titre gras 15px
           .replace(/\*\*([^*]+):\*\*/g, '<b style="font-size:15px">$1:</b>')
           // ▶ Sq X — DESCRIPTION → bloc squawk bien visible (barre verte)
-          .replace(/=== (SQUAWK \d+ — [^=]+) ===/g, (m,p1) => `<font color="#2d5a2d"><b><font size="5">=== ${p1} ===</font></b></font>`)
+          .replace(/=== (SQUAWK \d+ — [^=]+) ===/g, (m,p1) => `<font color="#1a5fa8"><b><font size="5">=== ${p1} ===</font></b></font>`)
           // Shipping Address: et Customer's broker: → gras
           .replace(/(Shipping Address:|Customer's broker contact for import:)/g, '<b style="font-size:14px">$1</b>')
           .replace(/\n/g,'<br>');
