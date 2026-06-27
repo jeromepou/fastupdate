@@ -1753,6 +1753,16 @@ function showPinEntry(profile) {
   pendingUserToLogin = profile;
   document.getElementById('view-picker').style.display = 'none';
   document.getElementById('view-pin').style.display = '';
+  // Reset état oublié/question secrète
+  document.getElementById('view-secret-question').style.display = 'none';
+  document.getElementById('view-new-pin').style.display = 'none';
+  document.getElementById('btn-forgot-pin').style.display = '';
+  document.getElementById('pin-input').style.display = '';
+  document.getElementById('pin-input').disabled = false;
+  document.getElementById('pin-input').value = '';
+  document.getElementById('pin-error').textContent = '';
+  document.getElementById('secret-answer-input').value = '';
+  document.getElementById('secret-answer-error').textContent = '';
   if (profile.pinHash === 'SETUP_REQUIRED') {
     document.getElementById('pin-subtitle').textContent = `Welcome ${profile.name}! Choose your 4-digit PIN:`;
     document.getElementById('pin-error').textContent = '';
