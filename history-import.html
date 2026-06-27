@@ -501,26 +501,17 @@ async function gmailGetBestUpdateMessage(threadId) {
   if (!r.ok) throw new Error(d.error?.message||'Thread error');
   const msgs = d.messages||[];
   if (!msgs.length) return '';
-
-  const HSA_DOMAINS = ['headstartaviation.com'];
   const candidates = [];
   for (const msg of msgs) {
     const from = (msg.payload?.headers||[]).find(h=>h.name==='From')?.value||'';
-    if (!HSA_DOMAINS.some(domain=>from.includes(domain))) continue;
-    const rawText = extractTextFromPayload(msg.payload);
-    const stripped = stripQuotedText(rawText);
-    if (stripped.length < 30) continue;
-    candidates.push({ stripped, rawLen: rawText.length });
+    if (!from.includes('headstartaviation.com')) continue;
+    const stripped = stripQuotedText(extractTextFromPayload(msg.payload));
+    if (stripped.length >= 30) candidates.push(stripped);
   }
-
-  if (!candidates.length) {
-    const last = msgs[msgs.length-1];
-    return stripQuotedText(extractTextFromPayload(last.payload));
-  }
-
-  candidates.sort((a,b) => b.stripped.length - a.stripped.length);
-  log(`  🔍 UPDATE: ${candidates.length} HSA msg(s), best stripped=${candidates[0].stripped.length} chars`);
-  return candidates[0].stripped;
+  if (!candidates.length) return stripQuotedText(extractTextFromPayload(msgs[msgs.length-1].payload));
+  candidates.sort((a,b) => b.length - a.length);
+  log(`  🔍 UPDATE: ${candidates.length} HSA msg(s), best stripped=${candidates[0].length} chars`);
+  return candidates[0];
 }
 
 // Lire le body HTML d'un message (pour les FSR qui sont en HTML structuré)
@@ -597,10 +588,10 @@ function stripQuotedText(text) {
     /^On .{5,120} wrote:\s*$/i,
     /^Le .{5,80} a écrit\s*[:\-]?\s*$/i,
     /^-{3,}\s*(original message|forwarded message|reply|message d'origine)/i,
-    /^From:\s*.{3,}/i,   // "From: Mauritz Ploeg ..." — Gmail/Outlook reply header
+    /^From:\s*.{3,}/i,
     /^_{5,}/,
     /^>{1}\s/,
-    /^De\s*:.+/i,
+    /^De\s*:.{3,}/i,
   ];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -704,49 +695,44 @@ Reply ONLY with valid JSON, no markdown:
 
 // Parse une CI Gulfstream (texte extrait du xlsx) → retourne les items
 function parseCIExcel(ciText, faNumber) {
-  // Direct JS parser — Gulfstream CI always has fixed columns:
-  // Col0:Item Col1:BoxNo Col2:Qty Col3:PN Col4:UOM Col5:Description
-  // Col6:Condition Col7:Serial/GUL Col8:Lot Col9:DG Col10:COO
-  // Col11:Installed? Col12:UnitPrice Col13:CustomsValue Col14:HSCode
+  // Direct JS parser — Gulfstream CI columns (0-indexed after colIdx):
+  // col0=A(empty) col1=B:Item col2=C:BoxNo col3=D:Qty col4=E:PN col5=F:UOM
+  // col6=G:Description col7=H:Condition col8=I:Serial/GUL col9=J:Lot
+  // col10=K:DG col11=L:COO col12=M:Installed? col13=N:UnitPrice col14=O:Customs col15=P:HSCode
   const CONSUMABLE_KW = /GREASE|OIL|SEALANT|COMPOUND|FLUID|SOLVENT|CLEANER|LUBRI/i;
   const items = [];
   let acReg = '', faNum = '';
 
-  const rows = ciText.split('\n').map(r => r.split('\t').map(c => (c||'').trim()));
+  const rows = ciText.split('\n').map(r => r.split('\t'));
 
   for (const cells of rows) {
-    // Detect header metadata rows (e.g. "Gulfstream W/O" or "Aircraft Reg")
+    const get = i => (cells[i]||'').trim();
+
+    // Detect metadata rows
     const rowText = cells.join(' ');
     if (/gulfstream\s*w\/o|work\s*order/i.test(rowText)) {
-      // Find the FA number — look for FA followed by digits in any cell
-      for (const c of cells) {
-        const m = /FA\d{4,6}/i.exec(c);
-        if (m) { faNum = m[0].toUpperCase(); break; }
-      }
+      for (const c of cells) { const m = /FA\d{4,6}/i.exec(c); if (m) { faNum = m[0].toUpperCase(); break; } }
     }
     if (/aircraft\s*reg|registration/i.test(rowText)) {
-      for (const c of cells) {
-        // Registration looks like T7-XXX or N123XX or LX-NJC etc.
-        if (/^[A-Z]{1,2}[-][A-Z0-9]{2,6}$/i.test(c.trim())) { acReg = c.trim(); break; }
-      }
+      for (const c of cells) { if (/^[A-Z]{1,3}[-][A-Z0-9]{2,6}$/i.test(c.trim())) { acReg = c.trim(); break; } }
     }
 
-    // Data rows: Col0 must be a number (item line number)
-    const itemNo = cells[0];
+    // Data rows: col1 (B=Item) must be a positive integer
+    const itemNo = get(1);
     if (!/^\d+$/.test(itemNo)) continue;
 
-    const pn   = cells[3] || '';
-    const desc = (cells[5] || '').toUpperCase();
-    const sn   = cells[7] || '';
-    const lot  = cells[8] || '';
-    const qty  = cells[2] || '';
+    const pn   = get(4);   // col E
+    const desc = get(6).toUpperCase(); // col G
+    const sn   = get(8);   // col I
+    const lot  = get(9);   // col J
+    const qty  = get(3);   // col D
 
-    if (!pn || pn === 'NA') continue; // skip empty PN rows
+    if (!pn || pn === 'NA') continue;
 
-    const isGul = /^GUL/i.test(sn);
-    const gul   = isGul ? sn : '';
+    const isGul   = /^GUL/i.test(sn);
+    const gul     = isGul ? sn : '';
     const snClean = (!isGul && sn && sn.toUpperCase() !== 'NA') ? sn : '';
-    const lotClean = (lot && lot.toUpperCase() !== 'NA') ? lot : '';
+    const lotClean= (lot && lot.toUpperCase() !== 'NA') ? lot : '';
 
     let cat = 'Part';
     if (isGul) cat = 'Tool';
@@ -755,7 +741,7 @@ function parseCIExcel(ciText, faNumber) {
     items.push({ pn, name: desc, qty, sn: snClean, gul, lot: lotClean, cat, shipped: true });
   }
 
-  log(`  📋 CI direct parse: ${items.length} item(s) | acReg=${acReg||'?'} | faNum=${faNum||'?'}`);
+  log(`  📋 CI direct parse: ${items.length} item(s) | acReg=${acReg||'?'} | faNum=${faNum||faNumber}`);
   return { faNumber: faNum || faNumber, acReg, items };
 }
 
@@ -1145,7 +1131,6 @@ async function startImport() {
                   if (shFile) {
                     const shXml = await shFile.async('string');
                     const rowRe = /<row[^>]*>([\s\S]*?)<\/row>/g;
-                    // Regex capturant la référence de cellule (ex: r="C5") pour reconstruire les colonnes
                     const cellRe = /<c\s+r="([A-Z]+)\d+"[^>]*(?:t="s"[^>]*)?>(?:<v>(\d+)<\/v>|<v>([^<]*)<\/v>)?[^<]*(?:<\/c>|<f[^>]*>[^<]*<\/f>\s*(?:<v>([^<]*)<\/v>)?)/g;
                     const colIdx = s => [...s].reduce((n,c) => n*26 + c.charCodeAt(0) - 64, 0) - 1;
                     let rowM;
