@@ -549,8 +549,25 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
           style="text-align:center;font-size:22px;letter-spacing:.4em;width:100%;margin-bottom:8px"
           oninput="userPinInput()"/>
         <div class="err-msg" id="pin-error"></div>
+        <div id="pin-lockout-msg" style="display:none;font-size:12px;color:var(--red);text-align:center;margin-bottom:6px"></div>
         <button class="btn" style="width:100%;justify-content:center;margin-top:8px" onclick="showPicker()">← Back</button>
-        <button class="btn" id="btn-forgot-pin" style="width:100%;justify-content:center;margin-top:6px;font-size:11px;color:var(--g600)" onclick="forgotPin()">🔑 Forgot my PIN</button>
+        <button class="btn" id="btn-forgot-pin" style="width:100%;justify-content:center;margin-top:6px;font-size:11px;color:var(--g600)" onclick="showForgotPin()">🔑 Forgot my PIN</button>
+        <!-- Question secrète (reset) -->
+        <div id="view-secret-question" style="display:none;margin-top:12px">
+          <p style="font-size:12px;color:var(--g600);margin-bottom:8px" id="secret-question-label"></p>
+          <input type="text" id="secret-answer-input" placeholder="Your answer…" style="width:100%;margin-bottom:8px;padding:8px 10px;border:1px solid var(--g200);border-radius:var(--r);font-size:13px"/>
+          <div class="err-msg" id="secret-answer-error"></div>
+          <button class="btn primary" style="width:100%;justify-content:center;margin-top:6px" onclick="checkSecretAnswer()">✅ Verify</button>
+          <button class="btn" style="width:100%;justify-content:center;margin-top:6px;font-size:11px" onclick="hideForgotPin()">← Cancel</button>
+        </div>
+        <!-- Nouveau PIN après vérification question secrète -->
+        <div id="view-new-pin" style="display:none;margin-top:12px">
+          <p style="font-size:12px;color:var(--g600);margin-bottom:8px" id="new-pin-label">Choose your new PIN:</p>
+          <input type="password" id="new-pin-input" placeholder="• • • •" maxlength="4" inputmode="numeric" pattern="[0-9]*"
+            style="text-align:center;font-size:22px;letter-spacing:.4em;width:100%;margin-bottom:8px"
+            oninput="newPinInput()"/>
+          <div class="err-msg" id="new-pin-error"></div>
+        </div>
       </div>
 
       <!-- Admin login -->
@@ -1774,48 +1791,211 @@ function showPinEntry(profile) {
   }
 }
 
+// ── PINs trop simples à refuser ──
+const WEAK_PINS = new Set(['1234','0000','1111','2222','3333','4444','5555','6666','7777','8888','9999','1212','0101','1122','1313','4321','9876']);
+
+// ── Lockout : max 5 tentatives, blocage 15 min (localStorage par profil) ──
+function getPinAttempts(profileId) {
+  try { return JSON.parse(localStorage.getItem('fast_pin_attempts_' + profileId) || '{"count":0,"until":0}'); }
+  catch(e) { return { count: 0, until: 0 }; }
+}
+function setPinAttempts(profileId, data) {
+  localStorage.setItem('fast_pin_attempts_' + profileId, JSON.stringify(data));
+}
+function resetPinAttempts(profileId) {
+  localStorage.removeItem('fast_pin_attempts_' + profileId);
+}
+
 G.userPinInput = function() {
   const val = document.getElementById('pin-input').value;
-  if (val.length === 4) {
-    if (!pendingUserToLogin) return;
-    // ── Flux première connexion ──
-    if (pendingUserToLogin._settingUpPin) {
-      if (pendingUserToLogin._newPinStep === 1) {
-        pendingUserToLogin._newPinFirst = val;
-        pendingUserToLogin._newPinStep = 2;
-        document.getElementById('pin-subtitle').textContent = 'Confirm your PIN:';
-        document.getElementById('pin-input').value = '';
-        document.getElementById('pin-error').textContent = '';
-      } else {
-        if (val !== pendingUserToLogin._newPinFirst) {
-          document.getElementById('pin-error').textContent = '❌ PINs do not match. Try again.';
-          document.getElementById('pin-input').value = '';
-          pendingUserToLogin._newPinStep = 1;
-          pendingUserToLogin._newPinFirst = '';
-          document.getElementById('pin-subtitle').textContent = `Welcome ${pendingUserToLogin.name}! Choose your 4-digit PIN:`;
-        } else {
-          // Sauvegarder dans Firebase
-          const newHash = hashPin(val);
-          set(ref(db, 'team/' + pendingUserToLogin.id + '/pinHash'), newHash)
-            .then(() => {
-              pendingUserToLogin.pinHash = newHash;
-              delete pendingUserToLogin._settingUpPin;
-              delete pendingUserToLogin._newPinStep;
-              delete pendingUserToLogin._newPinFirst;
-              loginAs(pendingUserToLogin);
-            });
-        }
-      }
+  if (val.length !== 4) return;
+  if (!pendingUserToLogin) return;
+
+  const id = pendingUserToLogin.id;
+  const attempts = getPinAttempts(id);
+
+  // Vérifier lockout
+  if (attempts.until > Date.now()) {
+    const mins = Math.ceil((attempts.until - Date.now()) / 60000);
+    document.getElementById('pin-error').textContent = `🔒 Too many attempts. Try again in ${mins} min.`;
+    document.getElementById('pin-input').value = '';
+    return;
+  }
+
+  // ── Flux première connexion / setup ──
+  if (pendingUserToLogin._settingUpPin) {
+    if (WEAK_PINS.has(val)) {
+      document.getElementById('pin-error').textContent = '❌ PIN too simple. Choose a less predictable one.';
+      document.getElementById('pin-input').value = '';
       return;
     }
-    // ── Flux normal ──
-    if (hashPin(val) !== pendingUserToLogin.pinHash) {
-      document.getElementById('pin-error').textContent = '❌ Incorrect PIN.';
+    if (pendingUserToLogin._newPinStep === 1) {
+      pendingUserToLogin._newPinFirst = val;
+      pendingUserToLogin._newPinStep = 2;
+      document.getElementById('pin-subtitle').textContent = 'Confirm your new PIN:';
       document.getElementById('pin-input').value = '';
+      document.getElementById('pin-error').textContent = '';
     } else {
-      loginAs(pendingUserToLogin);
+      if (val !== pendingUserToLogin._newPinFirst) {
+        document.getElementById('pin-error').textContent = '❌ PINs do not match. Try again.';
+        document.getElementById('pin-input').value = '';
+        pendingUserToLogin._newPinStep = 1;
+        pendingUserToLogin._newPinFirst = '';
+        document.getElementById('pin-subtitle').textContent = `Welcome ${pendingUserToLogin.name}! Choose your 4-digit PIN:`;
+      } else {
+        const newHash = hashPin(val);
+        set(ref(db, 'team/' + id + '/pinHash'), newHash).then(() => {
+          pendingUserToLogin.pinHash = newHash;
+          delete pendingUserToLogin._settingUpPin;
+          delete pendingUserToLogin._newPinStep;
+          delete pendingUserToLogin._newPinFirst;
+          resetPinAttempts(id);
+          showSecretQuestionSetup();
+        });
+      }
+    }
+    return;
+  }
+
+  // ── Flux normal ──
+  if (hashPin(val) !== pendingUserToLogin.pinHash) {
+    attempts.count = (attempts.count || 0) + 1;
+    if (attempts.count >= 5) {
+      attempts.until = Date.now() + 15 * 60 * 1000;
+      attempts.count = 0;
+      setPinAttempts(id, attempts);
+      document.getElementById('pin-error').textContent = '🔒 Too many attempts. Locked for 15 minutes.';
+      document.getElementById('pin-input').value = '';
+      document.getElementById('pin-input').disabled = true;
+    } else {
+      setPinAttempts(id, attempts);
+      const left = 5 - attempts.count;
+      document.getElementById('pin-error').textContent = `❌ Incorrect PIN. ${left} attempt${left > 1 ? 's' : ''} left.`;
+      document.getElementById('pin-input').value = '';
+    }
+  } else {
+    resetPinAttempts(id);
+    loginAs(pendingUserToLogin);
+  }
+};
+
+// ── Question secrète — affichage (forgot PIN) ──
+G.showForgotPin = function() {
+  if (!pendingUserToLogin || !pendingUserToLogin.secretQuestion) {
+    document.getElementById('pin-error').textContent = '❌ No security question set — contact your admin to reset your PIN.';
+    return;
+  }
+  document.getElementById('secret-question-label').textContent = '🔐 ' + pendingUserToLogin.secretQuestion;
+  document.getElementById('secret-answer-input').value = '';
+  document.getElementById('secret-answer-error').textContent = '';
+  document.getElementById('view-secret-question').style.display = '';
+  document.getElementById('btn-forgot-pin').style.display = 'none';
+  document.getElementById('pin-input').style.display = 'none';
+  document.getElementById('pin-error').textContent = '';
+  setTimeout(() => document.getElementById('secret-answer-input').focus(), 100);
+};
+
+G.hideForgotPin = function() {
+  document.getElementById('view-secret-question').style.display = 'none';
+  document.getElementById('view-new-pin').style.display = 'none';
+  document.getElementById('btn-forgot-pin').style.display = '';
+  document.getElementById('pin-input').style.display = '';
+  document.getElementById('pin-input').value = '';
+  document.getElementById('pin-error').textContent = '';
+};
+
+G.checkSecretAnswer = function() {
+  if (!pendingUserToLogin) return;
+  const answer = document.getElementById('secret-answer-input').value.trim().toLowerCase();
+  const stored = (pendingUserToLogin.secretAnswer || '').trim().toLowerCase();
+  if (!answer) { document.getElementById('secret-answer-error').textContent = 'Please enter your answer.'; return; }
+  if (answer !== stored) {
+    document.getElementById('secret-answer-error').textContent = '❌ Wrong answer.';
+    return;
+  }
+  document.getElementById('view-secret-question').style.display = 'none';
+  document.getElementById('view-new-pin').style.display = '';
+  document.getElementById('new-pin-label').textContent = 'Choose your new PIN:';
+  document.getElementById('new-pin-input').value = '';
+  document.getElementById('new-pin-error').textContent = '';
+  setTimeout(() => document.getElementById('new-pin-input').focus(), 100);
+};
+
+G.newPinInput = function() {
+  const val = document.getElementById('new-pin-input').value;
+  if (val.length !== 4) return;
+  if (!pendingUserToLogin) return;
+  if (WEAK_PINS.has(val)) {
+    document.getElementById('new-pin-error').textContent = '❌ PIN too simple. Choose a less predictable one.';
+    document.getElementById('new-pin-input').value = '';
+    return;
+  }
+  if (!pendingUserToLogin._resetStep) {
+    pendingUserToLogin._resetStep = 1;
+    pendingUserToLogin._resetPinFirst = val;
+    document.getElementById('new-pin-label').textContent = 'Confirm your new PIN:';
+    document.getElementById('new-pin-input').value = '';
+    document.getElementById('new-pin-error').textContent = '';
+  } else {
+    if (val !== pendingUserToLogin._resetPinFirst) {
+      document.getElementById('new-pin-error').textContent = '❌ PINs do not match. Try again.';
+      document.getElementById('new-pin-input').value = '';
+      pendingUserToLogin._resetStep = null;
+      pendingUserToLogin._resetPinFirst = '';
+      document.getElementById('new-pin-label').textContent = 'Choose your new PIN:';
+    } else {
+      const newHash = hashPin(val);
+      set(ref(db, 'team/' + pendingUserToLogin.id + '/pinHash'), newHash).then(() => {
+        pendingUserToLogin.pinHash = newHash;
+        delete pendingUserToLogin._resetStep;
+        delete pendingUserToLogin._resetPinFirst;
+        resetPinAttempts(pendingUserToLogin.id);
+        document.getElementById('view-new-pin').style.display = 'none';
+        loginAs(pendingUserToLogin);
+      });
     }
   }
+};
+
+// ── Setup question secrète (première connexion) ──
+const SECRET_QUESTIONS = [
+  'What is the name of your first pet?',
+  'What city were you born in?',
+  'What was the name of your primary school?',
+  'What is your mother\'s maiden name?',
+  'What was the model of your first car?'
+];
+
+function showSecretQuestionSetup() {
+  document.getElementById('pin-input').style.display = 'none';
+  document.getElementById('btn-forgot-pin').style.display = 'none';
+  document.getElementById('pin-error').textContent = '';
+  document.getElementById('pin-subtitle').textContent = '🔐 Set your security question';
+  const container = document.getElementById('view-secret-question');
+  container.innerHTML = `
+    <p style="font-size:12px;color:var(--g600);margin-bottom:8px">Choose a security question for PIN recovery:</p>
+    <select id="secret-q-select" style="width:100%;margin-bottom:8px;padding:8px 10px;border:1px solid var(--g200);border-radius:var(--r);font-size:12px">
+      ${SECRET_QUESTIONS.map((q,i) => `<option value="${i}">${q}</option>`).join('')}
+    </select>
+    <input type="text" id="secret-q-answer" placeholder="Your answer…" style="width:100%;margin-bottom:8px;padding:8px 10px;border:1px solid var(--g200);border-radius:var(--r);font-size:13px"/>
+    <div class="err-msg" id="secret-q-error"></div>
+    <button class="btn primary" style="width:100%;justify-content:center;margin-top:6px" onclick="saveSecretQuestion()">✅ Save & Continue</button>
+  `;
+  container.style.display = '';
+  setTimeout(() => document.getElementById('secret-q-answer').focus(), 100);
+}
+
+G.saveSecretQuestion = function() {
+  const qIndex = document.getElementById('secret-q-select').value;
+  const answer = document.getElementById('secret-q-answer').value.trim();
+  if (!answer) { document.getElementById('secret-q-error').textContent = 'Please enter an answer.'; return; }
+  const question = SECRET_QUESTIONS[parseInt(qIndex)];
+  set(ref(db, 'team/' + pendingUserToLogin.id + '/secretQuestion'), question);
+  set(ref(db, 'team/' + pendingUserToLogin.id + '/secretAnswer'), answer.toLowerCase()).then(() => {
+    pendingUserToLogin.secretQuestion = question;
+    pendingUserToLogin.secretAnswer = answer.toLowerCase();
+    loginAs(pendingUserToLogin);
+  });
 };
 
 G.adminEmailLogin = async function() {
