@@ -550,6 +550,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
           oninput="userPinInput()"/>
         <div class="err-msg" id="pin-error"></div>
         <button class="btn" style="width:100%;justify-content:center;margin-top:8px" onclick="showPicker()">← Back</button>
+        <button class="btn" id="btn-forgot-pin" style="width:100%;justify-content:center;margin-top:6px;font-size:11px;color:var(--g600)" onclick="forgotPin()">🔑 Forgot my PIN</button>
       </div>
 
       <!-- Admin login -->
@@ -3462,10 +3463,42 @@ G.confirmResetPin = async function() {
   setStatus('done', '✅ PIN updated successfully.');
 };
 
+// ── Force re-setup (admin) ──
 G.forceSetupPin = async function(id) {
   if (!confirm('This will ask the engineer to choose a new PIN on next login.')) return;
   await update(ref(db, 'team/' + id), { pinHash: 'SETUP_REQUIRED' });
-  setStatus('done', '✅ PIN reset — engineer will set a new one on next login.');
+  renderTeamAdminList();
+};
+
+// ── Forgot PIN (self-service par email) ──
+G.forgotPin = async function() {
+  if (!pendingUserToLogin) return;
+  const profile = pendingUserToLogin;
+  if (!profile.email) {
+    document.getElementById('pin-error').textContent = '❌ No email address on your profile — contact your admin.';
+    return;
+  }
+  const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  const expires = Date.now() + 60 * 60 * 1000; // 1 heure
+  await update(ref(db, 'team/' + profile.id), { resetToken: token, resetTokenExpires: expires });
+  const resetUrl = window.location.origin + window.location.pathname + '?resetToken=' + token + '&uid=' + profile.id;
+  try {
+    await fetch('https://orange-snow-95f7.jeromepoupinel.workers.dev/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: profile.email,
+        subject: 'FAST Update — Reset your PIN',
+        html: `<p>Hi ${profile.name},</p><p>Click the link below to choose a new PIN. This link expires in 1 hour.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you did not request this, ignore this email.</p>`
+      })
+    });
+    document.getElementById('pin-error').textContent = '';
+    document.getElementById('pin-subtitle').textContent = `✅ Email sent to ${profile.email} — check your inbox.`;
+    document.getElementById('btn-forgot-pin').style.display = 'none';
+    document.getElementById('pin-input').style.display = 'none';
+  } catch(e) {
+    document.getElementById('pin-error').textContent = '❌ Failed to send email: ' + e.message;
+  }
 };
 
 G.promptEditMember = async function(id) {
@@ -5979,8 +6012,39 @@ G.koNewJob = async function() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
-// Init: load picker
-showPicker();
+// Init: load picker — vérifier si reset token dans l'URL
+(async function() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('resetToken');
+  const uid   = params.get('uid');
+  if (token && uid) {
+    // Nettoyer l'URL
+    window.history.replaceState({}, '', window.location.pathname);
+    const snap = await get(ref(db, 'team/' + uid));
+    if (!snap.exists()) { showPicker(); return; }
+    const profile = snap.val();
+    if (profile.resetToken !== token || Date.now() > (profile.resetTokenExpires || 0)) {
+      alert('This reset link has expired or is invalid. Please request a new one.');
+      showPicker();
+      return;
+    }
+    // Token valide : effacer le token et lancer le setup PIN
+    await update(ref(db, 'team/' + uid), { resetToken: null, resetTokenExpires: null });
+    pendingUserToLogin = { ...profile, id: uid, _settingUpPin: true, _newPinStep: 1, _newPinFirst: '' };
+    document.getElementById('login-screen').style.display = '';
+    document.getElementById('view-picker').style.display = 'none';
+    document.getElementById('view-pin').style.display = '';
+    document.getElementById('pin-subtitle').textContent = `Welcome ${profile.name}! Choose your new 4-digit PIN:`;
+    document.getElementById('pin-input').value = '';
+    document.getElementById('pin-error').textContent = '';
+    document.getElementById('btn-forgot-pin').style.display = 'none';
+    document.getElementById('btn-biometric').style.display = 'none';
+    document.getElementById('pin-or-divider').style.display = 'none';
+    setTimeout(() => document.getElementById('pin-input').focus(), 100);
+  } else {
+    showPicker();
+  }
+})();
 
 // Expose all ko functions to window for HTML inline handlers
 window.koUpdatePreview = koUpdatePreview;
