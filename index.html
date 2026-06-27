@@ -935,6 +935,46 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     </div>
   </div>
 
+  <!-- TRAVEL -->
+  <div class="ko-card">
+    <div class="ko-card-head"><h3>🛫 Travel</h3></div>
+    <div class="ko-card-body">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:12px;padding:8px;background:var(--g100);border-radius:var(--r)">
+        <input type="checkbox" id="ko_skip_travel"/> Aircraft is already at my home base — don't generate a Travel Request email
+      </label>
+      <div class="ko-g3" style="margin-bottom:10px">
+        <div class="ko-fg"><label>From</label><input type="text" id="ko_travel_from" placeholder="Bangkok (BKK)"/></div>
+        <div class="ko-fg"><label>To (ICAO / city)</label><input type="text" id="ko_travel_to" placeholder="LFPB"/></div>
+        <div class="ko-fg"><label>Desired departure date</label><input type="text" id="ko_travel_date" placeholder="e.g. 25 Jun 2026"/></div>
+      </div>
+      <div class="ko-divider"></div>
+      <div class="ko-section-lbl">Preferred time of departure</div>
+      <div class="ko-toggles" id="ko-time-toggles" style="margin-bottom:10px">
+        <span class="ko-pill" data-val="morning">🌅 Morning</span>
+        <span class="ko-pill" data-val="afternoon">☀️ Afternoon</span>
+        <span class="ko-pill" data-val="evening">🌆 Evening</span>
+        <span class="ko-pill" data-val="night">🌙 Night</span>
+        <span class="ko-pill" data-val="any">Any time</span>
+      </div>
+      <div class="ko-section-lbl">Cabin class</div>
+      <div class="ko-toggles" id="ko-cabin-toggles" style="margin-bottom:10px">
+        <span class="ko-pill" data-val="both">Economy &amp; Business</span>
+        <span class="ko-pill" data-val="eco">Economy only</span>
+        <span class="ko-pill" data-val="business">Business only</span>
+      </div>
+      <div class="ko-toggles" style="margin-bottom:12px">
+        <span class="ko-pill" id="ko-extra-baggage" onclick="this.classList.toggle('active-green');koSaveState()">🧳 Extra baggage (2nd bag)</span>
+      </div>
+      <div class="ko-divider"></div>
+      <div class="ko-section-lbl">Frequent flyer numbers — saved to your profile</div>
+      <div id="ko-airlines-list"></div>
+      <div class="ko-add-airline">
+        <input type="text" id="ko-new-airline-name" placeholder="Airline name (e.g. Air France)"/>
+        <button onclick="koAddAirline()">+ Add airline</button>
+      </div>
+    </div>
+  </div>
+
   <!-- CUSTOMER UPDATE QUESTIONS -->
   <div class="ko-card">
     <div class="ko-card-head"><h3>❓ Customer update — questions to include</h3></div>
@@ -1130,46 +1170,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         </select>
         <button class="btn primary" onclick="koApplyBulkSquawk()" style="font-size:12px;padding:4px 12px">✓ Assign</button>
         <button class="btn" onclick="koDeselectAllPartRows()" style="font-size:12px;padding:4px 10px">✕ Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- TRAVEL -->
-  <div class="ko-card">
-    <div class="ko-card-head"><h3>🛫 Travel</h3></div>
-    <div class="ko-card-body">
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:12px;padding:8px;background:var(--g100);border-radius:var(--r)">
-        <input type="checkbox" id="ko_skip_travel"/> Aircraft is already at my home base — don't generate a Travel Request email
-      </label>
-      <div class="ko-g3" style="margin-bottom:10px">
-        <div class="ko-fg"><label>From</label><input type="text" id="ko_travel_from" placeholder="Bangkok (BKK)"/></div>
-        <div class="ko-fg"><label>To (ICAO / city)</label><input type="text" id="ko_travel_to" placeholder="LFPB"/></div>
-        <div class="ko-fg"><label>Desired departure date</label><input type="text" id="ko_travel_date" placeholder="e.g. 25 Jun 2026"/></div>
-      </div>
-      <div class="ko-divider"></div>
-      <div class="ko-section-lbl">Preferred time of departure</div>
-      <div class="ko-toggles" id="ko-time-toggles" style="margin-bottom:10px">
-        <span class="ko-pill" data-val="morning">🌅 Morning</span>
-        <span class="ko-pill" data-val="afternoon">☀️ Afternoon</span>
-        <span class="ko-pill" data-val="evening">🌆 Evening</span>
-        <span class="ko-pill" data-val="night">🌙 Night</span>
-        <span class="ko-pill" data-val="any">Any time</span>
-      </div>
-      <div class="ko-section-lbl">Cabin class</div>
-      <div class="ko-toggles" id="ko-cabin-toggles" style="margin-bottom:10px">
-        <span class="ko-pill" data-val="both">Economy &amp; Business</span>
-        <span class="ko-pill" data-val="eco">Economy only</span>
-        <span class="ko-pill" data-val="business">Business only</span>
-      </div>
-      <div class="ko-toggles" style="margin-bottom:12px">
-        <span class="ko-pill" id="ko-extra-baggage" onclick="this.classList.toggle('active-green');koSaveState()">🧳 Extra baggage (2nd bag)</span>
-      </div>
-      <div class="ko-divider"></div>
-      <div class="ko-section-lbl">Frequent flyer numbers — saved to your profile</div>
-      <div id="ko-airlines-list"></div>
-      <div class="ko-add-airline">
-        <input type="text" id="ko-new-airline-name" placeholder="Airline name (e.g. Air France)"/>
-        <button onclick="koAddAirline()">+ Add airline</button>
       </div>
     </div>
   </div>
@@ -1804,33 +1804,49 @@ function showPinEntry(profile) {
 // ── PINs trop simples à refuser ──
 const WEAK_PINS = new Set(['1234','0000','1111','2222','3333','4444','5555','6666','7777','8888','9999','1212','0101','1122','1313','4321','9876']);
 
-// ── Lockout : max 5 tentatives, blocage 15 min (localStorage par profil) ──
-function getPinAttempts(profileId) {
+// ── Lockout : max 5 tentatives, blocage 15 min
+// Stocké dans Firebase (server-side) ET localStorage (fallback/vitesse)
+// Résiste au contournement par vidage du localStorage ou navigation privée.
+async function getPinAttempts(profileId) {
+  // Lire depuis Firebase (source de vérité)
+  try {
+    const snap = await get(ref(db, 'team/' + profileId + '/pinLock'));
+    if (snap.exists()) return snap.val();
+  } catch(e) {}
+  // Fallback localStorage
   try { return JSON.parse(localStorage.getItem('fast_pin_attempts_' + profileId) || '{"count":0,"until":0}'); }
   catch(e) { return { count: 0, until: 0 }; }
 }
-function setPinAttempts(profileId, data) {
+async function setPinAttempts(profileId, data) {
+  // Écrire dans Firebase (bloque même depuis un autre device/onglet)
+  try { await set(ref(db, 'team/' + profileId + '/pinLock'), data); } catch(e) {}
+  // Garder aussi en localStorage pour les lectures rapides suivantes
   localStorage.setItem('fast_pin_attempts_' + profileId, JSON.stringify(data));
 }
-function resetPinAttempts(profileId) {
+async function resetPinAttempts(profileId) {
+  try { await set(ref(db, 'team/' + profileId + '/pinLock'), null); } catch(e) {}
   localStorage.removeItem('fast_pin_attempts_' + profileId);
 }
 
-G.userPinInput = function() {
+G.userPinInput = async function() {
   const val = document.getElementById('pin-input').value;
   if (val.length !== 4) return;
   if (!pendingUserToLogin) return;
 
   const id = pendingUserToLogin.id;
-  const attempts = getPinAttempts(id);
+  // Désactiver l'input pendant la vérification async pour éviter les doubles soumissions
+  document.getElementById('pin-input').disabled = true;
+  const attempts = await getPinAttempts(id);
 
   // Vérifier lockout
   if (attempts.until > Date.now()) {
     const mins = Math.ceil((attempts.until - Date.now()) / 60000);
     document.getElementById('pin-error').textContent = `🔒 Too many attempts. Try again in ${mins} min.`;
     document.getElementById('pin-input').value = '';
+    document.getElementById('pin-input').disabled = false;
     return;
   }
+  document.getElementById('pin-input').disabled = false;
 
   // ── Flux première connexion / setup ──
   if (pendingUserToLogin._settingUpPin) {
@@ -1854,12 +1870,12 @@ G.userPinInput = function() {
         document.getElementById('pin-subtitle').textContent = `Welcome ${pendingUserToLogin.name}! Choose your 4-digit PIN:`;
       } else {
         const newHash = hashPin(val);
-        set(ref(db, 'team/' + id + '/pinHash'), newHash).then(() => {
+        set(ref(db, 'team/' + id + '/pinHash'), newHash).then(async () => {
           pendingUserToLogin.pinHash = newHash;
           delete pendingUserToLogin._settingUpPin;
           delete pendingUserToLogin._newPinStep;
           delete pendingUserToLogin._newPinFirst;
-          resetPinAttempts(id);
+          await resetPinAttempts(id);
           showSecretQuestionSetup();
         });
       }
@@ -1873,18 +1889,18 @@ G.userPinInput = function() {
     if (attempts.count >= 5) {
       attempts.until = Date.now() + 15 * 60 * 1000;
       attempts.count = 0;
-      setPinAttempts(id, attempts);
+      await setPinAttempts(id, attempts);
       document.getElementById('pin-error').textContent = '🔒 Too many attempts. Locked for 15 minutes.';
       document.getElementById('pin-input').value = '';
       document.getElementById('pin-input').disabled = true;
     } else {
-      setPinAttempts(id, attempts);
+      await setPinAttempts(id, attempts);
       const left = 5 - attempts.count;
       document.getElementById('pin-error').textContent = `❌ Incorrect PIN. ${left} attempt${left > 1 ? 's' : ''} left.`;
       document.getElementById('pin-input').value = '';
     }
   } else {
-    resetPinAttempts(id);
+    await resetPinAttempts(id);
     loginAs(pendingUserToLogin);
   }
 };
@@ -1914,14 +1930,22 @@ G.hideForgotPin = function() {
   document.getElementById('pin-error').textContent = '';
 };
 
-G.checkSecretAnswer = function() {
+G.checkSecretAnswer = async function() {
   if (!pendingUserToLogin) return;
   const answer = document.getElementById('secret-answer-input').value.trim().toLowerCase();
-  const stored = (pendingUserToLogin.secretAnswer || '').trim().toLowerCase();
+  const stored = (pendingUserToLogin.secretAnswer || '').trim();
   if (!answer) { document.getElementById('secret-answer-error').textContent = 'Please enter your answer.'; return; }
-  if (answer !== stored) {
+  // Support ancien format (texte clair) ET nouveau format (hash)
+  const answerHash = await hashPin(answer);
+  const match = (answerHash === stored) || (answer === stored); // fallback pour comptes crées avant le hash
+  if (!match) {
     document.getElementById('secret-answer-error').textContent = '❌ Wrong answer.';
     return;
+  }
+  // Migration: si la réponse était en clair, la hasher maintenant
+  if (answer === stored) {
+    set(ref(db, 'team/' + pendingUserToLogin.id + '/secretAnswer'), answerHash).catch(() => {});
+    pendingUserToLogin.secretAnswer = answerHash;
   }
   document.getElementById('view-secret-question').style.display = 'none';
   document.getElementById('view-new-pin').style.display = '';
@@ -1955,11 +1979,11 @@ G.newPinInput = function() {
       document.getElementById('new-pin-label').textContent = 'Choose your new PIN:';
     } else {
       const newHash = hashPin(val);
-      set(ref(db, 'team/' + pendingUserToLogin.id + '/pinHash'), newHash).then(() => {
+      set(ref(db, 'team/' + pendingUserToLogin.id + '/pinHash'), newHash).then(async () => {
         pendingUserToLogin.pinHash = newHash;
         delete pendingUserToLogin._resetStep;
         delete pendingUserToLogin._resetPinFirst;
-        resetPinAttempts(pendingUserToLogin.id);
+        await resetPinAttempts(pendingUserToLogin.id);
         document.getElementById('view-new-pin').style.display = 'none';
         loginAs(pendingUserToLogin);
       });
@@ -2000,10 +2024,11 @@ G.saveSecretQuestion = function() {
   const answer = document.getElementById('secret-q-answer').value.trim();
   if (!answer) { document.getElementById('secret-q-error').textContent = 'Please enter an answer.'; return; }
   const question = SECRET_QUESTIONS[parseInt(qIndex)];
+  const answerHash = await hashPin(answer.toLowerCase()); // hash avant stockage — jamais en clair
   set(ref(db, 'team/' + pendingUserToLogin.id + '/secretQuestion'), question);
-  set(ref(db, 'team/' + pendingUserToLogin.id + '/secretAnswer'), answer.toLowerCase()).then(() => {
+  set(ref(db, 'team/' + pendingUserToLogin.id + '/secretAnswer'), answerHash).then(() => {
     pendingUserToLogin.secretQuestion = question;
-    pendingUserToLogin.secretAnswer = answer.toLowerCase();
+    pendingUserToLogin.secretAnswer = answerHash; // stocker le hash localement aussi
     loginAs(pendingUserToLogin);
   });
 };
