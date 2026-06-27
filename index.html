@@ -1735,6 +1735,18 @@ function showPinEntry(profile) {
   pendingUserToLogin = profile;
   document.getElementById('view-picker').style.display = 'none';
   document.getElementById('view-pin').style.display = '';
+  if (profile.pinHash === 'SETUP_REQUIRED') {
+    document.getElementById('pin-subtitle').textContent = `Welcome ${profile.name}! Choose your 4-digit PIN:`;
+    document.getElementById('pin-error').textContent = '';
+    pendingUserToLogin._settingUpPin = true;
+    pendingUserToLogin._newPinStep = 1;
+    pendingUserToLogin._newPinFirst = '';
+    // cacher biométrie
+    document.getElementById('btn-biometric').style.display = 'none';
+    document.getElementById('pin-or-divider').style.display = 'none';
+    setTimeout(() => document.getElementById('pin-input').focus(), 100);
+    return; // sortir avant la logique biométrique normale
+  }  
   document.getElementById('pin-subtitle').textContent = `Enter PIN for: ${profile.name}`;
   document.getElementById('pin-input').value = '';
   document.getElementById('pin-error').textContent = '';
@@ -1765,6 +1777,37 @@ G.userPinInput = function() {
   const val = document.getElementById('pin-input').value;
   if (val.length === 4) {
     if (!pendingUserToLogin) return;
+    // ── Flux première connexion ──
+    if (pendingUserToLogin._settingUpPin) {
+      if (pendingUserToLogin._newPinStep === 1) {
+        pendingUserToLogin._newPinFirst = val;
+        pendingUserToLogin._newPinStep = 2;
+        document.getElementById('pin-subtitle').textContent = 'Confirm your PIN:';
+        document.getElementById('pin-input').value = '';
+        document.getElementById('pin-error').textContent = '';
+      } else {
+        if (val !== pendingUserToLogin._newPinFirst) {
+          document.getElementById('pin-error').textContent = '❌ PINs do not match. Try again.';
+          document.getElementById('pin-input').value = '';
+          pendingUserToLogin._newPinStep = 1;
+          pendingUserToLogin._newPinFirst = '';
+          document.getElementById('pin-subtitle').textContent = `Welcome ${pendingUserToLogin.name}! Choose your 4-digit PIN:`;
+        } else {
+          // Sauvegarder dans Firebase
+          const newHash = hashPin(val);
+          set(ref(db, 'team/' + pendingUserToLogin.id + '/pinHash'), newHash)
+            .then(() => {
+              pendingUserToLogin.pinHash = newHash;
+              delete pendingUserToLogin._settingUpPin;
+              delete pendingUserToLogin._newPinStep;
+              delete pendingUserToLogin._newPinFirst;
+              loginAs(pendingUserToLogin);
+            });
+        }
+      }
+      return;
+    }
+    // ── Flux normal ──
     if (hashPin(val) !== pendingUserToLogin.pinHash) {
       document.getElementById('pin-error').textContent = '❌ Incorrect PIN.';
       document.getElementById('pin-input').value = '';
@@ -1878,6 +1921,7 @@ async function renderTeamAdminList() {
       </div>
       <button class="btn" onclick="promptEditMember('${id}')" style="padding:4px 8px;font-size:11px">✏️ Edit</button>
       <button class="btn" onclick="promptResetPin('${id}')" style="padding:4px 8px;font-size:11px">🔑 PIN</button>
+      <button class="btn" onclick="forceSetupPin('${id}')" style="padding:4px 8px;font-size:11px" title="Force engineer to choose a new PIN on next login">🔄</button>
       <button class="btn danger" onclick="deleteTeamMember('${id}')" style="padding:4px 8px;font-size:11px">🗑</button>
     </div>`).join('');
 }
@@ -1888,7 +1932,7 @@ G.addTeamMember = async function() {
   const errEl = document.getElementById('nt-error');
   errEl.textContent = '';
   if (!name) { errEl.textContent = 'Name required.'; return; }
-  if (!/^\d{4}$/.test(pin)) { errEl.textContent = 'PIN must be exactly 4 digits.'; return; }
+  if (pin && !/^\d{4}$/.test(pin)) { errEl.textContent = 'PIN must be exactly 4 digits.'; return; }
   const id = 'prof_' + Date.now();
   const member = {
     id, name,
@@ -1897,7 +1941,7 @@ G.addTeamMember = async function() {
     phone: document.getElementById('nt_phone').value.trim(),
     homeBase: document.getElementById('nt_homebase').value.trim(),
     fnNumber: document.getElementById('nt_fn').value.trim(),
-    pinHash: hashPin(pin),
+    pinHash: pin ? hashPin(pin) : 'SETUP_REQUIRED',
     role: document.getElementById('nt_role').value || 'engineer',
     defaultRecipients: '',
     projects: {}
@@ -3416,7 +3460,13 @@ G.confirmResetPin = async function() {
   await update(ref(db, 'team/' + resetPinTargetId), { pinHash: hashPin(pin) });
   closeModal('modal-reset-pin');
   setStatus('done', '✅ PIN updated successfully.');
-};  
+};
+
+G.forceSetupPin = async function(id) {
+  if (!confirm('This will ask the engineer to choose a new PIN on next login.')) return;
+  await update(ref(db, 'team/' + id), { pinHash: 'SETUP_REQUIRED' });
+  setStatus('done', '✅ PIN reset — engineer will set a new one on next login.');
+};
 
 G.promptEditMember = async function(id) {
   const snap = await get(ref(db, 'team/' + id));
@@ -4858,16 +4908,11 @@ function koBuildFboBody() {
   const colleagueNameFbo = notDecidedFbo ? '[ENGINEER TBD]' : colleagueNameFboRaw;
   const myNameFbo = curProfile?.name || '[ENGINEER]';
 
-  // Merge co-engineers from checkboxes + manual
-  // Only exclude the named colleague when colleague mode is active
+  // Merge co-engineers from checkboxes + manual, exclude the named colleague
   const coEngs = [...new Set([
     ...Array.from(document.querySelectorAll('.coeng-cb:checked')).map(cb => cb.value),
     ...(KO._coEngineersManual || [])
-  ])].filter(n => {
-    if (!n) return false;
-    if (!colleagueModeFbo) return true;
-    return n.toLowerCase().trim() !== colleagueNameFbo.toLowerCase().trim();
-  });
+  ])].filter(n => n && n.toLowerCase().trim() !== colleagueNameFbo.toLowerCase().trim());
 
   // All people going on site
   const allOnSite = colleagueModeFbo
