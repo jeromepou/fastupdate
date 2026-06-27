@@ -4827,7 +4827,7 @@ function koBuildCustomerBody() {
   const q = id => document.getElementById(id)?.checked;
   const questions = [];
   if (q('koq_broker')) questions.push(`- Do you have a broker to handle the import of parts${icao ? ' into ' + icao : ''}? If yes, please provide their details. If not, we can use our own.`);
-  if (q('koq_hours'))  questions.push('- Aircraft hours and cycles');
+    if (q('koq_hours'))  questions.push('- Could you please provide the aircraft total time (hours) and cycles?');
   if (q('koq_po'))     questions.push('- Do you have a Work Order (WO) or Purchase Order (PO) number for this input?');
   if (q('koq_keys'))   questions.push('- Location of the aircraft keys');
   if (q('koq_fbo_name')) questions.push(`- Could you please provide the name of the FBO handling the aircraft at ${icao || '[ICAO]'}?`);
@@ -5207,9 +5207,10 @@ function koBuildFboBody() {
     .filter(([id]) => document.getElementById(id)?.checked)
     .map(([, label]) => `- ${label}`);
   const docsOwner = colleagueModeFbo ? 'their' : (coEngs.length > 0 ? 'our' : 'my');
+  // Ne rien afficher si aucun document coché — évite la phrase fausse "I have attached my documents"  
   const docsBlock = selectedDocs.length
     ? `\nFor your review, I have attached ${docsOwner} document${selectedDocs.length > 1 ? 's' : ''}:\n${selectedDocs.join('\n')}\n`
-    : `\nI have attached ${docsOwner} documents for your review.\n`;
+    : '';
 
   // Transport + equip: adapt person based on who is going on site
   // colleague mode → "them/their"  |  me + co-engs → "us/our"  |  just me → "me/my"
@@ -5329,7 +5330,18 @@ G.koGenerate = async function() {
       const subject = subjects[type];
       const body    = bodies[type];
 
-      const htmlBody = `<html><body style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;white-space:pre-wrap">${body.replace(/\n/g,'<br>')}</body></html>`;
+      // Convertit le texte brut en HTML avec titres en gras et plus grands
+      function formatEmailHtml(text) {
+        return text
+          // **PARTS:** **TOOLS:** **CONSUMABLES:** → titre gras 15px
+          .replace(/\*\*([^*]+):\*\*/g, '<b style="font-size:15px">$1:</b>')
+          // Sq X — description → titre de squawk en gras couleur foncée
+          .replace(/(Sq \d+ — [^\n]+)/g, '<b style="font-size:14px;color:#2d5a2d">$1</b>')
+          // Shipping Address: et Customer's broker: → gras
+          .replace(/(Shipping Address:|Customer's broker contact for import:)/g, '<b style="font-size:14px">$1</b>')
+          .replace(/\n/g,'<br>');
+      }
+      const htmlBody = `<html><body style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;white-space:pre-wrap">${formatEmailHtml(body)}</body></html>`;
       const encSubject = '=?UTF-8?B?' + btoa(unescape(encodeURIComponent(subject))) + '?=';
       const lines = [
         toAddrs.length ? `To: ${toAddrs.join(', ')}` : 'To: ',
