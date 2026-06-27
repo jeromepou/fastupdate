@@ -4108,11 +4108,9 @@ G.openKickoff = async function() {
     document.getElementById('ko-eng-name').textContent = curProfile.name;
     document.getElementById('ko-eng-sub').textContent  = curProfile.team || 'FAST Engineer';
   }
-  // Pre-fill travel "from" from profile team
-  const travelFrom = document.getElementById('ko_travel_from');
-  if (travelFrom && !travelFrom.value) {
-    travelFrom.value = curProfile?.homeBase || '';
-  }
+  // NB: travel "from" n'est PAS pré-rempli depuis le profil homeBase —
+  // l'ingénieur peut repartir directement d'une mission précédente.
+  // La valeur est sauvegardée/restaurée via koState si saisie manuellement.
 
   // Auto-fill travel "to" from ICAO when user fills aircraft info
   const icaoField = document.getElementById('ko_icao');
@@ -4685,7 +4683,7 @@ function koComputeSubjects() {
   const icao  = document.getElementById('ko_icao')?.value  || '';
   const model = document.getElementById('ko_model')?.value || '';
   const def   = document.getElementById('ko_defect')?.value|| '';
-  const from  = document.getElementById('ko_travel_from')?.value || 'BKK';
+  const from  = document.getElementById('ko_travel_from')?.value || '[FROM]';
   const to    = document.getElementById('ko_travel_to')?.value   || icao || '';
   return {
     customer: `CUSTOMER UPDATE // ${sn} // ${reg} // ${wo} // ${icao} // ${def}`,
@@ -4944,7 +4942,7 @@ ${eng}`;
 }
 
 function koBuildTravelBody() {
-  const from  = document.getElementById('ko_travel_from')?.value || 'Bangkok (BKK)';
+  const from  = document.getElementById('ko_travel_from')?.value || '[FROM]';
   const to    = document.getElementById('ko_travel_to')?.value   || document.getElementById('ko_icao')?.value || '[DESTINATION]';
   const date  = document.getElementById('ko_travel_date')?.value || '';
   const eng  = KO.signature || koBuildSignature();
