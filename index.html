@@ -4532,7 +4532,7 @@ G.koRefreshSquawkSelects = window.koRefreshSquawkSelects = function() {
   koRefreshTroubleshootingSquawks();
 };
 
-G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='Part', note='', sqLabel='') {
+G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='', note='', sqLabel='') {
   KO.partRows++;
   const tbody = document.getElementById('ko-parts-tbody');
   const tr = document.createElement('tr');
@@ -4544,7 +4544,8 @@ G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='Part', note='', sq
     <td><input type="text" value="${sn.replace(/"/g,'&quot;')}" placeholder="S/N off" class="ko-sn-field"/></td>
     <td><input type="text" value="${qty}" placeholder="Qty"/></td>
     <td>
-      <select onchange="koPartCatChange(this)">
+      <select onchange="koPartCatChange(this)" style="${!cat?'border:1px solid #e07700;background:#fef9e7':''}">
+        <option value="" ${!cat?'selected':''} style="color:#aaa">— Type —</option>
         <option ${cat==='Part'?'selected':''}>Part</option>
         <option ${cat==='Consumable'?'selected':''}>Consumable</option>
         <option ${cat==='Tool'?'selected':''}>Tool</option>
@@ -4564,7 +4565,7 @@ G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='Part', note='', sq
     <td><button class="ko-parts-tbl rm-btn" onclick="document.getElementById('ko-part-${KO.partRows}').remove();koRenderRecips('parts');koUpdatePreview();">×</button></td>`;
   tbody.appendChild(tr);
   const sel = tr.querySelector('select');
-  if (sel) koPartCatChange(sel);
+  if (sel && cat) koPartCatChange(sel);
 };
 
 window.koPartCatChange = function(sel) {
@@ -4574,6 +4575,9 @@ window.koPartCatChange = function(sel) {
   const smallQtyLbl = tr.querySelector('.ko-smallqty-lbl');
   if (!snInput) return;
   const cat = sel.value;
+  // Remove warning style once a category is chosen
+  if (cat) { sel.style.border = ''; sel.style.background = ''; }
+  if (!cat) return; // No category selected yet — don't sort or change fields
   if (cat === 'Consumable') {
     snInput.value = '';
     snInput.disabled = true;
@@ -5075,7 +5079,7 @@ function koBuildPartsBody() {
   // Par squawk d'abord, puis par catégorie à l'intérieur
   sqKeys.forEach(key => {
     const grp = bySq[key];
-    partBlock += `Sq ${grp.sqNum} — ${grp.sqLabel}\n`;
+    partBlock += `\n▶ Sq ${grp.sqNum} — ${grp.sqLabel.toUpperCase()}\n`;
     ['Part','Consumable','Tool'].forEach(cat => {
       if (grp[cat]?.length) {
         partBlock += catLabels[cat] + '\n';
@@ -5092,7 +5096,7 @@ function koBuildPartsBody() {
       partBlock += '\n';
     }
   });
-  if (!partBlock) partBlock = '**PARTS:**\n- \n\n**TOOLS:**\n- \n';
+  if (!partBlock) partBlock = '**PARTS:**\n- \n\n**CONSUMABLES:**\n- \n\n**TOOLS:**\n- \n';
 
   return `Dear Team,
 
@@ -5264,6 +5268,20 @@ function koSetStatus(type, msg) {
 }
 
 G.koGenerate = async function() {
+  // ── Check for part rows without a category selected
+  const uncatRows = Array.from(document.querySelectorAll('#ko-parts-tbody tr')).filter(tr => {
+    const sel = tr.querySelector('select');
+    return sel && !sel.value;
+  });
+  if (uncatRows.length) {
+    // Highlight the offending rows
+    uncatRows.forEach(tr => {
+      const sel = tr.querySelector('select');
+      if (sel) { sel.style.border = '2px solid #e07700'; sel.style.background = '#fef9e7'; }
+    });
+    alert(`⚠️ ${uncatRows.length} row(s) in the parts table have no type selected (Part / Consumable / Tool).\nPlease select a type for each row before generating.`);
+    return;
+  }
   // ── Warn if required Part Request options are missing
   const warnings = [];
   if (!KO.prefixSel) warnings.push('• Email Prefix (Part request options) : aucune sélection');
@@ -5335,8 +5353,8 @@ G.koGenerate = async function() {
         return text
           // **PARTS:** **TOOLS:** **CONSUMABLES:** → titre gras 15px
           .replace(/\*\*([^*]+):\*\*/g, '<b style="font-size:15px">$1:</b>')
-          // Sq X — description → titre de squawk en gras couleur foncée
-          .replace(/(Sq \d+ — [^\n]+)/g, '<b style="font-size:14px;color:#2d5a2d">$1</b>')
+          // ▶ Sq X — DESCRIPTION → bloc squawk bien visible (barre verte)
+          .replace(/▶ (Sq \d+ — [^<\n]+)/g, (m,p1) => `<div style="margin:12px 0 5px 0;padding:7px 12px;background:#e8f2e8;border-left:4px solid #2d5a2d;border-radius:3px"><b style="font-size:14px;color:#1a3d1a">▶ ${p1}</b></div>`)
           // Shipping Address: et Customer's broker: → gras
           .replace(/(Shipping Address:|Customer's broker contact for import:)/g, '<b style="font-size:14px">$1</b>')
           .replace(/\n/g,'<br>');
