@@ -5354,7 +5354,7 @@ G.koGenerate = async function() {
           // **PARTS:** **TOOLS:** **CONSUMABLES:** → titre gras 15px
           .replace(/\*\*([^*]+):\*\*/g, '<b style="font-size:15px">$1:</b>')
           // ▶ Sq X — DESCRIPTION → bloc squawk bien visible (barre verte)
-          .replace(/▶ (Sq \d+ — [^<\n]+)/g, (m,p1) => `<div style="margin:12px 0 5px 0;padding:7px 12px;background:#e8f2e8;border-left:4px solid #2d5a2d;border-radius:3px"><b style="font-size:16px;color:#2d5a2d">▶ ${p1}</b></div>`)
+          .replace(/▶ (Sq \d+ — [^<\n]+)/g, (m,p1) => `<span style="font-size:16px;font-weight:700;color:#2d5a2d">━━ ▶ ${p1} ━━</span>`)
           // Shipping Address: et Customer's broker: → gras
           .replace(/(Shipping Address:|Customer's broker contact for import:)/g, '<b style="font-size:14px">$1</b>')
           .replace(/\n/g,'<br>');
