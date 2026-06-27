@@ -1695,7 +1695,9 @@ async function saveToFirebase() {
       };
 
       allP.forEach(p=>{
-        const sq4part=(p.squawks&&p.squawks.length)?p.squawks:[entry.squawkRaw||`${entry.faNumber} PARTS REQUEST`];
+        const sq4part=(p.squawks&&p.squawks.length)?p.squawks:
+          entry.allSquawksFromRFS?.length?entry.allSquawksFromRFS:
+          [entry.squawkRaw||`${entry.faNumber} PARTS REQUEST`];
         sq4part.forEach(sq=>addToGroup(sq,p));
       });
 
