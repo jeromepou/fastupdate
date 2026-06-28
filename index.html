@@ -1853,6 +1853,8 @@ G.userPinInput = async function() {
   if (pendingUserToLogin.pinHash !== 'SETUP_REQUIRED' &&
       pendingUserToLogin.pinHash.length < 64 &&
       !pendingUserToLogin._settingUpPin) {
+    // Pas d'écriture Firebase ici (bloqué par les règles de sécurité).
+    // On indique simplement à l'app locale que le setup est requis.
     pendingUserToLogin.pinHash = 'SETUP_REQUIRED';
     pendingUserToLogin._settingUpPin = true;
     pendingUserToLogin._newPinStep = 1;
