@@ -1762,8 +1762,14 @@ function showPinEntry(profile) {
   document.getElementById('pin-input').disabled = false;
   document.getElementById('pin-input').value = '';
   document.getElementById('pin-error').textContent = '';
-  document.getElementById('secret-answer-input').value = '';
-  document.getElementById('secret-answer-error').textContent = '';
+  
+  const saInput = document.getElementById('secret-answer-input');
+  if (saInput) saInput.value = '';
+  const saError = document.getElementById('secret-answer-error');
+  if (saError) saError.textContent = '';
+  const setupView = document.getElementById('view-secret-setup');
+  if (setupView) setupView.style.display = 'none';
+  
   if (profile.pinHash === 'SETUP_REQUIRED') {
     document.getElementById('pin-subtitle').textContent = `Welcome ${profile.name}! Choose your 4-digit PIN:`;
     document.getElementById('pin-error').textContent = '';
@@ -1896,7 +1902,13 @@ G.userPinInput = async function() {
           delete pendingUserToLogin._newPinStep;
           delete pendingUserToLogin._newPinFirst;
           await resetPinAttempts(id);
-          showSecretQuestionSetup();
+          
+          // Si l'ingénieur a déjà une question secrète (cas de la migration), on saute le setup
+          if (pendingUserToLogin.secretQuestion) {
+            loginAs(pendingUserToLogin);
+          } else {
+            showSecretQuestionSetup();
+          }
         });
       }
     }
@@ -2021,10 +2033,18 @@ const SECRET_QUESTIONS = [
 
 function showSecretQuestionSetup() {
   document.getElementById('pin-input').style.display = 'none';
-  document.getElementById('btn-forgot-pin').style.display = 'none';
+  const btnForgot = document.getElementById('btn-forgot-pin');
+  if (btnForgot) btnForgot.style.display = 'none';
   document.getElementById('pin-error').textContent = '';
   document.getElementById('pin-subtitle').textContent = '🔐 Set your security question';
-  const container = document.getElementById('view-secret-question');
+  
+  // On utilise un nouveau container pour ne pas écraser l'interface de récupération existante
+  let container = document.getElementById('view-secret-setup');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'view-secret-setup';
+    document.getElementById('view-pin').appendChild(container);
+  }
   container.innerHTML = `
     <p style="font-size:12px;color:var(--g600);margin-bottom:8px">Choose a security question for PIN recovery:</p>
     <select id="secret-q-select" style="width:100%;margin-bottom:8px;padding:8px 10px;border:1px solid var(--g200);border-radius:var(--r);font-size:12px">
@@ -2048,6 +2068,10 @@ G.saveSecretQuestion = async function() {
   set(ref(db, 'team/' + pendingUserToLogin.id + '/secretAnswer'), answerHash).then(() => {
     pendingUserToLogin.secretQuestion = question;
     pendingUserToLogin.secretAnswer = answerHash; // stocker le hash localement aussi
+    
+    const setupView = document.getElementById('view-secret-setup');
+    if (setupView) setupView.style.display = 'none';
+    
     loginAs(pendingUserToLogin);
   });
 };
