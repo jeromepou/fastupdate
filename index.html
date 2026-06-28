@@ -1909,6 +1909,13 @@ G.userPinInput = async function() {
           } else {
             showSecretQuestionSetup();
           }
+        }).catch(err => {
+          console.error('Failed to save PIN hash:', err);
+          document.getElementById('pin-error').textContent =
+            '❌ Failed to save PIN. Check your connection and try again.';
+          pendingUserToLogin._newPinStep = 1;
+          pendingUserToLogin._newPinFirst = '';
+          document.getElementById('pin-input').value = '';
         });
       }
     }
@@ -1965,20 +1972,10 @@ G.hideForgotPin = function() {
 G.checkSecretAnswer = async function() {
   if (!pendingUserToLogin) return;
   const answer = document.getElementById('secret-answer-input').value.trim().toLowerCase();
-  const stored = (pendingUserToLogin.secretAnswer || '').trim();
   if (!answer) { document.getElementById('secret-answer-error').textContent = 'Please enter your answer.'; return; }
-  // Support ancien format (texte clair) ET nouveau format (hash)
-  const answerHash = legacyHashPin(answer);
-  const match = (answerHash === stored) || (answer === stored); // fallback pour comptes crées avant le hash
-  if (!match) {
-    document.getElementById('secret-answer-error').textContent = '❌ Wrong answer.';
-    return;
-  }
-  // Migration: si la réponse était en clair, la hasher maintenant
-  if (answer === stored) {
-    set(ref(db, 'team/' + pendingUserToLogin.id + '/secretAnswer'), answerHash).catch(() => {});
-    pendingUserToLogin.secretAnswer = answerHash;
-  }
+  // On ne compare plus localement : secretAnswer n'est plus lisible.
+  // On stocke le hash pour que Firebase le valide au moment du write.
+  pendingUserToLogin._pendingResetAuth = legacyHashPin(answer);
   document.getElementById('view-secret-question').style.display = 'none';
   document.getElementById('view-new-pin').style.display = '';
   document.getElementById('new-pin-label').textContent = 'Choose your new PIN:';
@@ -2010,14 +2007,27 @@ G.newPinInput = async function() {
       pendingUserToLogin._resetPinFirst = '';
       document.getElementById('new-pin-label').textContent = 'Choose your new PIN:';
     } else {
-      const newHash = await hashPin(val, pendingUserToLogin.id);
-      await set(ref(db, 'team/' + pendingUserToLogin.id + '/pinHash'), newHash);
-      pendingUserToLogin.pinHash = newHash;
-      delete pendingUserToLogin._resetStep;
-      delete pendingUserToLogin._resetPinFirst;
-      await resetPinAttempts(pendingUserToLogin.id);
-      document.getElementById('view-new-pin').style.display = 'none';
-      loginAs(pendingUserToLogin);
+      try {
+        const newHash = await hashPin(val, pendingUserToLogin.id);
+        await update(ref(db, 'team/' + pendingUserToLogin.id), {
+          pinHash: newHash,
+          _pinResetAuth: pendingUserToLogin._pendingResetAuth
+        });
+        pendingUserToLogin.pinHash = newHash;
+        delete pendingUserToLogin._resetStep;
+        delete pendingUserToLogin._resetPinFirst;
+        delete pendingUserToLogin._pendingResetAuth;
+        await resetPinAttempts(pendingUserToLogin.id);
+        document.getElementById('view-new-pin').style.display = 'none';
+        loginAs(pendingUserToLogin);
+      } catch (err) {
+        console.error('Failed to reset PIN:', err);
+        document.getElementById('new-pin-error').textContent =
+          '❌ Wrong answer or connection error. Please try again.';
+        pendingUserToLogin._resetStep = null;
+        pendingUserToLogin._resetPinFirst = '';
+        document.getElementById('new-pin-input').value = '';
+      }
     }
   }
 };
