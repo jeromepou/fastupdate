@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://www.gstatic.com https://*.googleapis.com https://*.firebasedatabase.app https://orange-snow-95f7.jeromepoupinel.workers.dev https://ipapi.co; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://accounts.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://www.gstatic.com https://*.googleapis.com https://*.firebasedatabase.app https://orange-snow-95f7.jeromepoupinel.workers.dev https://ipapi.co https://oauth2.googleapis.com https://gmail.googleapis.com https://api.mistral.ai; frame-src https://accounts.google.com;"/>
 <title>FAST Update Generator</title>
 <meta name="theme-color" content="#2d5a2d"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -1626,6 +1627,10 @@ let tokenClient = null, gToken = null, gTokenExp = 0;
 // ══════════════════════════════════════
 const G = window;
 
+// Clé partagée pour l'endpoint /send-email du Worker
+// ⚠️ Doit correspondre à FAST_SHARED_SECRET dans les secrets Cloudflare
+const FAST_EMAIL_KEY = 'GZQzBzq9nYJLQu9BDEbsTNya3nFW0sap';
+
 // ══════════════════════════════════════
 //  FIREBASE AUTH STATE
 // ══════════════════════════════════════
@@ -1848,6 +1853,24 @@ G.userPinInput = async function() {
   }
   document.getElementById('pin-input').disabled = false;
 
+  // ── Migration sécurité : ancien hash DJB2 détecté (longueur < 64 chars) ──
+  if (pendingUserToLogin.pinHash !== 'SETUP_REQUIRED' &&
+      pendingUserToLogin.pinHash.length < 64 &&
+      !pendingUserToLogin._settingUpPin) {
+    await update(ref(db, 'team/' + id), { pinHash: 'SETUP_REQUIRED' });
+    pendingUserToLogin.pinHash = 'SETUP_REQUIRED';
+    pendingUserToLogin._settingUpPin = true;
+    pendingUserToLogin._newPinStep = 1;
+    pendingUserToLogin._newPinFirst = '';
+    document.getElementById('pin-subtitle').textContent =
+      `🔒 Security upgrade — ${pendingUserToLogin.name}, please choose a new 4-digit PIN:`;
+    document.getElementById('pin-input').value = '';
+    document.getElementById('pin-error').textContent =
+      '⚠️ Your PIN needs to be renewed for security reasons.';
+    document.getElementById('pin-input').disabled = false;
+    return;
+  }
+
   // ── Flux première connexion / setup ──
   if (pendingUserToLogin._settingUpPin) {
     if (WEAK_PINS.has(val)) {
@@ -1869,7 +1892,7 @@ G.userPinInput = async function() {
         pendingUserToLogin._newPinFirst = '';
         document.getElementById('pin-subtitle').textContent = `Welcome ${pendingUserToLogin.name}! Choose your 4-digit PIN:`;
       } else {
-        const newHash = hashPin(val);
+        const newHash = await hashPin(val, id);
         set(ref(db, 'team/' + id + '/pinHash'), newHash).then(async () => {
           pendingUserToLogin.pinHash = newHash;
           delete pendingUserToLogin._settingUpPin;
@@ -1884,7 +1907,7 @@ G.userPinInput = async function() {
   }
 
   // ── Flux normal ──
-  if (hashPin(val) !== pendingUserToLogin.pinHash) {
+  if (await hashPin(val, id) !== pendingUserToLogin.pinHash) {
     attempts.count = (attempts.count || 0) + 1;
     if (attempts.count >= 5) {
       attempts.until = Date.now() + 15 * 60 * 1000;
@@ -1936,7 +1959,7 @@ G.checkSecretAnswer = async function() {
   const stored = (pendingUserToLogin.secretAnswer || '').trim();
   if (!answer) { document.getElementById('secret-answer-error').textContent = 'Please enter your answer.'; return; }
   // Support ancien format (texte clair) ET nouveau format (hash)
-  const answerHash = hashPin(answer);
+  const answerHash = legacyHashPin(answer);
   const match = (answerHash === stored) || (answer === stored); // fallback pour comptes crées avant le hash
   if (!match) {
     document.getElementById('secret-answer-error').textContent = '❌ Wrong answer.';
@@ -1955,7 +1978,7 @@ G.checkSecretAnswer = async function() {
   setTimeout(() => document.getElementById('new-pin-input').focus(), 100);
 };
 
-G.newPinInput = function() {
+G.newPinInput = async function() {
   const val = document.getElementById('new-pin-input').value;
   if (val.length !== 4) return;
   if (!pendingUserToLogin) return;
@@ -1978,15 +2001,14 @@ G.newPinInput = function() {
       pendingUserToLogin._resetPinFirst = '';
       document.getElementById('new-pin-label').textContent = 'Choose your new PIN:';
     } else {
-      const newHash = hashPin(val);
-      set(ref(db, 'team/' + pendingUserToLogin.id + '/pinHash'), newHash).then(async () => {
-        pendingUserToLogin.pinHash = newHash;
-        delete pendingUserToLogin._resetStep;
-        delete pendingUserToLogin._resetPinFirst;
-        await resetPinAttempts(pendingUserToLogin.id);
-        document.getElementById('view-new-pin').style.display = 'none';
-        loginAs(pendingUserToLogin);
-      });
+      const newHash = await hashPin(val, pendingUserToLogin.id);
+      await set(ref(db, 'team/' + pendingUserToLogin.id + '/pinHash'), newHash);
+      pendingUserToLogin.pinHash = newHash;
+      delete pendingUserToLogin._resetStep;
+      delete pendingUserToLogin._resetPinFirst;
+      await resetPinAttempts(pendingUserToLogin.id);
+      document.getElementById('view-new-pin').style.display = 'none';
+      loginAs(pendingUserToLogin);
     }
   }
 };
@@ -2024,7 +2046,7 @@ G.saveSecretQuestion = async function() {
   const answer = document.getElementById('secret-q-answer').value.trim();
   if (!answer) { document.getElementById('secret-q-error').textContent = 'Please enter an answer.'; return; }
   const question = SECRET_QUESTIONS[parseInt(qIndex)];
-  const answerHash = hashPin(answer.toLowerCase()); // hash avant stockage — jamais en clair
+  const answerHash = legacyHashPin(answer.toLowerCase()); // hash avant stockage — jamais en clair
   set(ref(db, 'team/' + pendingUserToLogin.id + '/secretQuestion'), question);
   set(ref(db, 'team/' + pendingUserToLogin.id + '/secretAnswer'), answerHash).then(() => {
     pendingUserToLogin.secretQuestion = question;
@@ -2077,6 +2099,29 @@ async function showAdminPanel() {
   renderTeamAdminList();
 }
 
+// ── Session timeout — déconnexion automatique après 45 min d'inactivité ──
+let _fastIdleTimer;
+const _fastIdleReset = () => {
+  clearTimeout(_fastIdleTimer);
+  _fastIdleTimer = setTimeout(() => {
+    if (curProfile) {
+      G.logout();
+      alert('🔒 Session expired after 45 minutes of inactivity.');
+    }
+  }, 45 * 60 * 1000);
+};
+function startIdleTimer() {
+  ['click', 'keydown', 'touchstart'].forEach(e => {
+    document.removeEventListener(e, _fastIdleReset);
+    document.addEventListener(e, _fastIdleReset, { passive: true });
+  });
+  _fastIdleReset();
+}
+function stopIdleTimer() {
+  clearTimeout(_fastIdleTimer);
+  ['click', 'keydown', 'touchstart'].forEach(e => document.removeEventListener(e, _fastIdleReset));
+}
+
 async function loginAs(profile, fromBiometric) {
   curProfile = profile;
   document.getElementById('login-screen').style.display = 'none';
@@ -2102,9 +2147,11 @@ async function loginAs(profile, fromBiometric) {
       if (available) offerBiometricEnrollment(profile);
     } catch(e) {}
   }
+  startIdleTimer();
 }
 
 G.logout = async function() {
+  stopIdleTimer();
   curProfile = null; curProj = null; pendingUserToLogin = null; isAdmin = false;
   document.getElementById('poc-colleagues-container').innerHTML = ''; colleagueSlotCount = 0;
   document.getElementById('sync-badge').style.display = 'none';
@@ -2157,7 +2204,7 @@ G.addTeamMember = async function() {
     phone: document.getElementById('nt_phone').value.trim(),
     homeBase: document.getElementById('nt_homebase').value.trim(),
     fnNumber: document.getElementById('nt_fn').value.trim(),
-    pinHash: pin ? hashPin(pin) : 'SETUP_REQUIRED',
+    pinHash: pin ? await hashPin(pin, id) : 'SETUP_REQUIRED',
     role: document.getElementById('nt_role').value || 'engineer',
     defaultRecipients: '',
     projects: {}
@@ -3362,14 +3409,30 @@ window.addEventListener('orientationchange', () => setTimeout(() => {
   if (out && out.style.display !== 'none') fitTableToScreen();
 }, 200));
 
-G.copyTable = function() {
-  const tbl=document.getElementById('gen-tbl');if(!tbl)return;
-  const range=document.createRange();range.selectNode(tbl);
-  const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
-  document.execCommand('copy');sel.removeAllRanges();
-  const btn=document.getElementById('copy-btn');btn.classList.add('copied');
-  btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
-  setTimeout(()=>{btn.classList.remove('copied');btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy table`;},2500);
+G.copyTable = async function() {
+  const tbl = document.getElementById('gen-tbl'); if (!tbl) return;
+  const btn = document.getElementById('copy-btn');
+  const markCopied = () => {
+    btn.classList.add('copied');
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy table`;
+    }, 2500);
+  };
+  try {
+    // API moderne (Chrome 76+, Safari 13.1+)
+    await navigator.clipboard.write([
+      new ClipboardItem({ 'text/html': new Blob([tbl.outerHTML], { type: 'text/html' }) })
+    ]);
+    markCopied();
+  } catch(e) {
+    // Fallback pour les navigateurs plus anciens
+    const range = document.createRange(); range.selectNode(tbl);
+    const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    document.execCommand('copy'); sel.removeAllRanges();
+    markCopied();
+  }
 };
 G.copySubject = function() { navigator.clipboard.writeText(document.getElementById('email-subject')?.textContent||'').catch(()=>{}); setStatus('done','✓ Email subject copied!'); };
 
@@ -3417,20 +3480,7 @@ G.draftInGmail = async function() {
 
     const htmlBody = `<html><body style="font-family:Arial,sans-serif;font-size:13px;margin:0;padding:16px">${tblClone.outerHTML}</body></html>`;
 
-    const encSubject = '=?UTF-8?B?' + btoa(unescape(encodeURIComponent(subject))) + '?=';
-    const lines = [
-      toAddrs.length ? `To: ${toAddrs.join(', ')}` : 'To: ',
-      `Subject: ${encSubject}`,
-      'MIME-Version: 1.0',
-      'Content-Type: text/html; charset=UTF-8',
-      'Content-Transfer-Encoding: base64',
-      '',
-      btoa(unescape(encodeURIComponent(htmlBody)))
-    ];
-
-    const raw = lines.join('\r\n');
-    const encoded = btoa(unescape(encodeURIComponent(raw)))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const encoded = buildRfc2822(toAddrs, subject, htmlBody);
 
     const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
       method: 'POST',
@@ -3457,11 +3507,16 @@ G.draftInGmail = async function() {
   }
 };
 
-// ✅ NOUVELLE FONCTION — encodage propre RFC2822
+// Helper UTF-8 → base64 (remplace unescape/encodeURIComponent deprecated)
+function toB64(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  bytes.forEach(b => bin += String.fromCharCode(b));
+  return btoa(bin);
+}
+
 function buildRfc2822(toAddrs, subject, htmlBody) {
-  // Encoder le sujet en base64 UTF-8 (RFC2047) pour gérer /  # etc.
-  const encSubject = '=?UTF-8?B?' + btoa(unescape(encodeURIComponent(subject))) + '?=';
-  
+  const encSubject = '=?UTF-8?B?' + toB64(subject) + '?=';
   const lines = [
     toAddrs.length ? `To: ${toAddrs.join(', ')}` : 'To: ',
     `Subject: ${encSubject}`,
@@ -3469,13 +3524,11 @@ function buildRfc2822(toAddrs, subject, htmlBody) {
     'Content-Type: text/html; charset=UTF-8',
     'Content-Transfer-Encoding: base64',
     '',
-    btoa(unescape(encodeURIComponent(htmlBody)))
+    toB64(htmlBody)
   ];
-  
+  // Le raw est tout ASCII ici (tout est déjà encodé) — btoa direct, pas de TextEncoder
   const raw = lines.join('\r\n');
-  // Encoder l'email entier en base64url pour l'API Gmail
-  return btoa(unescape(encodeURIComponent(raw)))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return btoa(raw).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 G.markRTS = function() {
   const isAssist = gv('f_rts_assist') === 'Assist';
@@ -3536,7 +3589,19 @@ window.addEventListener('resize', () => {
 // ══════════════════════════════════════
 //  UTILS
 // ══════════════════════════════════════
-function hashPin(pin){let h=5381;for(let i=0;i<pin.length;i++)h=((h<<5)+h)+pin.charCodeAt(i);return(h>>>0).toString(16);}
+// ── Ancien hash conservé UNIQUEMENT pour vérifier les réponses secrètes existantes ──
+function legacyHashPin(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h) + s.charCodeAt(i);
+  return (h >>> 0).toString(16);
+}
+
+// ── Nouveau hash sécurisé SHA-256 pour les PINs ──
+async function hashPin(pin, uid) {
+  const data = new TextEncoder().encode(uid + ':' + pin);
+  const buf  = await crypto.subtle.digest('SHA-256', data);
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 // ── WebAuthn / Biometric authentication ─────────────────────────────────────
 
@@ -3673,7 +3738,7 @@ G.confirmResetPin = async function() {
   const pin = document.getElementById('reset-pin-input').value;
   const errEl = document.getElementById('reset-pin-error');
   if (!/^\d{4}$/.test(pin)) { errEl.textContent = 'PIN must be exactly 4 digits.'; return; }
-  await update(ref(db, 'team/' + resetPinTargetId), { pinHash: hashPin(pin) });
+  await update(ref(db, 'team/' + resetPinTargetId), { pinHash: await hashPin(pin, resetPinTargetId) });
   closeModal('modal-reset-pin');
   setStatus('done', '✅ PIN updated successfully.');
 };
@@ -3683,37 +3748,6 @@ G.forceSetupPin = async function(id) {
   if (!confirm('This will ask the engineer to choose a new PIN on next login.')) return;
   await update(ref(db, 'team/' + id), { pinHash: 'SETUP_REQUIRED' });
   renderTeamAdminList();
-};
-
-// ── Forgot PIN (self-service par email) ──
-G.forgotPin = async function() {
-  if (!pendingUserToLogin) return;
-  const profile = pendingUserToLogin;
-  if (!profile.email) {
-    document.getElementById('pin-error').textContent = '❌ No email address on your profile — contact your admin.';
-    return;
-  }
-  const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-  const expires = Date.now() + 60 * 60 * 1000; // 1 heure
-  await update(ref(db, 'team/' + profile.id), { resetToken: token, resetTokenExpires: expires });
-  const resetUrl = window.location.origin + window.location.pathname + '?resetToken=' + token + '&uid=' + profile.id;
-  try {
-    await fetch('https://orange-snow-95f7.jeromepoupinel.workers.dev/send-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: profile.email,
-        subject: 'FAST Update — Reset your PIN',
-        html: `<p>Hi ${profile.name},</p><p>Click the link below to choose a new PIN. This link expires in 1 hour.</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you did not request this, ignore this email.</p>`
-      })
-    });
-    document.getElementById('pin-error').textContent = '';
-    document.getElementById('pin-subtitle').textContent = `✅ Email sent to ${profile.email} — check your inbox.`;
-    document.getElementById('btn-forgot-pin').style.display = 'none';
-    document.getElementById('pin-input').style.display = 'none';
-  } catch(e) {
-    document.getElementById('pin-error').textContent = '❌ Failed to send email: ' + e.message;
-  }
 };
 
 G.promptEditMember = async function(id) {
@@ -5360,18 +5394,7 @@ G.koGenerate = async function() {
           .replace(/\n/g,'<br>');
       }
       const htmlBody = `<html><body style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;white-space:pre-wrap">${formatEmailHtml(body)}</body></html>`;
-      const encSubject = '=?UTF-8?B?' + btoa(unescape(encodeURIComponent(subject))) + '?=';
-      const lines = [
-        toAddrs.length ? `To: ${toAddrs.join(', ')}` : 'To: ',
-        `Subject: ${encSubject}`,
-        'MIME-Version: 1.0',
-        'Content-Type: text/html; charset=UTF-8',
-        'Content-Transfer-Encoding: base64',
-        '',
-        btoa(unescape(encodeURIComponent(htmlBody)))
-      ];
-      const raw = lines.join('\r\n');
-      const encoded = btoa(unescape(encodeURIComponent(raw))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+      const encoded = buildRfc2822(toAddrs, subject, htmlBody);
 
       const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
         method: 'POST',
