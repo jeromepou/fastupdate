@@ -991,6 +991,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_broker"/> Broker for import — do they have one or should we use ours?</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_hours"/> Aircraft hours and cycles</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_po"/> Work Order (WO) or Purchase Order (PO) number</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_next_flight"/> Next scheduled flight date — confirm to help us prioritise the intervention</label>        
       </div>
 
       <div class="ko-section-lbl">Access & Logistics</div>
@@ -1457,6 +1458,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <h4>🔑 Logging in</h4>
       <ol>
         <li><strong>Engineers:</strong> tap your name on the login screen, then enter your 4-digit PIN.</li>
+        <li><strong>Biometric login (Face ID / Touch ID / Windows Hello):</strong> after your first successful PIN login on a supported device, a banner will offer to enable biometric authentication. Once set up, you can sign in with a single tap — no PIN required. You can enable or disable this at any time from your profile settings.</li>
         <li><strong>Admin:</strong> tap "Admin access" and sign in with the admin email/password. From there, "Manage Team" lets you create, edit or remove engineer profiles and reset PINs.</li>
       </ol>
     </div>
@@ -1464,68 +1466,74 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div class="help-section">
       <h4>📄 Filling in a project</h4>
       <ol>
-        <li><strong>Step 1 — PDF upload (optional):</strong> drop an RFS, Work Order Detail or WCR PDF and tap "Extract data" — fields and work items are filled in automatically.</li>
-        <li><strong>Steps 2-3:</strong> check or complete the aircraft details and work items.</li>
-        <li><strong>Step 4 — Daily updates:</strong> tap "+ Today" to add a day. Check off each item you worked on, set its status, and add a note. Toggle "A/C RTS" on the day the aircraft returns to service. The progress bar on each day card shows how many items are checked.</li>
-        <li><strong>Parts:</strong> paste an email thread or upload its PDF, then tap "Extract parts from email" to auto-detect part numbers and serials — review and confirm before they're added.</li>
-        <li><strong>Steps 5-6:</strong> closing details, lead engineer, colleagues and customer info.</li>
+        <li><strong>Step 1 — PDF upload (optional):</strong> drop an RFS, Work Order Detail or WCR PDF and tap "Extract data" — aircraft fields and work items are filled in automatically.</li>
+        <li><strong>Steps 2–3 — Aircraft details &amp; work items:</strong> check or complete the aircraft information, registration, ICAO, estimated RTS, next flight date, and the list of work items (squawks).</li>
+        <li><strong>Step 4 — Daily updates:</strong> tap "+ Today" to add a day. Check off each work item you worked on, set its status (In Progress, Awaiting Parts, Complete…), and add a free-text note. Toggle "A/C RTS" on the day the aircraft returns to service. The progress bar on each day card shows how many items are checked.</li>
+        <li><strong>Parts (optional):</strong> paste an email thread into the text area or upload it as a PDF, then tap "Extract parts from email" — part numbers, serials and descriptions are detected automatically. Review and confirm before they are added to the parts replaced list.</li>
+        <li><strong>Step 5 — Closing details:</strong> job description suffix for the email subject, estimated RTS, next flight, return date and time, and any additional constraints or information.</li>
+        <li><strong>Step 6 — Onsite engineers &amp; customer:</strong> you are automatically listed as Lead Engineer. Add colleagues as needed. Fill in the customer name, phone, and email for the FAST Update table footer.</li>
       </ol>
     </div>
 
     <div class="help-section">
-      <h4>📧 Sending the update</h4>
+      <h4>📧 Sending the FAST Update</h4>
       <ol>
-        <li>Tap "Generate FAST Update table" to build the final table — this is exactly what gets sent, in the company's fixed format.</li>
-        <li>"Copy table" copies it for pasting into any email client.</li>
-        <li>"Draft in Gmail" creates a ready-to-send Gmail draft directly — this requires signing in with your Google account once (separate from your engineer PIN).</li>
+        <li>Tap <strong>"Generate FAST Update table"</strong> to build the final table — this is exactly what gets sent, in the company's fixed format.</li>
+        <li><strong>"Copy table"</strong> copies it to your clipboard for pasting into any email client.</li>
+        <li><strong>"Draft in Gmail"</strong> creates a ready-to-send Gmail draft directly — requires signing in with your Google account once (separate from your engineer PIN).</li>
       </ol>
     </div>
 
     <div class="help-section">
-      <h4>🚀 Start Job — Generate your Customer Update, Part Request, Travel and FBO emails</h4>
-      <p>The <strong>Start Job</strong> button appears in the engineer bar once you are logged in. It opens a dedicated panel that lets you configure and generate up to 4 Gmail draft emails in one click, covering everything you need to send at the start of a new AOG intervention — customer introduction, travel booking, parts order, and FBO coordination.</p>
-      <p>You can also launch Start Job directly from any project card in the project list (active or archived) using the 🚀 button — the aircraft details are pre-filled automatically from that project.</p>
+      <h4>🚀 Start Job — Customer Update, Part Request, Travel and FBO emails</h4>
+      <p>The <strong>Start Job</strong> button appears in the engineer bar once you are logged in. It opens a dedicated panel to configure and generate up to 4 Gmail draft emails in one click — customer introduction, travel booking, parts order, and FBO coordination.</p>
+      <p>You can also launch Start Job directly from any project card using the 🚀 button — the aircraft details are pre-filled automatically from that project.</p>
 
       <h4 style="margin-top:1rem">✈️ Aircraft info</h4>
-      <p>Fill in the aircraft type, MSN, registration, Work Order number, ICAO airport code, and a brief defect description. These fields populate the subject lines and body of all four draft emails automatically. The ICAO field also pre-fills the Travel "To" destination.</p>
-      <p>The <strong>Customer contact name</strong> field is used in the greeting line of the Customer Update email ("Dear [name],").</p>
+      <p>Fill in the aircraft type, MSN, registration, Work Order number, ICAO airport code, and a brief defect description. These fields populate the subject lines and body of all four draft emails. The ICAO field also pre-fills the Travel "To" destination.</p>
+      <p>The <strong>Customer contact name</strong> field is used in the greeting line of the Customer Update email ("Dear [name],"). The <strong>work items</strong> entered here are also the squawks available for assignment in the parts table and for the per-item troubleshooting questions.</p>
 
       <h4 style="margin-top:1rem">📬 Recipients per draft</h4>
       <p>Each of the four drafts has its own recipient list. <strong>Blue locked tags</strong> are fixed recipients set by your admin — you cannot remove them. <strong>White tags</strong> are extras you add yourself for this job only.</p>
       <p>The <strong>⭐ Qatar Executive</strong> toggle adds a specific set of additional recipients to the Customer Update and Part Request drafts — use it when the operator is Qatar Executive.</p>
       <p>Part Request recipients are also adjusted automatically based on your parts list: adding a Tool row adds the Tool Crib address; adding a Consumable row adds the Stores address.</p>
 
+      <h4 style="margin-top:1rem">👷 Preparing for a colleague</h4>
+      <p>Toggle <strong>"I am preparing this job for a colleague"</strong> to change the email tone from first-person to third-person ("Our engineer will be on site…"). Select the colleague's name from the dropdown — their details are used in the email introduction. If the travelling engineer is not yet decided, select "Not decided yet" and a generic placeholder phrase is used. When a colleague is selected, tool rows in the parts table reference their FN number instead of yours for the GUL request.</p>
+
       <h4 style="margin-top:1rem">📧 Customer Update</h4>
-      <p>This email introduces you to the customer and opens communication for the intervention. It includes:</p>
+      <p>This email introduces the engineer to the customer and opens communication for the intervention. It includes:</p>
       <ul>
         <li>A personalised greeting using the customer contact name you entered.</li>
-        <li>A statement of the defect and your action plan — either typed manually in the Action plan field, or a generic line if left blank.</li>
-        <li>Your <strong>ETA on site</strong> — if filled in, it is included as a sentence. Leave it blank or write N/A to omit it. Write UNK for a generic "I will keep you informed" line.</li>
-        <li>A list of <strong>questions to include</strong> — tick only the ones relevant to this job: broker for import, aircraft hours and cycles, PO number, keys location, FBO access authorisation, airside access, local contact, troubleshooting already done, CAS messages, FHDB download, Techops reply, self-sourced parts certificates, hand carry approval, order before or after diagnosis.</li>
-        <li>For troubleshooting questions (CAS, FHDB, Techops, previous troubleshooting): if you tick the question AND then select specific work items in the sub-list that appears, the question is asked once per selected item — e.g. "Regarding item 2.1 (APU FAIL) — has any troubleshooting been carried out?". If no item is selected, the question is asked generically.</li>
-        <li>Your <strong>own saved custom questions</strong> — add any recurring question you always ask (saved permanently to your profile, invisible to other engineers). Tick the ones to include per job.</li>
+        <li>A statement of the defect and an action plan — either typed manually in the Action plan field, or a generic line if left blank.</li>
+        <li>Your <strong>ETA on site</strong> — if filled in, it appears as a sentence. Leave blank or write N/A to omit it. Write UNK for a generic "I will keep you informed" line.</li>
+        <li>A list of <strong>questions to include</strong> — tick only the ones relevant to this job. Available questions: broker for import, aircraft hours and cycles, PO/WO number, <strong>next scheduled flight</strong> (pre-filled from the project's "Next Flight" field if available), keys location, FBO name, FBO authorisation email, airside access details, local contact/crew details, troubleshooting already carried out, CAS messages / CMC faults, FHDB downloaded, Techops reply received, self-sourced parts certificates, hand carry approval, order before or after confirmed diagnosis.</li>
+        <li>For troubleshooting questions (CAS, FHDB, Techops, previous troubleshooting): if you tick the question AND select specific work items in the sub-list that appears, the question is asked once per selected squawk — e.g. "Regarding item 2.1 (APU FAIL) — has any troubleshooting been carried out?". If no item is selected, the question is asked generically.</li>
+        <li>Your <strong>own saved custom questions</strong> — add any recurring question you always ask via the "My custom questions" section (saved permanently to your profile, invisible to other engineers). Tick the ones to include per job.</li>
         <li>A free-text field for any other one-off question, one per line.</li>
         <li>Your email signature, built automatically from your profile (name, mobile number, Head-start contact).</li>
       </ul>
 
       <h4 style="margin-top:1rem">✈️ Travel Request</h4>
-      <p>This email asks OPS to book your flight to the aircraft location. Configure it with:</p>
+      <p>This email asks OPS to book the flight to the aircraft location. Configure it with:</p>
       <ul>
-        <li><strong>From / To / Date</strong> — your departure city (pre-filled from your profile home base), destination ICAO or city, and desired travel date.</li>
+        <li><strong>From / To / Date</strong> — departure city (pre-filled from your profile home base), destination ICAO or city, and desired travel date.</li>
         <li><strong>Preferred time of departure</strong> — Morning, Afternoon, Evening, Night, or Any time. Tap again to deselect.</li>
         <li><strong>Cabin class</strong> — Economy and Business, Economy only, or Business only.</li>
-        <li><strong>Extra baggage</strong> — toggle on if you are carrying tools and need 2 checked bags.</li>
-        <li><strong>Frequent flyer numbers</strong> — add your airline loyalty numbers once (saved permanently to your profile). They appear in the email automatically whenever they are filled in. You can add or remove airlines at any time.</li>
+        <li><strong>Extra baggage</strong> — toggle on if carrying tools and needing 2 checked bags.</li>
+        <li><strong>Frequent flyer numbers</strong> — add airline loyalty numbers once (saved permanently to your profile). They appear in the email automatically. You can add or remove airlines at any time.</li>
       </ul>
       <p>Tick <strong>"Aircraft is at my home base"</strong> to skip this draft entirely — it will be marked as Skipped and not created in Gmail.</p>
 
       <h4 style="margin-top:1rem">📦 Part Request</h4>
       <p>This email requests parts, consumables, and/or tools from the Materials team. Configure it with:</p>
       <ul>
-        <li><strong>Email prefix</strong> — choose between PART REQUEST, PARTS REQUEST, PART &amp; TOOL REQUEST, or PARTS &amp; TOOLS REQUEST. This sets the start of the email subject line.</li>
+        <li><strong>Email prefix</strong> — choose between PART REQUEST, PARTS REQUEST, PART &amp; TOOL REQUEST, or PARTS &amp; TOOLS REQUEST.</li>
         <li><strong>Request type</strong> — Order (place the order immediately) or Availability only (check stock and lead time before committing).</li>
-        <li><strong>Parts &amp; tools table</strong> — add one row per item. For each row, fill in the description, part number, serial number (or GUL number for tools), quantity, category (Part / Consumable / Tool), and an optional note. Consumable rows disable the serial number field automatically. Tool rows add a specific note field for the GUL reference.</li>
+        <li><strong>Parts &amp; tools table</strong> — add one row per item. For each row, fill in the description, part number, serial number off aircraft (or GUL number for tools), quantity, category (Part / Consumable / Tool), an optional note, and the squawk the item belongs to. Consumable rows disable the serial number field. Tool rows add a GUL reference note field.</li>
+        <li><strong>Squawk assignment per row</strong> — each row has a squawk selector. Parts are then grouped by squawk in the email body, making it easier for Materials to match orders to work items. Use the <strong>bulk assignment bar</strong> (select multiple rows with their checkboxes, then pick a squawk) to assign several parts at once.</li>
         <li>For <strong>Consumables</strong>, a "small quantity — avoid DG" checkbox avoids dangerous goods classification for small shipments.</li>
+        <li><strong>Avoid NFF clause</strong> — tick to include a sentence asking Materials to favour overhauled or repaired units over new ones, to reduce the risk of No Fault Found returns.</li>
         <li><strong>Priority warehouse</strong> — optionally ask Materials to check a specific warehouse first (Savannah, Farnborough, Amsterdam, Singapore).</li>
         <li><strong>Certificates, hand carry approval</strong> — tick to include the relevant sentences in the email.</li>
         <li><strong>Shipping address</strong> — either "Will be provided shortly" (default) or enter the full FBO address manually.</li>
@@ -1533,45 +1541,45 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       </ul>
 
       <h4 style="margin-top:1rem">🏢 FBO Coordination</h4>
-      <p>This email contacts the FBO at the aircraft location to introduce yourself and arrange ground support. Configure it with:</p>
+      <p>This email contacts the FBO at the aircraft location to introduce the engineer and arrange ground support. Configure it with:</p>
       <ul>
-        <li><strong>Equipment checklist</strong> — tick what you need the FBO to provide: GPU (115Vac), Oxygen, Nitrogen (High or Low pressure), Steps/Airstair, Hangar space, Lavatory service, High Power Bay. A free-text field lets you add anything else.</li>
-        <li><strong>Optional questions</strong> — tick to include: how many days they need to arrange it, a note that the intervention is pending authorisation, a request for their shipping address (for parts delivery), or a request to act as importer of record for imported parts. Add further custom questions in the free-text field.</li>
+        <li><strong>Equipment checklist</strong> — tick what you need the FBO to provide: GPU (115 Vac / 28 Vdc), Oxygen, Nitrogen (High or Low pressure), Steps / Airstair (standard or engine-height), Hangar space, Lavatory service, High Power Bay. A free-text field lets you add anything else.</li>
+        <li><strong>Co-engineers on site</strong> — if other FAST engineers will be present, add their names here. They are listed in the FBO email introduction so the FBO knows who to expect.</li>
+        <li><strong>Optional questions</strong> — tick to include: how many days advance notice they need, a note that the intervention is pending authorisation, a request for their parts delivery shipping address, a request to act as importer of record for imported parts, a transport / ground transfer request (reveals an optional planned arrival time field), a request for their access documentation requirements, or a request for their toolbox / equipment documentation requirements. Add further custom questions in the free-text field.</li>
+        <li><strong>Documents to attach</strong> — tick which of your personal documents you plan to attach to this email: Passport, Photo ID, IBAC / IS-BAO card, Engineer licence, Company authorisation letter, Toolbox list, Visa. Ticked items appear as a list at the bottom of the FBO email so the FBO knows what you are sending.</li>
       </ul>
 
       <h4 style="margin-top:1rem">📨 Preview, edit &amp; generate</h4>
-      <p>At the bottom of the panel, the <strong>Drafts to generate</strong> section shows all four emails with their subject lines and recipient summaries. Tap any row to open an inline editable preview — you can manually adjust the subject and body before generating. Tap <strong>🔄 Reset</strong> to restore the auto-generated version if you want to start over.</p>
+      <p>At the bottom of the panel, the <strong>Drafts to generate</strong> section shows all four emails with their subject lines and recipient summaries. Tap any row to open an inline editable preview — you can manually adjust the subject and body before generating. Tap <strong>🔄 Reset</strong> to restore the auto-generated version at any time.</p>
       <p>Click <strong>Generate Gmail drafts</strong> to create all drafts in your Gmail Drafts folder in one click. You will be prompted to sign in with Google if not already connected. The Travel draft is skipped automatically if you ticked the home base option.</p>
       <p>Your panel state (checkboxes, toggles, selections, text fields) is saved to your profile automatically and restored the next time you open Start Job, even from a different device. The saved state expires after 5 days.</p>
 
       <h4 style="margin-top:1rem">🔧 Parts history — search past interventions</h4>
-      <p>Every time you click <strong>Generate Gmail drafts</strong>, the parts and tools you entered are automatically saved to a shared database, indexed by the squawk description, aircraft type, serial number, and Work Order number. This builds up a searchable history of parts used across all past interventions by all engineers on the team.</p>
-      <p>To use it, go to the <strong>Parts &amp; tools list</strong> section inside Start Job, then use the <strong>🔍 Search squawk history</strong> bar at the top of the table:</p>
+      <p>Every time you click <strong>Generate Gmail drafts</strong>, the parts and tools you entered are automatically saved to a shared database, indexed by squawk description, aircraft type, serial number, and Work Order number. This builds a searchable history of parts used across all past interventions by all engineers on the team.</p>
+      <p>To use it, go to the <strong>Parts &amp; tools list</strong> section inside Start Job, then use the <strong>🔍 Search squawk history</strong> bar at the top of the table. You can search in two ways:</p>
       <ul>
-        <li>Select one of your current work items from the dropdown — this is the squawk you want to find historical parts for.</li>
-        <li>Click <strong>🔍 Search</strong>. The system compares the keywords in your squawk description against all previously saved entries.</li>
-        <li>A popup opens showing the best matches. Each result displays: the squawk text, aircraft type, serial number, <strong>Work Order number (FAXXXXX)</strong>, who entered the data, how many times those parts were used, and the last date used.</li>
-        <li>Results are split into two groups: <strong>Same aircraft type</strong> (highest confidence — same model as the current job) and <strong>Other aircraft types</strong> (collapsed by default — expand only if no same-type result is found, and always verify P/N applicability).</li>
-        <li>Each result lists the parts, tools, and consumables that were used. Tick the ones you want to add and click <strong>✓ Add selected to parts list</strong> — they are inserted directly into the parts table.</li>
+        <li><strong>Dropdown search:</strong> select one of your current work items — the system compares its keywords against all saved entries and shows the best matches.</li>
+        <li><strong>Free-text search:</strong> type any keyword directly into the search field to find entries across all past jobs regardless of your current squawk list.</li>
       </ul>
+      <p>The results popup shows: squawk text, aircraft type, serial number, <strong>Work Order (FAXXXXX)</strong>, engineer who entered the data, number of times those parts were used, and last date used. Results are split into <strong>Same aircraft type</strong> (highest confidence) and <strong>Other aircraft types</strong> (collapsed by default — always verify P/N applicability before using). Tick the parts you want and click <strong>✓ Add selected to parts list</strong> to insert them directly into the table.</p>
       <p><strong>Important:</strong> the history is a starting point only. Always cross-check any suggested part number against the current AMM, IPC, and applicable release documentation before ordering or installing.</p>
-    </div>	  
+    </div>
 
     <div class="help-section">
-      <h4>☁️ Cloud sync & archives</h4>
-      <p>All data is saved to Firebase in real time, accessible from any device. Mark a project as RTS to move it to Archives — it stays accessible but separate from your active projects.</p>
+      <h4>☁️ Cloud sync &amp; archives</h4>
+      <p>All project data is saved to Firebase in real time and is accessible from any device. Mark a project as RTS to move it to Archives — it stays fully accessible but is separated from your active projects list.</p>
     </div>
 
     <div class="help-section">
       <h4>📱 Install on your phone</h4>
       <p><strong>Android (Chrome):</strong> open the site, tap the ⋮ menu, then "Add to Home screen" or "Install app".</p>
       <p><strong>iPhone (Safari):</strong> open the site, tap the Share icon, then "Add to Home Screen".</p>
-      <p>Once installed, the app opens full-screen from your home screen, just like a native app.</p>
+      <p>Once installed, the app opens full-screen from your home screen, just like a native app. Biometric login works once installed on both platforms.</p>
     </div>
 
     <div class="help-section">
       <h4>🔒 Security</h4>
-      <p>Data is stored in Firebase Realtime Database with authentication. Only verified users (admin + engineers via PIN) can access data. PDF extraction is processed through a private Cloudflare Worker — your API key is never exposed in the app. All traffic is encrypted (HTTPS).</p>
+      <p>Data is stored in Firebase Realtime Database with authentication — only verified users (admin + engineers via PIN or biometric) can access it. Biometric login uses your device's secure enclave (WebAuthn / FIDO2) — no biometric data is ever sent to the server. PDF and email extraction is processed through a private Cloudflare Worker — your API key is never exposed in the app. All traffic is encrypted (HTTPS).</p>
     </div>
 
     <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-help')">Close</button></div>
@@ -4041,7 +4049,7 @@ async function koSaveState() {
     'kofbo_gpu','kofbo_oxygen','kofbo_nitrogen_hp','kofbo_nitrogen_lp',
     'kofbo_steps','kofbo_steps_engine','kofbo_hangar','kofbo_lavatory','kofbo_hpbay',
     'kofbo_q_days','kofbo_q_confirm','kofbo_q_shipping','kofbo_q_parts_delivery','kofbo_q_importer','kofbo_q_transport','kofbo_q_access_docs','kofbo_q_toolbox_docs',
-    'koq_broker','koq_hours','koq_po','koq_keys','koq_fbo_name','koq_fbo_mail',
+    'koq_broker','koq_hours','koq_po','koq_next_flight','koq_keys','koq_fbo_name','koq_fbo_mail',
     'koq_contact','koq_troubleshoot','koq_cas','koq_fhdb',
     'koq_techops','koq_self_parts','koq_handcarry','koq_order_before_tshoot',
     'kofbo_doc_passport','kofbo_doc_photo','kofbo_doc_ibac',
@@ -4898,6 +4906,13 @@ function koBuildCustomerBody() {
   if (q('koq_broker')) questions.push(`- Do you have a broker to handle the import of parts${icao ? ' into ' + icao : ''}? If yes, please provide their details. If not, we can use our own.`);
     if (q('koq_hours'))  questions.push('- Could you please provide the aircraft total time (hours) and cycles?');
   if (q('koq_po'))     questions.push('- Do you have a Work Order (WO) or Purchase Order (PO) number for this input?');
+  if (q('koq_next_flight')) {
+    const nxt = (document.getElementById('f_nxt')?.value || '').trim();
+    questions.push(nxt && nxt.toUpperCase() !== 'UNKWN'
+      ? `- Could you please confirm the next scheduled flight? (Currently on record: ${nxt} — please correct if no longer accurate.)`
+      : `- Could you please confirm the next scheduled flight date and destination? This will help us prioritise the intervention.`
+    );
+  }  
   if (q('koq_keys'))   questions.push('- Location of the aircraft keys');
   if (q('koq_fbo_name')) questions.push(`- Could you please provide the name of the FBO handling the aircraft at ${icao || '[ICAO]'}?`);
   if (q('koq_fbo_mail')) questions.push(`- Could you please send an authorisation email to the FBO at ${icao || '[ICAO]'} confirming our upcoming maintenance intervention?`);
@@ -6243,7 +6258,7 @@ G.koNewJob = async function() {
     'kofbo_gpu','kofbo_oxygen','kofbo_nitrogen_hp','kofbo_nitrogen_lp',
     'kofbo_steps','kofbo_steps_engine','kofbo_hangar','kofbo_lavatory','kofbo_hpbay',
     'kofbo_q_days','kofbo_q_confirm','kofbo_q_shipping','kofbo_q_parts_delivery','kofbo_q_importer','kofbo_q_transport','kofbo_q_access_docs','kofbo_q_toolbox_docs',
-    'koq_broker','koq_hours','koq_po','koq_keys','koq_fbo_name','koq_fbo_mail',
+    'koq_broker','koq_hours','koq_po','koq_next_flight','koq_keys','koq_fbo_name','koq_fbo_mail',
     'koq_contact','koq_troubleshoot','koq_cas','koq_fhdb',
     'koq_techops','koq_self_parts','koq_handcarry','koq_order_before_tshoot',
     'kofbo_doc_passport','kofbo_doc_photo','kofbo_doc_ibac',
