@@ -23,7 +23,8 @@ header h1{font-size:15px;font-weight:600;flex:1}
 .badge-ko{background:var(--rl);border:1px solid #e8b8a0;color:var(--red)}
 .badge-warn{background:var(--al);border:1px solid #d4b800;color:var(--amb)}
 .badge-blue{background:var(--bl);border:1px solid #b8d0e8;color:var(--blue)}
-.main{max-width:860px;margin:0 auto;padding:1.25rem 1rem 5rem}
+.badge-new{background:#d4f0d4;border:1px solid var(--gb);color:var(--gd);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;display:inline-flex;align-items:center}
+.main{max-width:900px;margin:0 auto;padding:1.25rem 1rem 5rem}
 .card{background:#fff;border-radius:12px;border:1px solid var(--g200);box-shadow:var(--sh);margin-bottom:1rem;overflow:hidden}
 .card-head{padding:10px 1.25rem;border-bottom:1px solid var(--g200);display:flex;align-items:center;gap:10px;background:var(--g50)}
 .card-head h2{font-size:13px;font-weight:700;color:var(--g800);flex:1}
@@ -32,6 +33,8 @@ header h1{font-size:15px;font-weight:600;flex:1}
 .btn:hover{background:var(--g100)}
 .btn.primary{background:var(--gd);color:#fff;border-color:var(--gd)}
 .btn.primary:hover{background:var(--gm)}
+.btn.merge{background:var(--amb);color:#fff;border-color:var(--amb)}
+.btn.merge:hover{background:#5e4600}
 .btn.danger{background:var(--rl);color:var(--red);border-color:#e8b8a0}
 .btn.danger:hover{background:#fce8df}
 .btn:disabled{opacity:.4;cursor:not-allowed}
@@ -42,14 +45,17 @@ header h1{font-size:15px;font-weight:600;flex:1}
 .s-load{background:var(--bl);color:var(--blue);border:1px solid #b8d0e8}
 .s-done{background:var(--gl);color:var(--gd);border:1px solid var(--gb)}
 .s-err{background:var(--rl);color:var(--red);border:1px solid #e8b8a0}
-.entry{border:1px solid var(--g200);border-radius:var(--r);margin-bottom:8px;overflow:visible;background:#fff;transition:opacity .2s}
-.entry.rejected{opacity:.45}
-.entry-head{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--g50);cursor:pointer;position:relative}
+.entry{border:1px solid var(--g200);border-radius:var(--r);margin-bottom:8px;background:#fff;transition:opacity .2s}
+.entry.rejected{opacity:.4}
+.entry.has-history{border-color:var(--gb);border-width:2px}
+.entry-head{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--g50);cursor:pointer;border-radius:var(--r) var(--r) 0 0}
 .entry-body{display:none;padding:12px;border-top:1px solid var(--g200)}
 .entry-body.open{display:block}
-.part-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+.part-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}
 .part-table th{padding:5px 8px;text-align:left;font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;background:var(--g100);border-bottom:1px solid var(--g200)}
 .part-table td{padding:6px 8px;border-bottom:1px solid var(--g200);vertical-align:top}
+.row-new{background:#f0faf0}
+.row-known{opacity:.45;background:var(--g50)}
 .squawk-input{width:100%;font-size:12px;font-weight:600;padding:4px 8px;border:1px solid var(--g200);border-radius:var(--r);color:var(--g800);font-family:inherit}
 .squawk-input:focus{outline:2px solid var(--gm);border-color:var(--gm)}
 .action-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
@@ -63,6 +69,11 @@ header h1{font-size:15px;font-weight:600;flex:1}
 .cat-part{color:var(--gd);background:var(--gl);border:1px solid var(--gb);border-radius:20px;font-size:10px;font-weight:700;padding:1px 7px}
 .cat-tool{color:var(--amb);background:var(--al);border:1px solid #d4b800;border-radius:20px;font-size:10px;font-weight:700;padding:1px 7px}
 .cat-cons{color:var(--blue);background:var(--bl);border:1px solid #b8d0e8;border-radius:20px;font-size:10px;font-weight:700;padding:1px 7px}
+.section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--g600);margin:12px 0 4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.known-toggle{font-size:10px;color:var(--blue);cursor:pointer;text-decoration:underline;margin-left:auto}
+.known-section{display:none;margin-top:4px}
+.known-section.open{display:block}
+.history-banner{background:var(--gl);border:1px solid var(--gb);border-radius:6px;padding:8px 12px;font-size:12px;color:var(--gd);margin-bottom:12px;display:flex;align-items:center;gap:8px}
 </style>
 </head>
 <body>
@@ -108,7 +119,7 @@ header h1{font-size:15px;font-weight:600;flex:1}
 <script type="module">
 import { initializeApp }           from "https://www.gstatic.com/firebasejs/11.9.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-auth.js";
-import { getDatabase, ref, get, set, remove, update } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-database.js";
+import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA5PS5Dy-RJJTC71DX2wiBm83yl4D98cFI",
@@ -124,8 +135,13 @@ const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getDatabase(app);
 
-let pendingEntries = {}; // key → entry
+let pendingEntries = {};
+let historyByFA    = {}; // faNumber → { knownPNs: Set, latestKey, latestEntry }
 let stats = { pending: 0, validated: 0, rejected: 0 };
+
+const STOP = new Set(['AND','OR','THE','A','AN','OF','FOR','TO','IN','ON','AT','WITH','BY','IS','ARE','WAS','HAS','HAVE','NOT','NO','BE','AS','FROM','THAT','THIS','IT']);
+const tokenize = s => [...new Set(s.toUpperCase().replace(/[^A-Z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>2&&!STOP.has(w)))];
+const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
 // ── AUTH ──────────────────────────────────────────────────
 window.doLogin = async function() {
@@ -134,19 +150,42 @@ window.doLogin = async function() {
   setAuthStatus('load','<span class="spin"></span> Signing in…');
   try {
     await signInWithEmailAndPassword(auth, email, pass);
-    setAuthStatus('done','✅ Signed in — loading pending entries…');
+    setAuthStatus('done','<span class="spin"></span> Signed in — loading data…');
     document.getElementById('auth-badge').textContent = 'Connected';
     document.getElementById('auth-badge').className = 'badge badge-ok';
-    await loadPending();
+    await loadData();
   } catch(e) {
     setAuthStatus('err','❌ ' + e.message);
   }
 };
 
-// ── LOAD PENDING ──────────────────────────────────────────
-async function loadPending() {
-  const snap = await get(ref(db, 'squawkPending'));
-  pendingEntries = snap.exists() ? snap.val() : {};
+// ── LOAD DATA (pending + history en parallèle) ───────────
+async function loadData() {
+  const [pendingSnap, historySnap] = await Promise.all([
+    get(ref(db, 'squawkPending')),
+    get(ref(db, 'squawkHistory'))
+  ]);
+
+  pendingEntries = pendingSnap.exists() ? pendingSnap.val() : {};
+  const history  = historySnap.exists() ? historySnap.val() : {};
+
+  // Construire historyByFA : par numéro FA → PNs connus + entrée la plus récente
+  historyByFA = {};
+  for (const [hKey, hEntry] of Object.entries(history)) {
+    const fa = hEntry.faNumber;
+    if (!fa) continue;
+    if (!historyByFA[fa]) {
+      historyByFA[fa] = { knownPNs: new Set(), latestKey: hKey, latestEntry: hEntry };
+    }
+    const allParts = [...(hEntry.parts||[]), ...(hEntry.tools||[]), ...(hEntry.consumables||[])];
+    allParts.forEach(p => { if (p.pn) historyByFA[fa].knownPNs.add(p.pn); });
+    // Garder l'entrée la plus récente (pour le merge)
+    if ((hEntry.lastUsed||0) > (historyByFA[fa].latestEntry.lastUsed||0)) {
+      historyByFA[fa].latestKey   = hKey;
+      historyByFA[fa].latestEntry = hEntry;
+    }
+  }
+
   stats.pending = Object.keys(pendingEntries).length;
   updateStats();
   document.getElementById('section-review').style.display = '';
@@ -158,74 +197,141 @@ async function loadPending() {
 function renderEntries() {
   const list = document.getElementById('entry-list');
   const keys = Object.keys(pendingEntries);
-  document.getElementById('pending-count').textContent = keys.length + ' entries';
+  document.getElementById('pending-count').textContent = keys.length + ' entr' + (keys.length > 1 ? 'ies' : 'y');
 
   if (!keys.length) {
     list.innerHTML = `<div class="empty-state"><div class="icon">✅</div><p>All done — nothing pending.</p></div>`;
     return;
   }
 
-  list.innerHTML = keys.map(key => {
-    const r = pendingEntries[key];
-    const allParts = [...(r.parts||[]), ...(r.tools||[]), ...(r.consumables||[])];
-    const total = allParts.length;
-    const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  list.innerHTML = keys.map(key => buildEntryHTML(key)).join('');
+}
 
-    const partRows = allParts.map(p => {
-      const catClass = p.cat === 'Part' ? 'cat-part' : p.cat === 'Tool' ? 'cat-tool' : 'cat-cons';
-      return `<tr>
-        <td><span class="${catClass}">${p.cat||'Part'}</span></td>
-        <td style="font-weight:600">${esc(p.name)}</td>
-        <td style="font-family:monospace">${esc(p.pn)}</td>
-        <td style="font-family:monospace;color:var(--g600)">${esc(p.sn)}</td>
-        <td style="color:var(--g600)">${esc(p.qty)}</td>
-      </tr>`;
-    }).join('');
+function splitByHistory(arr, knownPNs) {
+  const newOnes   = (arr||[]).filter(p => !p.pn || !knownPNs.has(p.pn));
+  const knownOnes = (arr||[]).filter(p =>  p.pn &&  knownPNs.has(p.pn));
+  return { newOnes, knownOnes };
+}
 
-    return `<div class="entry" id="entry-${key}">
-      <div class="entry-head" onclick="toggleEntry('${key}')">
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
-            <span style="font-size:13px;font-weight:700;color:var(--gd)">${esc(r.faNumber)}</span>
-            <span style="font-size:11px;color:var(--blue)">${esc(r.acModel||'')} ${r.acSN?'#'+r.acSN:''} ${r.acReg&&r.acReg!=='UNK'?r.acReg:''} ${r.station?'@ '+r.station:''}</span>
-          </div>
-          <div style="font-size:11px;color:var(--g400);margin-top:2px">${esc(r.emailDate||'')} · ${total} part(s)</div>
-        </div>
-        <span id="chev-${key}" style="font-size:11px;color:var(--g400)">▼</span>
-      </div>
-
-      <div class="entry-body" id="body-${key}">
-        <!-- Squawk -->
-        <div style="margin-bottom:12px">
-          <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Squawk</div>
-          <input class="squawk-input" id="squawk-${key}" value="${esc(r.squawkRaw||'')}" placeholder="Enter squawk description…"/>
-          <div style="font-size:11px;color:var(--g400);margin-top:3px">Leave blank to store parts under ${esc(r.faNumber)} without a squawk label.</div>
-        </div>
-
-        <!-- Parts table -->
-        ${total ? `<div style="overflow-x:auto">
-          <table class="part-table">
-            <thead><tr>
-              <th>Cat</th><th>Nomenclature</th><th>PN</th><th>SN</th><th>Qty</th>
-            </tr></thead>
-            <tbody>${partRows}</tbody>
-          </table>
-        </div>` : `<div style="font-size:12px;color:var(--g400)">No parts extracted.</div>`}
-
-        <!-- Email source -->
-        <div style="margin-top:10px;font-size:11px;color:var(--g400)">${esc(r.emailSubject||'')}</div>
-
-        <!-- Actions -->
-        <div class="action-row">
-          <button class="btn primary" onclick="validateEntry('${key}')">✅ Validate → Firebase</button>
-          <button class="btn danger"  onclick="rejectEntry('${key}')">🗑️ Reject</button>
-        </div>
-      </div>
-    </div>`;
+function buildRows(arr, rowClass) {
+  return arr.map(p => {
+    const catClass = p.cat === 'Tool' ? 'cat-tool' : p.cat === 'Consumable' ? 'cat-cons' : 'cat-part';
+    return `<tr class="${rowClass}">
+      <td><span class="${catClass}">${esc(p.cat||'Part')}</span></td>
+      <td style="font-weight:600">${esc(p.name)}</td>
+      <td style="font-family:monospace;font-size:11px">${esc(p.pn)}</td>
+      <td style="font-family:monospace;font-size:11px;color:var(--g600)">${esc(p.sn)}</td>
+      <td style="color:var(--g600);text-align:right">${esc(p.qty)}</td>
+    </tr>`;
   }).join('');
 }
 
-// ── TOGGLE ────────────────────────────────────────────────
+function buildCategorySection(label, emoji, sp, key) {
+  if (!sp.newOnes.length && !sp.knownOnes.length) return '';
+  const sectionId = `known-${key}-${label}`;
+  return `
+    <div class="section-label">
+      ${emoji} ${label}
+      <span class="badge-new">${sp.newOnes.length} new</span>
+      ${sp.knownOnes.length ? `<span class="known-toggle" onclick="toggleKnown(event,'${sectionId}')">+ ${sp.knownOnes.length} already in history</span>` : ''}
+    </div>
+    ${sp.newOnes.length
+      ? `<div style="overflow-x:auto"><table class="part-table">
+          <thead><tr><th>Cat</th><th>Nomenclature</th><th>PN</th><th>SN</th><th>Qty</th></tr></thead>
+          <tbody>${buildRows(sp.newOnes, 'row-new')}</tbody>
+         </table></div>`
+      : `<div style="font-size:11px;color:var(--g400);padding:4px 8px">No new ${label.toLowerCase()}.</div>`
+    }
+    ${sp.knownOnes.length ? `
+      <div class="known-section" id="${sectionId}">
+        <div style="overflow-x:auto"><table class="part-table">
+          <thead><tr><th>Cat</th><th>Nomenclature</th><th>PN</th><th>SN</th><th>Qty</th></tr></thead>
+          <tbody>${buildRows(sp.knownOnes, 'row-known')}</tbody>
+        </table></div>
+      </div>` : ''}`;
+}
+
+function buildEntryHTML(key) {
+  const r = pendingEntries[key];
+  const fa = r.faNumber;
+  const hist = historyByFA[fa];
+  const knownPNs = hist ? hist.knownPNs : new Set();
+  const hasHistory = knownPNs.size > 0;
+
+  const sp = splitByHistory(r.parts,       knownPNs);
+  const st = splitByHistory(r.tools,       knownPNs);
+  const sc = splitByHistory(r.consumables, knownPNs);
+
+  const totalNew   = sp.newOnes.length   + st.newOnes.length   + sc.newOnes.length;
+  const totalKnown = sp.knownOnes.length + st.knownOnes.length + sc.knownOnes.length;
+  const totalAll   = totalNew + totalKnown;
+
+  const histBanner = hasHistory ? `
+    <div class="history-banner">
+      🗂️ <strong>${esc(fa)}</strong> already exists in squawkHistory —
+      <strong>${totalKnown}</strong> part(s) already known,
+      <strong style="color:var(--gd)">${totalNew}</strong> new will be added.
+    </div>` : '';
+
+  // Pré-remplir squawk depuis l'historique si disponible
+  const squawkValue = r.squawkRaw || hist?.latestEntry?.squawkRaw || '';
+
+  const acInfo = [r.acModel, r.acSN ? '#'+r.acSN : '', r.acReg && r.acReg !== 'UNK' ? r.acReg : '', r.station ? '@ '+r.station : ''].filter(Boolean).join(' ');
+
+  return `<div class="entry ${hasHistory ? 'has-history' : ''}" id="entry-${key}">
+    <div class="entry-head" onclick="toggleEntry('${key}')">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:700;color:var(--gd)">${esc(fa)}</span>
+          ${hasHistory ? `<span class="badge badge-warn">🔄 Continues</span>` : ''}
+          <span style="font-size:11px;color:var(--blue)">${esc(acInfo)}</span>
+        </div>
+        <div style="font-size:11px;color:var(--g400);margin-top:2px">
+          ${esc(r.emailDate||'')} ·
+          ${hasHistory
+            ? `<strong style="color:var(--gd)">${totalNew} new</strong> part(s)${totalKnown ? ` · ${totalKnown} already known` : ''}`
+            : `${totalAll} part(s)`
+          }
+        </div>
+      </div>
+      <span id="chev-${key}" style="font-size:11px;color:var(--g400)">▼</span>
+    </div>
+
+    <div class="entry-body" id="body-${key}">
+      ${histBanner}
+
+      <!-- Squawk -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Squawk</div>
+        <input class="squawk-input" id="squawk-${key}" value="${esc(squawkValue)}" placeholder="Enter squawk description…"/>
+        <div style="font-size:11px;color:var(--g400);margin-top:3px">
+          ${hasHistory
+            ? `Pre-filled from existing entry. Edit to update the squawk label.`
+            : `Leave blank to store under ${esc(fa)} without a squawk label.`}
+        </div>
+      </div>
+
+      <!-- Sections Parts / Tools / Consumables -->
+      ${buildCategorySection('Parts',       '🔩', sp, key)}
+      ${buildCategorySection('Tools',       '🔧', st, key)}
+      ${buildCategorySection('Consumables', '🛢️', sc, key)}
+      ${!totalAll ? `<div style="font-size:12px;color:var(--g400)">No parts extracted.</div>` : ''}
+
+      <!-- Email source -->
+      <div style="margin-top:10px;font-size:11px;color:var(--g400);font-style:italic">${esc(r.emailSubject||'')}</div>
+
+      <!-- Actions -->
+      <div class="action-row">
+        <button class="btn ${hasHistory ? 'merge' : 'primary'}" onclick="validateEntry('${key}')">
+          ${hasHistory ? '🔄 Merge into history' : '✅ Validate → Firebase'}
+        </button>
+        <button class="btn danger" onclick="rejectEntry('${key}')">🗑️ Reject</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── TOGGLE ENTRY / KNOWN SECTION ─────────────────────────
 window.toggleEntry = function(key) {
   const body = document.getElementById('body-' + key);
   const chev = document.getElementById('chev-' + key);
@@ -233,50 +339,104 @@ window.toggleEntry = function(key) {
   chev.textContent = open ? '▲' : '▼';
 };
 
+window.toggleKnown = function(e, id) {
+  e.stopPropagation();
+  const el = document.getElementById(id);
+  if (el) {
+    el.classList.toggle('open');
+    e.target.textContent = el.classList.contains('open')
+      ? e.target.textContent.replace('+', '−')
+      : e.target.textContent.replace('−', '+');
+  }
+};
+
 // ── VALIDATE ONE ──────────────────────────────────────────
 window.validateEntry = async function(key) {
-  const entry = pendingEntries[key];
+  const entry  = pendingEntries[key];
+  const fa     = entry.faNumber;
   const squawk = document.getElementById('squawk-' + key)?.value.trim() || entry.squawkRaw || '';
+  const hist   = historyByFA[fa];
+  const knownPNs = hist ? hist.knownPNs : new Set();
 
-  // Tokenizer
-  const STOP = new Set(['AND','OR','THE','A','AN','OF','FOR','TO','IN','ON','AT','WITH','BY','IS','ARE','WAS','HAS','HAVE','NOT','NO','BE','AS','FROM','THAT','THIS','IT']);
-  const tokenize = s => [...new Set(s.toUpperCase().replace(/[^A-Z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>2&&!STOP.has(w)))];
+  // On ne pousse que les pièces nouvelles (pas déjà dans l'historique)
+  const filterNew = arr => (arr||[])
+    .filter(p => !p.pn || !knownPNs.has(p.pn))
+    .map(p => ({...p, squawks: squawk ? [squawk] : []}));
 
-  const allParts = [...(entry.parts||[]), ...(entry.tools||[]), ...(entry.consumables||[])];
-
-  // Construire l'entrée squawkHistory
-  const histEntry = {
-    faNumber:            entry.faNumber,
-    squawkRaw:           squawk || `${entry.faNumber} PARTS REQUEST`,
-    keywords:            tokenize(squawk || entry.faNumber),
-    parts:               (entry.parts||[]).map(p=>({...p, squawks: squawk?[squawk]:[]})),
-    tools:               (entry.tools||[]).map(p=>({...p, squawks: squawk?[squawk]:[]})),
-    consumables:         (entry.consumables||[]).map(p=>({...p, squawks: squawk?[squawk]:[]})),
-    acModel:             entry.acModel||'',
-    acSN:                entry.acSN||'',
-    acReg:               entry.acReg||'',
-    acWO:                entry.acWO||'',
-    station:             entry.station||'',
-    emailSubject:        entry.emailSubject||'',
-    updateSummary:       '',
-    addedBy:             'Daily Agent',
-    importedFromHistory: false,
-    importedFromFSR:     false,
-    lastUsed:            Date.now(),
-    usageCount:          1
-  };
-
-  const newKey = 'sq_agent_' + entry.faNumber + '_' + Date.now();
+  const newParts  = filterNew(entry.parts);
+  const newTools  = filterNew(entry.tools);
+  const newCons   = filterNew(entry.consumables);
+  const countNew  = newParts.length + newTools.length + newCons.length;
 
   try {
-    await set(ref(db, 'squawkHistory/' + newKey), histEntry);
+    if (hist) {
+      // ── MERGE dans l'entrée existante ──
+      const existing = hist.latestEntry;
+      const merged = {
+        ...existing,
+        parts:       [...(existing.parts||[]),       ...newParts],
+        tools:       [...(existing.tools||[]),       ...newTools],
+        consumables: [...(existing.consumables||[]), ...newCons],
+        squawkRaw:   squawk || existing.squawkRaw || '',
+        keywords:    tokenize(squawk || existing.squawkRaw || fa),
+        lastUsed:    Date.now(),
+        usageCount:  (existing.usageCount||1) + 1,
+        acModel:     entry.acModel || existing.acModel || '',
+        acSN:        entry.acSN    || existing.acSN    || '',
+        acReg:       (entry.acReg && entry.acReg !== 'UNK') ? entry.acReg : (existing.acReg || ''),
+        station:     entry.station || existing.station || '',
+      };
+      await set(ref(db, 'squawkHistory/' + hist.latestKey), merged);
+
+      // Mettre à jour le cache local pour les prochaines validations de cette session
+      newParts.forEach(p => { if (p.pn) knownPNs.add(p.pn); });
+      newTools.forEach(p => { if (p.pn) knownPNs.add(p.pn); });
+      newCons.forEach(p  => { if (p.pn) knownPNs.add(p.pn); });
+      hist.latestEntry = merged;
+
+    } else {
+      // ── CRÉER une nouvelle entrée squawkHistory ──
+      const newKey = 'sq_agent_' + fa + '_' + Date.now();
+      const histEntry = {
+        faNumber:            fa,
+        squawkRaw:           squawk || `${fa} PARTS REQUEST`,
+        keywords:            tokenize(squawk || fa),
+        parts:               (entry.parts||[]).map(p=>({...p, squawks: squawk?[squawk]:[]})),
+        tools:               (entry.tools||[]).map(p=>({...p, squawks: squawk?[squawk]:[]})),
+        consumables:         (entry.consumables||[]).map(p=>({...p, squawks: squawk?[squawk]:[]})),
+        acModel:             entry.acModel||'',
+        acSN:                entry.acSN||'',
+        acReg:               entry.acReg||'',
+        acWO:                entry.acWO||'',
+        station:             entry.station||'',
+        emailSubject:        entry.emailSubject||'',
+        updateSummary:       '',
+        addedBy:             'Daily Agent',
+        importedFromHistory: false,
+        importedFromFSR:     false,
+        lastUsed:            Date.now(),
+        usageCount:          1
+      };
+      await set(ref(db, 'squawkHistory/' + newKey), histEntry);
+
+      // Enregistrer dans historyByFA pour les validations suivantes (même session)
+      const allPNs = new Set([
+        ...(entry.parts||[]).map(p=>p.pn),
+        ...(entry.tools||[]).map(p=>p.pn),
+        ...(entry.consumables||[]).map(p=>p.pn)
+      ].filter(Boolean));
+      historyByFA[fa] = { knownPNs: allPNs, latestKey: newKey, latestEntry: histEntry };
+    }
+
     await remove(ref(db, 'squawkPending/' + key));
     delete pendingEntries[key];
     stats.pending--;
     stats.validated++;
     updateStats();
     renderEntries();
-    showGlobalStatus('done', `✅ ${entry.faNumber} validated and saved to squawkHistory.`);
+    showGlobalStatus('done',
+      `✅ ${fa} ${hist ? 'merged' : 'validated'} — ${countNew} new part(s) saved to squawkHistory.`
+    );
   } catch(e) {
     showGlobalStatus('err', '❌ ' + e.message);
   }
@@ -285,7 +445,7 @@ window.validateEntry = async function(key) {
 // ── REJECT ONE ────────────────────────────────────────────
 window.rejectEntry = async function(key) {
   const entry = pendingEntries[key];
-  if (!confirm(`Reject ${entry.faNumber}? This will delete it permanently.`)) return;
+  if (!confirm(`Reject ${entry.faNumber}? This will delete it permanently from pending.`)) return;
   try {
     await remove(ref(db, 'squawkPending/' + key));
     delete pendingEntries[key];
@@ -303,12 +463,13 @@ window.rejectEntry = async function(key) {
 window.validateAll = async function() {
   const keys = Object.keys(pendingEntries);
   if (!keys.length) return;
-  if (!confirm(`Validate all ${keys.length} entries?`)) return;
-  document.getElementById('btn-validate-all').disabled = true;
-  for (const key of keys) {
-    await validateEntry(key);
+  if (!confirm(`Validate all ${keys.length} entr${keys.length>1?'ies':'y'}?`)) return;
+  const btn = document.getElementById('btn-validate-all');
+  btn.disabled = true;
+  for (const key of [...keys]) {
+    if (pendingEntries[key]) await validateEntry(key);
   }
-  document.getElementById('btn-validate-all').disabled = false;
+  btn.disabled = false;
 };
 
 // ── UI HELPERS ────────────────────────────────────────────
@@ -323,7 +484,7 @@ function showGlobalStatus(type, msg) {
   el.style.display = '';
   el.className = 'status-bar s-' + type;
   el.textContent = msg;
-  setTimeout(() => { el.style.display = 'none'; }, 4000);
+  setTimeout(() => { el.style.display = 'none'; }, 5000);
 }
 
 function updateStats() {
