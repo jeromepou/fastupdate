@@ -1644,22 +1644,30 @@ const G = window;
 const KO_WORKER = 'https://orange-snow-95f7.jeromepoupinel.workers.dev';
 G.koSyncReplies = async function(faNumber, forceRescan = false, acReg = null) {
   if (!faNumber) return [];
+  let allReplies = [];
+  let offset = 0;
+  let hasMore = true;
+  let page = 0;
+  const MAX_PAGES = 6; // sécurité anti-boucle infinie
   try {
-    const res = await fetch(`${KO_WORKER}/sync-replies`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ faNumber, force: forceRescan || false, acReg })
-    });
-    if (!res.ok) {
-      console.warn(`⚠️ sync-replies: ${res.status}`);
-      return [];
+    while (hasMore && page < MAX_PAGES) {
+      page++;
+      const res = await fetch(`${KO_WORKER}/sync-replies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ faNumber, force: forceRescan || false, acReg, offset })
+      });
+      if (!res.ok) { console.warn(`⚠️ sync-replies page ${page}: ${res.status}`); break; }
+      const data = await res.json();
+      console.log(`📩 ${faNumber} page ${page}: ${data.repliesFound} reply(ies), hasMore=${data.hasMore}`);
+      allReplies = allReplies.concat(data.replies || []);
+      hasMore = data.hasMore || false;
+      offset = data.nextOffset || offset;
     }
-    const data = await res.json();
-    console.log(`📩 ${faNumber}: ${data.repliesFound} reply(ies)`);
-    return data.replies || [];
+    return allReplies;
   } catch(e) {
     console.error('koSyncReplies error:', e);
-    return [];
+    return allReplies;
   }
 };
 
