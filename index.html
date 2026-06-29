@@ -1645,18 +1645,24 @@ const KO_WORKER = 'https://orange-snow-95f7.jeromepoupinel.workers.dev';
 G.koSyncReplies = async function(faNumber) {
   if (!faNumber) return [];
   try {
-    const res = await fetch(`${KO_WORKER}/sync-replies`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ faNumber })
-    });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || `HTTP ${res.status}`);
+    const categories = ['customer', 'materials', 'fbo'];
+    const allReplies = [];
+    for (const senderType of categories) {
+      const res = await fetch(`${KO_WORKER}/sync-replies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ faNumber, senderType })
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        console.warn(`⚠️ sync-replies [${senderType}]: ${errData.error || res.status}`);
+        continue;
+      }
+      const data = await res.json();
+      console.log(`📩 [${senderType}] ${faNumber}: ${data.repliesFound} reply(ies)`);
+      allReplies.push(...(data.replies || []));
     }
-    const data = await res.json();
-    console.log(`📩 Reply sync for ${faNumber}: ${data.repliesFound} reply(ies)`);
-    return data.replies || [];
+    return allReplies;
   } catch(e) {
     console.error('koSyncReplies error:', e);
     return [];
