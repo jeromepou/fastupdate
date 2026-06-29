@@ -1651,7 +1651,7 @@ G.koSyncReplies = async function(faNumber) {
       const res = await fetch(`${KO_WORKER}/sync-replies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ faNumber, senderType })
+        body: JSON.stringify({ faNumber, senderType, force: forceRescan || false, acReg })
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
@@ -1670,7 +1670,7 @@ G.koSyncReplies = async function(faNumber) {
 };
 
 // ── Ouvre/ferme le digest de réponses sous une carte projet ──────
-G.koShowReplies = async function(btn, faNumber, projId) {
+G.koShowReplies = async function(btn, faNumber, projId, forceRescan = false, acReg = null) {
   const digest = document.getElementById('reply-digest-' + projId);
   if (!digest) return;
 
@@ -1747,7 +1747,7 @@ function koRenderReplyDigest(replies) {
       html += '<div style="display:flex;gap:5px;flex-wrap:wrap">';
       for (const a of actions) {
         const vEsc = (a.v || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'").slice(0,200);
-        html += `<button onclick="koApplyReply(this,'${a.k}','${vEsc}')" `;
+        html += `<button onclick="event.stopPropagation();koApplyReply(this,'${a.k}','${vEsc}')" `;
         html += 'style="font-size:10px;padding:3px 8px;border-radius:20px;cursor:pointer;border:1px solid var(--gb);background:var(--gl);color:var(--gd)">';
         html += a.label + '</button>';
       }
@@ -1759,7 +1759,8 @@ function koRenderReplyDigest(replies) {
   return html;
 }
 
-G.koApplyReply = function(btn, key, val) {
+G.koApplyReply = function(btn, key, val, event) {
+  if (event) event.stopPropagation();
   const fieldMap = { addr:'ko_shipping_addr', po:'f_po', nxt:'f_nxt', broker:'ko_broker_contact' };
 
   if (key === 'track') {
@@ -2462,7 +2463,7 @@ async function renderProjList() {
       </div>
       <div class="proj-item-date">${ds}</div>
       <button class="btn-start-job" style="padding:5px 10px;font-size:11px" onclick="event.stopPropagation();koStartFromProject('${proj.id}')">🚀 Start Job</button>
-      ${faNum ? `<button class="btn-replies" id="reply-btn-${proj.id}" onclick="event.stopPropagation();koShowReplies(this,'${faNum}','${proj.id}')" title="Scan Gmail replies for ${faNum}">📬</button>` : ''}
+      ${faNum ? `<button class="btn-replies" id="reply-btn-${proj.id}" onclick="event.stopPropagation();koShowReplies(this,'${faNum}','${proj.id}',false,'${proj.reg||''}')" title="Scan Gmail replies for ${faNum}">📬</button>` : ''}
       <button class="btn danger" onclick="event.stopPropagation();deleteProjUI('${proj.id}')" style="padding:4px 8px;font-size:11px">🗑</button>`;
     card.onclick = () => loadProject(proj.id);
 
