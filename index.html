@@ -2464,6 +2464,7 @@ async function renderProjList() {
       <div class="proj-item-date">${ds}</div>
       <button class="btn-start-job" style="padding:5px 10px;font-size:11px" onclick="event.stopPropagation();koStartFromProject('${proj.id}')">🚀 Start Job</button>
       ${faNum ? `<button class="btn-replies" id="reply-btn-${proj.id}" onclick="event.stopPropagation();koShowReplies(this,'${faNum}','${proj.id}',false,'${proj.reg||''}')" title="Scan Gmail replies for ${faNum}">📬</button>` : ''}
+      ${faNum ? `<button class="btn-replies" id="reply-force-btn-${proj.id}" onclick="event.stopPropagation();koShowReplies(document.getElementById('reply-btn-${proj.id}'),'${faNum}','${proj.id}',true,'${proj.reg||''}')" title="Force full rescan for ${faNum}" style="font-size:10px;padding:3px 6px">🔄</button>` : ''}
       <button class="btn danger" onclick="event.stopPropagation();deleteProjUI('${proj.id}')" style="padding:4px 8px;font-size:11px">🗑</button>`;
     card.onclick = () => loadProject(proj.id);
 
