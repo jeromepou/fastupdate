@@ -1659,10 +1659,17 @@ G.koSyncReplies = async function(faNumber, forceRescan = false, acReg = null) {
       });
       if (!res.ok) { console.warn(`⚠️ sync-replies page ${page}: ${res.status}`); break; }
       const data = await res.json();
-      console.log(`📩 ${faNumber} page ${page}: ${data.repliesFound} reply(ies), hasMore=${data.hasMore}`);
-      const newReplies = (data.replies || []).filter(r => 
+      
+      // Dédupliquer par msgId
+      const newReplies = (data.replies || []).filter(r =>
         !allReplies.some(existing => existing.msgId === r.msgId)
       );
+      
+      console.log(`📩 ${faNumber} page ${page}: ${data.repliesFound} reply(ies), ${newReplies.length} new, hasMore=${data.hasMore}`);
+      
+      // ARRÊT si aucun nouveau message — évite la boucle infinie
+      if (newReplies.length === 0) break;
+      
       allReplies = allReplies.concat(newReplies);
       hasMore = data.hasMore || false;
       offset = data.nextOffset || offset;
