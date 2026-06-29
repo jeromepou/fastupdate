@@ -1651,8 +1651,8 @@ G.koSyncReplies = async function(faNumber, forceRescan = false, acReg = null) {
       body: JSON.stringify({ faNumber, force: forceRescan || false, acReg })
     });
     if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || `HTTP ${res.status}`);
+      console.warn(`⚠️ sync-replies: ${res.status}`);
+      return [];
     }
     const data = await res.json();
     console.log(`📩 ${faNumber}: ${data.repliesFound} reply(ies)`);
@@ -1703,8 +1703,8 @@ function koRenderReplyDigest(replies) {
   html += 'Reply digest — ' + replies.length + ' message(s) — powered by FAST Reply Sync</div>';
 
   for (const r of replies) {
-    const icon  = icons[r.senderType]  || '📩';
-    const label = labels[r.senderType] || r.senderType;
+    const icon  = '📩';
+    const label = (r.from || '').replace(/<[^>]+>/g, '').trim().split('@')[0].slice(0, 40);
     const from  = (r.from || '').replace(/<[^>]+>/g,'').trim().slice(0, 50);
     let dateStr = '';
     try { dateStr = r.date ? new Date(r.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) : ''; } catch(e){}
