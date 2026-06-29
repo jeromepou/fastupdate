@@ -1650,7 +1650,10 @@ G.koSyncReplies = async function(faNumber) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ faNumber })
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `HTTP ${res.status}`);
+    }
     const data = await res.json();
     console.log(`📩 Reply sync for ${faNumber}: ${data.repliesFound} reply(ies)`);
     return data.replies || [];
