@@ -83,9 +83,14 @@ header h1{font-size:15px;font-weight:600;flex:1}
 .proj-tab{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--g200);background:#fff;color:var(--g600)}
 .proj-tab.active{background:var(--gd);color:#fff;border-color:var(--gd)}
 .proj-list{padding:8px;display:flex;flex-direction:column;gap:5px}
-.proj-item{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--g200);border-radius:var(--r);cursor:pointer;transition:background .15s}
-.proj-item:hover{background:var(--gl);border-color:var(--gb)}
-.proj-item.active{background:var(--gl);border-color:var(--gd)}
+.proj-wrapper{border:1px solid var(--g200);border-radius:var(--r);overflow:hidden;background:#fff}
+.proj-item{display:flex;align-items:center;gap:10px;padding:9px 11px;cursor:pointer;transition:background .15s}
+.proj-item:hover{background:var(--gl)}
+.proj-wrapper.active .proj-item,.proj-item.active{background:var(--gl);border-color:var(--gd)}
+.proj-wrapper.active{border-color:var(--gd)}
+.btn-replies{padding:4px 9px;font-size:11px;border-radius:var(--r);border:1px solid var(--gb);background:var(--gl);color:var(--gd);cursor:pointer;white-space:nowrap;flex-shrink:0}
+.btn-replies:hover{background:#c8dfc8}
+.reply-digest{border-top:1px solid var(--g200);background:#f7f9f7}
 .proj-item-info{flex:1;min-width:0}
 .proj-item-wo{font-weight:700;font-size:13px;color:var(--gd)}
 .proj-item-sub{font-size:11px;color:var(--g600);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1630,6 +1635,144 @@ const GCID = '624747295284-rpktnnbk5kugn7jhero0e267soidb2oj.apps.googleuserconte
 const GSCOPE = 'https://www.googleapis.com/auth/gmail.compose';
 let tokenClient = null, gToken = null, gTokenExp = 0;
 
+// ── Reply Sync — appelle le worker pour lire les réponses Gmail d'un FA ──
+const KO_WORKER = 'https://orange-snow-95f7.jeromepoupinel.workers.dev';
+G.koSyncReplies = async function(faNumber) {
+  if (!faNumber) return [];
+  try {
+    const res = await fetch(`${KO_WORKER}/sync-replies`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ faNumber })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    console.log(`📩 Reply sync for ${faNumber}: ${data.repliesFound} reply(ies)`);
+    return data.replies || [];
+  } catch(e) {
+    console.error('koSyncReplies error:', e);
+    return [];
+  }
+};
+
+// ── Ouvre/ferme le digest de réponses sous une carte projet ──────
+G.koShowReplies = async function(btn, faNumber, projId) {
+  const digest = document.getElementById('reply-digest-' + projId);
+  if (!digest) return;
+
+  // Déjà ouvert → fermer
+  if (digest.style.display !== 'none') {
+    digest.style.display = 'none';
+    btn.textContent = '📬';
+    return;
+  }
+
+  // Afficher loading
+  digest.style.display = 'block';
+  digest.innerHTML = '<div style="padding:10px 14px;font-size:12px;color:var(--g600)"><span class="spin" style="vertical-align:middle;margin-right:6px"></span>Scanning Gmail replies for ' + faNumber + '…</div>';
+  btn.textContent = '⏳';
+  btn.disabled = true;
+
+  const replies = await koSyncReplies(faNumber);
+  btn.disabled = false;
+
+  if (!replies || !replies.length) {
+    digest.innerHTML = '<div style="padding:10px 14px;font-size:12px;color:var(--g600)">No external replies found yet for ' + faNumber + '.</div>';
+    btn.textContent = '📬';
+    return;
+  }
+
+  btn.textContent = '📬 ' + replies.length;
+  digest.innerHTML = koRenderReplyDigest(replies);
+};
+
+function koRenderReplyDigest(replies) {
+  const icons  = { materials:'📦', fbo:'🏢', customer:'👤' };
+  const labels = { materials:'Materials', fbo:'FBO', customer:'Customer' };
+
+  let html = '<div style="display:flex;flex-direction:column;gap:8px;padding:10px 12px">';
+  html += '<div style="font-size:10px;font-weight:600;color:var(--g600);text-transform:uppercase;letter-spacing:.05em">';
+  html += 'Reply digest — ' + replies.length + ' message(s) — powered by FAST Reply Sync</div>';
+
+  for (const r of replies) {
+    const icon  = icons[r.senderType]  || '📩';
+    const label = labels[r.senderType] || r.senderType;
+    const from  = (r.from || '').replace(/<[^>]+>/g,'').trim().slice(0, 50);
+    let dateStr = '';
+    try { dateStr = r.date ? new Date(r.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) : ''; } catch(e){}
+
+    html += '<div style="background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:10px 12px">';
+
+    // En-tête
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">';
+    html += '<span style="font-size:12px;font-weight:600">' + icon + ' ' + label + ' — ' + from + '</span>';
+    html += '<span style="font-size:10px;color:var(--g400)">' + dateStr + '</span>';
+    html += '</div>';
+
+    // Résumé Mistral
+    if (r.summary) {
+      html += '<div style="font-size:11px;color:var(--g700);line-height:1.5;margin-bottom:7px">' + r.summary + '</div>';
+    }
+
+    // Alerte si action requise
+    if (r.action_required && r.questions_back && r.questions_back.length) {
+      html += '<div style="font-size:11px;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:4px;padding:4px 8px;margin-bottom:7px">⚠️ They need from us: ' + r.questions_back.slice(0,3).join(' / ') + '</div>';
+    }
+
+    // Boutons "Apply"
+    const actions = [];
+    if (r.order_confirmed)                    actions.push({label:'✓ Mark as ordered', k:'order', v:''});
+    if (r.eta_text)                           actions.push({label:'ETA: ' + r.eta_text, k:'eta',   v:r.eta_text});
+    if (r.tracking_number)                    actions.push({label:'📋 Copy tracking',   k:'track', v:r.tracking_number});
+    if (r.shipping_address)                   actions.push({label:'Fill shipping addr', k:'addr',  v:r.shipping_address});
+    if (r.po_number)                          actions.push({label:'PO: ' + r.po_number, k:'po',    v:r.po_number});
+    if (r.next_flight)                        actions.push({label:'Next flight: ' + r.next_flight, k:'nxt', v:r.next_flight});
+    if (r.broker_contact)                     actions.push({label:'Save broker',        k:'broker',v:r.broker_contact});
+
+    if (actions.length) {
+      html += '<div style="display:flex;gap:5px;flex-wrap:wrap">';
+      for (const a of actions) {
+        const vEsc = (a.v || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'").slice(0,200);
+        html += `<button onclick="koApplyReply(this,'${a.k}','${vEsc}')" `;
+        html += 'style="font-size:10px;padding:3px 8px;border-radius:20px;cursor:pointer;border:1px solid var(--gb);background:var(--gl);color:var(--gd)">';
+        html += a.label + '</button>';
+      }
+      html += '</div>';
+    }
+    html += '</div>'; // end reply card
+  }
+  html += '</div>';
+  return html;
+}
+
+G.koApplyReply = function(btn, key, val) {
+  const fieldMap = { addr:'ko_shipping_addr', po:'f_po', nxt:'f_nxt', broker:'ko_broker_contact' };
+
+  if (key === 'track') {
+    navigator.clipboard?.writeText(val).catch(()=>{});
+    btn.textContent = '✓ Copied';
+  } else if (key === 'order' || key === 'eta') {
+    btn.textContent = '✓ Noted';
+  } else if (key === 'addr') {
+    if (typeof koSetAddr === 'function') koSetAddr('manual');
+    const el = document.getElementById('ko_shipping_addr');
+    if (el) { el.value = val; el.dispatchEvent(new Event('input')); koFlash(el); }
+    btn.textContent = '✓ Applied';
+  } else {
+    const el = document.getElementById(fieldMap[key] || '');
+    if (el) { el.value = val; el.dispatchEvent(new Event('input')); koFlash(el); if (typeof autosave==='function') autosave(); }
+    btn.textContent = '✓ Applied';
+  }
+  btn.disabled = true;
+  btn.style.opacity = '0.55';
+};
+
+function koFlash(el) {
+  if (!el) return;
+  el.style.outline = '2px solid var(--gm)';
+  setTimeout(() => el.style.outline = '', 1800);
+}
+
 // ══════════════════════════════════════
 //  EXPOSE GLOBALS (HTML onclick needs these)
 // ══════════════════════════════════════
@@ -2292,19 +2435,32 @@ async function renderProjList() {
   const sorted = [...filtered].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   list.innerHTML = '';
   sorted.forEach(proj => {
-    const div = document.createElement('div');
-    div.className = 'proj-item' + (proj.id === curProj ? ' active' : '');
+    const wrapper = document.createElement('div');
+    wrapper.className = 'proj-wrapper' + (proj.id === curProj ? ' active' : '');
+
+    const card = document.createElement('div');
+    card.className = 'proj-item';
     const ds = new Date(proj.updatedAt || proj.createdAt).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'2-digit'});
-    div.innerHTML = `
+    const faNum = (proj.wo || '').trim();
+    card.innerHTML = `
       <div class="proj-item-info">
         <div class="proj-item-wo">${proj.wo||'(no WO)'} ${proj.rts ? '<span class="tag-arch">RTS ✓</span>' : '<span class="tag-open">OPEN</span>'}</div>
         <div class="proj-item-sub">${[proj.model, proj.sn, proj.reg, proj.loc].filter(Boolean).join(' · ')}</div>
       </div>
       <div class="proj-item-date">${ds}</div>
       <button class="btn-start-job" style="padding:5px 10px;font-size:11px" onclick="event.stopPropagation();koStartFromProject('${proj.id}')">🚀 Start Job</button>
+      ${faNum ? `<button class="btn-replies" id="reply-btn-${proj.id}" onclick="event.stopPropagation();koShowReplies(this,'${faNum}','${proj.id}')" title="Scan Gmail replies for ${faNum}">📬</button>` : ''}
       <button class="btn danger" onclick="event.stopPropagation();deleteProjUI('${proj.id}')" style="padding:4px 8px;font-size:11px">🗑</button>`;
-    div.onclick = () => loadProject(proj.id);
-    list.appendChild(div);
+    card.onclick = () => loadProject(proj.id);
+
+    const digest = document.createElement('div');
+    digest.className = 'reply-digest';
+    digest.id = 'reply-digest-' + proj.id;
+    digest.style.display = 'none';
+
+    wrapper.appendChild(card);
+    wrapper.appendChild(digest);
+    list.appendChild(wrapper);
   });
 }
 
@@ -4763,7 +4919,7 @@ function koComputeSubjects() {
   const from  = document.getElementById('ko_travel_from')?.value || '[FROM]';
   const to    = document.getElementById('ko_travel_to')?.value   || icao || '';
   return {
-    customer: `CUSTOMER UPDATE // ${sn} // ${reg} // ${wo} // ${icao} // ${def}`,
+    customer: `CUSTOMER UPDATE // ${model} // ${sn} // ${reg} // ${wo} // ${icao} // ${def}`,
     travel:   `Flight from ${from} to ${to}`,
     parts:    `${KO.prefixSel} // ${model} // ${sn} // ${reg} // ${wo} // ${icao} // ${def}`,
     fbo:      `Maintenance ${reg}`,
