@@ -4763,7 +4763,7 @@ function koComputeSubjects() {
   const from  = document.getElementById('ko_travel_from')?.value || '[FROM]';
   const to    = document.getElementById('ko_travel_to')?.value   || icao || '';
   return {
-    customer: `CUSTOMER UPDATE // ${sn} // ${reg} // ${wo} // ${icao} // ${def}`,
+    customer: `CUSTOMER UPDATE // ${model} // ${sn} // ${reg} // ${wo} // ${icao} // ${def}`,
     travel:   `Flight from ${from} to ${to}`,
     parts:    `${KO.prefixSel} // ${model} // ${sn} // ${reg} // ${wo} // ${icao} // ${def}`,
     fbo:      `Maintenance ${reg}`,
