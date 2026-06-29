@@ -1642,7 +1642,7 @@ const G = window;
 
 // ── Reply Sync — appelle le worker pour lire les réponses Gmail d'un FA ──
 const KO_WORKER = 'https://orange-snow-95f7.jeromepoupinel.workers.dev';
-G.koSyncReplies = async function(faNumber) {
+G.koSyncReplies = async function(faNumber, forceRescan = false, acReg = null) {
   if (!faNumber) return [];
   try {
     const categories = ['customer', 'materials', 'fbo'];
@@ -1687,7 +1687,7 @@ G.koShowReplies = async function(btn, faNumber, projId, forceRescan = false, acR
   btn.textContent = '⏳';
   btn.disabled = true;
 
-  const replies = await koSyncReplies(faNumber);
+  const replies = await koSyncReplies(faNumber, forceRescan, acReg);
   btn.disabled = false;
 
   if (!replies || !replies.length) {
