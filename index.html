@@ -1635,6 +1635,11 @@ const GCID = '624747295284-rpktnnbk5kugn7jhero0e267soidb2oj.apps.googleuserconte
 const GSCOPE = 'https://www.googleapis.com/auth/gmail.compose';
 let tokenClient = null, gToken = null, gTokenExp = 0;
 
+// ══════════════════════════════════════
+//  EXPOSE GLOBALS (HTML onclick needs these)
+// ══════════════════════════════════════
+const G = window;
+
 // ── Reply Sync — appelle le worker pour lire les réponses Gmail d'un FA ──
 const KO_WORKER = 'https://orange-snow-95f7.jeromepoupinel.workers.dev';
 G.koSyncReplies = async function(faNumber) {
@@ -1776,7 +1781,6 @@ function koFlash(el) {
 // ══════════════════════════════════════
 //  EXPOSE GLOBALS (HTML onclick needs these)
 // ══════════════════════════════════════
-const G = window;
 
 // ══════════════════════════════════════
 //  FIREBASE AUTH STATE
