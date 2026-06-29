@@ -1703,28 +1703,26 @@ G.koShowReplies = async function(btn, faNumber, projId, forceRescan = false, acR
 };
 
 G.koDebugReplies = async function(faNumber, acReg) {
-  console.log(`🔍 DEBUG /debug-replies for ${faNumber} acReg=${acReg}`);
-  const res = await fetch(`${KO_WORKER}/debug-replies`, {
+  console.log(`🔍 DEBUG sync-replies for ${faNumber} acReg=${acReg}`);
+  
+  // Page 1 — force rescan, offset 0
+  const res = await fetch(`${KO_WORKER}/sync-replies`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-FAST-Key': FAST_KEY },
-    body: JSON.stringify({ faNumber, acReg })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ faNumber, force: true, acReg, offset: 0 })
   });
   const data = await res.json();
-  console.log('📊 DEBUG REPORT:', JSON.stringify(data, null, 2));
-
-  // Afficher dans une alert lisible
-  for (const [cat, info] of Object.entries(data)) {
-    console.group(`📂 ${cat.toUpperCase()} — query: "${info.query}"`);
-    console.log(`  Threads trouvés: ${info.threadCount}`);
-    for (const t of info.threads) {
-      console.group(`  Thread ${t.threadId} — ${t.totalMessages} msgs total, ${t.externalCount} externes, ${t.passSizeCount} passeront le filtre`);
-      for (const m of t.messages) {
-        const status = m.filtered_hsa ? '🔴 HSA' : m.filtered_size ? `🟡 TROP PETIT (${m.size}b)` : `✅ OK (${m.size}b)`;
-        console.log(`    ${status} | ${m.date.slice(0,16)} | ${m.from.slice(0,50)}`);
-      }
-      console.groupEnd();
-    }
-    console.groupEnd();
+  
+  console.log('📊 RAW RESPONSE:', data);
+  console.log(`  repliesFound: ${data.repliesFound}`);
+  console.log(`  hasMore: ${data.hasMore}`);
+  console.log(`  nextOffset: ${data.nextOffset}`);
+  console.log(`  replies array length: ${(data.replies||[]).length}`);
+  
+  if (data.replies) {
+    data.replies.forEach((r, i) => {
+      console.log(`  [${i}] senderType=${r.senderType} | date=${r.date?.slice(0,16)} | from=${r.from?.slice(0,50)} | summary=${r.summary?.slice(0,60)}`);
+    });
   }
 };
 
