@@ -1695,59 +1695,83 @@ G.koShowReplies = async function(btn, faNumber, projId, forceRescan = false, acR
 };
 
 function koRenderReplyDigest(replies) {
-  const icons  = { materials:'📦', fbo:'🏢', customer:'👤' };
-  const labels = { materials:'Materials', fbo:'FBO', customer:'Customer' };
+  const icons  = { customer:'👤', materials:'📦', fbo:'🏢' };
+  const labels = { customer:'Customer', materials:'Parts & Materials', fbo:'FBO / Ground Handler' };
+  const order  = ['customer', 'materials', 'fbo'];
 
-  let html = '<div style="display:flex;flex-direction:column;gap:8px;padding:10px 12px">';
-  html += '<div style="font-size:10px;font-weight:600;color:var(--g600);text-transform:uppercase;letter-spacing:.05em">';
-  html += 'Reply digest — ' + replies.length + ' message(s) — powered by FAST Reply Sync</div>';
-
+  // Grouper par senderType
+  const groups = { customer: [], materials: [], fbo: [] };
   for (const r of replies) {
-    const icon  = '📩';
-    const label = (r.from || '').replace(/<[^>]+>/g, '').trim().split('@')[0].slice(0, 40);
-    const from  = (r.from || '').replace(/<[^>]+>/g,'').trim().slice(0, 50);
-    let dateStr = '';
-    try { dateStr = r.date ? new Date(r.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) : ''; } catch(e){}
+    const t = r.senderType || 'customer';
+    (groups[t] || groups.customer).push(r);
+  }
 
-    html += '<div style="background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:10px 12px">';
+  // Résumé en en-tête
+  const groupCounts = order
+    .filter(k => groups[k].length)
+    .map(k => `${labels[k]}: ${groups[k].length}`)
+    .join(' · ');
 
-    // En-tête
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">';
-    html += '<span style="font-size:12px;font-weight:600">' + icon + ' ' + label + ' — ' + from + '</span>';
-    html += '<span style="font-size:10px;color:var(--g400)">' + dateStr + '</span>';
-    html += '</div>';
+  let html = '<div style="display:flex;flex-direction:column;gap:6px;padding:10px 12px">';
+  html += '<div style="font-size:10px;font-weight:600;color:var(--g600);text-transform:uppercase;letter-spacing:.05em">';
+  html += `Reply Digest — ${replies.length} message(s) — ${groupCounts} — powered by FAST Reply Sync</div>`;
 
-    // Résumé Mistral
-    if (r.summary) {
-      html += '<div style="font-size:11px;color:var(--g700);line-height:1.5;margin-bottom:7px">' + r.summary + '</div>';
-    }
+  for (const type of order) {
+    const group = groups[type];
+    if (!group.length) continue;
 
-    // Alerte si action requise
-    if (r.action_required && r.questions_back && r.questions_back.length) {
-      html += '<div style="font-size:11px;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:4px;padding:4px 8px;margin-bottom:7px">⚠️ They need from us: ' + r.questions_back.slice(0,3).join(' / ') + '</div>';
-    }
+    // Section header
+    html += `<div style="display:flex;align-items:center;gap:8px;margin-top:6px;margin-bottom:2px">`;
+    html += `<span style="font-size:10px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap">${icons[type]} ${labels[type]} — ${group.length}</span>`;
+    html += `<div style="flex:1;height:1px;background:var(--g200)"></div>`;
+    html += `</div>`;
 
-    // Boutons "Apply"
-    const actions = [];
-    if (r.order_confirmed)                    actions.push({label:'✓ Mark as ordered', k:'order', v:''});
-    if (r.eta_text)                           actions.push({label:'ETA: ' + r.eta_text, k:'eta',   v:r.eta_text});
-    if (r.tracking_number)                    actions.push({label:'📋 Copy tracking',   k:'track', v:r.tracking_number});
-    if (r.shipping_address)                   actions.push({label:'Fill shipping addr', k:'addr',  v:r.shipping_address});
-    if (r.po_number)                          actions.push({label:'PO: ' + r.po_number, k:'po',    v:r.po_number});
-    if (r.next_flight)                        actions.push({label:'Next flight: ' + r.next_flight, k:'nxt', v:r.next_flight});
-    if (r.broker_contact)                     actions.push({label:'Save broker',        k:'broker',v:r.broker_contact});
+    for (const r of group) {
+      const label   = (r.from || '').replace(/<[^>]+>/g, '').trim().split('@')[0].slice(0, 40);
+      const from    = (r.from || '').replace(/<[^>]+>/g,'').trim().slice(0, 50);
+      let dateStr = '';
+      try { dateStr = r.date ? new Date(r.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) : ''; } catch(e){}
 
-    if (actions.length) {
-      html += '<div style="display:flex;gap:5px;flex-wrap:wrap">';
-      for (const a of actions) {
-        const vEsc = (a.v || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'").slice(0,200);
-        html += `<button onclick="event.stopPropagation();koApplyReply(this,'${a.k}','${vEsc}')" `;
-        html += 'style="font-size:10px;padding:3px 8px;border-radius:20px;cursor:pointer;border:1px solid var(--gb);background:var(--gl);color:var(--gd)">';
-        html += a.label + '</button>';
-      }
+      html += '<div style="background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:10px 12px">';
+
+      // En-tête de la carte
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">';
+      html += '<span style="font-size:12px;font-weight:600">📩 ' + label + ' — ' + from + '</span>';
+      html += '<span style="font-size:10px;color:var(--g400)">' + dateStr + '</span>';
       html += '</div>';
+
+      // Résumé Mistral
+      if (r.summary) {
+        html += '<div style="font-size:11px;color:var(--g700);line-height:1.5;margin-bottom:7px">' + r.summary + '</div>';
+      }
+
+      // Alerte si action requise
+      if (r.action_required && r.questions_back && r.questions_back.length) {
+        html += '<div style="font-size:11px;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:4px;padding:4px 8px;margin-bottom:7px">⚠️ They need from us: ' + r.questions_back.slice(0,3).join(' / ') + '</div>';
+      }
+
+      // Boutons "Apply"
+      const actions = [];
+      if (r.order_confirmed)  actions.push({label:'✓ Mark as ordered',             k:'order', v:''});
+      if (r.eta_text)         actions.push({label:'ETA: ' + r.eta_text,            k:'eta',   v:r.eta_text});
+      if (r.tracking_number)  actions.push({label:'📋 Copy tracking',              k:'track', v:r.tracking_number});
+      if (r.shipping_address) actions.push({label:'Fill shipping addr',            k:'addr',  v:r.shipping_address});
+      if (r.po_number)        actions.push({label:'PO: ' + r.po_number,           k:'po',    v:r.po_number});
+      if (r.next_flight)      actions.push({label:'Next flight: ' + r.next_flight, k:'nxt',   v:r.next_flight});
+      if (r.broker_contact)   actions.push({label:'Save broker',                   k:'broker',v:r.broker_contact});
+
+      if (actions.length) {
+        html += '<div style="display:flex;gap:5px;flex-wrap:wrap">';
+        for (const a of actions) {
+          const vEsc = (a.v || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'").slice(0,200);
+          html += `<button onclick="event.stopPropagation();koApplyReply(this,'${a.k}','${vEsc}')" `;
+          html += 'style="font-size:10px;padding:3px 8px;border-radius:20px;cursor:pointer;border:1px solid var(--gb);background:var(--gl);color:var(--gd)">';
+          html += a.label + '</button>';
+        }
+        html += '</div>';
+      }
+      html += '</div>'; // end reply card
     }
-    html += '</div>'; // end reply card
   }
   html += '</div>';
   return html;
