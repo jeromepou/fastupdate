@@ -1648,7 +1648,7 @@ G.koSyncReplies = async function(faNumber, forceRescan = false, acReg = null) {
   let offset = 0;
   let hasMore = true;
   let page = 0;
-  const MAX_PAGES = 6; // sécurité anti-boucle infinie
+  const MAX_PAGES = 15;
   try {
     while (hasMore && page < MAX_PAGES) {
       page++;
