@@ -1660,7 +1660,10 @@ G.koSyncReplies = async function(faNumber, forceRescan = false, acReg = null) {
       if (!res.ok) { console.warn(`⚠️ sync-replies page ${page}: ${res.status}`); break; }
       const data = await res.json();
       console.log(`📩 ${faNumber} page ${page}: ${data.repliesFound} reply(ies), hasMore=${data.hasMore}`);
-      allReplies = allReplies.concat(data.replies || []);
+      const newReplies = (data.replies || []).filter(r => 
+        !allReplies.some(existing => existing.msgId === r.msgId)
+      );
+      allReplies = allReplies.concat(newReplies);
       hasMore = data.hasMore || false;
       offset = data.nextOffset || offset;
     }
