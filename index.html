@@ -1718,7 +1718,11 @@ async function koLiveRefresh(cat) {
     const res = await fetch(KO_WORKER + '/sync-replies', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ faNumber: koReplyCurrentFA, category: cat })
+      body:    JSON.stringify({
+        faNumber: koReplyCurrentFA,
+        category: cat,
+        gmailToken: gToken || null   // token Gmail de l'ingénieur connecté (null si pas encore auth)
+      })
     });
     if (!res.ok) throw new Error('Worker error ' + res.status);
     const data = await res.json();
