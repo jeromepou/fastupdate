@@ -2591,20 +2591,46 @@ G.addDayBeforeUpdate = function() {
 function createUpdateBlock(label, ts) {
   const ph = document.getElementById('updates-container').querySelector('p'); if(ph) ph.remove();
   if (ts == null) ts = parseDateLabel(label) ?? Date.now();
-  // Récupérer les items cochés du jour CHRONOLOGIQUEMENT PRÉCÉDENT (pas "le dernier ajouté")
-  // -> fonctionne peu importe l'ordre dans lequel les jours sont créés (Today d'abord, puis Day before, etc.)
+  // Récupérer les items cochés du jour CHRONOLOGIQUEMENT PRÉCÉDENT
   const allUpdates = getUpdatesData();
   const priorDays = allUpdates.filter(u => (u.ts ?? parseDateLabel(u.date) ?? 0) < ts);
   const lastUpdate = priorDays.length
     ? priorDays.reduce((a, b) => ((a.ts ?? 0) > (b.ts ?? 0) ? a : b))
     : null;
+  
+  // MODIFICATION ICI : on garde tous les items cochés (quel que soit le statut) et on reporte u.status
   const carriedItems = lastUpdate
     ? lastUpdate.itemUpdates
-        .filter(u => u.checked && u.status === 'done')
-        .map(u => ({ num: u.num, checked: true, status: 'done', detail: '' }))
+        .filter(u => u.checked)
+        .map(u => ({ num: u.num, checked: true, status: u.status, detail: '' }))
     : [];
+    
   renderUpdateBlock({id:'upd_'+Date.now(), date:label, ts, isRTS:false, freeText:'', itemUpdates: carriedItems});
   G.autosave();
+}
+
+function propagateItemChange(sourceDayBlock, itemNum, isChecked, newStatus) {
+  const sourceTs = parseDateLabel(sourceDayBlock.dataset.date) ?? 0;
+
+  // Parcourir tous les blocs dans le DOM
+  document.querySelectorAll('.update-day').forEach(nextBlock => {
+    const nextTs = parseDateLabel(nextBlock.dataset.date) ?? 0;
+    
+    // Si le bloc est chronologiquement APRÈS le bloc modifié
+    if (nextTs > sourceTs) {
+      const itemRow = nextBlock.querySelector(`.upd-item-block[data-item-num="${itemNum}"]`);
+      if (itemRow) {
+        const chk = itemRow.querySelector('input[type=checkbox]');
+        const sel = itemRow.querySelector('.upd-status-sel');
+        
+        if (chk) chk.checked = isChecked;
+        if (sel) sel.value = newStatus;
+        
+        applyStatusClass(itemRow, newStatus);
+        updateDayProgress(nextBlock);
+      }
+    }
+  });
 }
 
 const STATUS_CLASSES = ['status-done','status-waiting_parts','status-mel','status-cancelled','status-pending'];
@@ -2712,17 +2738,23 @@ G.onRtsToggle = function(chk) {
 
 G.onUpdChk = function(chk) {
   const block = chk.closest('.upd-item-block');
+  const dayBlock = chk.closest('.update-day');
   const sel = block.querySelector('.upd-status-sel');
   if (!chk.checked) {
     sel.value = '';
   }
   applyStatusClass(block, sel.value);
-  updateDayProgress(chk.closest('.update-day'));
+  updateDayProgress(dayBlock);
+  
+  // Propagation en direct
+  propagateItemChange(dayBlock, block.dataset.itemNum, chk.checked, sel.value);
+  
   G.autosave();
 };
 
 G.onUpdStatusChange = function(sel) {
   const block = sel.closest('.upd-item-block');
+  const dayBlock = sel.closest('.update-day');
   const chk = block.querySelector('input[type=checkbox]');
   if (sel.value === '') {
     chk.checked = false;
@@ -2730,7 +2762,11 @@ G.onUpdStatusChange = function(sel) {
     chk.checked = true;
   }
   applyStatusClass(block, sel.value);
-  updateDayProgress(block.closest('.update-day'));
+  updateDayProgress(dayBlock);
+  
+  // Propagation en direct
+  propagateItemChange(dayBlock, block.dataset.itemNum, chk.checked, sel.value);
+  
   G.autosave();
 };
   
