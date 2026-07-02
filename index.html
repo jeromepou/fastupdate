@@ -3460,17 +3460,49 @@ G.copyTable = async function() {
       btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy table`;
     }, 2500);
   };
+
+  // Injection des styles inline pour la copie (comme pour draftInGmail)
+  const tblClone = tbl.cloneNode(true);
+  tblClone.style.cssText = 'border-collapse:collapse;width:100%;font-family:Aptos,Calibri,Arial,sans-serif;font-size:13px';
+  tblClone.querySelectorAll('td').forEach(td => {
+    const styleAttr = td.getAttribute('style') || '';
+    const noTop = styleAttr.includes('border-top:none');
+    const noBottom = styleAttr.includes('border-bottom:none');
+    td.style.border = '2px solid #000000';
+    td.style.padding = td.style.padding || '7px 10px';
+    td.style.verticalAlign = 'top';
+    td.style.color = td.style.color || '#000000';
+    if(noTop) td.style.borderTop = 'none';
+    if(noBottom) td.style.borderBottom = 'none';
+  });
+  tblClone.querySelectorAll('.thr td').forEach(td => {
+    td.style.cssText = 'border:2px solid #000000;padding:8px 10px;background:#a8d08d;color:#000000;font-weight:700;font-size:13px';
+  });
+  tblClone.querySelectorAll('.lbl, .upd-lbl').forEach(td => {
+    td.style.cssText = 'border:2px solid #000000;padding:7px 10px;background:#ffffff;font-weight:700;color:#000000';
+  });
+
   try {
-    // API moderne (Chrome 76+, Safari 13.1+)
+    // API moderne (Chrome 76+, Safari 13.1+) : on copie le clone
     await navigator.clipboard.write([
-      new ClipboardItem({ 'text/html': new Blob([tbl.outerHTML], { type: 'text/html' }) })
+      new ClipboardItem({ 'text/html': new Blob([tblClone.outerHTML], { type: 'text/html' }) })
     ]);
     markCopied();
   } catch(e) {
     // Fallback pour les navigateurs plus anciens
-    const range = document.createRange(); range.selectNode(tbl);
+    // On insère temporairement le clone de façon invisible pour le sélectionner
+    const tempDiv = document.createElement('div');
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.left = '-9999px';
+    tempDiv.appendChild(tblClone);
+    document.body.appendChild(tempDiv);
+    
+    const range = document.createRange(); range.selectNode(tblClone);
     const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
-    document.execCommand('copy'); sel.removeAllRanges();
+    document.execCommand('copy'); 
+    sel.removeAllRanges();
+    document.body.removeChild(tempDiv);
+    
     markCopied();
   }
 };
