@@ -3454,7 +3454,7 @@ G.generate = async function() {
   const pocRows=pocs.length>0
     ?`<tr><td class="lbl"><b>Name:</b></td><td colspan="3">${pocs.map(p=>p.name||'—').join(' / ')}</td></tr>
       <tr><td class="lbl"><b>Cell:</b></td><td colspan="3">${pocs.map(p=>p.tel||'—').join(' / ')}</td></tr>
-      <tr><td class="lbl"><b>Email:</b></td><td colspan="3">${pocs.map(p=>p.email||'—').join(' / ')}</td></tr>
+      <tr><td class="lbl"><b>Email:</b></td><td colspan="3">${pocs.map(p=>p.email ? `<a href="mailto:${p.email}" style="color:#0563c1;text-decoration:underline">${p.email}</a>` : '—').join(' / ')}</td></tr>
       <tr><td class="lbl"><b>Team</b></td><td colspan="3">${pocs.map(p=>p.team||'—').join(' / ')}</td></tr>`
     :`<tr><td class="lbl"><b>Name:</b></td><td colspan="3">—</td></tr><tr><td class="lbl"><b>Cell:</b></td><td colspan="3">—</td></tr><tr><td class="lbl"><b>Email:</b></td><td colspan="3">—</td></tr><tr><td class="lbl"><b>Team</b></td><td colspan="3">—</td></tr>`;
 
@@ -3477,7 +3477,7 @@ G.generate = async function() {
     <tr class="thr"><td colspan="5"><b>Customer Info</b></td></tr>
     <tr><td class="lbl"><b>Name :</b></td><td colspan="4">${cName||'—'}</td></tr>
     <tr><td class="lbl"><b>Phone:</b></td><td colspan="4">${cTel||'—'}</td></tr>
-    <tr><td class="lbl"><b>Email:</b></td><td colspan="4">${cEmail||'—'}</td></tr>
+    <tr><td class="lbl"><b>Email:</b></td><td colspan="4">${cEmail ? `<a href="mailto:${cEmail}" style="color:#0563c1;text-decoration:underline">${cEmail}</a>` : '—'}</td></tr>
     <tr><td class="lbl"><b>A/C LOCATION:</b></td><td colspan="4">${loc||'—'}</td></tr>
   </table>`;
 
