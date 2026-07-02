@@ -2555,35 +2555,55 @@ function getItems() {
 // ══════════════════════════════════════
 function todayLabel() { return new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}); }
 
+// Normalise une date à minuit -> timestamp comparable (indépendant de l'heure de clic)
+function dayTs(d) { const x = new Date(d); x.setHours(0,0,0,0); return x.getTime(); }
+
+// Reconstruit un timestamp de jour depuis un label "2 July 2026" (format toLocaleDateString en-GB).
+// Sert de fallback pour les updates sauvegardés avant l'ajout du champ ts (rétrocompatibilité).
+const MONTHS_EN = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+function parseDateLabel(label) {
+  if (!label) return null;
+  const m = String(label).trim().toLowerCase().match(/^(\d{1,2})\s+([a-z]+)\s+(\d{4})$/);
+  if (!m) { const t = Date.parse(label); return isNaN(t) ? null : dayTs(t); }
+  const day = parseInt(m[1],10), monthIdx = MONTHS_EN.indexOf(m[2]), year = parseInt(m[3],10);
+  if (monthIdx < 0) return null;
+  return dayTs(new Date(year, monthIdx, day));
+}
+
 G.addTodayUpdate = function() {
   const t = todayLabel();
   if (getUpdatesData().find(u => u.date === t)) { setStatus('idle',"Today's update already exists."); return; }
-  createUpdateBlock(t);
+  createUpdateBlock(t, dayTs(new Date()));
 };
 G.addYesterdayUpdate = function() {
   const y = new Date(); y.setDate(y.getDate()-1);
   const t = y.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
   if (getUpdatesData().find(u => u.date === t)) { setStatus('idle',"Yesterday's update already exists."); return; }
-  createUpdateBlock(t);
+  createUpdateBlock(t, dayTs(y));
 };
 G.addDayBeforeUpdate = function() {
   const y = new Date(); y.setDate(y.getDate()-2);
   const t = y.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
   if (getUpdatesData().find(u => u.date === t)) { setStatus('idle',"This day's update already exists."); return; }
-  createUpdateBlock(t);
+  createUpdateBlock(t, dayTs(y));
 };
 
-function createUpdateBlock(label) {
+function createUpdateBlock(label, ts) {
   const ph = document.getElementById('updates-container').querySelector('p'); if(ph) ph.remove();
-  // Récupérer les items cochés du dernier jour pour les propager
+  if (ts == null) ts = parseDateLabel(label) ?? Date.now();
+  // Récupérer les items cochés du jour CHRONOLOGIQUEMENT PRÉCÉDENT (pas "le dernier ajouté")
+  // -> fonctionne peu importe l'ordre dans lequel les jours sont créés (Today d'abord, puis Day before, etc.)
   const allUpdates = getUpdatesData();
-  const lastUpdate = allUpdates[allUpdates.length - 1];
+  const priorDays = allUpdates.filter(u => (u.ts ?? parseDateLabel(u.date) ?? 0) < ts);
+  const lastUpdate = priorDays.length
+    ? priorDays.reduce((a, b) => ((a.ts ?? 0) > (b.ts ?? 0) ? a : b))
+    : null;
   const carriedItems = lastUpdate
     ? lastUpdate.itemUpdates
         .filter(u => u.checked && u.status === 'done')
         .map(u => ({ num: u.num, checked: true, status: 'done', detail: '' }))
     : [];
-  renderUpdateBlock({id:'upd_'+Date.now(), date:label, isRTS:false, freeText:'', itemUpdates: carriedItems});
+  renderUpdateBlock({id:'upd_'+Date.now(), date:label, ts, isRTS:false, freeText:'', itemUpdates: carriedItems});
   G.autosave();
 }
 
@@ -2614,6 +2634,7 @@ function renderUpdateBlock(upd) {
   const d = document.createElement('div');
   d.className = 'update-day' + (upd.isRTS ? ' is-rts' : '');
   d.id = upd.id; d.dataset.date = upd.date;
+  d.dataset.ts = String(upd.ts ?? parseDateLabel(upd.date) ?? Date.now());
 
   const itemsHtml = items.length > 0 ? items.map((it, i) => {
     const saved = itemUpdatesArr.find(u => u.num === (i+1)) || {};
@@ -2662,7 +2683,14 @@ function renderUpdateBlock(upd) {
       </div>
     </div>
   </div>`;
-  uc.appendChild(d);
+  // Insertion triée par ts croissant (plus ancien en premier dans le DOM).
+  // La CSS column-reverse sur #updates-container affiche alors TOUJOURS "Today" en haut,
+  // peu importe l'ordre dans lequel les jours ont été cliqués/créés.
+  const newTs = parseInt(d.dataset.ts, 10);
+  const existingDays = Array.from(uc.querySelectorAll('.update-day'));
+  const insertBefore = existingDays.find(el => parseInt(el.dataset.ts || '0', 10) > newTs);
+  if (insertBefore) uc.insertBefore(d, insertBefore);
+  else uc.appendChild(d);
 
   function updateRtsLabel(blockId) {
     const isAssist = gv('f_rts_assist') === 'Assist';
@@ -2719,6 +2747,7 @@ G.removeUpdateBlock = function(id) {
 function getUpdatesData() {
   return Array.from(document.querySelectorAll('.update-day')).map(block => ({
     id: block.id, date: block.dataset.date,
+    ts: block.dataset.ts ? parseInt(block.dataset.ts, 10) : (parseDateLabel(block.dataset.date) ?? 0),
     isRTS: block.querySelector('[id^="rts_"]')?.checked || false,
     freeText: block.querySelector('.upd-free-global')?.value || '',
     itemUpdates: Array.from(block.querySelectorAll('.upd-item-block')).map((ib, i) => ({
@@ -2729,7 +2758,6 @@ function getUpdatesData() {
     }))
   }));
 }
-
 // ══════════════════════════════════════
 //  PARTS
 // ══════════════════════════════════════
@@ -3449,19 +3477,7 @@ window.addEventListener('orientationchange', () => setTimeout(() => {
   if (out && out.style.display !== 'none') fitTableToScreen();
 }, 200));
 
-G.copyTable = async function() {
-  const tbl = document.getElementById('gen-tbl'); if (!tbl) return;
-  const btn = document.getElementById('copy-btn');
-  const markCopied = () => {
-    btn.classList.add('copied');
-    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
-    setTimeout(() => {
-      btn.classList.remove('copied');
-      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy table`;
-    }, 2500);
-  };
-
-  // Injection des styles inline pour la copie (comme pour draftInGmail)
+function buildInlinedTableClone(tbl) {
   const tblClone = tbl.cloneNode(true);
   tblClone.style.cssText = 'border-collapse:collapse;width:100%;font-family:Aptos,Calibri,Arial,sans-serif;font-size:13px';
   tblClone.querySelectorAll('td').forEach(td => {
@@ -3478,31 +3494,39 @@ G.copyTable = async function() {
   tblClone.querySelectorAll('.thr td').forEach(td => {
     td.style.cssText = 'border:2px solid #000000;padding:8px 10px;background:#a8d08d;color:#000000;font-weight:700;font-size:13px';
   });
-  tblClone.querySelectorAll('.lbl, .upd-lbl').forEach(td => {
+  tblClone.querySelectorAll('.lbl').forEach(td => {
     td.style.cssText = 'border:2px solid #000000;padding:7px 10px;background:#ffffff;font-weight:700;color:#000000';
   });
+  tblClone.querySelectorAll('.upd-lbl').forEach(td => {
+    td.style.cssText = 'border:2px solid #000000;padding:7px 10px;background:#ffffff;font-weight:700;color:#000000';
+  });
+  return tblClone;
+}
 
+G.copyTable = async function() {
+  const tbl = document.getElementById('gen-tbl'); if (!tbl) return;
+  const btn = document.getElementById('copy-btn');
+  const markCopied = () => {
+    btn.classList.add('copied');
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy table`;
+    }, 2500);
+  };
   try {
-    // API moderne (Chrome 76+, Safari 13.1+) : on copie le clone
+    // API moderne (Chrome 76+, Safari 13.1+) — on copie le clone avec styles inlinés,
+    // sinon les bordures/couleurs disparaissent une fois collées hors de l'app.
+    const tblClone = buildInlinedTableClone(tbl);
     await navigator.clipboard.write([
       new ClipboardItem({ 'text/html': new Blob([tblClone.outerHTML], { type: 'text/html' }) })
     ]);
     markCopied();
   } catch(e) {
     // Fallback pour les navigateurs plus anciens
-    // On insère temporairement le clone de façon invisible pour le sélectionner
-    const tempDiv = document.createElement('div');
-    tempDiv.style.position = 'absolute';
-    tempDiv.style.left = '-9999px';
-    tempDiv.appendChild(tblClone);
-    document.body.appendChild(tempDiv);
-    
-    const range = document.createRange(); range.selectNode(tblClone);
+    const range = document.createRange(); range.selectNode(tbl);
     const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
-    document.execCommand('copy'); 
-    sel.removeAllRanges();
-    document.body.removeChild(tempDiv);
-    
+    document.execCommand('copy'); sel.removeAllRanges();
     markCopied();
   }
 };
@@ -3523,33 +3547,8 @@ G.draftInGmail = async function() {
 
     const subject = document.getElementById('email-subject')?.textContent || '';
 
-    // ✅ Fix tableau : inline styles explicites pour Gmail (format corporate standard)
-    const tblClone = tbl.cloneNode(true);
-    // Appliquer les styles inline sur chaque cellule
-    tblClone.style.cssText = 'border-collapse:collapse;width:100%;font-family:Aptos,Calibri,Arial,sans-serif;font-size:13px';
-    tblClone.querySelectorAll('td').forEach(td => {
-      const styleAttr = td.getAttribute('style') || '';
-      const noTop = styleAttr.includes('border-top:none');
-      const noBottom = styleAttr.includes('border-bottom:none');
-      td.style.border = '2px solid #000000';
-      td.style.padding = td.style.padding || '7px 10px';
-      td.style.verticalAlign = 'top';
-      td.style.color = td.style.color || '#000000';
-      if(noTop) td.style.borderTop = 'none';
-      if(noBottom) td.style.borderBottom = 'none';
-    });
-    // Header rows (thr) — vert corporate A8D08D, texte noir
-    tblClone.querySelectorAll('.thr td').forEach(td => {
-      td.style.cssText = 'border:2px solid #000000;padding:8px 10px;background:#a8d08d;color:#000000;font-weight:700;font-size:13px';
-    });
-    // Label cells
-    tblClone.querySelectorAll('.lbl').forEach(td => {
-      td.style.cssText = 'border:2px solid #000000;padding:7px 10px;background:#ffffff;font-weight:700;color:#000000';
-    });
-    // Update label cells
-    tblClone.querySelectorAll('.upd-lbl').forEach(td => {
-      td.style.cssText = 'border:2px solid #000000;padding:7px 10px;background:#ffffff;font-weight:700;color:#000000';
-    });
+    // ✅ Fix tableau : styles inline explicites pour Gmail (format corporate standard)
+    const tblClone = buildInlinedTableClone(tbl);
 
     const htmlBody = `<html><body style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:13px;margin:0;padding:16px">${tblClone.outerHTML}</body></html>`;
 
