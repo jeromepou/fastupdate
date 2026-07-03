@@ -147,6 +147,25 @@ const STOP = new Set(['AND','OR','THE','A','AN','OF','FOR','TO','IN','ON','AT','
 const tokenize = s => [...new Set(s.toUpperCase().replace(/[^A-Z0-9\s]/g,' ').split(/\s+/).filter(w=>w.length>2&&!STOP.has(w)))];
 const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
+const REPLY_WORKER = 'https://orange-snow-95f7.jeromepoupinel.workers.dev';
+async function koGetEmbedding(text) {
+  const t = (text || '').trim();
+  if (!t) return null;
+  try {
+    const res = await fetch(REPLY_WORKER + '/embed', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ model: 'mistral-embed', input: [t.slice(0, 2000)] })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || ('Embed error ' + res.status));
+    return data.data?.[0]?.embedding || null;
+  } catch(e) {
+    console.warn('koGetEmbedding failed:', e.message);
+    return null;
+  }
+}
+
 // ── AUTH ──────────────────────────────────────────────────
 window.doLogin = async function() {
   const email = document.getElementById('fb-email').value.trim();
@@ -372,7 +391,6 @@ window.validateEntry = async function(key) {
   const hist   = historyByFA[fa];
   const knownPNs = hist ? hist.knownPNs : new Set();
 
-  // On ne pousse que les pièces nouvelles (pas déjà dans l'historique)
   const filterNew = arr => (arr||[])
     .filter(p => !p.pn || !knownPNs.has(p.pn))
     .map(p => ({...p, squawks: squawk ? [squawk] : []}));
@@ -384,15 +402,17 @@ window.validateEntry = async function(key) {
 
   try {
     if (hist) {
-      // ── MERGE dans l'entrée existante ──
       const existing = hist.latestEntry;
+      const finalSquawk = squawk || existing.squawkRaw || '';
+      const embedding = finalSquawk ? ((await koGetEmbedding(finalSquawk)) || existing.embedding || null) : (existing.embedding || null);
       const merged = {
         ...existing,
         parts:       [...(existing.parts||[]),       ...newParts],
         tools:       [...(existing.tools||[]),       ...newTools],
         consumables: [...(existing.consumables||[]), ...newCons],
-        squawkRaw:   squawk || existing.squawkRaw || '',
-        keywords:    tokenize(squawk || existing.squawkRaw || fa),
+        squawkRaw:   finalSquawk,
+        keywords:    tokenize(finalSquawk || fa),
+        embedding,
         lastUsed:    Date.now(),
         usageCount:  (existing.usageCount||1) + 1,
         acModel:     entry.acModel || existing.acModel || '',
@@ -404,20 +424,21 @@ window.validateEntry = async function(key) {
       };
       await set(ref(db, 'squawkHistory/' + hist.latestKey), merged);
 
-      // Mettre à jour le cache local pour les prochaines validations de cette session
       newParts.forEach(p => { if (p.pn) knownPNs.add(p.pn); });
       newTools.forEach(p => { if (p.pn) knownPNs.add(p.pn); });
       newCons.forEach(p  => { if (p.pn) knownPNs.add(p.pn); });
       hist.latestEntry = merged;
 
     } else {
-      // ── CRÉER une nouvelle entrée squawkHistory ──
       const newKey = 'sq_agent_' + fa + '_' + Date.now();
       const defaultSquawk = entry.importedFromFSR ? `${fa} FSR` : `${fa} PARTS REQUEST`;
+      const finalSquawk = squawk || defaultSquawk;
+      const embedding = await koGetEmbedding(finalSquawk);
       const histEntry = {
         faNumber:            fa,
-        squawkRaw:           squawk || defaultSquawk,
+        squawkRaw:           finalSquawk,
         keywords:            tokenize(squawk || fa),
+        embedding:           embedding || null,
         parts:               (entry.parts||[]).map(p=>({...p, squawks: squawk?[squawk]:[]})),
         tools:               (entry.tools||[]).map(p=>({...p, squawks: squawk?[squawk]:[]})),
         consumables:         (entry.consumables||[]).map(p=>({...p, squawks: squawk?[squawk]:[]})),
@@ -438,7 +459,6 @@ window.validateEntry = async function(key) {
       };
       await set(ref(db, 'squawkHistory/' + newKey), histEntry);
 
-      // Enregistrer dans historyByFA pour les validations suivantes (même session)
       const allPNs = new Set([
         ...(entry.parts||[]).map(p=>p.pn),
         ...(entry.tools||[]).map(p=>p.pn),
