@@ -23,6 +23,7 @@ header h1{font-size:15px;font-weight:600;flex:1}
 .badge-ko{background:var(--rl);border:1px solid #e8b8a0;color:var(--red)}
 .badge-warn{background:var(--al);border:1px solid #d4b800;color:var(--amb)}
 .badge-blue{background:var(--bl);border:1px solid #b8d0e8;color:var(--blue)}
+.badge-fsr{background:#f0e8f8;border:1px solid #c8a8e8;color:#5a2a7a}
 .badge-new{background:#d4f0d4;border:1px solid var(--gb);color:var(--gd);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;display:inline-flex;align-items:center}
 .main{max-width:900px;margin:0 auto;padding:1.25rem 1rem 5rem}
 .card{background:#fff;border-radius:12px;border:1px solid var(--g200);box-shadow:var(--sh);margin-bottom:1rem;overflow:hidden}
@@ -109,6 +110,9 @@ header h1{font-size:15px;font-weight:600;flex:1}
         <button class="btn primary" id="btn-validate-all" onclick="validateAll()" style="margin-left:auto">✅ Validate all</button>
       </div>
       <div class="card-body">
+        <p style="font-size:12px;color:var(--g600);margin-bottom:10px">
+          Entries from both mailboxes appear here — <span class="badge badge-blue" style="vertical-align:middle">📦 Parts Request</span> (jpoupinel@) and <span class="badge badge-fsr" style="vertical-align:middle">✈️ FSR</span> (gac@) — for review before being saved to squawkHistory.
+        </p>
         <div id="entry-list"><div class="empty-state"><div class="icon">📭</div><p>No pending entries.</p></div></div>
         <div id="global-status" class="status-bar s-idle" style="margin-top:10px;display:none"></div>
       </div>
@@ -278,13 +282,23 @@ function buildEntryHTML(key) {
 
   const acInfo = [r.acModel, r.acSN ? '#'+r.acSN : '', r.acReg && r.acReg !== 'UNK' ? r.acReg : '', r.station ? '@ '+r.station : ''].filter(Boolean).join(' ');
 
+  // Badge de provenance — distingue les Part Requests (jpoupinel@) des FSR Gulfstream (gac@).
+  // Avant le correctif worker.js, les entrées FSR n'apparaissaient jamais ici :
+  // elles étaient écrites directement dans squawkHistory sans passer par cette revue.
+  const srcBadge = r.importedFromFSR
+    ? `<span class="badge badge-fsr">✈️ FSR${r.fsrNumber ? ' ' + esc(r.fsrNumber) : ''}</span>`
+    : `<span class="badge badge-blue">📦 Parts Request</span>`;
+  const ataChip = r.ata ? `<span style="font-size:11px;color:var(--g600)">ATA ${esc(r.ata)}</span>` : '';
+
   return `<div class="entry ${hasHistory ? 'has-history' : ''}" id="entry-${key}">
     <div class="entry-head" onclick="toggleEntry('${key}')">
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
           <span style="font-size:13px;font-weight:700;color:var(--gd)">${esc(fa)}</span>
+          ${srcBadge}
           ${hasHistory ? `<span class="badge badge-warn">🔄 Continues</span>` : ''}
           <span style="font-size:11px;color:var(--blue)">${esc(acInfo)}</span>
+          ${ataChip}
         </div>
         <div style="font-size:11px;color:var(--g400);margin-top:2px">
           ${esc(r.emailDate||'')} ·
@@ -385,6 +399,8 @@ window.validateEntry = async function(key) {
         acSN:        entry.acSN    || existing.acSN    || '',
         acReg:       (entry.acReg && entry.acReg !== 'UNK') ? entry.acReg : (existing.acReg || ''),
         station:     entry.station || existing.station || '',
+        ata:         entry.ata || existing.ata || '',
+        emailSubject:entry.emailSubject || existing.emailSubject || '',
       };
       await set(ref(db, 'squawkHistory/' + hist.latestKey), merged);
 
@@ -397,9 +413,10 @@ window.validateEntry = async function(key) {
     } else {
       // ── CRÉER une nouvelle entrée squawkHistory ──
       const newKey = 'sq_agent_' + fa + '_' + Date.now();
+      const defaultSquawk = entry.importedFromFSR ? `${fa} FSR` : `${fa} PARTS REQUEST`;
       const histEntry = {
         faNumber:            fa,
-        squawkRaw:           squawk || `${fa} PARTS REQUEST`,
+        squawkRaw:           squawk || defaultSquawk,
         keywords:            tokenize(squawk || fa),
         parts:               (entry.parts||[]).map(p=>({...p, squawks: squawk?[squawk]:[]})),
         tools:               (entry.tools||[]).map(p=>({...p, squawks: squawk?[squawk]:[]})),
@@ -409,11 +426,13 @@ window.validateEntry = async function(key) {
         acReg:               entry.acReg||'',
         acWO:                entry.acWO||'',
         station:             entry.station||'',
+        ata:                 entry.ata||'',
         emailSubject:        entry.emailSubject||'',
-        updateSummary:       '',
-        addedBy:             'Daily Agent',
+        updateSummary:       entry.updateSummary||'',
+        addedBy:             entry.addedBy || 'Daily Agent',
         importedFromHistory: false,
-        importedFromFSR:     false,
+        importedFromFSR:     entry.importedFromFSR || false,
+        fsrNumber:           entry.fsrNumber || '',
         lastUsed:            Date.now(),
         usageCount:          1
       };
