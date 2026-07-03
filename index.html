@@ -816,6 +816,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     </div>
     <button class="btn" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff;font-size:12px"
       onclick="closeKickoff()">← Back</button>
+    <button class="btn" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff;font-size:12px"
+      onclick="koOpenReplyModal()" title="Scan Gmail for replies on this job">📬 Replies</button>
     <button class="btn" style="background:rgba(255,255,200,.2);border-color:rgba(255,255,200,.4);color:#fff;font-size:12px"
       onclick="koNewJob()">🔄 Clear & New Job</button>
   </div>
@@ -1143,7 +1145,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span style="font-size:11px;color:var(--blue);white-space:nowrap">Or type keywords:</span>
-          <input type="text" id="ko-sq-freetext" placeholder="e.g. hydraulic leak nose gear…" oninput="koFreeTextLiveSearch()" onkeydown="if(event.key==='Enter')koSearchSquawkFreeText()" style="flex:1;min-width:180px;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r);background:#fff"/>
+          <input type="text" id="ko-sq-freetext" placeholder="e.g. hydraulic leak nose gear… (or describe it naturally)" oninput="koFreeTextLiveSearch()" onkeydown="if(event.key==='Enter')koSearchSquawkFreeText()" style="flex:1;min-width:180px;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r);background:#fff"/>
           <button class="btn" onclick="koSearchSquawkFreeText()" style="font-size:12px;padding:5px 10px;background:var(--blue);color:#fff;border-color:var(--blue)">🔍 Search</button>
           <span id="ko-sq-freetext-hint" style="font-size:11px;color:var(--g400)"></span>
         </div>
@@ -1648,22 +1650,33 @@ let koPartsUpdateQueue = []; // items cliquables de l'onglet "parts" (parts_upda
 let koReplyCurrentFA = '';
 let koReplyCurrentCat = 'customer';
 
+// Lit le WO depuis l'écran actuellement affiché (Update ou Start Job), pour
+// que le bouton fonctionne peu importe d'où il est ouvert.
+function koCurrentWoField() {
+  const kickoffOpen = document.getElementById('kickoff-panel')?.style.display === 'block';
+  const primary = (kickoffOpen ? document.getElementById('ko_wo')?.value : document.getElementById('f_wo')?.value) || '';
+  return (primary || document.getElementById('f_wo')?.value || document.getElementById('ko_wo')?.value || '').trim();
+}
+
 G.koOpenReplyModal = function() {
-  const faNumber = (document.getElementById('f_wo')?.value || '').trim();
+  const faNumber = koCurrentWoField();
   if (!faNumber) { alert('Please load a project with a Work Order number first.'); return; }
 
-  koReplyCache = {};
+  // Mémoire : le cache n'est vidé que si on change de job. Rouvrir Replies
+  // depuis l'autre écran pour le MÊME WO retrouve le dernier scan à l'instant.
+  if (koReplyCurrentFA !== faNumber) koReplyCache = {};
   koReplyCurrentFA = faNumber;
-  koReplyCurrentCat = 'customer';
+  const openTab = koReplyCurrentCat || 'customer';
+  koReplyCurrentCat = openTab;
 
   document.querySelectorAll('.ko-reply-tab').forEach(t => {
-    const on = t.dataset.cat === 'customer';
+    const on = t.dataset.cat === openTab;
     t.classList.toggle('on', on);
     t.style.background = on ? '#f3f4f6' : '#fff';
   });
 
   document.getElementById('reply-modal').style.display = 'flex';
-  koLoadReplyTab('customer');
+  koLoadReplyTab(openTab);
 };
 
 G.koSwitchReplyTab = function(cat) {
@@ -1799,64 +1812,82 @@ function koRenderReplyBody(replies, cat, lastSync) {
   bodyEl.innerHTML = refreshBar + html;
 }
 
+// Force en string n'importe quelle valeur — au cas où Mistral renvoie un
+// nombre/tableau/objet pour un champ censé être "" par défaut. Évite
+// "(a.v || "").replace is not a function".
+function koSafeStr(v) {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  if (Array.isArray(v)) return v.map(koSafeStr).filter(Boolean).join(', ');
+  if (typeof v === 'object') return Object.values(v).map(koSafeStr).filter(Boolean).join(', ');
+  return String(v);
+}
+	
 // Construit les boutons "Apply" selon la catégorie — c'est ici que
 // chaque ETA va vers SON champ précis et nulle part ailleurs.
 function koReplyActionsHtml(r, cat) {
-  const actions = [];   // boutons simples existants → koApplyReply (inchangé)
-  const partBtns = [];  // boutons pièces → koApplyPartsUpdate (écrit dans orders/WO...)
-  const docLinks = [];  // vignettes pièce jointe → lien direct vers l'email dans Gmail
+  const actions = [];
+  const partBtns = [];
+  const docLinks = [];
 
   if (cat === 'customer') {
-    if (r.engineer_eta)       actions.push({ label: 'My ETA: ' + r.engineer_eta, k:'eng_eta', v:r.engineer_eta });
-    if (r.next_flight)        actions.push({ label: 'Next flight: ' + r.next_flight, k:'nxt', v:r.next_flight });
-    if (r.customer_reference) actions.push({ label: 'Customer ref: ' + r.customer_reference, k:'cust_ref', v:r.customer_reference });
+    const eta = koSafeStr(r.engineer_eta), nxt = koSafeStr(r.next_flight), ref = koSafeStr(r.customer_reference);
+    if (eta) actions.push({ label: 'My ETA: ' + eta, k:'eng_eta', v:eta });
+    if (nxt) actions.push({ label: 'Next flight: ' + nxt, k:'nxt', v:nxt });
+    if (ref) actions.push({ label: 'Customer ref: ' + ref, k:'cust_ref', v:ref });
 
   } else if (cat === 'parts') {
+    const po = koSafeStr(r.materials_po);
     if (r.order_confirmed) actions.push({ label:'✓ Order confirmed', k:'noted', v:'' });
-    if (r.materials_po)    actions.push({ label:'Materials PO: ' + r.materials_po, k:'mat_po', v:r.materials_po });
+    if (po) actions.push({ label:'Materials PO: ' + po, k:'mat_po', v:po });
 
     (r.parts_updates || []).forEach(p => {
-      if (!p.pn && !p.eta_text) return;
+      const pn = koSafeStr(p.pn), etaText = koSafeStr(p.eta_text), srcLoc = koSafeStr(p.source_location),
+            altPn = koSafeStr(p.alternative_pn), tracking = koSafeStr(p.tracking_number);
+      if (!pn && !etaText) return;
       const tagMap = { alternative:'🔄 ', backordered:'⏳ ', shipped:'📦 ', delivered:'✅ ', unavailable:'❌ ', confirmed:'☑️ ' };
       const tag = tagMap[p.status] || '';
-      const altTag = p.alternative_pn ? ' · alt: ' + p.alternative_pn : '';
-      const lbl = tag + (p.pn || '?') + (p.eta_text ? ' — ' + p.eta_text : '') + (p.source_location ? ' (' + p.source_location + ')' : '') + altTag;
-      const idx = koPartsUpdateQueue.push({ kind:'update', ...p }) - 1;
+      const altTag = altPn ? ' · alt: ' + altPn : '';
+      const lbl = tag + (pn || '?') + (etaText ? ' — ' + etaText : '') + (srcLoc ? ' (' + srcLoc + ')' : '') + altTag;
+      const idx = koPartsUpdateQueue.push({ kind:'update', ...p, pn, eta_text:etaText, source_location:srcLoc, alternative_pn:altPn, tracking_number:tracking, matched_existing_pn: koSafeStr(p.matched_existing_pn) }) - 1;
       partBtns.push({ idx, label: lbl });
-      if (p.tracking_number) actions.push({ label:'📋 Copy tracking ' + p.pn, k:'track', v:p.tracking_number });
+      if (tracking) actions.push({ label:'📋 Copy tracking ' + pn, k:'track', v:tracking });
     });
 
     (r.hsa_parts_added || []).forEach(p => {
-      if (!p.pn && !p.description) return;
-      const idx = koPartsUpdateQueue.push({ kind:'add', pn:p.pn||'', description:p.description||'' }) - 1;
-      partBtns.push({ idx, label: '➕ ' + (p.pn || p.description) + (p.pn && p.description ? ' — ' + p.description : '') });
+      const pn = koSafeStr(p.pn), desc = koSafeStr(p.description);
+      if (!pn && !desc) return;
+      const idx = koPartsUpdateQueue.push({ kind:'add', pn, description:desc }) - 1;
+      partBtns.push({ idx, label: '➕ ' + (pn || desc) + (pn && desc ? ' — ' + desc : '') });
     });
 
     (r.hsa_parts_removed || []).forEach(p => {
-      if (!p.pn && !p.description) return;
-      const idx = koPartsUpdateQueue.push({ kind:'remove', pn:p.pn||'', description:p.description||'' }) - 1;
-      partBtns.push({ idx, label: '🗑️ ' + (p.pn || p.description) + (p.pn && p.description ? ' — ' + p.description : '') });
+      const pn = koSafeStr(p.pn), desc = koSafeStr(p.description);
+      if (!pn && !desc) return;
+      const idx = koPartsUpdateQueue.push({ kind:'remove', pn, description:desc }) - 1;
+      partBtns.push({ idx, label: '🗑️ ' + (pn || desc) + (pn && desc ? ' — ' + desc : '') });
     });
 
-    // Tool report (pdf) / commercial invoice (xlsx) — juste une vignette pour
-    // retrouver l'email en un clic, aucun contenu lu/extrait.
     (r.attachments || []).forEach(a => {
       const docLabel = a.docType === 'tool_report' ? '🔧 Tool report' : '📄 Commercial Invoice';
-      docLinks.push({ href: 'https://mail.google.com/mail/u/0/#all/' + r.msgId, label: docLabel + (a.filename ? ' — ' + a.filename : '') });
+      docLinks.push({ href: 'https://mail.google.com/mail/u/0/#all/' + r.msgId, label: docLabel + (a.filename ? ' — ' + koSafeStr(a.filename) : '') });
     });
 
   } else if (cat === 'fbo') {
-    if (r.shipping_address)   actions.push({ label:'Fill shipping address', k:'ship_addr', v:r.shipping_address });
-    if (r.fbo_ready_eta)      actions.push({ label:'FBO ready: ' + r.fbo_ready_eta, k:'noted', v:'' });
-    if (r.fbo_contact_name)   actions.push({ label:'Contact: ' + r.fbo_contact_name, k:'noted', v:'' });
-    if (r.fbo_closed_dates)   actions.push({ label:'⚠️ Closed: ' + r.fbo_closed_dates, k:'noted', v:'' });
+    const addr = koSafeStr(r.shipping_address), ready = koSafeStr(r.fbo_ready_eta),
+          contact = koSafeStr(r.fbo_contact_name), closed = koSafeStr(r.fbo_closed_dates);
+    if (addr)    actions.push({ label:'Fill shipping address', k:'ship_addr', v:addr });
+    if (ready)   actions.push({ label:'FBO ready: ' + ready, k:'noted', v:'' });
+    if (contact) actions.push({ label:'Contact: ' + contact, k:'noted', v:'' });
+    if (closed)  actions.push({ label:'⚠️ Closed: ' + closed, k:'noted', v:'' });
   }
 
   if (!actions.length && !partBtns.length && !docLinks.length) return '';
 
   let html = '<div style="display:flex;gap:5px;flex-wrap:wrap">';
   for (const a of actions) {
-    const vEsc = (a.v || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'").slice(0,300);
+    const vEsc = koSafeStr(a.v).replace(/\\/g,'\\\\').replace(/'/g,"\\'").slice(0,300);
     html += `<button onclick="koApplyReply(this,'${a.k}','${vEsc}')" `;
     html += 'style="font-size:11px;padding:4px 10px;border-radius:20px;cursor:pointer;border:1px solid #d1fae5;background:#ecfdf5;color:#065f46">';
     html += escHtml(a.label) + '</button>';
@@ -6232,26 +6263,39 @@ function squawkScore(tokensA, tokensB) {
   return tokensA.filter(t=>setB.has(t.toLowerCase())).length;
 }
 
+// ── Recherche sémantique (embeddings Mistral) ──────────────────────────
+async function koGetEmbedding(text) {
+  const t = (text || '').trim();
+  if (!t) return null;
+  try {
+    const res = await fetch(KO_WORKER + '/embed', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ model: 'mistral-embed', input: [t.slice(0, 2000)] })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || ('Embed error ' + res.status));
+    return data.data?.[0]?.embedding || null;
+  } catch(e) {
+    console.warn('koGetEmbedding failed — recherche dégradée en mots-clés seuls:', e.message);
+    return null;
+  }
+}
+
+function cosineSimilarity(a, b) {
+  if (!a || !b || a.length !== b.length) return 0;
+  let dot = 0, normA = 0, normB = 0;
+  for (let i = 0; i < a.length; i++) { dot += a[i]*b[i]; normA += a[i]*a[i]; normB += b[i]*b[i]; }
+  if (!normA || !normB) return 0;
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}	
+
 G.koSearchSquawkHistory = async function() {
   const sel = document.getElementById('ko-sq-history-select');
   const val = sel?.value;
   if (!val) { alert('Please select a squawk to search.'); return; }
   const label = val.split('|').slice(1).join('|');
-  const tokens = squawkTokenize(label);
-  if (tokens.length < 2) { alert('Squawk description too short to search.'); return; }
-  try {
-    const snap = await get(ref(db, 'squawkHistory'));
-    if (!snap.exists()) { alert('No squawk history found yet.'); return; }
-    const curModel = (document.getElementById('ko_model')?.value||'').trim().toUpperCase();
-    const results = [];
-    Object.entries(snap.val()).forEach(([key, entry]) => {
-      const score = squawkScore(tokens, entry.keywords||[]);
-      if (score >= 2) results.push({key, entry, score});
-    });
-    results.sort((a,b)=>b.score-a.score||(b.entry.usageCount||0)-(a.entry.usageCount||0));
-    if (!results.length) { alert('No similar squawk found in history.'); return; }
-    squawkShowSuggestionModal(results, curModel, label);
-  } catch(e) { alert('Search error: '+e.message); }
+  await squawkRunSearch(label);
 };
 
 // Free-text search: live hint (count of tokens recognised)
@@ -6262,7 +6306,7 @@ G.koFreeTextLiveSearch = window.koFreeTextLiveSearch = function() {
   if (!val) { hint.textContent = ''; return; }
   const tokens = squawkTokenize(val);
   hint.textContent = tokens.length
-    ? `${tokens.length} keyword${tokens.length>1?'s':''} detected`
+    ? `${tokens.length} keyword${tokens.length>1?'s':''} detected — Enter to search`
     : 'Type more words…';
 };
 
@@ -6278,28 +6322,56 @@ function koRefreshHistorySelect() {
 G.koSearchSquawkFreeText = async function() {
   const val = (document.getElementById('ko-sq-freetext')?.value||'').trim();
   if (!val) { alert('Please type some keywords to search.'); return; }
-  const tokens = squawkTokenize(val);
-  if (tokens.length < 1) { alert('Keywords too short or all filtered — try different words.'); return; }
+  await squawkRunSearch(val);
+};
+
+// Recherche partagée dropdown + texte libre : combine chevauchement de
+// mots-clés (rapide, exact) et similarité sémantique (tolère une
+// formulation différente). Les deux scores s'additionnent.
+const SEMANTIC_MATCH_THRESHOLD = 0.68; // cosinus — à ajuster selon les retours terrain
+async function squawkRunSearch(queryText) {
+  const q = (queryText || '').trim();
+  if (!q) return;
+  const tokens = squawkTokenize(q);
+
+  const hint = document.getElementById('ko-sq-freetext-hint');
+  if (hint) hint.textContent = '🔎 Semantic search…';
+  const queryEmbedding = await koGetEmbedding(q);
+  if (hint) hint.textContent = '';
+
   try {
     const snap = await get(ref(db, 'squawkHistory'));
     if (!snap.exists()) { alert('No squawk history found yet.'); return; }
     const curModel = (document.getElementById('ko_model')?.value||'').trim().toUpperCase();
+
     const results = [];
     Object.entries(snap.val()).forEach(([key, entry]) => {
-      const score = squawkScore(tokens, entry.keywords||[]);
-      if (score >= 1) results.push({key, entry, score});
+      const tokenScore = squawkScore(tokens, entry.keywords||[]);
+      const semScore = (queryEmbedding && entry.embedding) ? cosineSimilarity(queryEmbedding, entry.embedding) : 0;
+      if (tokenScore < 1 && semScore < SEMANTIC_MATCH_THRESHOLD) return;
+      const score = tokenScore + (semScore * 5);
+      results.push({key, entry, tokenScore, semScore, score});
     });
-    // Sort: same type first (bonus +1000), then by score desc, then by usageCount desc
+
     results.sort((a,b) => {
       const aBonus = (a.entry.acModel||'').toUpperCase()===curModel||!a.entry.acModel ? 1000 : 0;
       const bBonus = (b.entry.acModel||'').toUpperCase()===curModel||!b.entry.acModel ? 1000 : 0;
       return (bBonus+b.score+((b.entry.usageCount||0)*0.1)) - (aBonus+a.score+((a.entry.usageCount||0)*0.1));
     });
-    if (!results.length) { alert('No similar squawk found — try other keywords.'); return; }
-    squawkShowSuggestionModal(results, curModel, val);
-  } catch(e) { alert('Search error: '+e.message); }
-};
 
+    if (!results.length) { alert('No similar squawk found — try other keywords or a fuller description.'); return; }
+    squawkShowSuggestionModal(results, curModel, q);
+  } catch(e) { alert('Search error: '+e.message); }
+}
+
+function koFormatMatchLabel(r) {
+  const pct = Math.round((r.semScore||0)*100);
+  const bits = [];
+  if (r.tokenScore) bits.push(r.tokenScore + ' keyword' + (r.tokenScore>1?'s':''));
+  if (pct >= 50) bits.push(pct + '% semantic match');
+  return 'Match: <b>' + (bits.length ? bits.join(' + ') : 'weak') + '</b>';
+}
+	
 function squawkShowSuggestionModal(results, curModel, searchedLabel) {
   let modal = document.getElementById('modal-squawk-suggest');
   if (!modal) {
@@ -6368,7 +6440,7 @@ function squawkShowSuggestionModal(results, curModel, searchedLabel) {
       window._sqSuggestItems.push(...allItems.map(p=>({...p,srcKey:r.key})));
       const info=document.createElement('div');
       info.style.cssText='margin-bottom:8px;padding:8px 10px;background:#fff;border:1px solid var(--g200);border-radius:var(--r)';
-      info.innerHTML=`<div style="font-size:11px;color:var(--g600);margin-bottom:5px">Match: <b>${r.score}</b> keyword(s) · used <b>${e.usageCount||1}</b>× · last ${d} · by ${e.addedBy||'?'}${e.acWO?' · <span style="font-weight:700;color:var(--gd)">WO: '+e.acWO+'</span>':''}${e.acSN?' · SN: '+e.acSN:''}</div>${renderItems(e,'same-'+ri)}`;
+      info.innerHTML=`<div style="font-size:11px;color:var(--g600);margin-bottom:5px">${koFormatMatchLabel(r)} · used <b>${e.usageCount||1}</b>× · last ${d} · by ${e.addedBy||'?'}${e.acWO?' · <span style="font-weight:700;color:var(--gd)">WO: '+e.acWO+'</span>':''}${e.acSN?' · SN: '+e.acSN:''}</div>${renderItems(e,'same-'+ri)}`;
       sameEl.appendChild(info);
     });
   } else {
@@ -6391,7 +6463,7 @@ function squawkShowSuggestionModal(results, curModel, searchedLabel) {
       window._sqOtherItems.push(...allItems.map(p=>({...p,srcKey:r.key})));
       const warn=document.createElement('div');
       warn.style.cssText='margin-bottom:8px;padding:8px 10px;background:#fff;border:1px solid var(--g200);border-radius:var(--r);opacity:.85';
-      warn.innerHTML=`<div style="font-size:11px;margin-bottom:4px"><span style="background:var(--al);color:var(--amb);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">⚠️ ${e.acModel||'Unknown type'}</span> <span style="color:var(--g600)">· used ${e.usageCount||1}× · last ${d}${e.acWO?' · <b>WO: '+e.acWO+'</b>':''}${e.acSN?' · SN: '+e.acSN:''}</span></div><div style="font-size:11px;color:var(--amb);margin-bottom:5px">⚠️ Different aircraft type — verify P/N applicability before use</div>${renderItems(e,'other-'+ri)}`;
+      warn.innerHTML=`<div style="font-size:11px;margin-bottom:4px"><span style="background:var(--al);color:var(--amb);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">⚠️ ${e.acModel||'Unknown type'}</span> <span style="color:var(--g600)">· ${koFormatMatchLabel(r)} · used ${e.usageCount||1}× · last ${d}${e.acWO?' · <b>WO: '+e.acWO+'</b>':''}${e.acSN?' · SN: '+e.acSN:''}</span></div><div style="font-size:11px;color:var(--amb);margin-bottom:5px">⚠️ Different aircraft type — verify P/N applicability before use</div>${renderItems(e,'other-'+ri)}`;
       otherEl.appendChild(warn);
     });
   } else {
@@ -6434,22 +6506,30 @@ async function squawkHistorySave(squawkLabel, parts, acModel, acSN) {
   const allParts=parts.filter(p=>p.cat==='Part');
   const allTools=parts.filter(p=>p.cat==='Tool');
   const allConsumables=parts.filter(p=>p.cat==='Consumable');
+  const embedding = await koGetEmbedding(squawkLabel); // null si l'appel échoue — non bloquant
   try {
     const snap=await get(ref(db,'squawkHistory'));
     let existingKey=null;
     if (snap.exists()) {
       let bestScore=0;
       Object.entries(snap.val()).forEach(([key,entry])=>{
-        const score=squawkScore(tokens,entry.keywords||[]);
-        if (score>=3&&score>bestScore){bestScore=score;existingKey=key;}
+        const tokenScore=squawkScore(tokens,entry.keywords||[]);
+        const semScore=(embedding && entry.embedding) ? cosineSimilarity(embedding, entry.embedding) : 0;
+        // Seuil volontairement plus strict qu'en recherche : ici on FUSIONNE
+        // deux entrées — un faux positif mélangerait les pièces de deux
+        // squawks différents. En recherche, un faux positif est sans risque
+        // puisque c'est l'ingénieur qui valide manuellement ensuite.
+        const isMatch = tokenScore>=3 || semScore>=0.82;
+        const combined = tokenScore + (semScore*5);
+        if (isMatch && combined>bestScore){bestScore=combined;existingKey=key;}
       });
     }
     const acWO = document.getElementById('ko_wo')?.value || '';
-    const entryData={keywords:tokens,squawkRaw:squawkLabel,parts:allParts,tools:allTools,consumables:allConsumables,lastUsed:Date.now(),addedBy:curProfile?.name||'Unknown',acModel:acModel||'',acSN:acSN||'',acWO:acWO};
+    const entryData={keywords:tokens,squawkRaw:squawkLabel,parts:allParts,tools:allTools,consumables:allConsumables,lastUsed:Date.now(),addedBy:curProfile?.name||'Unknown',acModel:acModel||'',acSN:acSN||'',acWO:acWO,embedding:embedding||null};
     if (existingKey) {
       const existing=(await get(ref(db,'squawkHistory/'+existingKey))).val();
       const mergeParts=(oldList,newList)=>{const merged=[...(oldList||[])];newList.forEach(p=>{if(!merged.find(x=>x.pn===p.pn&&x.pn))merged.push(p);});return merged;};
-      await update(ref(db,'squawkHistory/'+existingKey),{...entryData,parts:mergeParts(existing.parts,allParts),tools:mergeParts(existing.tools,allTools),consumables:mergeParts(existing.consumables,allConsumables),usageCount:(existing.usageCount||1)+1});
+      await update(ref(db,'squawkHistory/'+existingKey),{...entryData,parts:mergeParts(existing.parts,allParts),tools:mergeParts(existing.tools,allTools),consumables:mergeParts(existing.consumables,allConsumables),usageCount:(existing.usageCount||1)+1,embedding:embedding||existing.embedding||null});
     } else {
       await set(ref(db,'squawkHistory/sq_'+Date.now()),{...entryData,usageCount:1});
     }
@@ -6964,6 +7044,7 @@ window.deleteFSR = G.deleteFSR;
 window.koApplyFSR = G.koApplyFSR;
 window.koApplyBulkSquawk = G.koApplyBulkSquawk;
 window.koNewJob = G.koNewJob;
+window.koLiveRefresh = koLiveRefresh;
 
 </script>
 
