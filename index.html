@@ -1870,7 +1870,7 @@ function koReplyActionsHtml(r, cat) {
     });
 
     (r.attachments || []).forEach(a => {
-      const docLabel = a.docType === 'tool_report' ? '🔧 Tool report' : '📄 Commercial Invoice';
+      const docLabel = koSafeStr(a.label) || '📎 Attachment';
       docLinks.push({ href: 'https://mail.google.com/mail/u/0/#all/' + r.msgId, label: docLabel + (a.filename ? ' — ' + koSafeStr(a.filename) : '') });
     });
 
@@ -4121,6 +4121,10 @@ G.confirmRTS = async function() {
   if(!curProj||!curProfile){closeModal('modal-rts');return;}
   await doSave();
   await update(ref(db,'team/'+curProfile.id+'/projects/'+curProj),{rts:true,updatedAt:Date.now()});
+  // Le job est archivé — ses réponses Gmail scannées n'ont plus besoin d'être
+  // gardées (le cron les aurait de toute façon purgées au passage quotidien).
+  const faWo = gv('f_wo');
+  if (faWo) remove(ref(db, 'squawkReplies/' + faWo.toLowerCase().replace(/[\s/]/g, '_'))).catch(()=>{});
   closeModal('modal-rts');
   setStatus('done','✅ Project archived as RTS.');
   curProj=null; clearForm();
