@@ -2082,10 +2082,16 @@ G.koApplyPartsUpdate = async function(btn, idx) {
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     // Signed in via email — check if admin
-    const snap = await get(ref(db, 'admins/' + user.uid));
-    isAdmin = snap.exists();
-    if (isAdmin) {
-      showAdminPanel();
+    try {
+      const snap = await get(ref(db, 'admins/' + user.uid));
+      isAdmin = snap.exists();
+      if (isAdmin) {
+        showAdminPanel();
+      }
+    } catch (error) {
+      // Absorbe l'erreur "Permission denied" si l'utilisateur n'est pas admin
+      isAdmin = false;
+      console.warn('Admin check failed or permission denied:', error.message);
     }
   }
 });
