@@ -968,6 +968,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       </div>
       <div class="ko-toggles" style="margin-bottom:12px">
         <span class="ko-pill" id="ko-extra-baggage" onclick="this.classList.toggle('active-green');koSaveState()">🧳 Extra baggage (2nd bag)</span>
+        <span class="ko-pill" id="ko-fake-return" onclick="this.classList.toggle('active-green');koSaveState()">🎫 Include a fake return ticket</span>
       </div>
       <div class="ko-divider"></div>
       <div class="ko-section-lbl">Frequent flyer numbers — saved to your profile</div>
@@ -1524,6 +1525,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <li><strong>Preferred time of departure</strong> — Morning, Afternoon, Evening, Night, or Any time. Tap again to deselect.</li>
         <li><strong>Cabin class</strong> — Economy and Business, Economy only, or Business only.</li>
         <li><strong>Extra baggage</strong> — toggle on if carrying tools and needing 2 checked bags.</li>
+        <li><strong>Fake return ticket</strong> — toggle on to ask OPS to also issue a dummy return ticket, useful as proof of onward travel for visa/immigration purposes when your actual return date isn't confirmed yet.</li>
         <li><strong>Frequent flyer numbers</strong> — add airline loyalty numbers once (saved permanently to your profile). They appear in the email automatically. You can add or remove airlines at any time.</li>
       </ul>
       <p>Tick <strong>"Aircraft is at my home base"</strong> to skip this draft entirely — it will be marked as Skipped and not created in Gmail.</p>
@@ -4591,6 +4593,7 @@ function koBuildStateSnapshot() {
     travelTime:   KO.travelTime,
     cabinClass:   KO.cabinClass,
     extraBaggage: document.getElementById('ko-extra-baggage')?.classList.contains('active-green') || false,
+    fakeReturn:   document.getElementById('ko-fake-return')?.classList.contains('active-green') || false,
     colleagueMode: document.getElementById('ko-colleague-toggle')?.checked || false,
     colleagueName: koGetColleagueName(),
     colleagueNameManual: (document.getElementById('ko_colleague_name_manual')?.value || ''),
@@ -4730,6 +4733,9 @@ function koApplyStateToForm(state) {
   }
   if (state.extraBaggage) {
     document.getElementById('ko-extra-baggage')?.classList.add('active-green');
+  }
+  if (state.fakeReturn) {
+    document.getElementById('ko-fake-return')?.classList.add('active-green');
   }
   if (state.addrMode) {
     G.koSetAddr(state.addrMode);
@@ -5653,6 +5659,11 @@ function koBuildTravelBody() {
     ? 'I will be travelling with tools and equipment, so please include 2 checked bags.'
     : 'I will be travelling with tools and equipment, so please include checked baggage.';
 
+  const fakeReturn = document.getElementById('ko-fake-return')?.classList.contains('active-green');
+  const fakeReturnLine = fakeReturn
+    ? '\nAs my return date is not yet confirmed, could you please also issue a dummy return ticket, to be used as proof of onward travel for visa/immigration purposes if required?\n'
+    : '';
+
   return `Dear Team,
 
 Could you please book a flight (${cabinTxt}) from ${from} to ${to}${dateLine} for a maintenance mission.${timeLine}
@@ -5660,7 +5671,7 @@ Could you please book a flight (${cabinTxt}) from ${from} to ${to}${dateLine} fo
 Please prioritise direct flights when possible.
 
 ${bagLine}
-${loyaltyBlock}
+${fakeReturnLine}${loyaltyBlock}
 Thank you.
 
 Regards,
@@ -6926,6 +6937,7 @@ G.koNewJob = async function() {
     p.classList.remove('active-blue','active-green');
   });
   document.getElementById('ko-extra-baggage')?.classList.remove('active-green');
+  document.getElementById('ko-fake-return')?.classList.remove('active-green');
   KO.prefixSel = ''; KO.reqType = ''; KO.addrMode = ''; KO.travelTime = ''; KO.cabinClass = '';
 
   // Reset colleague section
