@@ -1681,6 +1681,56 @@ let koPartsUpdateQueue = []; // items cliquables de l'onglet "parts" (parts_upda
 let koReplyCurrentFA = '';
 let koReplyCurrentCat = 'customer';
 
+// Sujets supplémentaires ajoutés depuis la modale Reply Sync quand un
+// collègue a nommé le sujet différemment des patterns fixes. Partagé par
+// toute l'équipe (Firebase config/replySubjectPatterns) : une fois ajouté,
+// ça corrige la détection pour TOUS les jobs futurs avec la même formulation.
+let koCustomSubjPatterns = { customer: [], parts: [], fbo: [] };
+
+async function koLoadCustomSubjPatterns() {
+  try {
+    const snap = await get(ref(db, 'config/replySubjectPatterns'));
+    const d = snap.exists() ? (snap.val() || {}) : {};
+    koCustomSubjPatterns = { customer: d.customer || [], parts: d.parts || [], fbo: d.fbo || [] };
+  } catch(e) { console.warn('koLoadCustomSubjPatterns failed:', e); }
+}
+
+function koRenderCustomSubjTags(cat) {
+  const wrap  = document.getElementById('reply-custom-subj-tags');
+  const label = document.getElementById('reply-custom-cat-label');
+  if (label) label.textContent = { customer:'Customer Update', parts:'Part Request', fbo:'FBO Coordination' }[cat] || cat;
+  if (!wrap) return;
+  const list = koCustomSubjPatterns[cat] || [];
+  wrap.innerHTML = list.length ? list.map((s, i) => `
+    <span style="display:inline-flex;align-items:center;gap:4px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:20px;font-size:11px;padding:3px 9px;color:#1e40af">
+      ${escHtml(s)}
+      <button onclick="koRemoveCustomSubjectPattern('${cat}',${i})" style="background:none;border:none;cursor:pointer;color:#60a5fa;font-size:13px;line-height:1;padding:0 0 0 2px">×</button>
+    </span>`).join('') : '<span style="font-size:11px;color:#9ca3af">None added yet</span>';
+}
+
+G.koAddCustomSubjectPattern = async function() {
+  const inp = document.getElementById('reply-custom-subj-inp');
+  const val = (inp?.value || '').trim().replace(/"/g, '');
+  if (!val) return;
+  const cat = koReplyCurrentCat;
+  if (!koCustomSubjPatterns[cat]) koCustomSubjPatterns[cat] = [];
+  if (!koCustomSubjPatterns[cat].some(s => s.toLowerCase() === val.toLowerCase())) {
+    koCustomSubjPatterns[cat].push(val);
+    try { await set(ref(db, 'config/replySubjectPatterns/' + cat), koCustomSubjPatterns[cat]); }
+    catch(e) { console.warn('Could not save custom subject pattern:', e); }
+  }
+  inp.value = '';
+  koRenderCustomSubjTags(cat);
+  delete koReplyCache[cat];
+  koLiveRefresh(cat);
+};
+
+G.koRemoveCustomSubjectPattern = async function(cat, i) {
+  koCustomSubjPatterns[cat].splice(i, 1);
+  try { await set(ref(db, 'config/replySubjectPatterns/' + cat), koCustomSubjPatterns[cat]); } catch(e) {}
+  koRenderCustomSubjTags(cat);
+};
+
 // Lit le WO depuis l'écran actuellement affiché (Update ou Start Job), pour
 // que le bouton fonctionne peu importe d'où il est ouvert.
 function koCurrentWoField() {
@@ -1689,12 +1739,10 @@ function koCurrentWoField() {
   return (primary || document.getElementById('f_wo')?.value || document.getElementById('ko_wo')?.value || '').trim();
 }
 
-G.koOpenReplyModal = function() {
+G.koOpenReplyModal = async function() {
   const faNumber = koCurrentWoField();
   if (!faNumber) { alert('Please load a project with a Work Order number first.'); return; }
 
-  // Mémoire : le cache n'est vidé que si on change de job. Rouvrir Replies
-  // depuis l'autre écran pour le MÊME WO retrouve le dernier scan à l'instant.
   if (koReplyCurrentFA !== faNumber) koReplyCache = {};
   koReplyCurrentFA = faNumber;
   const openTab = koReplyCurrentCat || 'customer';
@@ -1707,16 +1755,20 @@ G.koOpenReplyModal = function() {
   });
 
   document.getElementById('reply-modal').style.display = 'flex';
+  await koLoadCustomSubjPatterns();
+  koRenderCustomSubjTags(openTab);
   koLoadReplyTab(openTab);
 };
 
-G.koSwitchReplyTab = function(cat) {
+G.koSwitchReplyTab = async function(cat) {
   koReplyCurrentCat = cat;
   document.querySelectorAll('.ko-reply-tab').forEach(t => {
     const on = t.dataset.cat === cat;
     t.classList.toggle('on', on);
     t.style.background = on ? '#f3f4f6' : '#fff';
   });
+  await koLoadCustomSubjPatterns();
+  koRenderCustomSubjTags(cat);
   koLoadReplyTab(cat);
 };
 
@@ -4943,7 +4995,7 @@ G.openKickoff = async function(forceWo) {
       koRenderRecips('customer');
     }
   }
-  koApplyMobileState();
+  koApplyMobileState(true);
   // If Travel "To" is still empty after restore, fill it from ICAO
   const _icao = document.getElementById('ko_icao');
   const _travelTo = document.getElementById('ko_travel_to');
@@ -4954,7 +5006,7 @@ G.openKickoff = async function(forceWo) {
     partPrioCb.onchange = () => { partPrioSel.style.display = partPrioCb.checked ? '' : 'none'; };
   }
   koUpdatePreview();
-  G.koApplyMobileState();
+  G.koApplyMobileState(true);
   koRefreshHistorySelect();
   G.koRefreshSquawkSelects();
   window.scrollTo({top:0, behavior:'smooth'});
@@ -6269,20 +6321,29 @@ function koGetCards() {
   return Array.from(document.querySelectorAll('#kickoff-panel .ko-card'));
 }
 
-G.koApplyMobileState = function() {
+G.koApplyMobileState = function(forceDefault) {
   const cards = koGetCards();
   const isMobile = window.innerWidth <= 600;
+  if (!isMobile) {
+    cards.forEach(card => {
+      const body = card.querySelector('.ko-card-body');
+      const chev = card.querySelector('.ko-chev');
+      if (body) body.style.display = '';
+      if (chev) chev.style.transform = 'rotate(0deg)';
+    });
+    return;
+  }
+  // Sur mobile, on garde la card déjà ouverte au lieu de toujours revenir
+  // à la première — important car cette fonction est aussi rappelée par
+  // le resize déclenché par l'ouverture du clavier virtuel pendant la saisie.
+  let openIdx = forceDefault ? -1 : cards.findIndex(card => card.querySelector('.ko-card-body')?.style.display !== 'none');
+  if (openIdx === -1) openIdx = 0;
   cards.forEach((card, i) => {
     const body = card.querySelector('.ko-card-body');
     const chev = card.querySelector('.ko-chev');
     if (!body) return;
-    if (isMobile) {
-      body.style.display = i === 0 ? '' : 'none';
-      if (chev) chev.style.transform = i === 0 ? 'rotate(0deg)' : 'rotate(-90deg)';
-    } else {
-      body.style.display = '';
-      if (chev) chev.style.transform = 'rotate(0deg)';
-    }
+    body.style.display = i === openIdx ? '' : 'none';
+    if (chev) chev.style.transform = i === openIdx ? 'rotate(0deg)' : 'rotate(-90deg)';
   });
 };
 
@@ -6324,7 +6385,12 @@ function koSetupAccordion() {
 // Resize listener unique (une seule fois)
 if (!window._koResizeListenerSet) {
   window._koResizeListenerSet = true;
-  window.addEventListener('resize', () => G.koApplyMobileState());
+  let _koLastWidth = window.innerWidth;
+  window.addEventListener('resize', () => {
+    if (window.innerWidth === _koLastWidth) return;
+    _koLastWidth = window.innerWidth;
+    G.koApplyMobileState();
+  });
 }
 
 // ══════════════════════════════════════
@@ -7193,6 +7259,15 @@ window.koLiveRefresh = koLiveRefresh;
       <button class="ko-reply-tab on" data-cat="customer" onclick="koSwitchReplyTab('customer')" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #d1d5db;background:#f3f4f6">👤 Customer</button>
       <button class="ko-reply-tab" data-cat="parts" onclick="koSwitchReplyTab('parts')" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #d1d5db;background:#fff">📦 Parts</button>
       <button class="ko-reply-tab" data-cat="fbo" onclick="koSwitchReplyTab('fbo')" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #d1d5db;background:#fff">🏢 FBO</button>
+    </div>
+    
+    <div style="padding:9px 18px;border-bottom:1px solid #e5e7eb;background:#fafafa;flex-shrink:0">
+      <div style="font-size:11px;color:#6b7280;margin-bottom:6px">🔎 Can't find a reply? Add the exact subject wording your colleague used for <b id="reply-custom-cat-label">Customer Update</b> emails — shared with the whole team, applies to every job from now on:</div>
+      <div id="reply-custom-subj-tags" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="reply-custom-subj-inp" placeholder="e.g. Parts Consumables Request" style="flex:1;font-size:12px;padding:6px 9px;border:1px solid #d1d5db;border-radius:6px" onkeydown="if(event.key==='Enter'){event.preventDefault();koAddCustomSubjectPattern();}"/>
+        <button onclick="koAddCustomSubjectPattern()" style="font-size:11px;padding:5px 12px;border-radius:20px;cursor:pointer;border:1px solid #93c5fd;background:#eff6ff;color:#1e40af;font-weight:600;white-space:nowrap">+ Add &amp; search</button>
+      </div>
     </div>
 
     <div id="reply-modal-body" style="overflow-y:auto;padding:14px 18px;flex:1"></div>
