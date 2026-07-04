@@ -230,6 +230,11 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 .day-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .day-actions .btn{flex:1;min-width:108px;justify-content:center}  
 .err-msg{font-size:12px;color:var(--red);min-height:18px;margin-top:4px}
+.ai-improve-btn{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--blue);background:var(--bl);border:1px solid #b8d0e8;border-radius:20px;padding:5px 12px;cursor:pointer;margin-top:6px;transition:background .15s}
+.ai-improve-btn:hover{background:#dbe9fb}
+.ai-improve-btn:active{background:#c8ddf5}
+.ai-improve-btn:disabled{opacity:.5;cursor:not-allowed}
+.ai-improve-btn .spin{width:11px;height:11px;border-width:2px}
 
 /* GOOGLE GEMINI AUTH BANNER */
 .gemini-banner{background:var(--bl);border:1px solid #b8d0e8;border-radius:var(--rlg);padding:.9rem 1.25rem;margin-bottom:1rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:var(--sh)}
@@ -727,7 +732,11 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div class="fg"><label>Return Date</label><input type="text" id="f_retdate" placeholder="e.g. JUN19/26" oninput="autosave()"/></div>
       <div class="fg"><label>Return Time</label><input type="text" id="f_rettime" placeholder="e.g. 14:00 UTC" oninput="autosave()"/></div>
     </div>
-    <div class="fg"><label>Additional Info / Constraints</label><textarea id="f_info" style="min-height:60px" oninput="autosave()"></textarea></div>
+    <div class="fg">
+      <label>Additional Info / Constraints</label>
+      <textarea id="f_info" style="min-height:60px" oninput="autosave()"></textarea>
+      <button type="button" class="ai-improve-btn" onclick="aiImproveField('f_info', this)">✨ Improve text</button>
+    </div>
   </div>
 </div>
 
@@ -1453,6 +1462,26 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
   
+<!-- AI IMPROVE TEXT MODAL -->
+<div class="modal-bg" id="modal-ai-improve">
+  <div class="modal" style="max-width:520px">
+    <h3>✨ Suggested improvement</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">⚠️ AI-generated — review before using. You can still edit the suggestion below.</p>
+    <div class="fg" style="margin-bottom:10px">
+      <label>Your original text</label>
+      <textarea id="ai-improve-original" readonly style="min-height:70px;background:var(--g100);color:var(--g600)"></textarea>
+    </div>
+    <div class="fg">
+      <label>Suggested text (editable)</label>
+      <textarea id="ai-improve-suggestion" style="min-height:70px"></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('modal-ai-improve')">✗ Keep my original</button>
+      <button class="btn primary" onclick="confirmAiImprove()">✓ Use this text</button>
+    </div>
+  </div>
+</div>
+
 <!-- HELP MODAL -->
 <div class="modal-bg" id="modal-help">
   <div class="modal" style="max-width:600px">
@@ -1835,9 +1864,11 @@ function koReplyActionsHtml(r, cat) {
 
   if (cat === 'customer') {
     const eta = koSafeStr(r.engineer_eta), nxt = koSafeStr(r.next_flight), ref = koSafeStr(r.customer_reference);
+    const custWo = koSafeStr(r.customer_wo_reference);
     if (eta) actions.push({ label: 'My ETA: ' + eta, k:'eng_eta', v:eta });
     if (nxt) actions.push({ label: 'Next flight: ' + nxt, k:'nxt', v:nxt });
     if (ref) actions.push({ label: 'Customer ref: ' + ref, k:'cust_ref', v:ref });
+    if (custWo && custWo !== ref) actions.push({ label: 'Customer WO ref: ' + custWo, k:'cust_wo_ref', v:custWo });
 
   } else if (cat === 'parts') {
     const po = koSafeStr(r.materials_po);
@@ -1871,11 +1902,6 @@ function koReplyActionsHtml(r, cat) {
       partBtns.push({ idx, label: '🗑️ ' + (pn || desc) + (pn && desc ? ' — ' + desc : '') });
     });
 
-    (r.attachments || []).forEach(a => {
-      const docLabel = koSafeStr(a.label) || '📎 Attachment';
-      docLinks.push({ href: 'https://mail.google.com/mail/u/0/#all/' + r.msgId, label: docLabel + (a.filename ? ' — ' + koSafeStr(a.filename) : '') });
-    });
-
   } else if (cat === 'fbo') {
     const addr = koSafeStr(r.shipping_address), ready = koSafeStr(r.fbo_ready_eta),
           contact = koSafeStr(r.fbo_contact_name), closed = koSafeStr(r.fbo_closed_dates);
@@ -1884,6 +1910,12 @@ function koReplyActionsHtml(r, cat) {
     if (contact) actions.push({ label:'Contact: ' + contact, k:'noted', v:'' });
     if (closed)  actions.push({ label:'⚠️ Closed: ' + closed, k:'noted', v:'' });
   }
+
+  // Liens vers les pièces jointes rendus cliquables pour TOUTES les catégories
+  (r.attachments || []).forEach(a => {
+    const docLabel = koSafeStr(a.label) || '📎 Attachment';
+    docLinks.push({ href: 'https://mail.google.com/mail/u/0/#all/' + r.msgId, label: docLabel + (a.filename ? ' — ' + koSafeStr(a.filename) : '') });
+  });
 
   if (!actions.length && !partBtns.length && !docLinks.length) return '';
 
@@ -3162,7 +3194,8 @@ function renderUpdateBlock(upd) {
         </div>
         <select class="upd-status-sel" onchange="onUpdStatusChange(this)">${statusOpts}</select>
       </div>
-      <textarea class="upd-detail" placeholder="Describe what was done today (optional)…" oninput="autosave()">${saved.detail||''}</textarea>
+      <textarea class="upd-detail" id="updetail_${upd.id}_${i}" placeholder="Describe what was done today (optional)…" oninput="autosave()">${saved.detail||''}</textarea>
+      <button type="button" class="ai-improve-btn" onclick="aiImproveField('updetail_${upd.id}_${i}', this)">✨ Improve text</button>
     </div>`;
   }).join('') : '<p style="font-size:12px;color:var(--g400)">Add work items in Step 3 first.</p>';
 
@@ -3182,7 +3215,8 @@ function renderUpdateBlock(upd) {
       <span class="note-icon">📝</span>
       <div class="fg">
         <label style="text-transform:none;font-size:11px;font-weight:600;letter-spacing:0">Global note for this day (optional)</label>
-        <textarea class="upd-free-global" style="min-height:44px" placeholder="e.g. Will travel tomorrow, waiting for parts…" oninput="autosave()">${upd.freeText||''}</textarea>
+        <textarea class="upd-free-global" id="updglobal_${upd.id}" style="min-height:44px" placeholder="e.g. Will travel tomorrow, waiting for parts…" oninput="autosave()">${upd.freeText||''}</textarea>
+        <button type="button" class="ai-improve-btn" onclick="aiImproveField('updglobal_${upd.id}', this)">✨ Improve text</button>
       </div>
     </div>
   </div>`;
@@ -3455,6 +3489,77 @@ G.confirmAddPreviewParts = function() {
   emailPdfB64 = null;
   document.getElementById('email-file-input').value = '';
 };  
+
+// ══════════════════════════════════════
+//  AI TEXT IMPROVEMENT (grammar/spelling — Update notes & Constraints)
+//  Ne remplace jamais le texte automatiquement — demande toujours confirmation.
+// ══════════════════════════════════════
+let aiImproveTargetId = null;
+
+G.aiImproveField = async function(fieldId, btnEl) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  const original = el.value.trim();
+  if (!original) return;
+
+  aiImproveTargetId = fieldId;
+  const origHtml = btnEl ? btnEl.innerHTML : '';
+  if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<span class="spin"></span>'; }
+
+  const prompt = `You are helping an aircraft maintenance engineer, who is not a native English speaker, write a short professional status update for an aviation customer.
+
+Correct only the grammar, spelling and clarity of the text below.
+Rules:
+- Do not add new information or invent details.
+- Do not remove any technical facts.
+- Never change part numbers, serial numbers, squawk/item numbers, ICAO codes, aircraft registrations, dates or times — copy them exactly as written.
+- Keep the length close to the original — this is a short status note, not an essay.
+- If the text is written in French or another language, translate it into professional maintenance English.
+- If the text is already correct, return it unchanged.
+
+Reply ONLY with the corrected text — no explanation, no quotes, no markdown.
+
+TEXT:
+"""
+${original}
+"""`;
+
+  try {
+    const res = await fetch('https://orange-snow-95f7.jeromepoupinel.workers.dev/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'mistral-small-latest',
+        temperature: 0,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Error ' + res.status);
+    const suggestion = (data.choices?.[0]?.message?.content || '').trim();
+    if (!suggestion) throw new Error('Empty response from AI.');
+
+    document.getElementById('ai-improve-original').value = original;
+    document.getElementById('ai-improve-suggestion').value = suggestion;
+    openModal('modal-ai-improve');
+  } catch(e) {
+    alert('✨ AI improvement failed: ' + e.message);
+  } finally {
+    if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = origHtml; }
+  }
+};
+
+G.confirmAiImprove = function() {
+  if (!aiImproveTargetId) return;
+  const el = document.getElementById(aiImproveTargetId);
+  const suggestion = document.getElementById('ai-improve-suggestion').value;
+  if (el) {
+    el.value = suggestion;
+    el.dispatchEvent(new Event('input')); // déclenche l'autosave déjà branché en oninput
+  }
+  closeModal('modal-ai-improve');
+  aiImproveTargetId = null;
+};
 
 // ══════════════════════════════════════
 //  STEP 6 — TEAM POC
@@ -4171,9 +4276,14 @@ function applyResponsiveCardState(cards) {
   }
 }
 
+let _appCardsLastWidth = window.innerWidth;
 window.addEventListener('resize', () => {
+  // Le clavier virtuel déclenche un resize sans changer la largeur réelle —
+  // on ignore ces cas pour ne pas refermer la card ouverte pendant la saisie.
+  if (window.innerWidth === _appCardsLastWidth) return;
+  _appCardsLastWidth = window.innerWidth;
   applyResponsiveCardState(Array.from(document.querySelectorAll('#app-screen > .card')));
-});  
+}); 
 
 // ══════════════════════════════════════
 //  UTILS
