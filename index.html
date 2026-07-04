@@ -1731,6 +1731,22 @@ G.koAddCustomSubjectPattern = async function() {
   koLiveRefresh(cat);
 };
 
+G.koRemoveCustomSubjectPattern = async function(cat, idx) {
+  if (!koCustomSubjPatterns[cat]) return;
+  const updated = koCustomSubjPatterns[cat].filter((_, i) => i !== idx);
+  try {
+    await set(ref(db, 'config/replySubjectPatterns/' + cat), updated);
+  } catch(e) {
+    console.warn('Could not remove custom subject pattern:', e);
+    alert('⚠️ Suppression impossible (droits Firebase ?) :\n' + e.message);
+    return;
+  }
+  koCustomSubjPatterns[cat] = updated;
+  koRenderCustomSubjTags(cat);
+  delete koReplyCache[cat];
+  koLiveRefresh(cat);
+};
+
 // Lit le WO depuis l'écran actuellement affiché (Update ou Start Job), pour
 // que le bouton fonctionne peu importe d'où il est ouvert.
 function koCurrentWoField() {
