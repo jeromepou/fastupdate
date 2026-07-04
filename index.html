@@ -2600,6 +2600,7 @@ async function logLoginEvent(profile) {
 async function showAdminPanel() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'none';
+  document.getElementById('kickoff-panel').style.display = 'none';
   setupAccordion();
   document.getElementById('hdr-profile-name').textContent = '⚙️ Admin';
   document.getElementById('btn-logout').style.display = '';
@@ -2639,6 +2640,7 @@ async function loginAs(profile, fromBiometric) {
   curProfile = profile;
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = '';
+  document.getElementById('kickoff-panel').style.display = 'none';
   setupAccordion();
   document.getElementById('hdr-profile-name').textContent = profile.name;
   document.getElementById('btn-logout').style.display = '';
@@ -2672,6 +2674,7 @@ G.logout = async function() {
   document.getElementById('hdr-profile-name').textContent = '';
   if (auth.currentUser) await signOut(auth);
   document.getElementById('app-screen').style.display = 'none';
+  document.getElementById('kickoff-panel').style.display = 'none';
   document.getElementById('login-screen').style.display = '';
   showPicker();
 };
