@@ -1714,21 +1714,21 @@ G.koAddCustomSubjectPattern = async function() {
   if (!val) return;
   const cat = koReplyCurrentCat;
   if (!koCustomSubjPatterns[cat]) koCustomSubjPatterns[cat] = [];
-  if (!koCustomSubjPatterns[cat].some(s => s.toLowerCase() === val.toLowerCase())) {
-    koCustomSubjPatterns[cat].push(val);
-    try { await set(ref(db, 'config/replySubjectPatterns/' + cat), koCustomSubjPatterns[cat]); }
-    catch(e) { console.warn('Could not save custom subject pattern:', e); }
+  if (koCustomSubjPatterns[cat].some(s => s.toLowerCase() === val.toLowerCase())) { inp.value = ''; return; }
+
+  const updated = [...koCustomSubjPatterns[cat], val];
+  try {
+    await set(ref(db, 'config/replySubjectPatterns/' + cat), updated);
+  } catch(e) {
+    console.warn('Could not save custom subject pattern:', e);
+    alert('⚠️ Sauvegarde impossible (droits Firebase ?) — ce sujet ne sera PAS pris en compte :\n' + e.message);
+    return;
   }
+  koCustomSubjPatterns[cat] = updated;
   inp.value = '';
   koRenderCustomSubjTags(cat);
   delete koReplyCache[cat];
   koLiveRefresh(cat);
-};
-
-G.koRemoveCustomSubjectPattern = async function(cat, i) {
-  koCustomSubjPatterns[cat].splice(i, 1);
-  try { await set(ref(db, 'config/replySubjectPatterns/' + cat), koCustomSubjPatterns[cat]); } catch(e) {}
-  koRenderCustomSubjTags(cat);
 };
 
 // Lit le WO depuis l'écran actuellement affiché (Update ou Start Job), pour
