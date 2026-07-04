@@ -1844,6 +1844,13 @@ async function koLiveRefresh(cat) {
     const lastSync = Date.now();
     koReplyCache[cat] = { replies, lastSync };
 
+    // Sauvegarde dans Firebase (même chemin que le cron auto) pour que le
+    // scan live compte réellement comme "déjà fait" — sinon un reload ou
+    // un changement de projet perdait tout et relançait un scan complet.
+    const faKey = koReplyCurrentFA.toLowerCase().replace(/[\s/]/g, '_');
+    set(ref(db, 'squawkReplies/' + faKey + '/' + cat), { faNumber: koReplyCurrentFA, category: cat, replies, lastSync })
+      .catch(e => console.warn('Impossible de sauvegarder le cache replies dans Firebase:', e));
+
     subEl.textContent = koReplyCurrentFA + ' — ' + replies.length + ' reply(ies) in ' + cat;
     koRenderReplyBody(replies, cat, lastSync);
 
