@@ -1315,6 +1315,16 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <h3>👥 Manage Team (Admin)</h3>
     <p style="font-size:13px;color:var(--g600);margin-bottom:12px">Create and manage engineer profiles. Each engineer needs a 4-digit PIN to log in.</p>
 
+    <!-- AI TEAM BRIEFING -->
+    <div style="background:#eef6ff;border:1px solid #93c5fd;border-radius:var(--r);padding:12px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="font-size:12px;font-weight:700;color:#1e40af;flex:1">🧠 AI Team Briefing — tous les chantiers actifs</div>
+        <button class="btn primary" id="btn-ai-briefing" onclick="generateAIBriefing()" style="font-size:11px;padding:5px 12px">🧠 Générer</button>
+      </div>
+      <p style="font-size:11px;color:var(--g600);margin-bottom:0">Synthèse basée sur le cache Reply Sync (rafraîchi toutes les 2h) — instantané, aucun appel Gmail en direct.</p>
+      <div id="ai-briefing-output" style="display:none;background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:10px 12px;margin-top:8px;max-height:400px;overflow-y:auto;font-size:12px;line-height:1.6"></div>
+    </div>
+
     <!-- DEFAULT RECIPIENTS SECTION -->
     <div style="background:#f0f4ff;border:1px solid #b8d0e8;border-radius:var(--r);padding:12px;margin-bottom:14px">
       <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px">📬 Default email recipients (shared by all engineers)</div>
@@ -2845,6 +2855,33 @@ G.deleteTeamMember = async function(id) {
 };
 
 // ══════════════════════════════════════
+//  AI TEAM BRIEFING — synthèse cross-jobs (admin)
+// ══════════════════════════════════════
+G.generateAIBriefing = async function() {
+  const btn = document.getElementById('btn-ai-briefing');
+  const out = document.getElementById('ai-briefing-output');
+  if (!btn || !out) return;
+  btn.disabled = true;
+  const origLabel = btn.innerHTML;
+  btn.innerHTML = '<span class="spin"></span> Génération…';
+  out.style.display = '';
+  out.textContent = '⏳ Analyse des chantiers actifs en cours (peut prendre 15-30s)…';
+  try {
+    const res = await fetch(KO_WORKER + '/daily-briefing', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Erreur ' + res.status);
+    const stamp = new Date(data.generatedAt || Date.now()).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+    out.innerHTML = `<div style="font-size:11px;color:var(--g600);margin-bottom:8px">🧠 ${data.jobCount} chantier(s) actif(s) — généré à ${stamp}</div>` +
+      `<div>${nl2br(data.briefing)}</div>`;
+  } catch(e) {
+    out.innerHTML = '<span style="color:var(--red)">❌ ' + escHtml(e.message) + '</span>';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = origLabel;
+  }
+};
+
+// ══════════════════════════════════════
 //  PROJECTS
 // ══════════════════════════════════════
 G.switchProjTab = function(tab) {
@@ -3846,6 +3883,7 @@ Extract work_order (from "WORK ORDER:" field), registration (A/C REGISTRATION fi
 Leave far_certification and country as "" for this document type too.
 
 UNIVERSAL RULE FOR ALL TYPES:
+- work_order ALWAYS starts with "FA" or, less commonly, "SC" — these are the ONLY two valid prefixes Gulfstream uses, always followed by digits (e.g. "FA33036", "SC12345"). If the document text appears to show a different 2-letter prefix (e.g. "PA", "EA", "TA" — a common OCR misread of "F"), correct it to "FA" unless something else in the document clearly points to "SC". Never output a prefix other than FA or SC.
 - Any task/squawk whose text is exactly or essentially just "EIE" (meaning "Entry In Error" — a cancelled/void entry) must be COMPLETELY EXCLUDED from work_items. Do not include it at all.
 - work_items descriptions must be in UPPERCASE, with NO leading squawk/task numbers in the label text.
 - Never invent or infer a value that is not explicitly written in the document. If unsure, use "".
@@ -3881,6 +3919,13 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
     if(!chatRes.ok) throw new Error(chatData.message || 'Chat error ' + chatRes.status);
     const raw = chatData.choices[0].message.content;
     const parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
+
+    // Filet de sécurité : le WO Gulfstream commence TOUJOURS par FA (immense
+    // majorité des cas) ou SC. Si l'OCR/IA a mal lu le préfixe (confusion
+    // visuelle F→P fréquente en OCR), on corrige automatiquement vers FA.
+    if (parsed.work_order && /^[A-Za-z]{2}\d/.test(parsed.work_order.trim()) && !/^(FA|SC)\d/i.test(parsed.work_order.trim())) {
+      parsed.work_order = 'FA' + parsed.work_order.trim().slice(2);
+    }
 
     const docType = parsed.doc_type || 'RFS';
     const isFollowUp = (docType === 'WORK_ORDER_DETAIL' || docType === 'WCR');
@@ -4057,6 +4102,13 @@ const SC={
   '':'#aaa'
 };
 
+// Échappe le HTML puis convertit les retours à la ligne en <br> — sans ça,
+// un textarea multi-lignes (note du jour, détail d'item) s'affiche comme
+// un seul bloc de texte une fois inséré dans le tableau.
+function nl2br(s) {
+  return escHtml(s || '').replace(/\r\n|\r|\n/g, '<br>');
+}
+
 G.generate = async function() {
   G.autosave();
   const wo=gv('f_wo'),model=gv('f_model'),sn=gv('f_sn'),reg=gv('f_reg'),loc=gv('f_loc');
@@ -4088,9 +4140,9 @@ G.generate = async function() {
         const statusColor = SC[iu.status]||'#555';
         const statusHtml = statusLabel ? ` — <span style="color:#fff;font-weight:700;background:${statusColor};padding:1px 7px;border-radius:10px;font-size:11px">${statusLabel}</span>` : '';
         updContent += `${it?`${iu.num}-${it.label.toUpperCase()}`:`Item ${iu.num}`}${statusHtml}<br>`;
-        if(iu.detail) updContent += `<span>${iu.detail}</span><br>`;
+        if(iu.detail) updContent += `<span>${nl2br(iu.detail)}</span><br>`;
       });
-      if(upd.freeText) updContent += `<div style="border-top:1px dashed #666;margin-top:6px;padding-top:4px"><span style="font-style:italic">${upd.freeText}</span></div>`;
+      if(upd.freeText) updContent += `<div style="border-top:1px dashed #666;margin-top:6px;padding-top:4px"><span style="font-style:italic">${nl2br(upd.freeText)}</span></div>`;
     });
     updRows = `<tr><td class="upd-lbl"><b>Update:</b></td><td colspan="4">${updContent}</td></tr>`;
   }
@@ -4121,7 +4173,7 @@ G.generate = async function() {
     <tr class="thr"><td colspan="5"><b>WORK ORDER #: ${wo}</b></td></tr>
     <tr><td class="lbl"><b>Condition:</b></td><td colspan="4">${items.length>0?items.map(it=>`${it.num}-${it.label.toUpperCase()}`).join('<br>'):'—'}</td></tr>
     ${updRows}
-    <tr><td class="lbl"><b>Additional Info: (Constraints)</b></td><td colspan="4">${info||'—'}</td></tr>
+    <tr><td class="lbl"><b>Additional Info: (Constraints)</b></td><td colspan="4">${info?nl2br(info):'—'}</td></tr>
     <tr><td class="lbl"><b>Estimated RTS:</b></td><td>${erts||'—'}</td><td class="lbl"><b>Next Flight:</b></td><td colspan="2">${nxt||'—'}</td></tr>
     <tr><td class="lbl"><b>Return Date:</b></td><td>${retdate||'—'}</td><td class="lbl"><b>Return Time</b></td><td colspan="2">${rettime||'—'}</td></tr>
     <tr><td class="lbl"><b>FAR</b></td><td>${far||'—'}</td><td class="lbl"><b>RTS/Assist</b></td><td colspan="2">${rtsA}</td></tr>
