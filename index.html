@@ -4224,26 +4224,46 @@ window.addEventListener('orientationchange', () => setTimeout(() => {
 
 function buildInlinedTableClone(tbl) {
   const tblClone = tbl.cloneNode(true);
-  tblClone.style.cssText = 'border-collapse:collapse;width:100%;font-family:Aptos,Calibri,Arial,sans-serif;font-size:13px';
+
+  // Largeur fixe en pixels (comme Excel) au lieu de width:100% qui
+  // s'étirait à la largeur de la fenêtre du destinataire.
+  // Proportions calquées sur ton gabarit Excel (B:121 C:117 D/E/F:59 ≈ 415px),
+  // légèrement agrandies pour laisser de la place au padding de l'app.
+  const COL_WIDTHS = [200, 200, 100, 100, 100]; // px — ajustable, total = 700
+  const TOTAL_WIDTH = COL_WIDTHS.reduce((a, b) => a + b, 0);
+
+  tblClone.setAttribute('width', TOTAL_WIDTH);
+  tblClone.style.cssText = `border-collapse:collapse;table-layout:fixed;width:${TOTAL_WIDTH}px;font-family:Aptos,Calibri,Arial,sans-serif;font-size:13px`;
+
+  // Remplace les <col width:20%> (relatifs) par du fixe en pixels
+  tblClone.querySelectorAll('colgroup col').forEach((col, i) => {
+    const w = COL_WIDTHS[i] || 100;
+    col.setAttribute('width', w);
+    col.style.width = w + 'px';
+  });
+
   tblClone.querySelectorAll('td').forEach(td => {
     const styleAttr = td.getAttribute('style') || '';
     const noTop = styleAttr.includes('border-top:none');
     const noBottom = styleAttr.includes('border-bottom:none');
     td.style.border = '2px solid #000000';
+    td.style.boxSizing = 'border-box';   // le padding/bordure n'ajoute plus de largeur en trop
     td.style.padding = td.style.padding || '7px 10px';
     td.style.verticalAlign = 'top';
     td.style.color = td.style.color || '#000000';
+    td.style.wordWrap = 'break-word';    // évite le débordement hors des colonnes désormais figées
+    td.style.overflowWrap = 'break-word';
     if(noTop) td.style.borderTop = 'none';
     if(noBottom) td.style.borderBottom = 'none';
   });
   tblClone.querySelectorAll('.thr td').forEach(td => {
-    td.style.cssText = 'border:2px solid #000000;padding:8px 10px;background:#a8d08d;color:#000000;font-weight:700;font-size:13px';
+    td.style.cssText = 'border:2px solid #000000;padding:8px 10px;background:#a8d08d;color:#000000;font-weight:700;font-size:13px;box-sizing:border-box';
   });
   tblClone.querySelectorAll('.lbl').forEach(td => {
-    td.style.cssText = 'border:2px solid #000000;padding:7px 10px;background:#ffffff;font-weight:700;color:#000000';
+    td.style.cssText = 'border:2px solid #000000;padding:7px 10px;background:#ffffff;font-weight:700;color:#000000;box-sizing:border-box';
   });
   tblClone.querySelectorAll('.upd-lbl').forEach(td => {
-    td.style.cssText = 'border:2px solid #000000;padding:7px 10px;background:#ffffff;font-weight:700;color:#000000';
+    td.style.cssText = 'border:2px solid #000000;padding:7px 10px;background:#ffffff;font-weight:700;color:#000000;box-sizing:border-box';
   });
   return tblClone;
 }
