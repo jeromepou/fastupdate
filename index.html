@@ -1471,7 +1471,91 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     </div>
   </div>
 </div>
-  
+
+<!-- REPAIR TAG MODAL (GA 3671 — Unserviceable Tag) -->
+<div class="modal-bg" id="modal-repair-tag">
+  <div class="modal" style="max-width:640px">
+    <h3>🏷️ GA 3671 — Unserviceable Tag</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:12px">Pré-rempli depuis le projet — vérifie et complète avant de générer.</p>
+
+    <div class="grid g3" style="margin-bottom:10px">
+      <div class="fg"><label>Aircraft Model</label><input type="text" id="rtag_model"/></div>
+      <div class="fg"><label>Aircraft Serial #</label><input type="text" id="rtag_sn"/></div>
+      <div class="fg"><label>Registration #</label><input type="text" id="rtag_reg"/></div>
+    </div>
+    <div class="grid g3" style="margin-bottom:10px">
+      <div class="fg"><label>A/C Hours</label><input type="text" id="rtag_hours" placeholder="e.g. 2748:48"/></div>
+      <div class="fg"><label>A/C Cycles</label><input type="text" id="rtag_cycles" placeholder="e.g. 1064"/></div>
+      <div class="fg"><label>Date</label><input type="text" id="rtag_date"/></div>
+    </div>
+    <div class="grid g3" style="margin-bottom:10px">
+      <div class="fg"><label>Part Name</label><input type="text" id="rtag_partname"/></div>
+      <div class="fg"><label>Part Number</label><input type="text" id="rtag_pn"/></div>
+      <div class="fg"><label>Serial Number</label><input type="text" id="rtag_partsn"/></div>
+    </div>
+    <div class="fg" style="margin-bottom:12px;max-width:120px">
+      <label>Quantity</label><input type="text" id="rtag_qty" value="1"/>
+    </div>
+
+    <div class="fg" style="margin-bottom:6px">
+      <label>Lier à un work item (optionnel — pré-remplit la raison)</label>
+      <select id="rtag_item_link" onchange="rtagFillReasonFromItem(this)"><option value="">— none —</option></select>
+    </div>
+    <div class="fg" style="margin-bottom:12px">
+      <label>Reason for Part Removal</label>
+      <textarea id="rtag_reason" style="min-height:60px"></textarea>
+    </div>
+	<div class="fg" style="margin-bottom:12px">
+      <label>Work Performed / Resolution</label>
+      <textarea id="rtag_workperf" style="min-height:60px" placeholder="e.g. Cleaned and re-pinned connector, replaced relay, ops checked good..."></textarea>
+    </div>  
+
+    <div class="ko-divider"></div>
+    <div class="ko-section-lbl">Are fault codes available?</div>
+    <div class="ko-toggles" style="margin-bottom:8px">
+      <span class="ko-pill" id="rtag-fault-yes" onclick="rtagToggleFault(this,'yes')">Yes</span>
+      <span class="ko-pill" id="rtag-fault-no" onclick="rtagToggleFault(this,'no')">No</span>
+    </div>
+    <div class="grid g2" style="margin-bottom:12px">
+      <div class="fg"><label>Code</label><input type="text" id="rtag_code1"/></div>
+      <div class="fg"><label>Code</label><input type="text" id="rtag_code2"/></div>
+    </div>
+
+    <div class="ko-divider"></div>
+    <div class="ko-section-lbl">Condition at Time of Failure — coche tout ce qui s'applique</div>
+    <div class="ko-toggles" style="margin-bottom:8px">
+      <span class="ko-pill" data-rtagcond="onground" onclick="this.classList.toggle('active-green')">On ground</span>
+      <span class="ko-pill" data-rtagcond="inflight" onclick="this.classList.toggle('active-green')">In Flight</span>
+      <span class="ko-pill" data-rtagcond="firstpowerup" onclick="this.classList.toggle('active-green')">At first power up</span>
+      <span class="ko-pill" data-rtagcond="climb" onclick="this.classList.toggle('active-green')">Climb</span>
+      <span class="ko-pill" data-rtagcond="anypowerup" onclick="this.classList.toggle('active-green')">At any power up</span>
+      <span class="ko-pill" data-rtagcond="descent" onclick="this.classList.toggle('active-green')">Descent</span>
+      <span class="ko-pill" data-rtagcond="landing" onclick="this.classList.toggle('active-green')">Landing</span>
+    </div>
+    <div class="fg" style="margin-bottom:12px;max-width:200px">
+      <label>Time (à la panne)</label><input type="text" id="rtag_time" placeholder="e.g. 14:20 UTC"/>
+    </div>
+
+    <div class="ko-divider"></div>
+    <div class="ko-section-lbl">Did the replacement part solve the problem?</div>
+    <div class="ko-toggles" style="margin-bottom:8px">
+      <span class="ko-pill" id="rtag-solved-yes" onclick="rtagToggleSolved(this,'yes')">Yes</span>
+      <span class="ko-pill" id="rtag-solved-no" onclick="rtagToggleSolved(this,'no')">No</span>
+    </div>
+
+    <div class="ko-divider"></div>
+    <div class="fg" style="margin-bottom:8px">
+      <label>Tag Originator Name</label><input type="text" id="rtag_originator"/>
+    </div>
+
+    <div class="err-msg" id="rtag-error"></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('modal-repair-tag')">Cancel</button>
+      <button class="btn primary" id="rtag-gen-btn" onclick="generateRepairTag()">📄 Generate filled PDF</button>
+    </div>
+  </div>
+</div>
+	
 <!-- AI IMPROVE TEXT MODAL -->
 <div class="modal-bg" id="modal-ai-improve">
   <div class="modal" style="max-width:520px">
@@ -1630,6 +1714,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
+<script src="pdf-lib.min.js" defer></script>
+	
 <!-- ═══════════════════════════════════
      FIREBASE SDK (CDN — no npm needed)
 ════════════════════════════════════ -->
@@ -1687,9 +1773,17 @@ const G = window;
 // ══════════════════════════════════════
 const KO_WORKER = 'https://orange-snow-95f7.jeromepoupinel.workers.dev';
 let koReplyCache = {};       // { customer:{replies,lastSync}, parts:{...}, fbo:{...} } pour le FA courant
-let koPartsUpdateQueue = []; // items cliquables de l'onglet "parts" (parts_updates / hsa_parts_added / hsa_parts_removed), reconstruit à chaque rendu
+let koPartsUpdateQueue = []; // items cliquables (parts_updates / hsa_parts_added / hsa_parts_removed), reconstruit à chaque rendu de la section "parts"
 let koReplyCurrentFA = '';
-let koReplyCurrentCat = 'customer';
+
+// NOUVEAU — anti double-appel + seuil auto-refresh + libellés des 3 sections affichées ensemble
+const koRefreshInFlight = { customer: false, parts: false, fbo: false };
+const KO_REPLY_MIN_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 min — si tu rouvres juste après, pas de re-scan
+const KO_REPLY_CAT_META = {
+  customer: { icon: '👤', label: 'Customer Update' },
+  parts:    { icon: '📦', label: 'Part Request' },
+  fbo:      { icon: '🏢', label: 'FBO Coordination' },
+};
 
 // Sujets supplémentaires ajoutés depuis la modale Reply Sync quand un
 // collègue a nommé le sujet différemment des patterns fixes. Partagé par
@@ -1706,9 +1800,7 @@ async function koLoadCustomSubjPatterns() {
 }
 
 function koRenderCustomSubjTags(cat) {
-  const wrap  = document.getElementById('reply-custom-subj-tags');
-  const label = document.getElementById('reply-custom-cat-label');
-  if (label) label.textContent = { customer:'Customer Update', parts:'Part Request', fbo:'FBO Coordination' }[cat] || cat;
+  const wrap = document.getElementById('reply-custom-subj-tags-' + cat);
   if (!wrap) return;
   const list = koCustomSubjPatterns[cat] || [];
   wrap.innerHTML = list.length ? list.map((s, i) => `
@@ -1718,11 +1810,10 @@ function koRenderCustomSubjTags(cat) {
     </span>`).join('') : '<span style="font-size:11px;color:#9ca3af">None added yet</span>';
 }
 
-G.koAddCustomSubjectPattern = async function() {
-  const inp = document.getElementById('reply-custom-subj-inp');
+G.koAddCustomSubjectPattern = async function(cat) {
+  const inp = document.getElementById('reply-custom-subj-inp-' + cat);
   const val = (inp?.value || '').trim().replace(/"/g, '');
   if (!val) return;
-  const cat = koReplyCurrentCat;
   if (!koCustomSubjPatterns[cat]) koCustomSubjPatterns[cat] = [];
   if (koCustomSubjPatterns[cat].some(s => s.toLowerCase() === val.toLowerCase())) { inp.value = ''; return; }
 
@@ -1765,48 +1856,70 @@ function koCurrentWoField() {
   return (primary || document.getElementById('f_wo')?.value || document.getElementById('ko_wo')?.value || '').trim();
 }
 
+function koReplySectionShell(cat) {
+  const meta = KO_REPLY_CAT_META[cat];
+  return `
+  <div class="ko-reply-section" data-cat="${cat}" style="margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #f0f0f0">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+      <span style="font-size:14px;font-weight:700">${meta.icon} ${meta.label}</span>
+      <span id="reply-sync-label-${cat}" style="font-size:11px;color:#9ca3af"></span>
+      <span id="reply-refreshing-${cat}" style="display:none;align-items:center;gap:4px;font-size:11px;color:#2563eb">
+        <span class="spin" style="width:9px;height:9px;border-width:2px"></span>Updating…
+      </span>
+      <button onclick="koLiveRefresh('${cat}')" style="margin-left:auto;font-size:11px;padding:3px 9px;border-radius:20px;cursor:pointer;border:1px solid #d1d5db;background:#fff;color:#374151">🔄 Refresh now</button>
+    </div>
+    <div style="background:#fafafa;border:1px solid #eee;border-radius:8px;padding:8px 10px;margin-bottom:10px">
+      <div style="font-size:11px;color:#6b7280;margin-bottom:6px">🔎 Can't find a reply? Add the exact subject wording used for <b>${meta.label}</b> emails — shared with the team:</div>
+      <div id="reply-custom-subj-tags-${cat}" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="reply-custom-subj-inp-${cat}" placeholder="e.g. Parts Consumables Request" style="flex:1;font-size:12px;padding:6px 9px;border:1px solid #d1d5db;border-radius:6px" onkeydown="if(event.key==='Enter'){event.preventDefault();koAddCustomSubjectPattern('${cat}');}"/>
+        <button onclick="koAddCustomSubjectPattern('${cat}')" style="font-size:11px;padding:5px 12px;border-radius:20px;cursor:pointer;border:1px solid #93c5fd;background:#eff6ff;color:#1e40af;font-weight:600;white-space:nowrap">+ Add</button>
+      </div>
+    </div>
+    <div id="reply-body-${cat}"><div style="padding:14px 0;text-align:center;color:#9ca3af;font-size:12px">Loading…</div></div>
+  </div>`;
+}
+
 G.koOpenReplyModal = async function() {
   const faNumber = koCurrentWoField();
   if (!faNumber) { alert('Please load a project with a Work Order number first.'); return; }
 
   if (koReplyCurrentFA !== faNumber) koReplyCache = {};
   koReplyCurrentFA = faNumber;
-  const openTab = koReplyCurrentCat || 'customer';
-  koReplyCurrentCat = openTab;
 
-  document.querySelectorAll('.ko-reply-tab').forEach(t => {
-    const on = t.dataset.cat === openTab;
-    t.classList.toggle('on', on);
-    t.style.background = on ? '#f3f4f6' : '#fff';
-  });
-
+  document.getElementById('reply-modal-sub').textContent = faNumber;
   document.getElementById('reply-modal').style.display = 'flex';
-  await koLoadCustomSubjPatterns();
-  koRenderCustomSubjTags(openTab);
-  koLoadReplyTab(openTab);
-};
 
-G.koSwitchReplyTab = async function(cat) {
-  koReplyCurrentCat = cat;
-  document.querySelectorAll('.ko-reply-tab').forEach(t => {
-    const on = t.dataset.cat === cat;
-    t.classList.toggle('on', on);
-    t.style.background = on ? '#f3f4f6' : '#fff';
-  });
-  await koLoadCustomSubjPatterns();
-  koRenderCustomSubjTags(cat);
-  koLoadReplyTab(cat);
-};
-
-async function koLoadReplyTab(cat) {
-  const subEl  = document.getElementById('reply-modal-sub');
   const bodyEl = document.getElementById('reply-modal-body');
+  bodyEl.innerHTML = ['customer','parts','fbo'].map(koReplySectionShell).join('');
 
-  // Déjà chargé dans cette session → pas de re-fetch
-  if (koReplyCache[cat]) {
-    koRenderReplyBody(koReplyCache[cat].replies, cat, koReplyCache[cat].lastSync);
-    return;
+  await koLoadCustomSubjPatterns();
+  ['customer','parts','fbo'].forEach(koRenderCustomSubjTags);
+
+  // Affiche le cache instantanément pour les 3 catégories, puis rafraîchit
+  // en tâche de fond sans jamais bloquer ce qui est déjà affiché.
+  ['customer','parts','fbo'].forEach(cat => koShowCachedThenRefresh(cat));
+};
+
+async function koShowCachedThenRefresh(cat) {
+  let cached = koReplyCache[cat] || null;
+  const faAtStart = koReplyCurrentFA;
+
+  if (!cached) {
+    try {
+      const faKey = faAtStart.toLowerCase().replace(/[\s/]/g, '_');
+      const snap = await get(ref(db, 'squawkReplies/' + faKey + '/' + cat));
+      if (snap.exists()) cached = snap.val();
+    } catch(e) { console.warn('Firebase cache read failed for ' + cat + ':', e); }
   }
+
+  if (faAtStart !== koReplyCurrentFA) return; // tu as changé de job pendant la lecture
+  if (cached) koReplyCache[cat] = cached;
+  koRenderReplyBody(cached?.replies || [], cat, cached?.lastSync || null);
+
+  const age = cached?.lastSync ? (Date.now() - cached.lastSync) : Infinity;
+  if (!cached || age > KO_REPLY_MIN_REFRESH_INTERVAL_MS) koLiveRefresh(cat);
+}
 
   bodyEl.innerHTML = '<div style="padding:30px 10px;text-align:center;color:#6b7280;font-size:13px">⏳ Loading…</div>';
 
@@ -1831,18 +1944,18 @@ async function koLoadReplyTab(cat) {
 // Appel live au worker — utilisé quand rien n'est en cache, ou quand
 // l'ingénieur clique "🔄 Refresh now" pour forcer une lecture immédiate.
 async function koLiveRefresh(cat) {
-  const subEl  = document.getElementById('reply-modal-sub');
-  const bodyEl = document.getElementById('reply-modal-body');
-
-  subEl.textContent = koReplyCurrentFA + ' — scanning Gmail live (' + cat + ')…';
-  bodyEl.innerHTML   = '<div style="padding:30px 10px;text-align:center;color:#6b7280;font-size:13px">⏳ Reading replies live, this can take up to 20 seconds…</div>';
+  if (koRefreshInFlight[cat]) return; // déjà en cours (auto + manuel qui se chevauchent)
+  koRefreshInFlight[cat] = true;
+  const faAtStart = koReplyCurrentFA; // garde-fou si tu changes de job pendant le fetch
+  const indicator = document.getElementById('reply-refreshing-' + cat);
+  if (indicator) indicator.style.display = 'inline-flex';
 
   try {
     const res = await fetch(KO_WORKER + '/sync-replies', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
-        faNumber:   koReplyCurrentFA,
+        faNumber:   faAtStart,
         category:   cat,
         gmailToken: gToken || null,
         acReg:      (document.getElementById('f_reg')?.value || '').trim()
@@ -1852,21 +1965,25 @@ async function koLiveRefresh(cat) {
     const data = await res.json();
     const replies = data.replies || [];
     const lastSync = Date.now();
-    koReplyCache[cat] = { replies, lastSync };
 
-    // Sauvegarde dans Firebase (même chemin que le cron auto) pour que le
-    // scan live compte réellement comme "déjà fait" — sinon un reload ou
-    // un changement de projet perdait tout et relançait un scan complet.
-    const faKey = koReplyCurrentFA.toLowerCase().replace(/[\s/]/g, '_');
-    set(ref(db, 'squawkReplies/' + faKey + '/' + cat), { faNumber: koReplyCurrentFA, category: cat, replies, lastSync })
+    const faKey = faAtStart.toLowerCase().replace(/[\s/]/g, '_');
+    set(ref(db, 'squawkReplies/' + faKey + '/' + cat), { faNumber: faAtStart, category: cat, replies, lastSync })
       .catch(e => console.warn('Impossible de sauvegarder le cache replies dans Firebase:', e));
 
-    subEl.textContent = koReplyCurrentFA + ' — ' + replies.length + ' reply(ies) in ' + cat;
-    koRenderReplyBody(replies, cat, lastSync);
-
+    if (faAtStart === koReplyCurrentFA) {
+      koReplyCache[cat] = { replies, lastSync };
+      koRenderReplyBody(replies, cat, lastSync);
+    }
+    // si tu as changé de job pendant le fetch, le cache Firebase est quand
+    // même sauvegardé pour l'ancien job — juste pas affiché à l'écran actuel.
   } catch(e) {
-    subEl.textContent  = 'Error';
-    bodyEl.innerHTML    = '<div style="padding:20px;color:#dc2626;font-size:13px">❌ ' + e.message + '<br><small>Check that the worker is deployed and the FA number is correct.</small></div>';
+    if (faAtStart === koReplyCurrentFA) {
+      const label = document.getElementById('reply-sync-label-' + cat);
+      if (label) label.innerHTML = '<span style="color:#dc2626">⚠️ Refresh failed — ' + escHtml(e.message) + '</span>';
+    }
+  } finally {
+    koRefreshInFlight[cat] = false;
+    if (indicator) indicator.style.display = 'none';
   }
 }
 
@@ -1880,16 +1997,15 @@ function koSyncFreshnessLabel(lastSync) {
 }
 
 function koRenderReplyBody(replies, cat, lastSync) {
-  const bodyEl = document.getElementById('reply-modal-body');
-  if (cat === 'parts') koPartsUpdateQueue = []; // reconstruit à chaque rendu de l'onglet parts
+  const bodyEl = document.getElementById('reply-body-' + cat);
+  const labelEl = document.getElementById('reply-sync-label-' + cat);
+  if (!bodyEl) return;
+  if (cat === 'parts') koPartsUpdateQueue = []; // reconstruit à chaque rendu de la section "parts"
 
-  const refreshBar = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #f0f0f0">'
-    + '<span style="font-size:11px;color:#9ca3af">' + (lastSync ? 'Synced ' + koSyncFreshnessLabel(lastSync) : 'Live scan') + '</span>'
-    + '<button onclick="koLiveRefresh(\'' + cat + '\')" style="font-size:11px;padding:3px 9px;border-radius:20px;cursor:pointer;border:1px solid #d1d5db;background:#fff;color:#374151">🔄 Refresh now</button>'
-    + '</div>';
+  if (labelEl) labelEl.textContent = lastSync ? ('Synced ' + koSyncFreshnessLabel(lastSync)) : 'Never synced yet';
 
   if (!replies.length) {
-    bodyEl.innerHTML = refreshBar + '<div style="padding:20px 10px;text-align:center;color:#6b7280;font-size:13px">No replies found yet in this category.<br><small>They will appear here once Materials, the FBO, or the customer reply to your emails.</small></div>';
+    bodyEl.innerHTML = '<div style="padding:14px 0;text-align:center;color:#9ca3af;font-size:12px">No replies found yet in this category.<br><small>They will appear here once Materials, the FBO, or the customer reply to your emails.</small></div>';
     return;
   }
 
@@ -1925,7 +2041,7 @@ function koRenderReplyBody(replies, cat, lastSync) {
   }
 
   html += '</div>';
-  bodyEl.innerHTML = refreshBar + html;
+  bodyEl.innerHTML = html;
 }
 
 // Force en string n'importe quelle valeur — au cas où Mistral renvoie un
@@ -1945,6 +2061,7 @@ function koSafeStr(v) {
 function koReplyActionsHtml(r, cat) {
   const actions = [];
   const partBtns = [];
+  const etaBtns = []; // NOUVEAU — bouton "insérer dans le tableau Update du jour", toutes catégories
   const docLinks = [];
 
   if (cat === 'customer') {
@@ -1954,6 +2071,10 @@ function koReplyActionsHtml(r, cat) {
     if (nxt) actions.push({ label: 'Next flight: ' + nxt, k:'nxt', v:nxt });
     if (ref) actions.push({ label: 'Customer ref: ' + ref, k:'cust_ref', v:ref });
     if (custWo && custWo !== ref) actions.push({ label: 'Customer WO ref: ' + custWo, k:'cust_wo_ref', v:custWo });
+    (r.parts_eta_mentions || []).forEach(p => {
+      const desc = koSafeStr(p.description), etaT = koSafeStr(p.eta_text);
+      if (etaT) etaBtns.push({ desc, eta: etaT });
+    });
 
   } else if (cat === 'parts') {
     const po = koSafeStr(r.materials_po);
@@ -1971,6 +2092,7 @@ function koReplyActionsHtml(r, cat) {
       const idx = koPartsUpdateQueue.push({ kind:'update', ...p, pn, eta_text:etaText, source_location:srcLoc, alternative_pn:altPn, tracking_number:tracking, matched_existing_pn: koSafeStr(p.matched_existing_pn) }) - 1;
       partBtns.push({ idx, label: lbl });
       if (tracking) actions.push({ label:'📋 Copy tracking ' + pn, k:'track', v:tracking });
+      if (etaText) etaBtns.push({ desc: pn || koSafeStr(p.description), eta: etaText });
     });
 
     (r.hsa_parts_added || []).forEach(p => {
@@ -1994,15 +2116,18 @@ function koReplyActionsHtml(r, cat) {
     if (ready)   actions.push({ label:'FBO ready: ' + ready, k:'noted', v:'' });
     if (contact) actions.push({ label:'Contact: ' + contact, k:'noted', v:'' });
     if (closed)  actions.push({ label:'⚠️ Closed: ' + closed, k:'noted', v:'' });
+    (r.parts_eta_mentions || []).forEach(p => {
+      const desc = koSafeStr(p.description), etaT = koSafeStr(p.eta_text);
+      if (etaT) etaBtns.push({ desc, eta: etaT });
+    });
   }
 
-  // Liens vers les pièces jointes rendus cliquables pour TOUTES les catégories
   (r.attachments || []).forEach(a => {
     const docLabel = koSafeStr(a.label) || '📎 Attachment';
     docLinks.push({ href: 'https://mail.google.com/mail/u/0/#all/' + r.msgId, label: docLabel + (a.filename ? ' — ' + koSafeStr(a.filename) : '') });
   });
 
-  if (!actions.length && !partBtns.length && !docLinks.length) return '';
+  if (!actions.length && !partBtns.length && !etaBtns.length && !docLinks.length) return '';
 
   let html = '<div style="display:flex;gap:5px;flex-wrap:wrap">';
   for (const a of actions) {
@@ -2015,6 +2140,11 @@ function koReplyActionsHtml(r, cat) {
     html += `<button onclick="koApplyPartsUpdate(this,${b.idx})" `;
     html += 'style="font-size:11px;padding:4px 10px;border-radius:20px;cursor:pointer;border:1px solid #bfdbfe;background:#eff6ff;color:#1e40af">';
     html += escHtml(b.label) + '</button>';
+  }
+  for (const e of etaBtns) {
+    html += `<button data-desc="${koAttrEscape(e.desc)}" data-eta="${koAttrEscape(e.eta)}" onclick="koShowEtaItemPicker(this,this.dataset.desc,this.dataset.eta)" `;
+    html += 'style="font-size:11px;padding:4px 10px;border-radius:20px;cursor:pointer;border:1px solid #fbcfe8;background:#fdf2f8;color:#9d174d">';
+    html += '📝 Note in update: ' + (e.desc ? escHtml(e.desc) + ' — ' : '') + escHtml(e.eta) + '</button>';
   }
   for (const d of docLinks) {
     html += `<a href="${escHtml(d.href)}" target="_blank" rel="noopener" `;
@@ -2068,6 +2198,98 @@ G.koApplyReply = function(btn, key, val) {
   btn.style.opacity = '0.5';
 };
 
+function koAttrEscape(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Ouvre un petit sélecteur inline pour choisir l'item du jour (Step 3/4)
+// où insérer cette note d'ETA — remplace le bouton par le picker.
+G.koShowEtaItemPicker = function(btn, description, etaText) {
+  if (!etaText) return;
+  const items = getItems().filter(it => (it.label || '').trim());
+  if (!items.length) { alert('⚠️ No work items found — add them in Step 3 (Condition) first.'); return; }
+
+  const wrap = document.createElement('span');
+  wrap.style.cssText = 'display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap;background:#fdf2f8;border:1px solid #fbcfe8;border-radius:20px;padding:3px 4px 3px 10px';
+
+  const lbl = document.createElement('span');
+  lbl.style.cssText = 'font-size:11px;color:#9d174d;white-space:nowrap';
+  lbl.textContent = '→ item:';
+
+  const sel = document.createElement('select');
+  sel.style.cssText = 'font-size:11px;padding:3px 6px;border:1px solid #f5b8d6;border-radius:12px;background:#fff;max-width:180px';
+  sel.innerHTML = '<option value="">—</option>' + items.map(it =>
+    '<option value="' + it.num + '">' + it.num + ' — ' + escHtml((it.label || '').slice(0, 40)) + '</option>'
+  ).join('');
+
+  const okBtn = document.createElement('button');
+  okBtn.textContent = '✓';
+  okBtn.title = "Insert into today's update";
+  okBtn.style.cssText = 'font-size:12px;padding:2px 9px;border-radius:12px;cursor:pointer;border:1px solid #f5b8d6;background:#fff;color:#9d174d;font-weight:700';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = '✕';
+  cancelBtn.style.cssText = 'font-size:12px;padding:2px 7px;border-radius:12px;cursor:pointer;border:none;background:none;color:#9d174d';
+
+  okBtn.onclick = () => {
+    const num = parseInt(sel.value, 10);
+    if (!num) { sel.style.outline = '2px solid #f43f5e'; return; }
+    const ok = koInsertEtaNoteIntoUpdate(num, description, etaText);
+    if (ok) {
+      sel.style.outline = '';
+      const flash = document.createElement('span');
+      flash.style.cssText = 'font-size:11px;color:#065f46;font-weight:700;white-space:nowrap';
+      flash.textContent = '✓ item ' + num;
+      wrap.insertBefore(flash, okBtn);
+      sel.value = '';
+      setTimeout(() => flash.remove(), 2500); // le picker reste dispo pour ajouter à un 2e item
+    }
+  };
+  cancelBtn.onclick = () => { wrap.replaceWith(btn); };
+
+  wrap.append(lbl, sel, okBtn, cancelBtn);
+  btn.replaceWith(wrap);
+};
+
+// Insère la note dans l'item choisi, dans le bloc "Aujourd'hui" du tableau
+// Update (le crée s'il n'existe pas encore). Coche l'item, et met le statut
+// sur "waiting_parts" SEULEMENT si aucun statut n'était déjà choisi.
+function koInsertEtaNoteIntoUpdate(itemNum, description, etaText) {
+  const loadedWo = (gv('f_wo') || '').trim().toUpperCase();
+  const replyWo  = (koReplyCurrentFA || '').trim().toUpperCase();
+  if (loadedWo && replyWo && loadedWo !== replyWo) {
+    if (!confirm('⚠️ Le projet actuellement chargé (' + loadedWo + ') ne correspond pas à ce Work Order (' + replyWo + ').\n\nAjouter quand même dans le tableau Update actuellement affiché ?')) return false;
+  }
+
+  let todayBlock = Array.from(document.querySelectorAll('.update-day')).find(d => d.dataset.date === todayLabel());
+  if (!todayBlock) {
+    G.addTodayUpdate();
+    todayBlock = Array.from(document.querySelectorAll('.update-day')).find(d => d.dataset.date === todayLabel());
+  }
+  if (!todayBlock) { alert("Couldn't create today's update — add work items in Step 3 first."); return false; }
+
+  const itemBlock = todayBlock.querySelector('.upd-item-block[data-item-num="' + itemNum + '"]');
+  if (!itemBlock) { alert("Item not found in today's update."); return false; }
+
+  const detailEl = itemBlock.querySelector('.upd-detail');
+  const noteLine = (description ? description + ' — ' : '') + 'ETA: ' + etaText;
+  if (detailEl) detailEl.value = detailEl.value ? (detailEl.value + '\n' + noteLine) : noteLine;
+
+  const chk = itemBlock.querySelector('input[type=checkbox]');
+  if (chk) chk.checked = true;
+  const statusSel = itemBlock.querySelector('.upd-status-sel');
+  if (statusSel && !statusSel.value) statusSel.value = 'waiting_parts';
+
+  applyStatusClass(itemBlock, statusSel ? statusSel.value : '');
+  updateDayProgress(todayBlock);
+  propagateItemChange(todayBlock, itemBlock.dataset.itemNum, chk ? chk.checked : true, statusSel ? statusSel.value : '');
+  G.autosave();
+
+  itemBlock.style.outline = '2px solid #10b981';
+  itemBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(() => { itemBlock.style.outline = ''; }, 2000);
+  return true;
+}	
 function escHtml(s) {
   return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
@@ -3430,7 +3652,7 @@ G.addPart = function(nom='',pn_off='',sn_off='',pn_on='',sn_on='') {
     <div class="fg"><label>SN OFF</label><input type="text" class="p-snoff" value="${sn_off}" placeholder="SN OFF" oninput="autosave()"/></div>
     <div class="fg"><label>PN ON</label><input type="text" class="p-pnon" value="${pn_on}" placeholder="Auto-fills from PN OFF" oninput="autosave()"/></div>
     <div class="fg"><label>SN ON</label><input type="text" class="p-snon" value="${sn_on}" placeholder="SN ON" oninput="autosave()"/></div>
-  </div><button class="btn-rm" onclick="this.parentElement.remove();autosave()" style="margin-top:18px">×</button>`;
+  </div><button class="btn" onclick="openRepairTagModal(this)" title="Générer la fiche GA3671 pour cette pièce" style="margin-top:18px;padding:6px 9px;font-size:11px;white-space:nowrap">🏷️</button><button class="btn-rm" onclick="this.parentElement.remove();autosave()" style="margin-top:18px">×</button>`;
   c.appendChild(d);
 };
 G.onPnOffInput = function(el) {
@@ -3447,6 +3669,140 @@ function getParts() {
   }));
 }
 
+// ══════════════════════════════════════
+//  GA 3671 — REPAIR TAG (Unserviceable Tag) GENERATOR
+//  Remplit le vrai PDF Gulfstream via pdf-lib (100% côté client).
+// ══════════════════════════════════════
+let rtagFaultState = '';   // 'yes' | 'no' | ''
+let rtagSolvedState = '';  // 'yes' | 'no' | ''
+
+function rtagTodayFormatted() {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const d = new Date();
+  return String(d.getDate()).padStart(2,'0') + '-' + months[d.getMonth()] + '-' + d.getFullYear();
+}
+
+G.openRepairTagModal = function(btnEl) {
+  const row = btnEl.closest('.part-row');
+  if (!row) return;
+
+  sv('rtag_model', gv('f_model'));
+  sv('rtag_sn', gv('f_sn'));
+  sv('rtag_reg', gv('f_reg'));
+  sv('rtag_hours', '');
+  sv('rtag_cycles', '');
+  sv('rtag_date', rtagTodayFormatted());
+  sv('rtag_qty', '1');
+  sv('rtag_partname', row.querySelector('.p-nom')?.value || '');
+  sv('rtag_pn', row.querySelector('.p-pnoff')?.value || '');
+  sv('rtag_partsn', row.querySelector('.p-snoff')?.value || '');
+  sv('rtag_reason', '');
+  sv('rtag_workperf', '');	
+  sv('rtag_code1', '');
+  sv('rtag_code2', '');
+  sv('rtag_time', '');
+  sv('rtag_originator', curProfile?.name || '');
+  document.getElementById('rtag-error').textContent = '';
+
+  rtagFaultState = ''; rtagSolvedState = '';
+  ['rtag-fault-yes','rtag-fault-no','rtag-solved-yes','rtag-solved-no'].forEach(id => document.getElementById(id)?.classList.remove('active-blue'));
+  document.querySelectorAll('[data-rtagcond]').forEach(el => el.classList.remove('active-green'));
+
+  const sel = document.getElementById('rtag_item_link');
+  const items = getItems();
+  sel.innerHTML = '<option value="">— none —</option>' + items.map(it => `<option value="${it.num}">${it.num} — ${it.label}</option>`).join('');
+
+  openModal('modal-repair-tag');
+};
+
+G.rtagFillReasonFromItem = function(sel) {
+  if (!sel.value) return;
+  const it = getItems().find(x => String(x.num) === sel.value);
+  if (it) sv('rtag_reason', it.label);
+};
+
+G.rtagToggleFault = function(el, val) {
+  const wasActive = el.classList.contains('active-blue');
+  document.getElementById('rtag-fault-yes').classList.remove('active-blue');
+  document.getElementById('rtag-fault-no').classList.remove('active-blue');
+  rtagFaultState = wasActive ? '' : val;
+  if (!wasActive) el.classList.add('active-blue');
+};
+
+G.rtagToggleSolved = function(el, val) {
+  const wasActive = el.classList.contains('active-blue');
+  document.getElementById('rtag-solved-yes').classList.remove('active-blue');
+  document.getElementById('rtag-solved-no').classList.remove('active-blue');
+  rtagSolvedState = wasActive ? '' : val;
+  if (!wasActive) el.classList.add('active-blue');
+};
+
+G.generateRepairTag = async function() {
+  const errEl = document.getElementById('rtag-error');
+  errEl.textContent = '';
+  if (!window.PDFLib) { errEl.textContent = "❌ pdf-lib.min.js introuvable — vérifie qu'il est à la racine du repo et que le <script> est bien ajouté."; return; }
+
+  const btn = document.getElementById('rtag-gen-btn');
+  const origLabel = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Génération…';
+
+  try {
+    const res = await fetch('ga3671-template.pdf');
+    if (!res.ok) throw new Error('ga3671-template.pdf introuvable (HTTP ' + res.status + ') — vérifie qu\'il est uploadé à la racine du repo.');
+    const bytes = await res.arrayBuffer();
+    const pdfDoc = await PDFLib.PDFDocument.load(bytes);
+    const form = pdfDoc.getForm();
+
+    const setText = (name, val) => { try { form.getTextField(name).setText(val || ''); } catch(e) { console.warn('Champ introuvable:', name); } };
+    const setCheck = (name, checked) => { try { const cb = form.getCheckBox(name); checked ? cb.check() : cb.uncheck(); } catch(e) { console.warn('Case introuvable:', name); } };
+
+    setText('Text Field0',  gv('rtag_date'));
+    setText('Text Field1',  gv('rtag_qty'));
+    setText('Text Field2',  gv('rtag_model'));
+    setText('Text Field3',  gv('rtag_sn'));
+    setText('Text Field4',  gv('rtag_reg'));
+    setText('Text Field5',  gv('rtag_hours'));
+    setText('Text Field6',  gv('rtag_cycles'));
+    setText('Text Field7',  gv('rtag_partname'));
+    setText('Text Field8',  gv('rtag_pn'));
+    setText('Text Field9',  gv('rtag_partsn'));
+    setText('Text Field10', gv('rtag_reason'));
+	setText('WorkPerformedResolution', gv('rtag_workperf'));  
+    setText('Text Field11', gv('rtag_code1'));
+    setText('Text Field12', gv('rtag_code2'));
+    setText('Text Field13', gv('rtag_time'));
+    setText('Text Field15', gv('rtag_originator'));
+
+    setCheck('Check Box0', rtagFaultState === 'yes');
+    setCheck('Check Box1', rtagFaultState === 'no');
+    setCheck('Check Box2', rtagSolvedState === 'yes');
+    setCheck('Check Box3', rtagSolvedState === 'no');
+    setCheck('Check Box4', !!document.querySelector('[data-rtagcond="onground"]')?.classList.contains('active-green'));
+    setCheck('Check Box5', !!document.querySelector('[data-rtagcond="inflight"]')?.classList.contains('active-green'));
+    setCheck('Check Box6', !!document.querySelector('[data-rtagcond="firstpowerup"]')?.classList.contains('active-green'));
+    setCheck('Check Box7', !!document.querySelector('[data-rtagcond="anypowerup"]')?.classList.contains('active-green'));
+    setCheck('Check Box8', !!document.querySelector('[data-rtagcond="climb"]')?.classList.contains('active-green'));
+    setCheck('Check Box9', !!document.querySelector('[data-rtagcond="descent"]')?.classList.contains('active-green'));
+    setCheck('Check Box10', !!document.querySelector('[data-rtagcond="landing"]')?.classList.contains('active-green'));
+
+    const pdfBytes = await pdfDoc.save();
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const safePn = (gv('rtag_pn') || 'part').replace(/[^a-zA-Z0-9-]/g, '');
+    a.href = url;
+    a.download = `GA3671_${gv('f_wo') || 'job'}_${safePn}.pdf`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+
+    btn.textContent = '✅ Téléchargé !';
+    setTimeout(() => { btn.textContent = origLabel; btn.disabled = false; }, 2500);
+  } catch(e) {
+    errEl.textContent = '❌ ' + e.message;
+    btn.textContent = origLabel; btn.disabled = false;
+  }
+};
+	
 // ══════════════════════════════════════
 //  PARTS EXTRACTION FROM EMAIL
 // ══════════════════════════════════════
@@ -7347,25 +7703,13 @@ window.koLiveRefresh = koLiveRefresh;
         <div style="font-size:15px;font-weight:700">📬 Gmail Reply Sync</div>
         <div id="reply-modal-sub" style="font-size:11px;color:#6b7280;margin-top:2px"></div>
       </div>
-      <button onclick="document.getElementById('reply-modal').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;padding:4px 8px;line-height:1">✕</button>
-    </div>
-
-    <div style="display:flex;gap:6px;padding:10px 18px;border-bottom:1px solid #e5e7eb;flex-shrink:0">
-      <button class="ko-reply-tab on" data-cat="customer" onclick="koSwitchReplyTab('customer')" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #d1d5db;background:#f3f4f6">👤 Customer</button>
-      <button class="ko-reply-tab" data-cat="parts" onclick="koSwitchReplyTab('parts')" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #d1d5db;background:#fff">📦 Parts</button>
-      <button class="ko-reply-tab" data-cat="fbo" onclick="koSwitchReplyTab('fbo')" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #d1d5db;background:#fff">🏢 FBO</button>
-    </div>
-    
-    <div style="padding:9px 18px;border-bottom:1px solid #e5e7eb;background:#fafafa;flex-shrink:0">
-      <div style="font-size:11px;color:#6b7280;margin-bottom:6px">🔎 Can't find a reply? Add the exact subject wording your colleague used for <b id="reply-custom-cat-label">Customer Update</b> emails — shared with the whole team, applies to every job from now on:</div>
-      <div id="reply-custom-subj-tags" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
-      <div style="display:flex;gap:6px">
-        <input type="text" id="reply-custom-subj-inp" placeholder="e.g. Parts Consumables Request" style="flex:1;font-size:12px;padding:6px 9px;border:1px solid #d1d5db;border-radius:6px" onkeydown="if(event.key==='Enter'){event.preventDefault();koAddCustomSubjectPattern();}"/>
-        <button onclick="koAddCustomSubjectPattern()" style="font-size:11px;padding:5px 12px;border-radius:20px;cursor:pointer;border:1px solid #93c5fd;background:#eff6ff;color:#1e40af;font-weight:600;white-space:nowrap">+ Add &amp; search</button>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button onclick="['customer','parts','fbo'].forEach(c=>koLiveRefresh(c))" style="font-size:11px;padding:5px 10px;border-radius:20px;cursor:pointer;border:1px solid #d1d5db;background:#fff;color:#374151">🔄 Refresh all</button>
+        <button onclick="document.getElementById('reply-modal').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;padding:4px 8px;line-height:1">✕</button>
       </div>
     </div>
 
-    <div id="reply-modal-body" style="overflow-y:auto;padding:14px 18px;flex:1"></div>
+    <div id="reply-modal-body" style="overflow-y:auto;padding:16px 18px;flex:1"></div>
   </div>
 </div>
 
