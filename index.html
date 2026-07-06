@@ -1921,26 +1921,6 @@ async function koShowCachedThenRefresh(cat) {
   if (!cached || age > KO_REPLY_MIN_REFRESH_INTERVAL_MS) koLiveRefresh(cat);
 }
 
-  bodyEl.innerHTML = '<div style="padding:30px 10px;text-align:center;color:#6b7280;font-size:13px">⏳ Loading…</div>';
-
-  // ── Étape 1 : lire le cache Firebase rempli par le sync automatique (toutes les 2h) ──
-  // Instantané — pas d'appel au worker, pas d'attente.
-  const faKey = koReplyCurrentFA.toLowerCase().replace(/[\s/]/g, '_');
-  try {
-    const snap = await get(ref(db, 'squawkReplies/' + faKey + '/' + cat));
-    const cached = snap.exists() ? snap.val() : null;
-    if (cached) {
-      koReplyCache[cat] = cached;
-      subEl.textContent = koReplyCurrentFA + ' — ' + (cached.replies?.length || 0) + ' reply(ies) in ' + cat;
-      koRenderReplyBody(cached.replies || [], cat, cached.lastSync);
-      return;
-    }
-  } catch(e) { console.warn('Firebase cache read failed, falling back to live scan:', e); }
-
-  // ── Étape 2 : rien en cache (1er scan jamais fait pour ce job) → appel live ──
-  await koLiveRefresh(cat);
-}
-
 // Appel live au worker — utilisé quand rien n'est en cache, ou quand
 // l'ingénieur clique "🔄 Refresh now" pour forcer une lecture immédiate.
 async function koLiveRefresh(cat) {
