@@ -4604,6 +4604,16 @@ function buildInlinedTableClone(tbl) {
   return tblClone;
 }
 
+function buildPlainTextTable(tbl) {
+  // Filet texte brut — sans lui, les apps qui refusent le text/html seul
+  // (Gmail Android en tête) ne collent rien du tout.
+  return Array.from(tbl.rows).map(row =>
+    Array.from(row.cells)
+      .map(cell => (cell.innerText || cell.textContent || '').trim().replace(/\s*\n\s*/g, ' / '))
+      .join('\t')
+  ).join('\n');
+}
+
 G.copyTable = async function() {
   const tbl = document.getElementById('gen-tbl'); if (!tbl) return;
   const btn = document.getElementById('copy-btn');
@@ -4615,20 +4625,34 @@ G.copyTable = async function() {
       btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy table`;
     }, 2500);
   };
+
+  const tblClone = buildInlinedTableClone(tbl);
+  const plainText = buildPlainTextTable(tbl);
+
   try {
-    // API moderne (Chrome 76+, Safari 13.1+) — on copie le clone avec styles inlinés,
-    // sinon les bordures/couleurs disparaissent une fois collées hors de l'app.
-    const tblClone = buildInlinedTableClone(tbl);
+    // Tier 1 — HTML + texte. Le text/plain est indispensable : sans lui,
+    // certaines apps mobiles ne collent rien du tout (c'est ça le bug).
     await navigator.clipboard.write([
-      new ClipboardItem({ 'text/html': new Blob([tblClone.outerHTML], { type: 'text/html' }) })
+      new ClipboardItem({
+        'text/html': new Blob([tblClone.outerHTML], { type: 'text/html' }),
+        'text/plain': new Blob([plainText], { type: 'text/plain' })
+      })
     ]);
     markCopied();
-  } catch(e) {
-    // Fallback pour les navigateurs plus anciens
-    const range = document.createRange(); range.selectNode(tbl);
-    const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
-    document.execCommand('copy'); sel.removeAllRanges();
-    markCopied();
+  } catch(e1) {
+    console.warn('copyTable: write(HTML+texte) a échoué, tentative texte seul —', e1);
+    try {
+      // Tier 2 — texte brut seul, bien plus largement supporté sur mobile.
+      await navigator.clipboard.writeText(plainText);
+      markCopied();
+    } catch(e2) {
+      console.warn('copyTable: writeText a aussi échoué, fallback execCommand —', e2);
+      // Tier 3 — fallback pour les navigateurs très anciens
+      const range = document.createRange(); range.selectNode(tbl);
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+      document.execCommand('copy'); sel.removeAllRanges();
+      markCopied();
+    }
   }
 };
 G.copySubject = function() { navigator.clipboard.writeText(document.getElementById('email-subject')?.textContent||'').catch(()=>{}); setStatus('done','✓ Email subject copied!'); };
