@@ -759,6 +759,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <div class="fg"><label>Name</label><input type="text" id="f_cust_name" oninput="autosave()"/></div>
         <div class="fg"><label>Phone</label><input type="text" id="f_cust_tel" oninput="autosave()"/></div>
         <div class="fg"><label>Email</label><input type="email" id="f_cust_email" oninput="autosave()"/></div>
+        <div class="fg"><label>Company</label><input type="text" id="f_cust_company" placeholder="e.g. ABC Aviation Ltd" oninput="autosave()"/></div>
+        <div class="fg"><label>Customer Code</label><input type="text" id="f_cust_code" placeholder="e.g. GX000" oninput="autosave()"/></div>
       </div>
     </div>
   </div>
@@ -3189,6 +3191,7 @@ function gatherData() {
     job_desc: gv('f_job_desc'),
     recipients: getRecipients(),
     cust_name: gv('f_cust_name'), cust_tel: gv('f_cust_tel'), cust_email: gv('f_cust_email'),
+    cust_company: gv('f_cust_company'), cust_code: gv('f_cust_code'),
     leadEngId: document.getElementById('lead-eng-sel')?.value || '',  // ← nouveau
     items: getItems(), parts: getParts(), colleagues: getColleagueSlots(), updates: getUpdatesData()
   };
@@ -3249,6 +3252,7 @@ function fillFromProj(proj) {
   const savedRecipients = Array.isArray(proj.recipients) ? proj.recipients : [];
   renderRecipients(savedRecipients.length > 0 ? savedRecipients : [..._defaultRecipients]);
   sv('f_cust_name', proj.cust_name || ''); sv('f_cust_tel', proj.cust_tel || ''); sv('f_cust_email', proj.cust_email || '');
+  sv('f_cust_company', proj.cust_company || ''); sv('f_cust_code', proj.cust_code || '');
 
   document.getElementById('items-container').innerHTML = ''; itemCount = 0;
   // items can be array or object (Firebase)
@@ -3281,7 +3285,7 @@ function fillFromProj(proj) {
 }
 
 function clearForm() {
-  ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_job_desc','f_cust_name','f_cust_tel','f_cust_email']
+  ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_job_desc','f_cust_name','f_cust_tel','f_cust_email','f_cust_company','f_cust_code']
     .forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
   document.getElementById('f_rts_assist').value = 'RTS';
   const btn = document.getElementById('btn-mark-rts');
@@ -3711,8 +3715,8 @@ G.openRepairTagModal = function(btnEl) {
   sv('rtag_originator', curProfile?.name || '');
   sv('rtag_gac_wo', gv('f_wo'));
   sv('rtag_employee_id', curProfile?.fnNumber || '');
-  sv('rtag_cust_company', '');
-  sv('rtag_cust_code', '');
+  sv('rtag_cust_company', gv('f_cust_company'));
+  sv('rtag_cust_code', gv('f_cust_code'));
   sv('rtag_cust_contact', gv('f_cust_name'));
   sv('rtag_cust_phone', gv('f_cust_tel'));
   sv('rtag_cust_email', gv('f_cust_email'));
@@ -4249,6 +4253,9 @@ G.extractPDF = async function() {
 
 DOCUMENT TYPE 1 — "RFS" (Request For Service / quote-style document with fields like A/C Registry, Model/SN, FBO, Customer info, work scope items):
 Extract all standard fields normally, including country and far_certification as usually presented in this document type.
+  - customer_code: from the "Account ID" field (e.g. "GX040").
+  - customer_company: from the "Account" field — the operator/company name (e.g. "Alba Servizi Aerotrasporti Spa"). Keep original casing, do not uppercase.
+  - customer_name: from the "Contact" field — the individual person's name (e.g. "Livio Cuneo"). This is NOT the Account/company name.
 
 DOCUMENT TYPE 2 — "Work Order Detail" (header literally says "Work Order Detail", contains numbered "Item: N" sections each with "Squawk: X.Y" / "Discrepancy:" / "Status:" lines):
 
@@ -4257,7 +4264,9 @@ METADATA RULES for this type (read the WHOLE document, all Item sections, to fin
   - registration: this document type usually does NOT state the A/C registration explicitly. Leave registration as "" unless you see an explicit tail number / registration field.
   - far_certification: leave this as "" for this document type. Do NOT use the "Repair Station:" code for this field — that is a maintenance facility approval, not the aircraft's regulatory basis, and must not be used here.
   - country: ALWAYS leave country as "" for this document type. Do NOT infer it from the repair station's physical address (e.g. do not output "United Kingdom" just because the facility is in Farnborough, UK) — the facility location is unrelated to the aircraft's country of registry.
-  - work_order (the "Work Order:" field), model/serial (from "Aircraft Serial Number" field), customer_name, customer_email, customer_phone (from "Customer Name / E-Mail / Tel" fields).
+  - customer_code: from the "Account Code" field near the top of the document (e.g. "GX040").
+  - customer_company: from the "Customer:" field near the top — the operator/company name. If that field is blank, use the "Title:" field instead. This is NOT the same as customer_name below. Keep original casing, do not uppercase.
+  - work_order (the "Work Order:" field), model/serial (from "Aircraft Serial Number" field), customer_name, customer_email, customer_phone (from the "Customer Name:" / "Customer E-Mail:" / "Customer Tel:" lines further down in the document body — NOT from the "Contact Name:" field near the header, which is usually left blank).
 
 WORK_ITEMS RULE for this type — READ CAREFULLY, this is strict:
   This document has multiple sections, each starting with a line "Item: N <title>". Identify the section that starts with "Item: 2" — its title is typically "Customer Supplied Tasks". 
@@ -4277,7 +4286,7 @@ UNIVERSAL RULE FOR ALL TYPES:
 - Never invent or infer a value that is not explicitly written in the document. If unsure, use "".
 
 Reply ONLY with valid JSON, no markdown, in this exact shape:
-{"doc_type":"RFS or WORK_ORDER_DETAIL or WCR","work_order":"","model":"e.g. GVIII-G700","serial_number":"","registration":"","location":"ICAO","rts_assist":"RTS or Assist","far_certification":"","country":"","fbo":"","po_number":"","customer_name":"UPPERCASE","customer_phone":"","customer_email":"","estimated_rts":"","next_flight":"UNKWN if unknown","constraints":"","work_items":[{"label":"UPPERCASE"}]}`;
+{"doc_type":"RFS or WORK_ORDER_DETAIL or WCR","work_order":"","model":"e.g. GVIII-G700","serial_number":"","registration":"","location":"ICAO","rts_assist":"RTS or Assist","far_certification":"","country":"","fbo":"","po_number":"","customer_name":"UPPERCASE","customer_company":"","customer_code":"","customer_phone":"","customer_email":"","estimated_rts":"","next_flight":"UNKWN if unknown","constraints":"","work_items":[{"label":"UPPERCASE"}]}`;
   try {
     // Étape 1 : OCR pour extraire le texte du PDF
     const ocrRes = await fetch('https://orange-snow-95f7.jeromepoupinel.workers.dev/ocr', {
@@ -4337,6 +4346,8 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
     fillOrKeep('f_cust_name',parsed.customer_name||'');
     fillOrKeep('f_cust_tel',parsed.customer_phone||'');
     fillOrKeep('f_cust_email',parsed.customer_email||'');
+    fillOrKeep('f_cust_company',parsed.customer_company||'');
+    fillOrKeep('f_cust_code',parsed.customer_code||'');
     if(!isFollowUp && parsed.rts_assist) document.getElementById('f_rts_assist').value=parsed.rts_assist.toLowerCase().includes('assist')?'Assist':'RTS';
     const regForCert = (document.getElementById('f_reg')?.value || parsed.registration || '').trim().toUpperCase();
     if (regForCert && (!document.getElementById('f_far').value.trim())) {
