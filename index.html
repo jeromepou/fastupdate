@@ -716,6 +716,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="card-body">
     <div id="parts-container"></div>
     <button class="btn-add" onclick="addPart()">+ Add part</button>
+    <button class="btn" onclick="openRepairTagModal()" style="width:100%;justify-content:center;margin-top:8px" title="Ouvre la fiche GA3671 vierge — utile si la pièce n'est pas (ou pas encore) dans le tableau ci-dessus">🏷️ Generate GA3671 tag (standalone)</button>
   </div>
 </div>
 
@@ -3698,8 +3699,9 @@ function rtagTodayFormatted() {
 }
 
 G.openRepairTagModal = function(btnEl) {
-  const row = btnEl.closest('.part-row');
-  if (!row) return;
+  // btnEl est optionnel désormais : si appelé sans argument (bouton autonome),
+  // row reste null et Part Name / PN / SN restent vides pour saisie manuelle.
+  const row = btnEl ? btnEl.closest('.part-row') : null;
 
   sv('rtag_model', gv('f_model'));
   sv('rtag_sn', gv('f_sn'));
@@ -3708,9 +3710,9 @@ G.openRepairTagModal = function(btnEl) {
   sv('rtag_cycles', gv('f_ac_cycles'));
   sv('rtag_date', rtagTodayFormatted());
   sv('rtag_qty', '1');
-  sv('rtag_partname', row.querySelector('.p-nom')?.value || '');
-  sv('rtag_pn', row.querySelector('.p-pnoff')?.value || '');
-  sv('rtag_partsn', row.querySelector('.p-snoff')?.value || '');
+  sv('rtag_partname', row?.querySelector('.p-nom')?.value || '');
+  sv('rtag_pn', row?.querySelector('.p-pnoff')?.value || '');
+  sv('rtag_partsn', row?.querySelector('.p-snoff')?.value || '');
   sv('rtag_reason', '');
   sv('rtag_workperf', '');	
   sv('rtag_code1', '');
