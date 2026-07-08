@@ -650,6 +650,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div class="fg"><label>Country of Registry</label><input type="text" id="f_country" placeholder="e.g. San Marino" oninput="autosave()"/></div>
       <div class="fg"><label>FBO / Support Location</label><input type="text" id="f_fbo" placeholder="e.g. FBO Universal" oninput="autosave()"/></div>
       <div class="fg"><label>PO Number</label><input type="text" id="f_po" placeholder="e.g. 17-26-REX" oninput="autosave()"/></div>
+	  <div class="fg"><label>A/C Hours</label><input type="text" id="f_ac_hours" placeholder="e.g. 2748:48" oninput="autosave()"/></div>
+      <div class="fg"><label>A/C Cycles</label><input type="text" id="f_ac_cycles" placeholder="e.g. 1064" oninput="autosave()"/></div>		
     </div>
   </div>
 </div>
@@ -1486,8 +1488,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div class="fg"><label>Registration #</label><input type="text" id="rtag_reg"/></div>
     </div>
     <div class="grid g3" style="margin-bottom:10px">
-      <div class="fg"><label>A/C Hours</label><input type="text" id="rtag_hours" placeholder="e.g. 2748:48"/></div>
-      <div class="fg"><label>A/C Cycles</label><input type="text" id="rtag_cycles" placeholder="e.g. 1064"/></div>
+      <div class="fg"><label>A/C Hours</label><input type="text" id="rtag_hours" placeholder="e.g. 2748:48" oninput="rtagSyncHoursCycles()"/></div>
+      <div class="fg"><label>A/C Cycles</label><input type="text" id="rtag_cycles" placeholder="e.g. 1064" oninput="rtagSyncHoursCycles()"/></div>
       <div class="fg"><label>Date</label><input type="text" id="rtag_date"/></div>
     </div>
     <div class="grid g3" style="margin-bottom:10px">
@@ -3187,6 +3189,7 @@ function gatherData() {
   return {
     wo: gv('f_wo'), model: gv('f_model'), sn: gv('f_sn'), reg: gv('f_reg'), loc: gv('f_loc'),
     rts_assist: gv('f_rts_assist'), far: gv('f_far'), country: gv('f_country'), fbo: gv('f_fbo'), po: gv('f_po'),
+    ac_hours: gv('f_ac_hours'), ac_cycles: gv('f_ac_cycles'),
     erts: gv('f_erts'), nxt: gv('f_nxt'), retdate: gv('f_retdate'), rettime: gv('f_rettime'), info: gv('f_info'),
     job_desc: gv('f_job_desc'),
     recipients: getRecipients(),
@@ -3247,6 +3250,7 @@ function fillFromProj(proj) {
   const isAssist = (proj.rts_assist || 'RTS') === 'Assist';
   const btn = document.getElementById('btn-mark-rts');
   if (btn) btn.textContent = isAssist ? '🤝 Assistance Provided' : '✅ Mark A/C RTS'; sv('f_far', proj.far); sv('f_country', proj.country); sv('f_fbo', proj.fbo); sv('f_po', proj.po);
+  sv('f_ac_hours', proj.ac_hours || ''); sv('f_ac_cycles', proj.ac_cycles || '');
   sv('f_erts', proj.erts || ''); sv('f_nxt', proj.nxt || ''); sv('f_retdate', proj.retdate || ''); sv('f_rettime', proj.rettime || ''); sv('f_info', proj.info || '');
   sv('f_job_desc', proj.job_desc || '');
   const savedRecipients = Array.isArray(proj.recipients) ? proj.recipients : [];
@@ -3285,7 +3289,7 @@ function fillFromProj(proj) {
 }
 
 function clearForm() {
-  ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_job_desc','f_cust_name','f_cust_tel','f_cust_email','f_cust_company','f_cust_code']
+  ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_job_desc','f_cust_name','f_cust_tel','f_cust_email','f_cust_company','f_cust_code','f_ac_hours','f_ac_cycles']
     .forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
   document.getElementById('f_rts_assist').value = 'RTS';
   const btn = document.getElementById('btn-mark-rts');
@@ -3700,8 +3704,8 @@ G.openRepairTagModal = function(btnEl) {
   sv('rtag_model', gv('f_model'));
   sv('rtag_sn', gv('f_sn'));
   sv('rtag_reg', gv('f_reg'));
-  sv('rtag_hours', '');
-  sv('rtag_cycles', '');
+  sv('rtag_hours', gv('f_ac_hours'));
+  sv('rtag_cycles', gv('f_ac_cycles'));
   sv('rtag_date', rtagTodayFormatted());
   sv('rtag_qty', '1');
   sv('rtag_partname', row.querySelector('.p-nom')?.value || '');
@@ -3738,6 +3742,14 @@ G.openRepairTagModal = function(btnEl) {
   openModal('modal-repair-tag');
 };
 
+// Heures & cycles saisis dans UNE fiche (ou en Step 2) sont partagés par tout
+// le WO — inutile de les re-taper pour chaque pièce du même job.
+G.rtagSyncHoursCycles = function() {
+  sv('f_ac_hours', gv('rtag_hours'));
+  sv('f_ac_cycles', gv('rtag_cycles'));
+  G.autosave();
+};
+	
 G.rtagFillReasonFromItem = function(sel) {
   if (!sel.value) return;
   const it = getItems().find(x => String(x.num) === sel.value);
@@ -4813,7 +4825,10 @@ G.confirmRTS = async function() {
 
 G.openModal = function(id){document.getElementById(id).classList.add('open');};
 G.closeModal = function(id){document.getElementById(id).classList.remove('open');};
-document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+document.querySelectorAll('.modal-bg').forEach(m=>{
+  if (m.id === 'modal-repair-tag') return; // GA3671 : trop de champs pour risquer une fermeture accidentelle — fermeture uniquement via Annuler / Générer
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
 
 function setupAccordion() {
   const cards = Array.from(document.querySelectorAll('#app-screen > .card'));
