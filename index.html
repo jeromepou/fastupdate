@@ -2079,10 +2079,13 @@ function koReplyActionsHtml(r, cat) {
   if (cat === 'customer') {
     const eta = koSafeStr(r.engineer_eta), nxt = koSafeStr(r.next_flight), ref = koSafeStr(r.customer_reference);
     const custWo = koSafeStr(r.customer_wo_reference);
+    const acHours = koSafeStr(r.aircraft_hours), acCycles = koSafeStr(r.aircraft_cycles);
     if (eta) actions.push({ label: 'My ETA: ' + eta, k:'eng_eta', v:eta });
     if (nxt) actions.push({ label: 'Next flight: ' + nxt, k:'nxt', v:nxt });
     if (ref) actions.push({ label: 'Customer ref: ' + ref, k:'cust_ref', v:ref });
     if (custWo && custWo !== ref) actions.push({ label: 'Customer WO ref: ' + custWo, k:'cust_wo_ref', v:custWo });
+    if (acHours) actions.push({ label: 'A/C Hours: ' + acHours, k:'ac_hours', v:acHours });
+    if (acCycles) actions.push({ label: 'A/C Cycles: ' + acCycles, k:'ac_cycles', v:acCycles });
     (r.parts_eta_mentions || []).forEach(p => {
       const desc = koSafeStr(p.description), etaT = koSafeStr(p.eta_text);
       if (etaT) etaBtns.push({ desc, eta: etaT });
@@ -2172,7 +2175,9 @@ function koReplyActionsHtml(r, cat) {
 // touchent JAMAIS le champ Estimated RTS — ce champ reste 100%
 // sous ton contrôle, jamais rempli automatiquement par Reply Sync.
 G.koApplyReply = function(btn, key, val) {
-  const fieldMap = { nxt:'f_nxt', cust_ref:'f_po' };
+  // ac_hours/ac_cycles → Step 2 (f_ac_hours/f_ac_cycles), partagés par toutes
+  // les fiches GA3671 du WO — voir rtagSyncHoursCycles / openRepairTagModal.
+  const fieldMap = { nxt:'f_nxt', cust_ref:'f_po', ac_hours:'f_ac_hours', ac_cycles:'f_ac_cycles' };
 
   if (key === 'noted') {
     btn.textContent = '✓ Noted';
