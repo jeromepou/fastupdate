@@ -1476,7 +1476,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 <div class="modal-bg" id="modal-repair-tag">
   <div class="modal" style="max-width:640px">
     <h3>🏷️ GA 3671 — Unserviceable Tag</h3>
-    <p style="font-size:12px;color:var(--g600);margin-bottom:12px">Pré-rempli depuis le projet — vérifie et complète avant de générer.</p>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:12px">Pre-filled from the project — check and complete before generating.</p>
 
     <div class="grid g3" style="margin-bottom:10px">
       <div class="fg"><label>Aircraft Model</label><input type="text" id="rtag_model"/></div>
@@ -1497,8 +1497,33 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <label>Quantity</label><input type="text" id="rtag_qty" value="1"/>
     </div>
 
+    <div class="ko-divider"></div>
+    <div class="ko-section-lbl">Customer info</div>
+    <div class="grid g2" style="margin-bottom:10px">
+      <div class="fg"><label>Customer Company Name</label><input type="text" id="rtag_cust_company"/></div>
+      <div class="fg"><label>Customer Code</label><input type="text" id="rtag_cust_code"/></div>
+    </div>
+    <div class="grid g3" style="margin-bottom:12px">
+      <div class="fg"><label>Customer Contact Name</label><input type="text" id="rtag_cust_contact"/></div>
+      <div class="fg"><label>Customer Phone</label><input type="text" id="rtag_cust_phone"/></div>
+      <div class="fg"><label>Customer Email</label><input type="text" id="rtag_cust_email"/></div>
+    </div>
+
+    <div class="ko-divider"></div>
+    <div class="ko-section-lbl">Complete if Engine Related Squawk</div>
+    <div class="ko-toggles" style="margin-bottom:8px">
+      <span class="ko-pill" data-rtagengine="engine" onclick="this.classList.toggle('active-green')">Engine</span>
+      <span class="ko-pill" data-rtagengine="apu" onclick="this.classList.toggle('active-green')">APU</span>
+    </div>
+    <div class="grid g2" style="margin-bottom:12px">
+      <div class="fg"><label>Engine Model</label><input type="text" id="rtag_engine_model"/></div>
+      <div class="fg"><label>Engine Time</label><input type="text" id="rtag_engine_time"/></div>
+      <div class="fg"><label>Engine S/N</label><input type="text" id="rtag_engine_sn"/></div>
+      <div class="fg"><label>Engine Cycles</label><input type="text" id="rtag_engine_cycles"/></div>
+    </div>
+
     <div class="fg" style="margin-bottom:6px">
-      <label>Lier à un work item (optionnel — pré-remplit la raison)</label>
+      <label>Link to a work item (optional — pre-fills the reason)</label>
       <select id="rtag_item_link" onchange="rtagFillReasonFromItem(this)"><option value="">— none —</option></select>
     </div>
     <div class="fg" style="margin-bottom:12px">
@@ -1522,7 +1547,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     </div>
 
     <div class="ko-divider"></div>
-    <div class="ko-section-lbl">Condition at Time of Failure — coche tout ce qui s'applique</div>
+    <div class="ko-section-lbl">Condition at Time of Failure — check all that apply</div>
     <div class="ko-toggles" style="margin-bottom:8px">
       <span class="ko-pill" data-rtagcond="onground" onclick="this.classList.toggle('active-green')">On ground</span>
       <span class="ko-pill" data-rtagcond="inflight" onclick="this.classList.toggle('active-green')">In Flight</span>
@@ -1533,7 +1558,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <span class="ko-pill" data-rtagcond="landing" onclick="this.classList.toggle('active-green')">Landing</span>
     </div>
     <div class="fg" style="margin-bottom:12px;max-width:200px">
-      <label>Time (à la panne)</label><input type="text" id="rtag_time" placeholder="e.g. 14:20 UTC"/>
+      <label>Cruise Altitude</label><input type="text" id="rtag_time" placeholder="e.g. FL350"/>
     </div>
 
     <div class="ko-divider"></div>
@@ -1544,8 +1569,10 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     </div>
 
     <div class="ko-divider"></div>
-    <div class="fg" style="margin-bottom:8px">
-      <label>Tag Originator Name</label><input type="text" id="rtag_originator"/>
+    <div class="grid g3" style="margin-bottom:8px">
+      <div class="fg"><label>Tag Originator Name</label><input type="text" id="rtag_originator"/></div>
+      <div class="fg"><label>GAC Work Order #</label><input type="text" id="rtag_gac_wo"/></div>
+      <div class="fg"><label>Employee ID # (FN)</label><input type="text" id="rtag_employee_id"/></div>
     </div>
 
     <div class="err-msg" id="rtag-error"></div>
@@ -3682,11 +3709,23 @@ G.openRepairTagModal = function(btnEl) {
   sv('rtag_code2', '');
   sv('rtag_time', '');
   sv('rtag_originator', curProfile?.name || '');
+  sv('rtag_gac_wo', gv('f_wo'));
+  sv('rtag_employee_id', curProfile?.fnNumber || '');
+  sv('rtag_cust_company', '');
+  sv('rtag_cust_code', '');
+  sv('rtag_cust_contact', gv('f_cust_name'));
+  sv('rtag_cust_phone', gv('f_cust_tel'));
+  sv('rtag_cust_email', gv('f_cust_email'));
+  sv('rtag_engine_model', '');
+  sv('rtag_engine_time', '');
+  sv('rtag_engine_sn', '');
+  sv('rtag_engine_cycles', '');
   document.getElementById('rtag-error').textContent = '';
 
   rtagFaultState = ''; rtagSolvedState = '';
   ['rtag-fault-yes','rtag-fault-no','rtag-solved-yes','rtag-solved-no'].forEach(id => document.getElementById(id)?.classList.remove('active-blue'));
   document.querySelectorAll('[data-rtagcond]').forEach(el => el.classList.remove('active-green'));
+  document.querySelectorAll('[data-rtagengine]').forEach(el => el.classList.remove('active-green'));
 
   const sel = document.getElementById('rtag_item_link');
   const items = getItems();
@@ -3747,11 +3786,22 @@ G.generateRepairTag = async function() {
     setText('Text Field8',  gv('rtag_pn'));
     setText('Text Field9',  gv('rtag_partsn'));
     setText('Text Field10', gv('rtag_reason'));
-	setText('WorkPerformedResolution', gv('rtag_workperf'));  
+    setText('Text Field17', gv('rtag_workperf'));
     setText('Text Field11', gv('rtag_code1'));
     setText('Text Field12', gv('rtag_code2'));
     setText('Text Field13', gv('rtag_time'));
     setText('Text Field15', gv('rtag_originator'));
+    setText('Text Field14', gv('rtag_gac_wo'));
+    setText('Text Field16', gv('rtag_employee_id'));
+    setText('Texte7',  gv('rtag_cust_code'));
+    setText('Texte8',  gv('rtag_cust_company'));
+    setText('Texte9',  gv('rtag_cust_contact'));
+    setText('Texte10', gv('rtag_cust_email'));
+    setText('Texte11', gv('rtag_cust_phone'));
+    setText('Texte12', gv('rtag_engine_model'));
+    setText('Texte13', gv('rtag_engine_time'));
+    setText('Texte14', gv('rtag_engine_sn'));
+    setText('Texte15', gv('rtag_engine_cycles'));
 
     setCheck('Check Box0', rtagFaultState === 'yes');
     setCheck('Check Box1', rtagFaultState === 'no');
@@ -3764,6 +3814,8 @@ G.generateRepairTag = async function() {
     setCheck('Check Box8', !!document.querySelector('[data-rtagcond="climb"]')?.classList.contains('active-green'));
     setCheck('Check Box9', !!document.querySelector('[data-rtagcond="descent"]')?.classList.contains('active-green'));
     setCheck('Check Box10', !!document.querySelector('[data-rtagcond="landing"]')?.classList.contains('active-green'));
+    setCheck('Check Box 11', !!document.querySelector('[data-rtagengine="engine"]')?.classList.contains('active-green'));
+    setCheck('Check Box12', !!document.querySelector('[data-rtagengine="apu"]')?.classList.contains('active-green'));
 
     const pdfBytes = await pdfDoc.save();
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
