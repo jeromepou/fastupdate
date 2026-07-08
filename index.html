@@ -1616,22 +1616,49 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div class="help-section">
       <h4>🔑 Logging in</h4>
       <ol>
-        <li><strong>Engineers:</strong> tap your name on the login screen, then enter your 4-digit PIN.</li>
+        <li><strong>Engineers:</strong> use the tabs (FAST EMEA / FAST ASIA / OPS) or the search box to find your name, tap it, then enter your 4-digit PIN.</li>
         <li><strong>Biometric login (Face ID / Touch ID / Windows Hello):</strong> after your first successful PIN login on a supported device, a banner will offer to enable biometric authentication. Once set up, you can sign in with a single tap — no PIN required. You can enable or disable this at any time from your profile settings.</li>
-        <li><strong>Admin:</strong> tap "Admin access" and sign in with the admin email/password. From there, "Manage Team" lets you create, edit or remove engineer profiles and reset PINs.</li>
+        <li><strong>Forgot your PIN?</strong> tap "🔑 Forgot my PIN" and answer your security question (set up the first time you chose a PIN) to set a new one. After 5 incorrect attempts, your profile is locked for 15 minutes for security.</li>
+        <li><strong>Admin:</strong> tap "Admin access" and sign in with the admin email/password.</li>
       </ol>
+    </div>
+
+    <div class="help-section">
+      <h4>⚙️ Admin panel</h4>
+      <p>Signing in as Admin opens "Manage Team" directly, where you can:</p>
+      <ul>
+        <li><strong>Team members:</strong> create new engineer profiles, edit their details, reset a forgotten PIN, force an engineer to choose a new PIN on next login, or delete a profile (this also deletes their projects).</li>
+        <li><strong>Default recipients:</strong> email addresses added here appear as locked recipients on every new project's FAST Update table by default.</li>
+        <li><strong>Start Job — fixed recipients:</strong> set the locked (blue-tag) recipients that appear on every engineer's Customer Update, Travel, Part Request and FBO drafts.</li>
+        <li><strong>Qatar Executive — extra recipients:</strong> set the additional recipients added automatically to the Customer Update and Part Request drafts whenever an engineer ticks the ⭐ Qatar Executive toggle in Start Job.</li>
+        <li><strong>FSR Database:</strong> remove outdated Gulfstream Field Service Representative contacts (engineers add new ones themselves from the Start Job panel).</li>
+        <li><strong>🧠 AI Team Briefing:</strong> generates an instant cross-job summary from the Reply Sync cache — highlights jobs needing attention without waiting for a live Gmail scan, so you can see the state of every active intervention at a glance.</li>
+      </ul>
     </div>
 
     <div class="help-section">
       <h4>📄 Filling in a project</h4>
       <ol>
-        <li><strong>Step 1 — PDF upload (optional):</strong> drop an RFS, Work Order Detail or WCR PDF and tap "Extract data" — aircraft fields and work items are filled in automatically.</li>
-        <li><strong>Steps 2–3 — Aircraft details &amp; work items:</strong> check or complete the aircraft information, registration, ICAO, estimated RTS, next flight date, and the list of work items (squawks).</li>
-        <li><strong>Step 4 — Daily updates:</strong> tap "+ Today" to add a day. Check off each work item you worked on, set its status (In Progress, Awaiting Parts, Complete…), and add a free-text note. Toggle "A/C RTS" on the day the aircraft returns to service. The progress bar on each day card shows how many items are checked.</li>
+        <li><strong>Step 1 — PDF upload (optional):</strong> drop an RFS, Work Order Detail or WCR PDF and tap "Extract data" — aircraft fields and work items are filled in automatically. Uploading a Work Order Detail or WCR after an RFS merges in new work items without overwriting fields you've already filled in.</li>
+        <li><strong>Steps 2–3 — Aircraft details &amp; work items:</strong> check or complete the aircraft information, registration, ICAO, whether this is an RTS or Assist job, A/C hours and cycles, estimated RTS, next flight date, and the list of work items (squawks).</li>
+        <li><strong>Step 4 — Daily updates:</strong> tap "+ Today", "+ Yesterday" or "+ Day before" to add a day. A new day automatically carries over any items already checked on the previous day (with their status), so you only need to update what changed. Check off each work item you worked on and set its status (Carried out, Waiting for part(s), Item MEL'd, Cancelled by customer, or In progress), then add a free-text note. Toggle "A/C RTS" on the day the aircraft returns to service. The progress bar on each day card shows how many items are checked. Ticking or changing an item's status on an earlier day also updates that item on every later day already created, so you don't need to repeat it manually.</li>
         <li><strong>Parts (optional):</strong> paste an email thread into the text area or upload it as a PDF, then tap "Extract parts from email" — part numbers, serials and descriptions are detected automatically. Review and confirm before they are added to the parts replaced list.</li>
         <li><strong>Step 5 — Closing details:</strong> job description suffix for the email subject, estimated RTS, next flight, return date and time, and any additional constraints or information.</li>
-        <li><strong>Step 6 — Onsite engineers &amp; customer:</strong> you are automatically listed as Lead Engineer. Add colleagues as needed. Fill in the customer name, phone, and email for the FAST Update table footer.</li>
+        <li><strong>Step 6 — Onsite engineers &amp; customer:</strong> you are automatically listed as Lead Engineer — use the dropdown to reassign it to a colleague if needed. Add up to 2 assisting colleagues. Fill in the customer's name, phone, email, company, and customer code for the FAST Update table footer and for pre-filling GA3671 tags.</li>
       </ol>
+    </div>
+
+    <div class="help-section">
+      <h4>✨ AI-assisted text correction</h4>
+      <p>Wherever you see a <strong>"✨ Improve text"</strong> button (daily update notes, Step 5 constraints), tap it to have AI correct grammar, spelling and clarity — and translate to English if you wrote in French. It never invents information or changes technical facts (part numbers, dates, squawk numbers, registrations…), and never applies automatically: you always see the suggestion side-by-side with your original text and must confirm before it replaces anything.</p>
+    </div>
+
+    <div class="help-section">
+      <h4>🏷️ GA 3671 — Unserviceable Tag</h4>
+      <p>Generates the official Gulfstream unserviceable tag as a filled, downloadable PDF. Open it either with the 🏷️ button next to a specific row in "Parts replaced" (pre-fills that part's name, P/N and S/N), or with the standalone <strong>"🏷️ Generate GA3671 tag (standalone)"</strong> button below the parts list if the part isn't in your table yet.</p>
+      <p>Aircraft model, serial, registration, A/C hours &amp; cycles, GAC Work Order #, and customer company/code/contact/phone/email are pre-filled from Steps 2 and 6. <strong>A/C hours and cycles are shared across every GA3671 tag for the same job</strong> — enter them once (here or in Step 2) and every subsequent tag you generate for this job will already have them, whether typed manually or applied from a Reply Sync suggestion.</p>
+      <p>Complete the rest as needed: reason for removal (can be pre-filled by linking a work item), work performed/resolution, fault codes, condition at time of failure, cruise altitude, whether the replacement solved the problem, and the Engine/APU section for engine-related squawks. Tap <strong>"Generate filled PDF"</strong> to download the completed tag.</p>
+      <p>The form stays open until you tap Cancel or Generate — clicking outside it will not close it or lose your entries.</p>
     </div>
 
     <div class="help-section">
@@ -1646,7 +1673,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div class="help-section">
       <h4>🚀 Start Job — Customer Update, Part Request, Travel and FBO emails</h4>
       <p>The <strong>Start Job</strong> button appears in the engineer bar once you are logged in. It opens a dedicated panel to configure and generate up to 4 Gmail draft emails in one click — customer introduction, travel booking, parts order, and FBO coordination.</p>
-      <p>You can also launch Start Job directly from any project card using the 🚀 button — the aircraft details are pre-filled automatically from that project.</p>
+      <p>You can also launch Start Job directly from any project card using the 🚀 button — the aircraft details are pre-filled automatically from that project. Use <strong>"🔄 Clear &amp; New Job"</strong> in the panel header to reset the questionnaire for a new intervention while keeping the aircraft info you've already entered.</p>
 
       <h4 style="margin-top:1rem">✈️ Aircraft info</h4>
       <p>Fill in the aircraft type, MSN, registration, Work Order number, ICAO airport code, and a brief defect description. These fields populate the subject lines and body of all four draft emails. The ICAO field also pre-fills the Travel "To" destination.</p>
@@ -1654,6 +1681,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 
       <h4 style="margin-top:1rem">📬 Recipients per draft</h4>
       <p>Each of the four drafts has its own recipient list. <strong>Blue locked tags</strong> are fixed recipients set by your admin — you cannot remove them. <strong>White tags</strong> are extras you add yourself for this job only.</p>
+      <p>The <strong>👤 FSR</strong> dropdown (in the Customer Update recipient block) adds a Gulfstream Field Service Representative's email to both the Customer Update and Part Request recipients. Add a new FSR to the shared database directly from this panel if they aren't listed yet.</p>
       <p>The <strong>⭐ Qatar Executive</strong> toggle adds a specific set of additional recipients to the Customer Update and Part Request drafts — use it when the operator is Qatar Executive.</p>
       <p>Part Request recipients are also adjusted automatically based on your parts list: adding a Tool row adds the Tool Crib address; adding a Consumable row adds the Stores address.</p>
 
@@ -1718,16 +1746,29 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <p>Every time you click <strong>Generate Gmail drafts</strong>, the parts and tools you entered are automatically saved to a shared database, indexed by squawk description, aircraft type, serial number, and Work Order number. This builds a searchable history of parts used across all past interventions by all engineers on the team.</p>
       <p>To use it, go to the <strong>Parts &amp; tools list</strong> section inside Start Job, then use the <strong>🔍 Search squawk history</strong> bar at the top of the table. You can search in two ways:</p>
       <ul>
-        <li><strong>Dropdown search:</strong> select one of your current work items — the system compares its keywords against all saved entries and shows the best matches.</li>
-        <li><strong>Free-text search:</strong> type any keyword directly into the search field to find entries across all past jobs regardless of your current squawk list.</li>
+        <li><strong>Dropdown search:</strong> select one of your current work items — the system compares its keywords and meaning against all saved entries and shows the best matches, even if worded differently.</li>
+        <li><strong>Free-text search:</strong> type any keyword or describe the issue naturally to find entries across all past jobs regardless of your current squawk list.</li>
       </ul>
       <p>The results popup shows: squawk text, aircraft type, serial number, <strong>Work Order (FAXXXXX)</strong>, engineer who entered the data, number of times those parts were used, and last date used. Results are split into <strong>Same aircraft type</strong> (highest confidence) and <strong>Other aircraft types</strong> (collapsed by default — always verify P/N applicability before using). Tick the parts you want and click <strong>✓ Add selected to parts list</strong> to insert them directly into the table.</p>
       <p><strong>Important:</strong> the history is a starting point only. Always cross-check any suggested part number against the current AMM, IPC, and applicable release documentation before ordering or installing.</p>
     </div>
 
     <div class="help-section">
+      <h4>📬 Reply Sync — tracking Gmail responses</h4>
+      <p>Tap the <strong>"📬 Replies"</strong> button (in the main action row, or in the Start Job panel header) to see what Materials, the FBO, and the customer have replied on this job's Customer Update, Part Request and FBO Coordination email threads. Each of the three sections shows cached results instantly, then refreshes quietly in the background — or tap "🔄 Refresh now" / "🔄 Refresh all" to force it.</p>
+      <p>Each reply shows an AI-generated one-line summary, who it's from, and — where relevant — tappable buttons to apply what was found straight into your project:</p>
+      <ul>
+        <li><strong>Customer Update:</strong> your ETA on site, next scheduled flight, the customer's job/PO reference, and A/C hours &amp; cycles (which then pre-fill every GA3671 tag for this job).</li>
+        <li><strong>Part Request:</strong> Materials PO confirmation, and per-part status (confirmed, backordered, shipped, delivered, alternative P/N offered, tracking numbers) — matched automatically against your existing parts list where possible. A colleague adding or removing a part in the thread also shows up here for you to confirm.</li>
+        <li><strong>FBO Coordination:</strong> shipping address, readiness date, contact name, and closed dates.</li>
+        <li><strong>Any category:</strong> a "📝 Note in update" button lets you insert a mentioned part/shipment ETA directly into a specific work item's note for today's Daily Update.</li>
+      </ul>
+      <p>If a reply isn't being found, add the exact subject wording your team uses for that email type in the "Can't find a reply?" box — it's shared with the whole team and improves detection for every future job with that wording.</p>
+    </div>
+
+    <div class="help-section">
       <h4>☁️ Cloud sync &amp; archives</h4>
-      <p>All project data is saved to Firebase in real time and is accessible from any device. Mark a project as RTS to move it to Archives — it stays fully accessible but is separated from your active projects list.</p>
+      <p>All project data is saved to Firebase in real time and is accessible from any device — the <strong>☁️ Synced</strong> badge in the header confirms your latest changes are saved (it briefly shows "⏳ Saving…" while a save is in progress). Mark a project as RTS to move it to Archives — it stays fully accessible but is separated from your active projects list.</p>
     </div>
 
     <div class="help-section">
@@ -1740,6 +1781,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div class="help-section">
       <h4>🔒 Security</h4>
       <p>Data is stored in Firebase Realtime Database with authentication — only verified users (admin + engineers via PIN or biometric) can access it. Biometric login uses your device's secure enclave (WebAuthn / FIDO2) — no biometric data is ever sent to the server. PDF and email extraction is processed through a private Cloudflare Worker — your API key is never exposed in the app. All traffic is encrypted (HTTPS).</p>
+      <p>Your PIN is never stored or transmitted in plain text. A security question (set the first time you choose your PIN) lets you reset it yourself if forgotten, without contacting your admin. 5 incorrect PIN attempts lock your profile for 15 minutes. You're automatically signed out after 45 minutes of inactivity.</p>
     </div>
 
     <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-help')">Close</button></div>
