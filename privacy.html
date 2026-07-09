@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — FAST Update Generator</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    max-width: 760px;
+    margin: 40px auto;
+    padding: 0 20px;
+    line-height: 1.6;
+    color: #1a1a1a;
+  }
+  h1 { font-size: 1.8em; margin-bottom: 0.2em; }
+  h2 { font-size: 1.2em; margin-top: 1.8em; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+  .updated { color: #666; font-size: 0.9em; margin-bottom: 2em; }
+  ul { padding-left: 1.3em; }
+  code { background: #f4f4f4; padding: 2px 5px; border-radius: 3px; font-size: 0.92em; }
+  footer { margin-top: 3em; color: #666; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<h1>Privacy Policy</h1>
+<p class="updated">Last updated: July 9, 2026</p>
+
+<p>
+This Privacy Policy describes how the <strong>FAST Update Generator</strong>
+("the App") handles information. The App is an internal tool built and
+operated by Head Start Aviation (HSA) for use by its FAST (Field Aviation
+Support Team) engineers and coordinators. It is not available to the general
+public.
+</p>
+
+<h2>1. Who operates this App</h2>
+<p>
+The App is developed and maintained internally by Head Start Aviation. It is
+used exclusively by HSA employees for internal operational purposes related
+to field maintenance interventions on aircraft.
+</p>
+
+<h2>2. Information the App accesses</h2>
+<p>The App uses the following Google services and scopes:</p>
+<ul>
+  <li>
+    <strong>Gmail API — <code>gmail.compose</code> scope only.</strong>
+    This scope allows the App to create and manage email drafts on behalf of
+    the signed-in user. The App does <strong>not</strong> read the user's
+    inbox contents beyond what is required to generate structured update
+    drafts (e.g. customer updates, parts requests, travel requests, FBO
+    coordination), and does not send emails without the user reviewing and
+    sending the draft themselves.
+  </li>
+</ul>
+
+<h2>3. How information is used</h2>
+<p>Data handled by the App is used solely to:</p>
+<ul>
+  <li>Generate email drafts summarizing field intervention status for customers, parts suppliers, or FBOs</li>
+  <li>Extract relevant references (e.g. purchase order or work order numbers) from related email threads to keep records accurate</li>
+  <li>Store operational data (aircraft squawks, intervention status, team updates) in a private Firebase Realtime Database accessible only to authenticated HSA team members</li>
+</ul>
+
+<h2>4. Data storage and sharing</h2>
+<ul>
+  <li>Operational data is stored in a Firebase Realtime Database restricted to HSA team members.</li>
+  <li>Some data may be processed by Mistral AI to assist with structuring or summarizing content (e.g. extracting fields from documents or email threads). No data is sold, shared with advertisers, or used for any purpose outside the operation of this internal tool.</li>
+  <li>The App does not share Gmail data with any third party other than the AI processing described above, which is used strictly to support the App's core functionality.</li>
+</ul>
+
+<h2>5. Data retention</h2>
+<p>
+Operational data is retained for as long as needed for ongoing field
+interventions and internal record-keeping. Users may request deletion of
+their data by contacting the developer below.
+</p>
+
+<h2>6. User control</h2>
+<p>
+Users can revoke the App's access to their Google account at any time via
+their
+<a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">Google Account permissions page</a>.
+</p>
+
+<h2>7. Contact</h2>
+<p>
+Questions about this policy or about data handled by the App can be directed
+to the developer:
+</p>
+<p>
+Jérôme Poupinel<br>
+Email: <a href="mailto:jeromepoupinel@gmail.com">jeromepoupinel@gmail.com</a>
+</p>
+
+<footer>
+  FAST Update Generator — internal tool for Head Start Aviation.
+</footer>
+
+</body>
+</html>
