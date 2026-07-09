@@ -1632,7 +1632,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <li><strong>Start Job — fixed recipients:</strong> set the locked (blue-tag) recipients that appear on every engineer's Customer Update, Travel, Part Request and FBO drafts.</li>
         <li><strong>Qatar Executive — extra recipients:</strong> set the additional recipients added automatically to the Customer Update and Part Request drafts whenever an engineer ticks the ⭐ Qatar Executive toggle in Start Job.</li>
         <li><strong>FSR Database:</strong> remove outdated Gulfstream Field Service Representative contacts (engineers add new ones themselves from the Start Job panel).</li>
-        <li><strong>🧠 AI Team Briefing:</strong> generates an instant cross-job summary from the Reply Sync cache — highlights jobs needing attention without waiting for a live Gmail scan, so you can see the state of every active intervention at a glance.</li>
       </ul>
     </div>
 
@@ -1650,7 +1649,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 
     <div class="help-section">
       <h4>✨ AI-assisted text correction</h4>
-      <p>Wherever you see a <strong>"✨ Improve text"</strong> button (daily update notes, Step 5 constraints), tap it to have AI correct grammar, spelling and clarity — and translate to English if you wrote in French. It never invents information or changes technical facts (part numbers, dates, squawk numbers, registrations…), and never applies automatically: you always see the suggestion side-by-side with your original text and must confirm before it replaces anything.</p>
+      <p>Wherever you see a <strong>"✨ Improve text"</strong> button (daily update notes, Step 5 constraints), tap it to have AI correct grammar, spelling and clarity. It never invents information or changes technical facts (part numbers, dates, squawk numbers, registrations…), and never applies automatically: you always see the suggestion side-by-side with your original text and must confirm before it replaces anything.</p>
     </div>
 
     <div class="help-section">
@@ -1780,7 +1779,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 
     <div class="help-section">
       <h4>🔒 Security</h4>
-      <p>Data is stored in Firebase Realtime Database with authentication — only verified users (admin + engineers via PIN or biometric) can access it. Biometric login uses your device's secure enclave (WebAuthn / FIDO2) — no biometric data is ever sent to the server. PDF and email extraction is processed through a private Cloudflare Worker — your API key is never exposed in the app. All traffic is encrypted (HTTPS).</p>
+      <p>Data is stored in Firebase Realtime Database with authentication — only verified users (admin + engineers via PIN or biometric) can access it. Biometric login uses your device's secure enclave — no biometric data is ever sent to the server. PDF and email extraction is processed through a private Cloudflare Worker — your API key is never exposed in the app. All traffic is encrypted (HTTPS).</p>
       <p>Your PIN is never stored or transmitted in plain text. A security question (set the first time you choose your PIN) lets you reset it yourself if forgotten, without contacting your admin. 5 incorrect PIN attempts lock your profile for 15 minutes. You're automatically signed out after 45 minutes of inactivity.</p>
     </div>
 
