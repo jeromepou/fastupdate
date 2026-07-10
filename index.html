@@ -4036,7 +4036,7 @@ G.generateRepairTag = async function() {
         const page0 = pdfDoc.getPage(0);
         const stampRect = { x: 534.9, y: 84.8, w: 32.9, h: 13.6 }; 
         const cx = stampRect.x + stampRect.w / 2, cy = stampRect.y + stampRect.h / 2;
-        const maxW = 58, maxH = 30;
+        const maxW = 34, maxH = 16;
         const scale = Math.min(maxW / stampImg.width, maxH / stampImg.height, 1);
         const dw = stampImg.width * scale, dh = stampImg.height * scale;
         page0.drawImage(stampImg, { x: cx - dw / 2, y: cy - dh / 2, width: dw, height: dh });
