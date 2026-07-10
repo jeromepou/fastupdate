@@ -4795,7 +4795,7 @@ G.generate = async function() {
     <tr class="thr"><td colspan="5"><b>WORK ORDER #: ${wo}</b></td></tr>
     <tr><td class="lbl lbl-ctr"><b>Condition:</b></td><td colspan="4">${items.length>0?items.map(it=>`${it.num}-${it.label.toUpperCase()}`).join('<br>'):'—'}</td></tr>
     ${updRows}
-    <tr><td class="lbl lbl-ctr"><b>Additional Info: (Constraints)</b></td><td colspan="4">${info?nl2br(info):'—'}</td></tr>
+    <tr><td class="lbl lbl-ctr"><b>Additional Info:<br>(Constraints)</b></td><td colspan="4">${info?nl2br(info):'—'}</td></tr>
     <tr><td class="lbl"><b>Estimated RTS:</b></td><td>${erts||'—'}</td><td class="lbl"><b>Next Flight:</b></td><td colspan="2">${nxt||'—'}</td></tr>
     <tr><td class="lbl"><b>Return Date:</b></td><td>${retdate||'—'}</td><td class="lbl"><b>Return Time</b></td><td colspan="2">${rettime||'—'}</td></tr>
     <tr><td class="lbl"><b>FAR</b></td><td>${far||'—'}</td><td class="lbl"><b>RTS/Assist</b></td><td colspan="2">${rtsA}</td></tr>
@@ -4851,7 +4851,7 @@ function buildInlinedTableClone(tbl) {
   // s'étirait à la largeur de la fenêtre du destinataire.
   // Proportions calquées sur ton gabarit Excel (B:121 C:117 D/E/F:59 ≈ 415px),
   // légèrement agrandies pour laisser de la place au padding de l'app.
-  const COL_WIDTHS = [200, 200, 100, 100, 100]; // px — ajustable, total = 700
+  const COL_WIDTHS = [126, 122, 122, 122, 122]; // px — calqué sur le gabarit Excel (B/C/D/E/F), total = 614
   const TOTAL_WIDTH = COL_WIDTHS.reduce((a, b) => a + b, 0);
 
   tblClone.setAttribute('width', TOTAL_WIDTH);
