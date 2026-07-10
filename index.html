@@ -4964,7 +4964,7 @@ G.draftInGmail = async function() {
     // ✅ Fix tableau : styles inline explicites pour Gmail (format corporate standard)
     const tblClone = buildInlinedTableClone(tbl);
 
-    const htmlBody = `<html><body style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:13px;margin:0;padding:16px">${tblClone.outerHTML}</body></html>`;
+    const htmlBody = tblClone.outerHTML;
 
     const encoded = buildRfc2822(toAddrs, subject, htmlBody);
 
