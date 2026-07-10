@@ -4795,7 +4795,7 @@ G.generate = async function() {
     <tr class="thr"><td colspan="5"><b>WORK ORDER #: ${wo}</b></td></tr>
     <tr><td class="lbl lbl-ctr"><b>Condition:</b></td><td colspan="4">${items.length>0?items.map(it=>`${it.num}-${it.label.toUpperCase()}`).join('<br>'):'—'}</td></tr>
     ${updRows}
-    <tr><td class="lbl lbl-ctr"><b>Additional Info:<br>(Constraints)</b></td><td colspan="4">${info?nl2br(info):'—'}</td></tr>
+    <tr><td class="lbl lbl-ctr"><b><span style="white-space:nowrap">Additional Info:</span><br>(Constraints)</b></td><td colspan="4">${info?nl2br(info):'—'}</td></tr>
     <tr><td class="lbl"><b>Estimated RTS:</b></td><td>${erts||'—'}</td><td class="lbl"><b>Next Flight:</b></td><td colspan="2">${nxt||'—'}</td></tr>
     <tr><td class="lbl"><b>Return Date:</b></td><td>${retdate||'—'}</td><td class="lbl"><b>Return Time</b></td><td colspan="2">${rettime||'—'}</td></tr>
     <tr><td class="lbl"><b>FAR</b></td><td>${far||'—'}</td><td class="lbl"><b>RTS/Assist</b></td><td colspan="2">${rtsA}</td></tr>
