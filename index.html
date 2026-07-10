@@ -1583,6 +1583,18 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div class="fg"><label>Employee ID # (FN)</label><input type="text" id="rtag_employee_id"/></div>
     </div>
 
+	<div class="ko-divider"></div>
+	<div class="ko-section-lbl">🖋️ Signature / Inspection Stamp (optional)</div>
+	<p style="font-size:12px;color:var(--g600);margin-bottom:8px">Upload your stamp once — it will be saved to your profile and automatically applied to all your GA3671 tags.</p>
+	<input type="file" id="rtag-stamp-file" accept="image/png,image/jpeg" style="display:none" onchange="rtagStampFileSelected(this)"/>
+	<div id="rtag-stamp-preview-wrap" style="display:none;align-items:center;gap:10px;margin-bottom:10px">
+	  <img id="rtag-stamp-preview" style="max-width:110px;max-height:60px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;padding:3px"/>
+	  <button type="button" class="btn" onclick="document.getElementById('rtag-stamp-file').click()">🔄 Change</button>
+	  <button type="button" class="btn danger" onclick="rtagRemoveStamp()">🗑 Remove</button>
+	</div>
+	<button type="button" class="btn" id="rtag-stamp-upload-btn" onclick="document.getElementById('rtag-stamp-file').click()">📤 Upload my stamp</button>
+	<div id="rtag-stamp-status" style="font-size:11px;color:var(--g600);margin-top:6px"></div>  
+
     <div class="err-msg" id="rtag-error"></div>
     <div class="modal-btns">
       <button class="btn" onclick="closeModal('modal-repair-tag')">Cancel</button>
@@ -3790,6 +3802,7 @@ G.openRepairTagModal = function(btnEl) {
   const items = getItems();
   sel.innerHTML = '<option value="">— none —</option>' + items.map(it => `<option value="${it.num}">${it.num} — ${it.label}</option>`).join('');
 
+  rtagRenderStampUI();
   openModal('modal-repair-tag');
 };
 
@@ -3822,6 +3835,71 @@ G.rtagToggleSolved = function(el, val) {
   rtagSolvedState = wasActive ? '' : val;
   if (!wasActive) el.classList.add('active-blue');
 };
+function rtagRenderStampUI() {
+  const has = !!curProfile?.stampImage;
+  const uploadBtn = document.getElementById('rtag-stamp-upload-btn');
+  const wrap = document.getElementById('rtag-stamp-preview-wrap');
+  if (uploadBtn) uploadBtn.style.display = has ? 'none' : '';
+  if (wrap) wrap.style.display = has ? 'flex' : 'none';
+  if (has) { const img = document.getElementById('rtag-stamp-preview'); if (img) img.src = curProfile.stampImage; }
+  const statusEl = document.getElementById('rtag-stamp-status');
+  if (statusEl) statusEl.textContent = '';
+}
+
+function rtagResizeImageToDataUrl(file, maxW, maxH) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        const scale = Math.min(maxW / w, maxH / h, 1);
+        w = Math.round(w * scale); h = Math.round(h * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => reject(new Error("Cannot read the image."));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error('Cannot read the file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+G.rtagStampFileSelected = async function(inputEl) {
+  const file = inputEl.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('rtag-stamp-status');
+  if (statusEl) statusEl.textContent = '⏳ Processing image…';
+  try {
+    const dataUrl = await rtagResizeImageToDataUrl(file, 320, 160);
+    await update(ref(db, 'team/' + curProfile.id), { stampImage: dataUrl });
+    curProfile.stampImage = dataUrl;
+    rtagRenderStampUI();
+    if (statusEl) statusEl.textContent = '✅ Stamp saved to your profile.';
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '❌ ' + e.message;
+  } finally {
+    inputEl.value = '';
+  }
+};
+
+G.rtagRemoveStamp = async function() {
+  if (!confirm('Delete your saved stamp?')) return;
+  await update(ref(db, 'team/' + curProfile.id), { stampImage: null });
+  delete curProfile.stampImage;
+  rtagRenderStampUI();
+};
+
+function rtagDataUrlToBytes(dataUrl) {
+  const base64 = (dataUrl.split(',')[1] || '');
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}	
 
 G.generateRepairTag = async function() {
   const errEl = document.getElementById('rtag-error');
@@ -3884,6 +3962,20 @@ G.generateRepairTag = async function() {
     setCheck('Check Box 11', !!document.querySelector('[data-rtagengine="engine"]')?.classList.contains('active-green'));
     setCheck('Check Box12', !!document.querySelector('[data-rtagengine="apu"]')?.classList.contains('active-green'));
 
+	if (curProfile?.stampImage) {
+      try {
+        const stampBytes = rtagDataUrlToBytes(curProfile.stampImage);
+        const stampImg = await pdfDoc.embedPng(stampBytes);
+        const page0 = pdfDoc.getPage(0);
+        const stampRect = { x: 534.9, y: 84.8, w: 32.9, h: 13.6 }; 
+        const cx = stampRect.x + stampRect.w / 2, cy = stampRect.y + stampRect.h / 2;
+        const maxW = 58, maxH = 30;
+        const scale = Math.min(maxW / stampImg.width, maxH / stampImg.height, 1);
+        const dw = stampImg.width * scale, dh = stampImg.height * scale;
+        page0.drawImage(stampImg, { x: cx - dw / 2, y: cy - dh / 2, width: dw, height: dh });
+      } catch(e) { console.warn('Stamp embed failed:', e); }
+    }  
+	  
     const pdfBytes = await pdfDoc.save();
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
