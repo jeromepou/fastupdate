@@ -603,6 +603,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div class="eng-name" id="eng-bar-name">—</div>
     <div class="eng-sub" id="eng-bar-sub">—</div>
   </div>
+  <button class="btn" id="btn-gmail-sync-status" onclick="koConnectGmailSync()" style="display:none;font-size:11px"></button>
   <button class="btn-start-job" id="btn-start-job" onclick="openKickoff()" style="display:none">🚀 Start Job</button>
 </div>
 
@@ -831,6 +832,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div class="ko-eng-name" id="ko-eng-name">—</div>
       <div class="ko-eng-sub" id="ko-eng-sub">Start a job — generate project emails</div>
     </div>
+    <button class="btn" id="btn-gmail-sync-status-ko" onclick="koConnectGmailSync()" style="display:none;font-size:11px"></button>
     <button class="btn" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff;font-size:12px"
       onclick="closeKickoff()">← Back</button>
     <button class="btn" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff;font-size:12px"
@@ -1873,6 +1875,57 @@ const KO_REPLY_CAT_META = {
   fbo:      { icon: '🏢', label: 'FBO Coordination' },
 };
 
+// ══════════════════════════════════════
+//  GMAIL SYNC — per-engineer connection (refresh_token via popup)
+// ══════════════════════════════════════
+G.koConnectGmailSync = function() {
+  if (!curProfile) return;
+  window.open(
+    KO_WORKER + '/oauth/gmail-connect?engineerId=' + encodeURIComponent(curProfile.id) + '&email=' + encodeURIComponent(curProfile.email || ''),
+    'gmailConnect',
+    'width=480,height=640'
+  );
+  function handler(ev) {
+    if (ev.origin !== 'https://orange-snow-95f7.jeromepoupinel.workers.dev') return; // [added] only accept messages from our own Worker
+    if (ev.data?.type !== 'gmail-sync-connected' || ev.data.engineerId !== curProfile.id) return;
+    window.removeEventListener('message', handler);
+    if (ev.data.ok) {
+      curProfile.gmailConnectedEmail = ev.data.email || '';
+      curProfile.gmailConnectedAt = Date.now();
+      curProfile.gmailNeedsReconnect = null;
+    }
+    renderGmailSyncStatus();
+  }
+  window.addEventListener('message', handler);
+};
+
+function renderGmailSyncStatus() {
+  if (!curProfile) return;
+  ['btn-gmail-sync-status', 'btn-gmail-sync-status-ko'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.style.display = '';
+    if (curProfile.gmailNeedsReconnect) {
+      btn.textContent = '⚠️ Reconnect Gmail (Reply Sync)';
+      btn.style.cssText = 'font-size:11px;padding:6px 10px;display:inline-flex;background:var(--rl);color:var(--red);border-color:#e8b8a0';
+    } else if (curProfile.gmailRefreshToken || curProfile.gmailConnectedEmail) {
+      btn.textContent = '✅ Gmail connected' + (curProfile.gmailConnectedEmail ? ' (' + curProfile.gmailConnectedEmail + ')' : '');
+      btn.style.cssText = 'font-size:11px;padding:6px 10px;display:inline-flex;background:var(--gl);color:var(--gd);border-color:var(--gb)';
+    } else {
+      btn.textContent = '🔗 Connect my Gmail (Reply Sync)';
+      btn.style.cssText = 'font-size:11px;padding:6px 10px;display:inline-flex;background:var(--al);color:var(--amb);border-color:#d4b800';
+    }
+  });
+}
+
+async function koFetchEngineerName(id) {
+  if (!id) return '';
+  try {
+    const snap = await get(ref(db, 'team/' + id + '/name'));
+    return snap.exists() ? snap.val() : '';
+  } catch(e) { return ''; }
+}
+	
 // Sujets supplémentaires ajoutés depuis la modale Reply Sync quand un
 // collègue a nommé le sujet différemment des patterns fixes. Partagé par
 // toute l'équipe (Firebase config/replySubjectPatterns) : une fois ajouté,
@@ -2012,25 +2065,40 @@ async function koShowCachedThenRefresh(cat) {
 // Appel live au worker — utilisé quand rien n'est en cache, ou quand
 // l'ingénieur clique "🔄 Refresh now" pour forcer une lecture immédiate.
 async function koLiveRefresh(cat) {
-  if (koRefreshInFlight[cat]) return; // déjà en cours (auto + manuel qui se chevauchent)
+  if (koRefreshInFlight[cat]) return;
   koRefreshInFlight[cat] = true;
-  const faAtStart = koReplyCurrentFA; // garde-fou si tu changes de job pendant le fetch
+  const faAtStart = koReplyCurrentFA;
   const indicator = document.getElementById('reply-refreshing-' + cat);
   if (indicator) indicator.style.display = 'inline-flex';
 
   try {
+    // No more token sent from the browser: the Worker resolves the job's
+    // lead engineer itself and fetches THEIR refresh_token from Firebase.
     const res = await fetch(KO_WORKER + '/sync-replies', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
-        faNumber:   faAtStart,
-        category:   cat,
-        gmailToken: gToken || null,
-        acReg:      (document.getElementById('f_reg')?.value || '').trim()
+        faNumber: faAtStart,
+        category: cat,
+        acReg:    (document.getElementById('f_reg')?.value || '').trim()
       })
     });
-    if (!res.ok) throw new Error('Worker error ' + res.status);
     const data = await res.json();
+
+    if (res.status === 409 && data.error === 'gmail_not_connected') {
+      if (faAtStart === koReplyCurrentFA) {
+        const label = document.getElementById('reply-sync-label-' + cat);
+        const engName = await koFetchEngineerName(data.leadEngId);
+        const who = engName || "The engineer assigned to this job";
+        const why = data.reason === 'expired'
+          ? ' (connection expired — must be redone every 7 days in Google test mode)'
+          : '';
+        if (label) label.innerHTML = '<span style="color:#b45309">⚠️ ' + escHtml(who) + ' needs to connect their Gmail for Reply Sync' + why + '.</span>';
+      }
+      return;
+    }
+    if (!res.ok) throw new Error(data.error || ('Worker error ' + res.status));
+
     const replies = data.replies || [];
     const lastSync = Date.now();
 
@@ -2042,8 +2110,6 @@ async function koLiveRefresh(cat) {
       koReplyCache[cat] = { replies, lastSync };
       koRenderReplyBody(replies, cat, lastSync);
     }
-    // si tu as changé de job pendant le fetch, le cache Firebase est quand
-    // même sauvegardé pour l'ancien job — juste pas affiché à l'écran actuel.
   } catch(e) {
     if (faAtStart === koReplyCurrentFA) {
       const label = document.getElementById('reply-sync-label-' + cat);
@@ -3061,11 +3127,12 @@ async function loginAs(profile, fromBiometric) {
   document.getElementById('eng-bar-sub').textContent = [profile.team, profile.email, phoneNoWrap].filter(Boolean).join(' · ');
   document.getElementById('sync-badge').style.display = '';
   
-  await loadDefaultRecipients(); // <-- Télécharge les derniers destinataires globaux
+  await loadDefaultRecipients(); // <-- Downloads the latest global recipients
   logLoginEvent(profile);
   renderProjList();
   renderStep6Me();
   G.koShowBtn();
+  renderGmailSyncStatus();
   
   // Offer biometric enrollment after PIN login if not yet registered on this device
   if (!fromBiometric && window.PublicKeyCredential && !localStorage.getItem('fast_webauthn_' + profile.id)) {
