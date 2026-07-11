@@ -1489,6 +1489,25 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
+<!-- TRANSFER PROJECT MODAL -->
+<div class="modal-bg" id="modal-transfer-proj">
+  <div class="modal" style="max-width:420px">
+    <h3>🔄 Transfer project to a colleague</h3>
+    <p style="font-size:13px;color:var(--g600);margin-bottom:4px">Project:</p>
+    <p style="font-size:13px;font-weight:700;color:var(--gd);margin-bottom:14px" id="transfer-proj-summary">—</p>
+    <div class="fg" style="margin-bottom:8px">
+      <label>Transfer to</label>
+      <select id="transfer-target-sel"><option value="">— Select colleague —</option></select>
+    </div>
+    <p style="font-size:11px;color:var(--g600);margin-bottom:8px">The project (aircraft info, work items, daily updates, parts) will move to your colleague's account and disappear from your own list. Parts orders and Reply Sync history stay linked to the Work Order number, so nothing is lost there.</p>
+    <div class="err-msg" id="transfer-error"></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('modal-transfer-proj')">Cancel</button>
+      <button class="btn primary" id="btn-confirm-transfer" onclick="confirmTransferProject()">🔄 Transfer project</button>
+    </div>
+  </div>
+</div>
+
 <!-- PARTS PREVIEW MODAL -->
 <div class="modal-bg" id="modal-parts-preview">
   <div class="modal" style="max-width:760px">
@@ -3337,6 +3356,7 @@ async function renderProjList() {
       </div>
       <div class="proj-item-date">${ds}</div>
       <button class="btn-start-job" style="padding:5px 10px;font-size:11px" onclick="event.stopPropagation();koStartFromProject('${proj.id}')">🚀 Start Job</button>
+      <button class="btn" onclick="event.stopPropagation();openTransferModal('${proj.id}')" style="padding:4px 8px;font-size:11px" title="Transfer this project to a colleague">🔄</button>
       <button class="btn danger" onclick="event.stopPropagation();deleteProjUI('${proj.id}')" style="padding:4px 8px;font-size:11px">🗑</button>`;
     div.onclick = () => loadProject(proj.id);
     list.appendChild(div);
@@ -3364,6 +3384,71 @@ G.deleteProjUI = async function(pid) {
   await remove(ref(db, 'team/' + curProfile.id + '/projects/' + pid));
   if (curProj === pid) { curProj = null; clearForm(); }
   renderProjList();
+};
+
+// ══════════════════════════════════════
+//  TRANSFER PROJECT TO A COLLEAGUE
+//  Moves the project node from the current engineer's profile to the
+//  target engineer's — same project id, so orders/WO{wo} and
+//  squawkReplies/{fa} (both keyed by WO/FA number, not by profile) stay
+//  linked automatically. Write-then-delete order: if the delete fails
+//  after a successful write, worst case is a harmless duplicate (both
+//  copies exist), never data loss.
+// ══════════════════════════════════════
+let _transferTargetPid = null;
+
+G.openTransferModal = async function(pid) {
+  if (!curProfile) return;
+  _transferTargetPid = pid;
+  const snap = await get(ref(db, 'team/' + curProfile.id + '/projects/' + pid));
+  if (!snap.exists()) return;
+  const proj = snap.val();
+  document.getElementById('transfer-proj-summary').textContent =
+    `${proj.wo || '(no WO)'} — ${[proj.model, proj.sn, proj.reg].filter(Boolean).join(' / ')}`;
+  document.getElementById('transfer-target-sel').innerHTML = await buildColleagueOptions();
+  document.getElementById('transfer-error').textContent = '';
+  openModal('modal-transfer-proj');
+};
+
+G.confirmTransferProject = async function() {
+  const targetId = document.getElementById('transfer-target-sel').value;
+  const errEl = document.getElementById('transfer-error');
+  errEl.textContent = '';
+  if (!targetId) { errEl.textContent = 'Please select a colleague.'; return; }
+  if (!_transferTargetPid || !curProfile) return;
+
+  const btn = document.getElementById('btn-confirm-transfer');
+  const origLabel = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Transferring…';
+
+  // Cancel any pending autosave for this project so it can't re-create
+  // itself under the old owner right after we delete it below.
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+
+  try {
+    const srcRef = ref(db, 'team/' + curProfile.id + '/projects/' + _transferTargetPid);
+    const snap = await get(srcRef);
+    if (!snap.exists()) throw new Error('Project not found — it may have already been moved.');
+    const proj = snap.val();
+
+    proj.leadEngId = targetId;
+    proj.updatedAt = Date.now();
+    proj.transferredFrom = curProfile.id;
+    proj.transferredAt = Date.now();
+
+    await set(ref(db, 'team/' + targetId + '/projects/' + _transferTargetPid), proj);
+    await remove(srcRef);
+
+    if (curProj === _transferTargetPid) { curProj = null; clearForm(); }
+    closeModal('modal-transfer-proj');
+    renderProjList();
+    setStatus('done', '✅ Project transferred.');
+  } catch(e) {
+    errEl.textContent = '❌ ' + e.message;
+    btn.disabled = false; btn.textContent = origLabel;
+    return;
+  }
+  btn.disabled = false; btn.textContent = origLabel;
 };
 
 function gatherData() {
