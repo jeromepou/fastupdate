@@ -1743,8 +1743,9 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div class="help-section">
       <h4>🏷️ GA 3671 — Unserviceable Tag</h4>
       <p>Generates the official Gulfstream unserviceable tag as a filled, downloadable PDF. Open it either with the 🏷️ button next to a specific row in "Parts replaced" (pre-fills that part's name, P/N and S/N), or with the standalone <strong>"🏷️ Generate GA3671 tag (standalone)"</strong> button below the parts list if the part isn't in your table yet.</p>
-      <p>Aircraft model, serial, registration, A/C hours &amp; cycles, GAC Work Order #, and customer company/code/contact/phone/email are pre-filled from Steps 2 and 6. <strong>A/C hours and cycles are shared across every GA3671 tag for the same job</strong> — enter them once (here or in Step 2) and every subsequent tag you generate for this job will already have them, whether typed manually or applied from a Reply Sync suggestion.</p>
+      <p>Aircraft model, serial, registration, A/C hours &amp; cycles, GAC Work Order #, and customer company/code/contact/phone/email are pre-filled from Steps 2 and 6, and your <strong>Employee ID #</strong> is pre-filled from your profile's FN Number. <strong>A/C hours and cycles are shared across every GA3671 tag for the same job</strong> — enter them once (here or in Step 2) and every subsequent tag you generate for this job will already have them, whether typed manually or applied from a Reply Sync suggestion.</p>
       <p>Complete the rest as needed: reason for removal (can be pre-filled by linking a work item), work performed/resolution, fault codes, condition at time of failure, cruise altitude, whether the replacement solved the problem, and the Engine/APU section for engine-related squawks. Tap <strong>"Generate filled PDF"</strong> to download the completed tag.</p>
+	  <p>🖋️ <strong>Signature / Inspection Stamp:</strong> upload your stamp or signature once (PNG or JPG) from the tag form — it's saved to your profile and automatically embedded on every GA3671 tag you generate afterwards, in the designated stamp box on the form. Use "🔄 Change" to replace it or "🗑 Remove" to delete it from your profile at any time.</p>
       <p>The form stays open until you tap Cancel or Generate — clicking outside it will not close it or lose your entries.</p>
     </div>
 
@@ -1815,7 +1816,11 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <li><strong>Customer's broker</strong> — paste broker contact details if the customer has provided one for import.</li>
       </ul>
 
-      <h4 style="margin-top:1rem">🏢 FBO Coordination</h4>
+	  <h4 style="margin-top:1rem">⭐ Quick add &amp; 🧪 Sealant lookup</h4>
+	  <p>Above the parts table, <strong>Quick add</strong> shows one-tap chips for your team's frequently used tools and consumables (grouped by Parts/Consumables/Tools, filterable with the search box) — tapping a chip adds it straight to the table. Use <strong>"⚙️ Manage list"</strong> to add, edit or remove entries; this list is shared with the whole team.</p>
+	  <p>The <strong>Sealant lookup</strong> panel lets you pick a MIL Spec / application (e.g. fuel tank sealant, firewall sealing) to see the approved part numbers, tick the ones you need, and add them to the parts table in one click. Use its own <strong>"⚙️ Manage list"</strong> to maintain the shared MIL Spec ↔ P/N reference.</p>	
+      
+	  <h4 style="margin-top:1rem">🏢 FBO Coordination</h4>
       <p>This email contacts the FBO at the aircraft location to introduce the engineer and arrange ground support. Configure it with:</p>
       <ul>
         <li><strong>Equipment checklist</strong> — tick what you need the FBO to provide: GPU (115 Vac / 28 Vdc), Oxygen, Nitrogen (High or Low pressure), Steps / Airstair (standard or engine-height), Hangar space, Lavatory service, High Power Bay. A free-text field lets you add anything else.</li>
@@ -1842,7 +1847,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 
     <div class="help-section">
       <h4>📬 Reply Sync — tracking Gmail responses</h4>
-      <p>Tap the <strong>"📬 Replies"</strong> button (in the main action row, or in the Start Job panel header) to see what Materials, the FBO, and the customer have replied on this job's Customer Update, Part Request and FBO Coordination email threads. Each of the three sections shows cached results instantly, then refreshes quietly in the background — or tap "🔄 Refresh now" / "🔄 Refresh all" to force it.</p>
+      <p>Reply Sync needs its own persistent Gmail connection (separate from the one-off Google sign-in used for "Draft in Gmail"), so it can keep scanning your threads in the background. Tap <strong>"🔗 Connect my Gmail (Reply Sync)"</strong> in the engineer bar (or Start Job header) once — it stays connected until Google requires re-authorisation (every 7 days while the app is in Google test mode), at which point the button turns into "⚠️ Reconnect Gmail".</p>
+	  <p>Tap the <strong>"📬 Replies"</strong> button (in the main action row, or in the Start Job panel header) to see what Materials, the FBO, and the customer have replied on this job's Customer Update, Part Request and FBO Coordination email threads. Each of the three sections shows cached results instantly, then refreshes quietly in the background — or tap "🔄 Refresh now" / "🔄 Refresh all" to force it.</p>
       <p>Each reply shows an AI-generated one-line summary, who it's from, and — where relevant — tappable buttons to apply what was found straight into your project:</p>
       <ul>
         <li><strong>Customer Update:</strong> your ETA on site, next scheduled flight, the customer's job/PO reference, and A/C hours &amp; cycles (which then pre-fill every GA3671 tag for this job).</li>
@@ -1856,6 +1862,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div class="help-section">
       <h4>☁️ Cloud sync &amp; archives</h4>
       <p>All project data is saved to Firebase in real time and is accessible from any device — the <strong>☁️ Synced</strong> badge in the header confirms your latest changes are saved (it briefly shows "⏳ Saving…" while a save is in progress). Mark a project as RTS to move it to Archives — it stays fully accessible but is separated from your active projects list.</p>
+	  <p>Use the <strong>🔄 button</strong> on any project card to transfer that project (aircraft info, work items, daily updates, parts) to a colleague's account — it disappears from your list and appears in theirs. Parts orders and Reply Sync history stay linked to the Work Order number, so nothing is lost.</p>
     </div>
 
     <div class="help-section">
