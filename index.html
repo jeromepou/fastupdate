@@ -7756,14 +7756,14 @@ function renderQuickPartsManageList() {
   const list = document.getElementById('quickparts-manage-list');
   if (!list) return;
   list.innerHTML = KO_QUICKPARTS.map((p, i) => `
-    <div style="display:flex;gap:6px;align-items:center;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:6px 8px;margin-bottom:5px">
-      <select onchange="koQuickPartEdit(${i},'cat',this.value)" style="font-size:11px;padding:3px 5px">
+    <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:6px 8px;margin-bottom:5px">
+      <select onchange="koQuickPartEdit(${i},'cat',this.value)" style="flex:0 0 90px;font-size:11px;padding:3px 5px">
   		<option ${p.cat==='Part'?'selected':''}>Part</option>
   		<option ${p.cat==='Tool'?'selected':''}>Tool</option>
   		<option ${p.cat==='Consumable'?'selected':''}>Consumable</option>
 	</select>
-      <input type="text" value="${(p.desc||'').replace(/"/g,'&quot;')}" placeholder="Description" oninput="koQuickPartEdit(${i},'desc',this.value)" style="flex:1;font-size:12px;padding:4px 6px"/>
-      <input type="text" value="${(p.pn||'').replace(/"/g,'&quot;')}" placeholder="P/N" oninput="koQuickPartEdit(${i},'pn',this.value)" style="width:100px;font-size:12px;padding:4px 6px"/>
+      <input type="text" value="${(p.desc||'').replace(/"/g,'&quot;')}" placeholder="Description" oninput="koQuickPartEdit(${i},'desc',this.value)" style="flex:1 1 160px;min-width:120px;font-size:12px;padding:4px 6px"/>
+      <input type="text" value="${(p.pn||'').replace(/"/g,'&quot;')}" placeholder="P/N" oninput="koQuickPartEdit(${i},'pn',this.value)" style="flex:0 0 100px;font-size:12px;padding:4px 6px"/>
       <button onclick="koDeleteQuickPart(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
     </div>`).join('') || '<p style="font-size:12px;color:var(--g400)">No presets yet.</p>';
 }
