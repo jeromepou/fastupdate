@@ -1156,6 +1156,13 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <button class="btn" onclick="koAddPartRow()" style="font-size:12px;padding:4px 10px">+ Add row</button>
     </div>
     <div class="ko-card-body" style="padding-top:.75rem;overflow-x:auto">
+	<div style="background:#fff7ed;border:1px solid #fdba74;border-radius:var(--r);padding:8px 12px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:12px;color:#9a3412;font-weight:600;flex:1">⭐ Quick add — frequently used tools &amp; consumables</span>
+          <button class="btn" onclick="koManageQuickParts()" style="font-size:11px;padding:4px 9px">⚙️ Manage list</button>
+        </div>
+        <div id="ko-quickparts-chips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
       <div style="background:var(--bl);border:1px solid #b8d0e8;border-radius:var(--r);padding:8px 12px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <span style="font-size:12px;color:var(--blue);font-weight:600;flex:1">🔍 Search squawk history</span>
@@ -1483,6 +1490,22 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
+<!-- QUICK PARTS CATALOG MODAL -->
+<div class="modal-bg" id="modal-quickparts">
+  <div class="modal" style="max-width:560px">
+    <h3>⭐ Manage quick-add tools &amp; consumables</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">Shared with the whole team.</p>
+    <div id="quickparts-manage-list" style="max-height:280px;overflow-y:auto;margin-bottom:12px"></div>
+    <div style="display:flex;gap:6px;padding-top:10px;border-top:1px solid var(--g200)">
+      <select id="qp-new-cat" style="font-size:12px;padding:5px"><option>Tool</option><option>Consumable</option></select>
+      <input type="text" id="qp-new-desc" placeholder="Description" style="flex:1;font-size:12px;padding:5px 8px"/>
+      <input type="text" id="qp-new-pn" placeholder="P/N" style="width:110px;font-size:12px;padding:5px 8px"/>
+      <button class="btn primary" onclick="koAddQuickPart()">+ Add</button>
+    </div>
+    <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-quickparts')">Done</button></div>
+  </div>
+</div>
+	
 <!-- REPAIR TAG MODAL (GA 3671 — Unserviceable Tag) -->
 <div class="modal-bg" id="modal-repair-tag">
   <div class="modal" style="max-width:640px">
@@ -5610,6 +5633,7 @@ function koApplyStateToForm(state) {
   if (state.colleagueName) {
     const sel = document.getElementById('ko_colleague_name');
     if (sel) sel.value = state.colleagueName;
+    G.koFetchColleaguePhone(state.colleagueName); // sinon FN/tél. restent vides après un reload
   }
   if (state.colleagueNameManual) {
     const inp = document.getElementById('ko_colleague_name_manual');
@@ -5724,6 +5748,7 @@ G.openKickoff = async function(forceWo) {
   await koLoadCustomQuestions();
   await koLoadTeamForSelectors();
   await koLoadFSRSelector();
+  await koLoadQuickPartsCatalog();	
   KO.signature = koBuildSignature();
   koRenderAllRecips();
   koInitToggles();
@@ -5976,6 +6001,8 @@ G.koSyncColleagueManual = function() {
 G.koSyncColleagueSelect = function() {
   const sel = document.getElementById('ko_colleague_name');
   if (sel) sel.value = '';
+  KO._colleaguePhone = '';
+  KO._colleagueFN = '';
 };
 
 G.koToggleColleague = function(checked) {
@@ -6339,27 +6366,32 @@ G.koResetDraftPreview = function(type) {
 };
 
 // Copy the subject + body of a draft to clipboard
-G.koCopyDraft = function(type) {
-  const subjEl = document.getElementById('ko-prev-subj-' + type);
+G.koCopyDraft = async function(type) {
   const bodyEl = document.getElementById('ko-prev-body-' + type);
-  // If panel not yet opened, generate on-the-fly
-  const subj = subjEl?.value || koComputeSubjects()[type];
   const body = bodyEl?.value || koComputeBodies()[type];
-  const text = 'Subject: ' + subj + '\n\n' + body;
-  navigator.clipboard.writeText(text).then(() => {
-    const btn = event.target;
-    const orig = btn.textContent;
-    btn.textContent = '✅ Copied!';
-    setTimeout(() => { btn.textContent = orig; }, 2000);
-  }).catch(() => {
-    // Fallback
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-  });
+  const htmlBody = `<div style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;white-space:pre-wrap">${koFormatEmailHtml(body)}</div>`;
+  const btn = event.target;
+  const orig = btn.textContent;
+  try {
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        'text/html':  new Blob([htmlBody], { type: 'text/html' }),
+        'text/plain': new Blob([body],     { type: 'text/plain' })
+      })
+    ]);
+  } catch(e1) {
+    try { await navigator.clipboard.writeText(body); }
+    catch(e2) {
+      const ta = document.createElement('textarea');
+      ta.value = body;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+  }
+  btn.textContent = '✅ Copied!';
+  setTimeout(() => { btn.textContent = orig; }, 2000);
 };
 
 function koUpdatePreview() {
@@ -6423,6 +6455,10 @@ function koBuildCustomerBody() {
   const icao   = document.getElementById('ko_icao')?.value   || '[ICAO]';
   const def    = document.getElementById('ko_defect')?.value || '[DEFECT]';
   const eng  = KO.signature || koBuildSignature();
+  const colleagueMode = document.getElementById('ko-colleague-toggle')?.checked;
+  const colleagueNameRaw = koGetColleagueName() || '[COLLEAGUE]';
+  const notDecided = colleagueNameRaw === '__not_decided__';
+  const colleagueName = notDecided ? '[COLLEAGUE]' : colleagueNameRaw;	
 
   const q = id => document.getElementById(id)?.checked;
   const questions = [];
@@ -6439,7 +6475,7 @@ function koBuildCustomerBody() {
   if (q('koq_keys'))   questions.push('- Location of the aircraft keys');
   if (q('koq_fbo_name')) questions.push(`- Could you please provide the name of the FBO handling the aircraft at ${icao || '[ICAO]'}?`);
   if (q('koq_fbo_mail')) questions.push(`- Could you please send an authorisation email to the FBO at ${icao || '[ICAO]'} confirming our upcoming maintenance intervention?`);
-  if (q('koq_contact'))  questions.push('- Could you please provide the name and phone number of the crew member who will meet me at the aircraft?');
+  if (q('koq_contact'))  questions.push(`- Could you please provide the name and phone number of the crew member who will meet ${colleagueMode ? (notDecided ? 'our engineer' : colleagueName) : 'me'} at the aircraft?`);
   function sqQuestionsFor(qid, genericText, perSqText) {
     const cb = document.getElementById('koq_' + qid);
     if (!cb?.checked) return;
@@ -6506,19 +6542,16 @@ function koBuildCustomerBody() {
   const etaRaw = (document.getElementById('ko_eta')?.value || '').trim();
   let etaLine = '';
   if (etaRaw && etaRaw.toUpperCase() !== 'N/A') {
+    const who = colleagueMode ? (notDecided ? "our engineer's" : `${colleagueName}'s`) : 'My';
     if (etaRaw.toUpperCase() === 'UNK') {
-      etaLine = 'I will keep you informed of my ETA on site.';
+  	  etaLine = `I will keep you informed of ${colleagueMode ? (notDecided ? "our engineer's" : colleagueName + "'s") : 'my'} ETA on site.`;
     } else {
-      etaLine = `My estimated arrival on site is ${etaRaw}. I will keep you informed of my ETA on site.`;
+	  etaLine = `${who} estimated arrival on site is ${etaRaw}. I will keep you informed of any changes.`;
     }
   }
 
   // Action plan: use what the engineer typed, otherwise a generic transition line
   const actionPlanRaw = (document.getElementById('ko_action_plan')?.value || '').trim();
-  const colleagueMode = document.getElementById('ko-colleague-toggle')?.checked;
-  const colleagueNameRaw = koGetColleagueName() || '[COLLEAGUE]';
-  const notDecided = colleagueNameRaw === '__not_decided__';
-  const colleagueName = notDecided ? '[COLLEAGUE]' : colleagueNameRaw;
   const myName = curProfile?.name || '[ENGINEER]';
   const defectLine = notDecided
     ? `The engineer assigned to this project has not yet been determined. We will keep you informed as soon as the assignment is confirmed.\n\nIn the meantime, please find below a few questions we would appreciate you addressing at your earliest convenience.`
@@ -6553,7 +6586,17 @@ function koBuildTravelBody() {
   const to    = document.getElementById('ko_travel_to')?.value   || document.getElementById('ko_icao')?.value || '[DESTINATION]';
   const date  = document.getElementById('ko_travel_date')?.value || '';
   const eng  = KO.signature || koBuildSignature();
-  const loys  = KO.airlines.filter(a => a.number);
+
+  const colleagueMode = document.getElementById('ko-colleague-toggle')?.checked;
+  const colleagueNameRaw = koGetColleagueName();
+  const notDecided = colleagueNameRaw === '__not_decided__';
+  const travelerName = colleagueMode ? (notDecided ? 'our engineer (TBC)' : colleagueNameRaw) : '';
+  const travelerSubj = colleagueMode ? 'They' : 'I';
+  const travelerPoss  = colleagueMode ? 'their' : 'my';
+
+  // Tes numéros grand voyageur n'ont aucun sens (voire induisent en erreur)
+  // si c'est un collègue qui voyage — on ne les affiche que si tu voyages toi-même.
+  const loys  = colleagueMode ? [] : KO.airlines.filter(a => a.number);
   const loyaltyBlock = loys.length
     ? `\nFor reference, my frequent flyer numbers:\n` + loys.map(a => `- ${a.name}: ${a.number}`).join('\n') + '\n'
     : '';
@@ -6562,23 +6605,23 @@ function koBuildTravelBody() {
   const cabinTxt = cabinMap[KO.cabinClass] || 'Economy and Business class';
 
   const timeMap = { morning: 'in the morning', afternoon: 'in the afternoon', evening: 'in the evening', night: 'at night', any: 'at any time' };
-  const timeLine = KO.travelTime && timeMap[KO.travelTime] ? ` I would prefer to depart ${timeMap[KO.travelTime]}.` : '';
+  const timeLine = KO.travelTime && timeMap[KO.travelTime] ? ` ${travelerSubj === 'I' ? 'I would' : 'They would'} prefer to depart ${timeMap[KO.travelTime]}.` : '';
 
   const dateLine = date ? ` for ${date}` : '';
 
   const extraBag = document.getElementById('ko-extra-baggage')?.classList.contains('active-green');
   const bagLine = extraBag
-    ? 'I will be travelling with tools and equipment, so please include 2 checked bags.'
-    : 'I will be travelling with tools and equipment, so please include checked baggage.';
+    ? `${travelerSubj} will be travelling with tools and equipment, so please include 2 checked bags.`
+    : `${travelerSubj} will be travelling with tools and equipment, so please include checked baggage.`;
 
   const fakeReturn = document.getElementById('ko-fake-return')?.classList.contains('active-green');
   const fakeReturnLine = fakeReturn
-    ? '\nAs my return date is not yet confirmed, could you please also issue a dummy return ticket, to be used as proof of onward travel for visa/immigration purposes if required?\n'
+    ? `\nAs ${travelerPoss} return date is not yet confirmed, could you please also issue a dummy return ticket, to be used as proof of onward travel for visa/immigration purposes if required?\n`
     : '';
 
   return `Dear Team,
 
-Could you please book a flight (${cabinTxt}) from ${from} to ${to}${dateLine} for a maintenance mission.${timeLine}
+Could you please book a flight (${cabinTxt}) from ${from} to ${to}${dateLine} for a maintenance mission${travelerName ? ' — travelling engineer: ' + travelerName : ''}.${timeLine}
 
 Please prioritise direct flights when possible.
 
@@ -6590,7 +6633,7 @@ Regards,
 
 ${eng}`;
 }
-
+	
 function koBuildPartsBody() {
   const eng  = KO.signature || koBuildSignature();
   const parts   = koGetParts();
@@ -6614,25 +6657,18 @@ function koBuildPartsBody() {
   const avoidNff  = document.getElementById('ko_avoid_nff')?.checked;
 
   // FN Number line — only when tools are present
-  const hasTool = koGetParts().some(p => p.cat === 'Tool');
   const colleagueModeParts = document.getElementById('ko-colleague-toggle')?.checked;
   const colleagueNameParts = koGetColleagueName();
   const notDecidedParts = colleagueNameParts === '__not_decided__';
-  let fnLine = '';
-  if (hasTool) {
-    if (colleagueModeParts && !notDecidedParts && colleagueNameParts) {
-      // Preparing for a colleague — use their FN number if available from Firebase
-      const colFN = KO._colleagueFN || '';
-      fnLine = colFN
-        ? `Please order the tools for ${colleagueNameParts} (${colFN}).\n`
-        : `Please order the tools for ${colleagueNameParts}.\n`;
-    } else {
-      // For myself
-      const myFN = curProfile?.fnNumber || '';
-      fnLine = myFN
-        ? `Please order the tools under my name ${curProfile?.name || ''} (${myFN}).\n`
-        : `Please order the tools under my name ${curProfile?.name || ''}.\n`;
-    }
+  let toolsOwnerLine = '';
+  if (colleagueModeParts && notDecidedParts) {
+    toolsOwnerLine = '👤 Tools to be ordered under: engineer to be confirmed\n';
+  } else if (colleagueModeParts && colleagueNameParts) {
+    const colFN = KO._colleagueFN || '';
+    toolsOwnerLine = `👤 Tools to be ordered under: ${colleagueNameParts}${colFN ? ' (FN ' + colFN + ')' : ''}\n`;
+  } else {
+    const myFN = curProfile?.fnNumber || '';
+    toolsOwnerLine = `👤 Tools to be ordered under: ${curProfile?.name || ''}${myFN ? ' (FN ' + myFN + ')' : ''}\n`;
   }
 
   let extraLines = '';
@@ -6640,7 +6676,6 @@ function koBuildPartsBody() {
   if (wantCerts)  extraLines += `Please provide certificates if available.\n`;
   if (handCarryOk) extraLines += `The customer has approved hand carry for parts if required.\n`;
   if (avoidNff)   extraLines += `Parts should be either repaired or overhauled. Please avoid inspected or any No Fault Found (NFF) outcome unless it becomes strictly necessary. Please provide copies of the release certification to verify parts are not NFF as soon as possible.\n`;
-  if (fnLine)     extraLines += fnLine;
   if (extraLines) extraLines += '\n';
 
   const partsFreeTxt = (document.getElementById('ko_parts_freetext')?.value || '').trim();
@@ -6691,6 +6726,7 @@ function koBuildPartsBody() {
     ['Part','Consumable','Tool'].forEach(cat => {
       if (grp[cat]?.length) {
         partBlock += catLabels[cat] + '\n';
+        if (cat === 'Tool') partBlock += toolsOwnerLine;
         grp[cat].forEach(p => { partBlock += formatPart(p); });
         partBlock += '\n';
       }
@@ -6700,6 +6736,7 @@ function koBuildPartsBody() {
   ['Part','Consumable','Tool'].forEach(cat => {
     if (noSq[cat]?.length) {
       partBlock += catLabels[cat] + '\n';
+      if (cat === 'Tool') partBlock += toolsOwnerLine;
       noSq[cat].forEach(p => { partBlock += formatPart(p); });
       partBlock += '\n';
     }
@@ -6744,9 +6781,9 @@ function koBuildFboBody() {
 
   // Optional questions
   const extraQs = [];
-  if (q('kofbo_q_days'))    extraQs.push('Could you please let me know how many days do you need to have it ready?');
-  if (q('kofbo_q_confirm')) extraQs.push('Please note that this intervention is pending authorisation — I will come back to you as soon as I have a confirmation to proceed.');
-  if (q('kofbo_q_shipping')) extraQs.push('Could you please provide your shipping address? I may need to send parts required for the Return to Service directly to your FBO.');
+  if (q('kofbo_q_days'))    extraQs.push('Could you please let us know how many days you need to have it ready?');
+  if (q('kofbo_q_confirm')) extraQs.push('Please note that this intervention is pending authorisation — we will come back to you as soon as we have confirmation to proceed.');
+  if (q('kofbo_q_shipping')) extraQs.push('Could you please provide your shipping address? We may need to send parts required for the Return to Service directly to your FBO.');
   if (q('kofbo_q_parts_delivery')) extraQs.push('Parts required for this intervention will be shipped directly to your FBO — could you please confirm your shipping address so we can arrange delivery?');
   if (q('kofbo_q_importer')) extraQs.push('Would you be able to act as importer of record for the parts we will need to import for this intervention?');
   if (q('kofbo_q_transport')) {
@@ -6757,8 +6794,6 @@ function koBuildFboBody() {
 
   const customQsRaw = document.getElementById('kofbo_custom_questions')?.value || '';
   customQsRaw.split('\n').map(l => l.trim()).filter(Boolean).forEach(l => extraQs.push(l));
-
-  const extraQsBlock = extraQs.length ? '\n' + extraQs.join('\n\n') + '\n' : '';
 
   const colleagueModeFbo = document.getElementById('ko-colleague-toggle')?.checked;
   const colleagueNameFboRaw = koGetColleagueName() || '[COLLEAGUE]';
@@ -6777,8 +6812,6 @@ function koBuildFboBody() {
     ? (notDecidedFbo ? coEngs : [colleagueNameFbo, ...coEngs])   // if not decided, don't add placeholder to list
     : coEngs;                          // just co-engineers (I am going myself)
 
-  const multiPerson = allOnSite.length > 1 || (!colleagueModeFbo && allOnSite.length >= 1);
-
   // Intro
   const fboIntro = colleagueModeFbo
     ? `My name is ${myNameFbo}, and I am writing to coordinate maintenance for ${reg} at ${icao} on behalf of my colleague${coEngs.length ? 's' : ''} who will be attending the aircraft on site.`
@@ -6791,8 +6824,7 @@ function koBuildFboBody() {
     accessLine = `The aircraft owner has informed us that your team is the FBO. Could you please arrange airside access for our engineer? The engineer assigned to this intervention has not yet been confirmed — we will provide their details shortly.`;
   } else if (colleagueModeFbo && !notDecidedFbo && allOnSite.length === 1) {
     // Single named colleague
-    const phone = KO._colleaguePhone || '';
-    accessLine = `The aircraft owner has informed us that your team is the FBO. Could you please arrange airside access for ${colleagueNameFbo}?${phone ? '\nMob. Tel. ' + phone : ''}`;
+    accessLine = `The aircraft owner has informed us that your team is the FBO. Could you please arrange airside access for ${colleagueNameFbo}?`;
   } else if (allOnSite.length > 0) {
     // Multiple people — list them all
     accessLine = `The aircraft owner has informed us that your team is the FBO. Could you please arrange airside access for the following engineer${allOnSite.length > 1 ? 's' : ''}:\n${allOnSite.map(n => '- ' + n).join('\n')}`;
@@ -6828,25 +6860,25 @@ function koBuildFboBody() {
   // colleague mode → "them/their"  |  me + co-engs → "us/our"  |  just me → "me/my"
   const transPron  = colleagueModeFbo ? 'them' : (coEngs.length > 0 ? 'us'  : 'me');
   const transAdj   = colleagueModeFbo ? 'their': (coEngs.length > 0 ? 'our' : 'my');
-  const equipPron  = colleagueModeFbo ? 'them' : (coEngs.length > 0 ? 'us'  : 'us');  // "for us/them during"
+  const equipPron  = colleagueModeFbo ? 'them' : (coEngs.length > 0 ? 'us'  : 'me');  // ← 'me' au lieu de 'us'
 
-  // Add pronoun-aware questions
   if (q('kofbo_q_access_docs')) {
     const subj = colleagueModeFbo ? 'them' : (coEngs.length > 0 ? 'us' : 'me');
-    const verb = (subj === 'me') ? 'I need' : 'we need';
-    extraQs.push(`Could you please let ${subj === 'me' ? 'me' : 'us'} know what documents are required to access the aircraft airside?`);
+    extraQs.push(`Could you please let ${subj} know what documents are required to access the aircraft airside?`); // ← utilise subj directement
   }
   if (q('kofbo_q_toolbox_docs')) {
     const bringSubj = colleagueModeFbo ? 'Our engineer will be' : (coEngs.length > 0 ? 'We will be' : 'I will be');
     extraQs.push(`${bringSubj} bringing a toolbox on site — could you please advise what documents or procedures are required to bring it airside?`);
   }
 
-  // Rebuild extraQs with adapted transport line
+  const travelerSubj   = colleagueModeFbo ? (notDecidedFbo ? 'The assigned engineer' : colleagueNameFbo) : (coEngs.length > 0 ? 'We' : 'I');
+  const travelerBeVerb = travelerSubj === 'I' ? 'am' : travelerSubj === 'We' ? 'are' : 'is';
   const extraQsAdapted = extraQs.map(q => {
     if (q.startsWith('Could you please arrange transportation for me')) {
       return q
         .replace('for me upon my arrival', `for ${transPron} upon ${transAdj} arrival`)
-        .replace('I am scheduled to arrive', `${colleagueModeFbo ? allOnSite[0] + ' is' : 'I am'} scheduled to arrive`);
+        .replace('I am scheduled to arrive', `${travelerSubj} ${travelerBeVerb} scheduled to arrive`)
+        .replace('I will provide my arrival time shortly', `${travelerSubj} will provide ${transAdj} arrival time shortly`);
     }
     return q;
   });
@@ -6875,6 +6907,15 @@ function koSetStatus(type, msg) {
   document.getElementById('ko-status-txt').innerHTML = msg;
 }
 
+function koFormatEmailHtml(text) {
+  return text
+    .replace(/\*\*([^*]+):\*\*/g, '<b style="font-size:15px">$1:</b>')
+    .replace(/=== (SQUAWK [\d.]+ — [^=]+) ===/g, (m,p1) => `<b style="font-size:15px;color:#1a5fa8">=== ${p1} ===</b>`)
+    .replace(/(Shipping Address:|Customer's broker contact for import:)/g, '<b style="font-size:14px">$1</b>')
+    .replace(/^👤.*$/gm, m => `<b style="color:#7c3aed">${m}</b>`)
+    .replace(/\n/g,'<br>');
+}
+	
 G.koGenerate = async function() {
   // ── Check for part rows without a category selected
   const uncatRows = Array.from(document.querySelectorAll('#ko-parts-tbody tr')).filter(tr => {
@@ -6954,20 +6995,8 @@ G.koGenerate = async function() {
     try {
       const toAddrs = koGetAllRecips(type);
       const subject = subjects[type];
-      const body    = bodies[type];
-
-      // Convertit le texte brut en HTML avec titres en gras et plus grands
-      function formatEmailHtml(text) {
-        return text
-          // **PARTS:** **TOOLS:** **CONSUMABLES:** → titre gras 15px
-          .replace(/\*\*([^*]+):\*\*/g, '<b style="font-size:15px">$1:</b>')
-          // ▶ Sq X — DESCRIPTION → bloc squawk bien visible (barre verte)
-          .replace(/=== (SQUAWK [\d.]+ — [^=]+) ===/g, (m,p1) => `<b style="font-size:15px;color:#1a5fa8">=== ${p1} ===</b>`)
-          // Shipping Address: et Customer's broker: → gras
-          .replace(/(Shipping Address:|Customer's broker contact for import:)/g, '<b style="font-size:14px">$1</b>')
-          .replace(/\n/g,'<br>');
-      }
-      const htmlBody = `<html><body style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;white-space:pre-wrap">${formatEmailHtml(body)}</body></html>`;
+      const body    = bodies[type];    
+      const htmlBody = `<html><body style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;white-space:pre-wrap">${koFormatEmailHtml(body)}</body></html>`;
       const encoded = buildRfc2822(toAddrs, subject, htmlBody);
 
       const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
@@ -7665,7 +7694,78 @@ G.koShowBtn = function() {
 })();
 
 // koSetupAccordion est appelé dans openKickoff() après display:block — rien à faire ici
-  
+
+let KO_QUICKPARTS = [];
+
+async function koLoadQuickPartsCatalog() {
+  try {
+    const snap = await get(ref(db, 'config/quickPartsCatalog'));
+    KO_QUICKPARTS = snap.exists() ? snap.val() : [];
+  } catch(e) { KO_QUICKPARTS = []; }
+  koRenderQuickPartsChips();
+}
+
+function koRenderQuickPartsChips() {
+  const wrap = document.getElementById('ko-quickparts-chips');
+  if (!wrap) return;
+  if (!KO_QUICKPARTS.length) { wrap.innerHTML = '<span style="font-size:11px;color:#9a3412">No presets yet.</span>'; return; }
+  const catColor = { Tool: 'var(--blue)', Consumable: 'var(--amb)' };
+  wrap.innerHTML = KO_QUICKPARTS.map((p, i) => `
+    <button onclick="koUseQuickPart(${i})" style="font-size:12px;padding:5px 11px;border-radius:20px;cursor:pointer;border:1px solid ${catColor[p.cat]||'var(--g200)'};background:#fff;color:${catColor[p.cat]||'var(--g800)'}">
+      ${p.cat === 'Tool' ? '🔧' : '📦'} ${p.desc}
+    </button>`).join('');
+}
+
+G.koUseQuickPart = function(i) {
+  const p = KO_QUICKPARTS[i]; if (!p) return;
+  G.koAddPartRow(p.pn || '', p.desc || '', '', p.qty || '', p.cat || 'Tool', p.note || '', '');
+  koSortPartsTable(); koUpdatePreview(); koSaveState();
+};
+
+G.koManageQuickParts = function() { renderQuickPartsManageList(); openModal('modal-quickparts'); };
+
+function renderQuickPartsManageList() {
+  const list = document.getElementById('quickparts-manage-list');
+  if (!list) return;
+  list.innerHTML = KO_QUICKPARTS.map((p, i) => `
+    <div style="display:flex;gap:6px;align-items:center;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:6px 8px;margin-bottom:5px">
+      <select onchange="koQuickPartEdit(${i},'cat',this.value)" style="font-size:11px;padding:3px 5px">
+        <option ${p.cat==='Tool'?'selected':''}>Tool</option><option ${p.cat==='Consumable'?'selected':''}>Consumable</option>
+      </select>
+      <input type="text" value="${(p.desc||'').replace(/"/g,'&quot;')}" placeholder="Description" oninput="koQuickPartEdit(${i},'desc',this.value)" style="flex:1;font-size:12px;padding:4px 6px"/>
+      <input type="text" value="${(p.pn||'').replace(/"/g,'&quot;')}" placeholder="P/N" oninput="koQuickPartEdit(${i},'pn',this.value)" style="width:100px;font-size:12px;padding:4px 6px"/>
+      <button onclick="koDeleteQuickPart(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
+    </div>`).join('') || '<p style="font-size:12px;color:var(--g400)">No presets yet.</p>';
+}
+
+let _qpEditTimer = null;
+G.koQuickPartEdit = function(i, field, val) {
+  if (!KO_QUICKPARTS[i]) return;
+  KO_QUICKPARTS[i][field] = val;
+  clearTimeout(_qpEditTimer);
+  _qpEditTimer = setTimeout(koSaveQuickPartsCatalog, 600);
+};
+
+G.koAddQuickPart = function() {
+  const desc = document.getElementById('qp-new-desc')?.value.trim();
+  const pn   = document.getElementById('qp-new-pn')?.value.trim();
+  const cat  = document.getElementById('qp-new-cat')?.value || 'Tool';
+  if (!desc) return;
+  KO_QUICKPARTS.push({ desc, pn, cat, note: '' });
+  document.getElementById('qp-new-desc').value = '';
+  document.getElementById('qp-new-pn').value = '';
+  renderQuickPartsManageList(); koRenderQuickPartsChips(); koSaveQuickPartsCatalog();
+};
+
+G.koDeleteQuickPart = function(i) {
+  KO_QUICKPARTS.splice(i, 1);
+  renderQuickPartsManageList(); koRenderQuickPartsChips(); koSaveQuickPartsCatalog();
+};
+
+async function koSaveQuickPartsCatalog() {
+  try { await set(ref(db, 'config/quickPartsCatalog'), KO_QUICKPARTS); } catch(e) { console.warn(e); }
+}
+	
 // ══════════════════════════════════════
 //  FSR DATABASE
 // ══════════════════════════════════════
@@ -7987,6 +8087,11 @@ window.koApplyFSR = G.koApplyFSR;
 window.koApplyBulkSquawk = G.koApplyBulkSquawk;
 window.koNewJob = G.koNewJob;
 window.koLiveRefresh = koLiveRefresh;
+window.koManageQuickParts = G.koManageQuickParts;
+window.koAddQuickPart = G.koAddQuickPart;
+window.koDeleteQuickPart = G.koDeleteQuickPart;
+window.koQuickPartEdit = G.koQuickPartEdit;
+window.koUseQuickPart = G.koUseQuickPart;
 
 </script>
 
