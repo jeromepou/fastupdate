@@ -1161,7 +1161,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
           <span style="font-size:12px;color:#9a3412;font-weight:600;flex:1">⭐ Quick add — frequently used tools &amp; consumables</span>
           <button class="btn" onclick="koManageQuickParts()" style="font-size:11px;padding:4px 9px">⚙️ Manage list</button>
         </div>
-        <div id="ko-quickparts-chips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        <input type="text" id="ko-quickparts-search" placeholder="🔍 Filtrer…" oninput="koFilterQuickParts(this.value)" style="width:100%;font-size:12px;padding:6px 9px;border:1px solid var(--g200);border-radius:var(--r);margin-bottom:8px;background:#fff"/>
+        <div id="ko-quickparts-chips"></div>
       </div>
 	  <div style="background:#eef2ff;border:1px solid #a5b4fc;border-radius:var(--r);padding:8px 12px;margin-bottom:10px">
 	  	<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
@@ -7724,6 +7725,14 @@ G.koShowBtn = function() {
 // koSetupAccordion est appelé dans openKickoff() après display:block — rien à faire ici
 
 let KO_QUICKPARTS = [];
+let _qpSearchQuery = '';
+
+const KO_QP_CAT_META = {
+  Part:       { icon: '⚙️', label: 'Parts',       color: 'var(--gd)' },
+  Consumable: { icon: '📦', label: 'Consumables', color: 'var(--amb)' },
+  Tool:       { icon: '🔧', label: 'Tools',       color: 'var(--blue)' },
+};
+const KO_QP_CAT_ORDER = ['Part', 'Consumable', 'Tool'];
 
 async function koLoadQuickPartsCatalog() {
   try {
@@ -7733,15 +7742,43 @@ async function koLoadQuickPartsCatalog() {
   koRenderQuickPartsChips();
 }
 
+G.koFilterQuickParts = function(val) {
+  _qpSearchQuery = val || '';
+  koRenderQuickPartsChips();
+};
+
 function koRenderQuickPartsChips() {
   const wrap = document.getElementById('ko-quickparts-chips');
   if (!wrap) return;
   if (!KO_QUICKPARTS.length) { wrap.innerHTML = '<span style="font-size:11px;color:#9a3412">No presets yet.</span>'; return; }
-  const catColor = { Part: 'var(--gd)', Tool: 'var(--blue)', Consumable: 'var(--amb)' };
-  wrap.innerHTML = KO_QUICKPARTS.map((p, i) => `
-    <button onclick="koUseQuickPart(${i})" style="font-size:12px;padding:5px 11px;border-radius:20px;cursor:pointer;border:1px solid ${catColor[p.cat]||'var(--g200)'};background:#fff;color:${catColor[p.cat]||'var(--g800)'}">
-      ${p.cat === 'Tool' ? '🔧' : p.cat === 'Consumable' ? '📦' : '⚙️'} ${p.desc}
-    </button>`).join('');
+
+  const q = _qpSearchQuery.trim().toLowerCase();
+  const groups = { Part: [], Consumable: [], Tool: [] };
+  KO_QUICKPARTS.forEach((p, i) => {
+    if (q && !(p.desc||'').toLowerCase().includes(q) && !(p.pn||'').toLowerCase().includes(q)) return;
+    const cat = KO_QP_CAT_META[p.cat] ? p.cat : 'Part';
+    groups[cat].push({ ...p, _idx: i });
+  });
+  KO_QP_CAT_ORDER.forEach(cat => groups[cat].sort((a,b) => (a.desc||'').localeCompare(b.desc||'')));
+
+  if (!KO_QP_CAT_ORDER.some(cat => groups[cat].length)) {
+    wrap.innerHTML = '<span style="font-size:11px;color:#9a3412">Aucun résultat — essaie un autre mot-clé.</span>';
+    return;
+  }
+
+  wrap.innerHTML = KO_QP_CAT_ORDER.map(cat => {
+    if (!groups[cat].length) return '';
+    const meta = KO_QP_CAT_META[cat];
+    return `<div style="margin-bottom:6px">
+      <div style="font-size:10px;font-weight:700;color:${meta.color};text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">${meta.icon} ${meta.label} (${groups[cat].length})</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${groups[cat].map(p => `
+          <button onclick="koUseQuickPart(${p._idx})" style="font-size:12px;padding:5px 11px;border-radius:20px;cursor:pointer;border:1px solid ${meta.color};background:#fff;color:${meta.color}">
+            ${meta.icon} ${p.desc}
+          </button>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 G.koUseQuickPart = function(i) {
@@ -7755,25 +7792,43 @@ G.koManageQuickParts = function() { renderQuickPartsManageList(); openModal('mod
 function renderQuickPartsManageList() {
   const list = document.getElementById('quickparts-manage-list');
   if (!list) return;
-  list.innerHTML = KO_QUICKPARTS.map((p, i) => `
-    <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:6px 8px;margin-bottom:5px">
-      <select onchange="koQuickPartEdit(${i},'cat',this.value)" style="flex:0 0 90px;font-size:11px;padding:3px 5px">
-  		<option ${p.cat==='Part'?'selected':''}>Part</option>
-  		<option ${p.cat==='Tool'?'selected':''}>Tool</option>
-  		<option ${p.cat==='Consumable'?'selected':''}>Consumable</option>
-	</select>
-      <input type="text" value="${(p.desc||'').replace(/"/g,'&quot;')}" placeholder="Description" oninput="koQuickPartEdit(${i},'desc',this.value)" style="flex:1 1 160px;min-width:120px;font-size:12px;padding:4px 6px"/>
-      <input type="text" value="${(p.pn||'').replace(/"/g,'&quot;')}" placeholder="P/N" oninput="koQuickPartEdit(${i},'pn',this.value)" style="flex:0 0 100px;font-size:12px;padding:4px 6px"/>
-      <button onclick="koDeleteQuickPart(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
-    </div>`).join('') || '<p style="font-size:12px;color:var(--g400)">No presets yet.</p>';
+  if (!KO_QUICKPARTS.length) { list.innerHTML = '<p style="font-size:12px;color:var(--g400)">No presets yet.</p>'; return; }
+
+  const groups = { Part: [], Consumable: [], Tool: [] };
+  KO_QUICKPARTS.forEach((p, i) => {
+    const cat = KO_QP_CAT_META[p.cat] ? p.cat : 'Part';
+    groups[cat].push(i);
+  });
+  KO_QP_CAT_ORDER.forEach(cat => groups[cat].sort((a,b) => (KO_QUICKPARTS[a].desc||'').localeCompare(KO_QUICKPARTS[b].desc||'')));
+
+  list.innerHTML = KO_QP_CAT_ORDER.map(cat => {
+    if (!groups[cat].length) return '';
+    const meta = KO_QP_CAT_META[cat];
+    return `<div style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin:10px 0 5px">${meta.icon} ${meta.label}</div>` +
+      groups[cat].map(i => {
+        const p = KO_QUICKPARTS[i];
+        return `<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:6px 8px;margin-bottom:5px">
+          <select onchange="koQuickPartEdit(${i},'cat',this.value)" style="flex:0 0 90px;font-size:11px;padding:3px 5px">
+            <option ${p.cat==='Part'?'selected':''}>Part</option>
+            <option ${p.cat==='Tool'?'selected':''}>Tool</option>
+            <option ${p.cat==='Consumable'?'selected':''}>Consumable</option>
+          </select>
+          <input type="text" value="${(p.desc||'').replace(/"/g,'&quot;')}" placeholder="Description" oninput="koQuickPartEdit(${i},'desc',this.value)" style="flex:1 1 160px;min-width:120px;font-size:12px;padding:4px 6px"/>
+          <input type="text" value="${(p.pn||'').replace(/"/g,'&quot;')}" placeholder="P/N" oninput="koQuickPartEdit(${i},'pn',this.value)" style="flex:0 0 100px;font-size:12px;padding:4px 6px"/>
+          <button onclick="koDeleteQuickPart(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
+        </div>`;
+      }).join('');
+  }).join('');
 }
 
 let _qpEditTimer = null;
 G.koQuickPartEdit = function(i, field, val) {
   if (!KO_QUICKPARTS[i]) return;
   KO_QUICKPARTS[i][field] = val;
+  koRenderQuickPartsChips();                          // reflète direct dans la barre Quick Add
+  if (field === 'cat') renderQuickPartsManageList();   // regroupe direct la liste du modal aussi
   clearTimeout(_qpEditTimer);
-  _qpEditTimer = setTimeout(koSaveQuickPartsCatalog, 600);
+  _qpEditTimer = setTimeout(koSaveQuickPartsCatalog, 600); // seule la sauvegarde Firebase reste débouncée
 };
 
 G.koAddQuickPart = function() {
