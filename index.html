@@ -642,7 +642,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="card-body">
     <div class="grid g3" style="margin-bottom:10px">
       <div class="fg"><label>Work Order #</label><input type="text" id="f_wo" placeholder="e.g. FA33036" oninput="autosave()"/></div>
-      <div class="fg"><label>Model</label><input type="text" id="f_model" placeholder="e.g. GVIII-G700" oninput="autosave()"/></div>
+      <div class="fg"><label>Model</label><input type="text" id="f_model" placeholder="e.g. GVIII-G700" oninput="autosave();koRenderPartTplChips()"/></div>
       <div class="fg"><label>Serial Number</label><input type="text" id="f_sn" placeholder="e.g. 87033" oninput="autosave()"/></div>
       <div class="fg"><label>A/C Registry</label><input type="text" id="f_reg" placeholder="e.g. T7-MINT" oninput="autosave()"/></div>
       <div class="fg"><label>A/C Location (ICAO)</label><input type="text" id="f_loc" placeholder="e.g. LFMN" oninput="autosave()"/></div>
@@ -1015,7 +1015,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_broker"/> Broker for import — do they have one or should we use ours?</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_hours"/> Aircraft hours and cycles</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_po"/> Work Order (WO) or Purchase Order (PO) number</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_next_flight"/> Next scheduled flight date — confirm to help us prioritise the intervention</label>        
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_next_flight"/> Next scheduled flight date — confirm to help us prioritise the intervention</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_login"/> Ask customer for JDM / IDM access to download the aircraft database update</label>        
       </div>
 
       <div class="ko-section-lbl">Access & Logistics</div>
@@ -1127,8 +1128,13 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <span class="ko-addr-pill" id="ko-addr-manual" onclick="koSetAddr('manual')">Enter address</span>
       </div>
       <div id="ko-addr-field" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:11px;color:var(--g600)">Saved addresses:</span>
+          <button class="btn" onclick="koManageShipAddr()" style="font-size:11px;padding:4px 9px">⚙️ Manage list</button>
+        </div>
+        <div id="ko-shipaddr-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
         <div class="ko-fg">
-          <textarea id="ko_shipping_addr" placeholder="FBO name, address, city, country…" style="min-height:60px"></textarea>
+          <textarea id="ko_shipping_addr" placeholder="FBO name, address, city, country…" style="min-height:60px" oninput="koUpdatePreview();koSaveState()"></textarea>
         </div>
       </div>
       <div class="ko-divider"></div>
@@ -1156,6 +1162,14 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <button class="btn" onclick="koAddPartRow()" style="font-size:12px;padding:4px 10px">+ Add row</button>
     </div>
     <div class="ko-card-body" style="padding-top:.75rem;overflow-x:auto">
+	<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:var(--r);padding:8px 12px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:12px;color:#166534;font-weight:600;flex:1">📋 Order templates — full kits (wheels, brakes…)</span>
+          <button class="btn" onclick="koManagePartTpl()" style="font-size:11px;padding:4px 9px">⚙️ Manage list</button>
+        </div>
+        <input type="text" id="ko-parttpl-search" placeholder="🔍 Filtrer par titre…" oninput="koFilterPartTpl(this.value)" style="width:100%;font-size:12px;padding:6px 9px;border:1px solid var(--g200);border-radius:var(--r);margin-bottom:8px;background:#fff"/>
+        <div id="ko-parttpl-chips"></div>
+      </div>
 	<div style="background:#fff7ed;border:1px solid #fdba74;border-radius:var(--r);padding:8px 12px;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
           <span style="font-size:12px;color:#9a3412;font-weight:600;flex:1">⭐ Quick add — frequently used tools &amp; consumables</span>
@@ -1172,6 +1186,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 	    <select id="ko-sealant-spec-sel" onchange="koRenderSealantPns()" style="width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;margin-bottom:8px">
 	      <option value="">— select MIL Spec / application —</option>
 	    </select>
+	    <div id="ko-sealant-hint-row" style="display:none;font-size:11px;color:#3730a3;margin-bottom:6px">Tip: give items the same Group # to mean "either one" (OR). Different Group # = all required (AND).</div>
 	    <div id="ko-sealant-pn-list" style="display:none;flex-direction:column;gap:5px;margin-bottom:8px"></div>
 	    <button class="btn" id="ko-sealant-add-btn" onclick="koAddSelectedSealants()" style="display:none;font-size:12px;padding:5px 10px">+ Add selected to parts list</button>
 	  </div>	
@@ -1302,25 +1317,29 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div id="ko-drafts-preview"></div>
       <div id="ko-drafts-edit-panels">
         <div class="ko-prev-panel" id="ko-prev-panel-customer" style="display:none">
-          <div class="ko-fg"><label>Subject</label><input type="text" id="ko-prev-subj-customer"/></div>
+          <div class="ko-fg"><label>📬 Recipients (ready to paste)</label><div style="display:flex;gap:6px"><input type="text" id="ko-prev-recips-customer" readonly style="flex:1;font-size:12px;background:var(--g100)"/><button class="btn" onclick="koCopyRecipients('customer')" style="font-size:12px;white-space:nowrap">📋 Copy</button></div></div>
+          <div class="ko-fg"><label>Subject</label><div style="display:flex;gap:6px"><input type="text" id="ko-prev-subj-customer" style="flex:1"/><button class="btn" onclick="koCopySubject('customer')" style="font-size:12px;white-space:nowrap">📋 Copy</button></div></div>
           <div class="ko-fg"><label>Body</label><textarea id="ko-prev-body-customer" style="min-height:220px"></textarea></div>
           <button class="btn" onclick="koResetDraftPreview('customer')" style="font-size:12px">🔄 Reset to auto-generated</button>
           <button class="btn" onclick="koCopyDraft('customer')" style="font-size:12px">📋 Copy text</button>
         </div>
         <div class="ko-prev-panel" id="ko-prev-panel-travel" style="display:none">
-          <div class="ko-fg"><label>Subject</label><input type="text" id="ko-prev-subj-travel"/></div>
+          <div class="ko-fg"><label>📬 Recipients (ready to paste)</label><div style="display:flex;gap:6px"><input type="text" id="ko-prev-recips-travel" readonly style="flex:1;font-size:12px;background:var(--g100)"/><button class="btn" onclick="koCopyRecipients('travel')" style="font-size:12px;white-space:nowrap">📋 Copy</button></div></div>
+          <div class="ko-fg"><label>Subject</label><div style="display:flex;gap:6px"><input type="text" id="ko-prev-subj-travel" style="flex:1"/><button class="btn" onclick="koCopySubject('travel')" style="font-size:12px;white-space:nowrap">📋 Copy</button></div></div>
           <div class="ko-fg"><label>Body</label><textarea id="ko-prev-body-travel" style="min-height:160px"></textarea></div>
           <button class="btn" onclick="koResetDraftPreview('travel')" style="font-size:12px">🔄 Reset to auto-generated</button>
           <button class="btn" onclick="koCopyDraft('travel')" style="font-size:12px">📋 Copy text</button>
         </div>
         <div class="ko-prev-panel" id="ko-prev-panel-parts" style="display:none">
-          <div class="ko-fg"><label>Subject</label><input type="text" id="ko-prev-subj-parts"/></div>
+          <div class="ko-fg"><label>📬 Recipients (ready to paste)</label><div style="display:flex;gap:6px"><input type="text" id="ko-prev-recips-parts" readonly style="flex:1;font-size:12px;background:var(--g100)"/><button class="btn" onclick="koCopyRecipients('parts')" style="font-size:12px;white-space:nowrap">📋 Copy</button></div></div>
+          <div class="ko-fg"><label>Subject</label><div style="display:flex;gap:6px"><input type="text" id="ko-prev-subj-parts" style="flex:1"/><button class="btn" onclick="koCopySubject('parts')" style="font-size:12px;white-space:nowrap">📋 Copy</button></div></div>
           <div class="ko-fg"><label>Body</label><textarea id="ko-prev-body-parts" style="min-height:220px"></textarea></div>
           <button class="btn" onclick="koResetDraftPreview('parts')" style="font-size:12px">🔄 Reset to auto-generated</button>
           <button class="btn" onclick="koCopyDraft('parts')" style="font-size:12px">📋 Copy text</button>
         </div>
         <div class="ko-prev-panel" id="ko-prev-panel-fbo" style="display:none">
-          <div class="ko-fg"><label>Subject</label><input type="text" id="ko-prev-subj-fbo"/></div>
+          <div class="ko-fg"><label>📬 Recipients (ready to paste)</label><div style="display:flex;gap:6px"><input type="text" id="ko-prev-recips-fbo" readonly style="flex:1;font-size:12px;background:var(--g100)"/><button class="btn" onclick="koCopyRecipients('fbo')" style="font-size:12px;white-space:nowrap">📋 Copy</button></div></div>
+          <div class="ko-fg"><label>Subject</label><div style="display:flex;gap:6px"><input type="text" id="ko-prev-subj-fbo" style="flex:1"/><button class="btn" onclick="koCopySubject('fbo')" style="font-size:12px;white-space:nowrap">📋 Copy</button></div></div>
           <div class="ko-fg"><label>Body</label><textarea id="ko-prev-body-fbo" style="min-height:180px"></textarea></div>
           <button class="btn" onclick="koResetDraftPreview('fbo')" style="font-size:12px">🔄 Reset to auto-generated</button>
           <button class="btn" onclick="koCopyDraft('fbo')" style="font-size:12px">📋 Copy text</button>
@@ -1534,6 +1553,82 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 	  <button class="btn primary" onclick="koAddQuickPart()" style="width:100%">+ Add</button>
 	</div>
     <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-quickparts')">Done</button></div>
+  </div>
+</div>
+
+<!-- SHIPPING ADDRESSES MANAGE MODAL -->
+<div class="modal-bg" id="modal-shipaddr">
+  <div class="modal" style="max-width:560px">
+    <h3>📦 Manage shipping addresses</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">Shared with the whole team. Grouped by airport (ICAO).</p>
+    <div id="shipaddr-manage-list" style="max-height:320px;overflow-y:auto;margin-bottom:12px"></div>
+    <div style="display:flex;gap:6px;padding-top:10px;border-top:1px solid var(--g200);flex-wrap:wrap">
+      <input type="text" id="sa-new-airport" placeholder="ICAO e.g. LEMD" style="flex:0 0 90px;font-size:12px;padding:5px 8px;text-transform:uppercase"/>
+      <input type="text" id="sa-new-label" placeholder="FBO / recipient name" style="flex:1;min-width:140px;font-size:12px;padding:5px 8px"/>
+      <textarea id="sa-new-body" placeholder="Full address (street, city, country…)" style="flex:1 1 100%;min-height:50px;font-size:12px;padding:5px 8px"></textarea>
+      <button class="btn primary" onclick="koAddShipAddr()" style="width:100%">+ Add</button>
+    </div>
+    <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-shipaddr')">Done</button></div>
+  </div>
+</div>
+
+<!-- GULFSTREAM MODELS LIST MODAL -->
+<div class="modal-bg" id="modal-gsmodels">
+  <div class="modal" style="max-width:440px">
+    <h3>✈️ Manage Gulfstream models list</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">Shared with the whole team — real FAA/EASA type-certificate designations. This is the fixed list used everywhere a model must be selected; edit here to keep it consistent (no free typing elsewhere).</p>
+    <div id="gsmodels-manage-list" style="max-height:320px;overflow-y:auto;margin-bottom:12px"></div>
+    <div style="display:flex;gap:6px;padding-top:10px;border-top:1px solid var(--g200)">
+      <input type="text" id="gsm-new-name" placeholder="e.g. GVII-G600" style="flex:1;font-size:12px;padding:5px 8px"/>
+      <button class="btn primary" onclick="koAddGsModel()">+ Add</button>
+    </div>
+    <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-gsmodels')">Done</button></div>
+  </div>
+</div>
+
+<!-- PARTS TEMPLATES MANAGE MODAL -->
+<div class="modal-bg" id="modal-parttpl">
+  <div class="modal" style="max-width:820px">
+    <h3>🛠️ Manage parts order templates</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">Shared with the whole team. One click adds every line to the parts table.</p>
+    <div id="parttpl-manage-list" style="max-height:280px;overflow-y:auto;margin-bottom:12px"></div>
+
+    <div style="border-top:1px solid var(--g200);padding-top:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:700;color:var(--g600)">New template</span>
+        <button class="btn" onclick="koManageGsModels()" style="font-size:11px;padding:4px 9px">✈️ Edit models list</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <select id="pt-new-model" style="flex:0 0 170px;font-size:12px;padding:5px 8px">
+          <option value="">Select model…</option>
+        </select>
+        <input type="text" id="pt-new-name" placeholder="Template name e.g. Main wheel change" style="flex:1;min-width:180px;font-size:12px;padding:5px 8px"/>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:8px;background:#fff7ed;border:1px solid #fdba74;border-radius:var(--r);padding:8px 10px;margin-bottom:10px">
+        <span style="font-size:16px">⚠️</span>
+        <span style="font-size:12px;color:#9a3412;font-weight:600">Mandatory: the applicable aircraft Maintenance Documentation (AMM) must be checked and followed before using this template to place an order. Part numbers, quantities and applicability may vary by aircraft configuration/effectivity.</span>
+      </div>
+
+      <table class="ko-parts-tbl" style="width:100%">
+        <thead>
+          <tr>
+            <th style="min-width:130px">Description</th>
+            <th style="min-width:100px">P/N</th>
+            <th style="min-width:70px">S/N</th>
+            <th style="width:45px">Qty</th>
+            <th style="width:90px">Category</th>
+            <th style="min-width:110px">Note</th>
+            <th style="width:28px"></th>
+          </tr>
+        </thead>
+        <tbody id="pt-new-parts-tbody"></tbody>
+      </table>
+      <button class="btn-add" onclick="koAddPartTplLine()" style="margin-top:8px">+ Add row</button>
+
+      <button class="btn primary" onclick="koAddPartTpl()" style="width:100%;margin-top:14px">💾 Save template</button>
+    </div>
+
+    <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-parttpl')">Done</button></div>
   </div>
 </div>
 
@@ -5633,7 +5728,7 @@ function koBuildStateSnapshot() {
     'kofbo_steps','kofbo_steps_engine','kofbo_hangar','kofbo_lavatory','kofbo_hpbay',
     'kofbo_q_days','kofbo_q_confirm','kofbo_q_shipping','kofbo_q_parts_delivery','kofbo_q_importer','kofbo_q_transport','kofbo_q_access_docs','kofbo_q_toolbox_docs',
     'koq_broker','koq_hours','koq_po','koq_next_flight','koq_keys','koq_fbo_name','koq_fbo_mail',
-    'koq_contact','koq_troubleshoot','koq_cas','koq_fhdb',
+    'koq_contact','koq_login','koq_troubleshoot','koq_cas','koq_fhdb',
     'koq_techops','koq_self_parts','koq_handcarry','koq_order_before_tshoot',
     'kofbo_doc_passport','kofbo_doc_photo','kofbo_doc_ibac',
     'kofbo_doc_license','kofbo_doc_authorization','kofbo_doc_toolbox','kofbo_doc_visa'
@@ -5869,6 +5964,9 @@ G.openKickoff = async function(forceWo) {
   await koLoadTeamForSelectors();
   await koLoadFSRSelector();
   await koLoadQuickPartsCatalog();
+  await koLoadGsModels();
+  await koLoadPartTplCatalog();
+  await koLoadShipAddrCatalog();
   await koLoadSealantMilSpecs();	
   KO.signature = koBuildSignature();
   koRenderAllRecips();
@@ -6477,7 +6575,31 @@ G.koToggleDraftPreview = function(type) {
       subjEl.dataset.populated = '1';
       bodyEl.dataset.populated = '1';
     }
+    const recipEl = document.getElementById('ko-prev-recips-' + type);
+    if (recipEl) recipEl.value = koGetAllRecips(type).join(', ');
   }
+};
+
+// Copie juste la ligne de sujet d'un mail
+G.koCopySubject = function(type) {
+  const subjEl = document.getElementById('ko-prev-subj-' + type);
+  const text = (subjEl && subjEl.value) || koComputeSubjects()[type] || '';
+  navigator.clipboard.writeText(text).catch(()=>{});
+  const btn = event.target;
+  const orig = btn.textContent;
+  btn.textContent = '✅ Copied!';
+  setTimeout(() => { btn.textContent = orig; }, 2000);
+};
+
+// Copie la liste des destinataires (séparés par des virgules), prête à coller dans Gmail
+G.koCopyRecipients = function(type) {
+  const recipEl = document.getElementById('ko-prev-recips-' + type);
+  const text = (recipEl && recipEl.value) || koGetAllRecips(type).join(', ');
+  navigator.clipboard.writeText(text).catch(()=>{});
+  const btn = event.target;
+  const orig = btn.textContent;
+  btn.textContent = '✅ Copied!';
+  setTimeout(() => { btn.textContent = orig; }, 2000);
 };
 
 // Discards manual edits and refills the panel from current field values.
@@ -6565,6 +6687,11 @@ function koUpdatePreview() {
       </div>
       <span class="ko-badge ${missingIcao ? 'ko-badge-warn' : 'ko-badge-ok'}">${missingIcao ? '⚠ ICAO missing' : 'Ready'}</span>
     </div>`;
+
+  ['customer','travel','parts','fbo'].forEach(t => {
+    const recipEl = document.getElementById('ko-prev-recips-' + t);
+    if (recipEl) recipEl.value = koGetAllRecips(t).join(', ');
+  });
 }
 
 
@@ -6586,6 +6713,7 @@ function koBuildCustomerBody() {
   if (q('koq_broker')) questions.push(`- Do you have a broker to handle the import of parts${icao ? ' into ' + icao : ''}? If yes, please provide their details. If not, we can use our own.`);
     if (q('koq_hours'))  questions.push('- Could you please provide the aircraft total time (hours) and cycles?');
   if (q('koq_po'))     questions.push('- Do you have a Work Order (WO) or Purchase Order (PO) number for this input?');
+  if (q('koq_login'))    questions.push('- Could you please provide access to JDM / IDM so we can download the aircraft database required for the update?');
   if (q('koq_next_flight')) {
     const nxt = (document.getElementById('f_nxt')?.value || '').trim();
     questions.push(nxt && nxt.toUpperCase() !== 'UNKWN'
@@ -6611,16 +6739,16 @@ function koBuildCustomerBody() {
   }
   sqQuestionsFor('troubleshoot',
     'Has any troubleshooting been carried out previously on this defect? Have the crew attempted any resets?',
-    'has any troubleshooting been carried out previously? Have the crew attempted any resets?');
+    'Has any troubleshooting been carried out previously? Have the crew attempted any resets?');
   sqQuestionsFor('cas',
     'If possible, could you send pictures of the active CAS messages and CMC active faults?',
-    'could you please send pictures of the active CAS messages and CMC active faults?');
+    'Could you please send pictures of the active CAS messages and CMC active faults?');
   sqQuestionsFor('fhdb',
     'Has the FHDB been downloaded? If so, could you share it with us, or confirm if it has already been sent to Techops?',
-    'has the FHDB been downloaded? If so, could you share it with us, or confirm if it has already been sent to Techops?');
+    'Has the FHDB been downloaded? If so, could you share it with us, or confirm if it has already been sent to Techops?');
   sqQuestionsFor('techops',
     'Have you received a reply from Techops yet?',
-    'have you received a reply from Techops yet?');
+    'Have you received a reply from Techops yet?');
   if (q('koq_self_parts'))        questions.push('- Could you confirm whether you have already sourced the parts required for this intervention? If so, please provide the corresponding release certificates (FAA 8130-3 / EASA Form 1) as soon as possible, along with the estimated delivery ETA.');
   if (q('koq_handcarry'))         questions.push('- Should hand carry be required to expedite parts delivery, do you approve this option? Please note that hand carry will incur additional costs compared to standard freight.');
   if (q('koq_order_before_tshoot')) questions.push('-Would you like us to proceed with ordering the required parts in parallel with troubleshooting, or would you prefer that we confirm the diagnosis first before placing any order? (Note: This will extend the intervention time as we will have to wait for the parts to arrive on-site).');
@@ -7940,6 +8068,420 @@ G.koDeleteQuickPart = function(i) {
 };
 
 // ══════════════════════════════════════
+//  SHIPPING ADDRESSES CATALOG (Firebase, grouped by airport)
+// ══════════════════════════════════════
+let KO_SHIPADDR = [];   // [{ airport:'LEMD', label:'FBO Universal', body:'...' }]
+let _saSearchQuery = '';
+
+async function koLoadShipAddrCatalog() {
+  try {
+    const snap = await get(ref(db, 'config/shippingAddresses'));
+    KO_SHIPADDR = snap.exists() ? snap.val() : [];
+  } catch(e) { KO_SHIPADDR = []; }
+  koRenderShipAddrChips();
+}
+
+function koShipAddrGrouped() {
+  const groups = {};
+  KO_SHIPADDR.forEach((a, i) => {
+    const airport = (a.airport || '—').toUpperCase();
+    if (!groups[airport]) groups[airport] = [];
+    groups[airport].push({ ...a, _idx: i });
+  });
+  return groups; // { LEMD: [...], EGLF: [...] }
+}
+
+function koRenderShipAddrChips() {
+  const wrap = document.getElementById('ko-shipaddr-chips');
+  if (!wrap) return;
+  if (!KO_SHIPADDR.length) { wrap.innerHTML = '<span style="font-size:11px;color:#9a3412">No saved addresses yet — use "Manage list".</span>'; return; }
+
+  const groups = koShipAddrGrouped();
+  const airports = Object.keys(groups).sort();
+
+  wrap.innerHTML = airports.map(airport => {
+    return `<div style="width:100%;margin-bottom:4px">
+      <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">✈️ ${airport}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${groups[airport].map(a => `
+          <button onclick="koUseShipAddr(${a._idx})" style="font-size:12px;padding:5px 11px;border-radius:20px;cursor:pointer;border:1px solid var(--blue);background:#fff;color:var(--blue)">
+            📦 ${(a.label || 'Address').replace(/</g,'&lt;')}
+          </button>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+G.koUseShipAddr = function(i) {
+  const a = KO_SHIPADDR[i]; if (!a) return;
+  const reg = (document.getElementById('f_reg')?.value || '').trim().toUpperCase();
+  const label = (a.label || '').trim();
+  const labelWithReg = label ? (reg ? `${label} — A/C ${reg}` : label) : (reg ? `A/C ${reg}` : '');
+  const body = (a.body || '').trim();
+  const full = labelWithReg ? `${labelWithReg}\n${body}` : body;
+  const el = document.getElementById('ko_shipping_addr');
+  if (el) el.value = full;
+  koUpdatePreview();
+  koSaveState();
+};
+
+G.koManageShipAddr = function() { renderShipAddrManageList(); openModal('modal-shipaddr'); };
+
+function renderShipAddrManageList() {
+  const list = document.getElementById('shipaddr-manage-list');
+  if (!list) return;
+  if (!KO_SHIPADDR.length) { list.innerHTML = '<p style="font-size:12px;color:var(--g400)">No saved addresses yet.</p>'; return; }
+
+  const groups = koShipAddrGrouped();
+  const airports = Object.keys(groups).sort();
+
+  list.innerHTML = airports.map(airport => {
+    return `<div style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin:10px 0 5px">✈️ ${airport}</div>` +
+      groups[airport].map(a => `
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:6px 8px;margin-bottom:5px">
+          <input type="text" value="${(a.airport||'').replace(/"/g,'&quot;')}" placeholder="ICAO" oninput="koShipAddrEdit(${a._idx},'airport',this.value.toUpperCase())" style="flex:0 0 70px;font-size:11px;padding:4px 6px;text-transform:uppercase"/>
+          <input type="text" value="${(a.label||'').replace(/"/g,'&quot;')}" placeholder="FBO / recipient name" oninput="koShipAddrEdit(${a._idx},'label',this.value)" style="flex:1 1 140px;min-width:120px;font-size:12px;padding:4px 6px"/>
+          <button onclick="koDeleteShipAddr(${a._idx})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
+          <textarea oninput="koShipAddrEdit(${a._idx},'body',this.value)" placeholder="Full address" style="flex:1 1 100%;min-height:40px;font-size:12px;padding:4px 6px">${(a.body||'')}</textarea>
+        </div>`).join('');
+  }).join('');
+}
+
+let _saEditTimer = null;
+G.koShipAddrEdit = function(i, field, val) {
+  if (!KO_SHIPADDR[i]) return;
+  KO_SHIPADDR[i][field] = val;
+  koRenderShipAddrChips();
+  if (field === 'airport') renderShipAddrManageList();
+  clearTimeout(_saEditTimer);
+  _saEditTimer = setTimeout(koSaveShipAddrCatalog, 600);
+};
+
+G.koAddShipAddr = function() {
+  const airport = (document.getElementById('sa-new-airport')?.value || '').trim().toUpperCase();
+  const label   = (document.getElementById('sa-new-label')?.value || '').trim();
+  const body    = (document.getElementById('sa-new-body')?.value || '').trim();
+  if (!airport || !body) return;
+  KO_SHIPADDR.push({ airport, label, body });
+  document.getElementById('sa-new-airport').value = '';
+  document.getElementById('sa-new-label').value = '';
+  document.getElementById('sa-new-body').value = '';
+  renderShipAddrManageList(); koRenderShipAddrChips(); koSaveShipAddrCatalog();
+};
+
+G.koDeleteShipAddr = function(i) {
+  KO_SHIPADDR.splice(i, 1);
+  renderShipAddrManageList(); koRenderShipAddrChips(); koSaveShipAddrCatalog();
+};
+
+async function koSaveShipAddrCatalog() {
+  try { await set(ref(db, 'config/shippingAddresses'), KO_SHIPADDR); } catch(e) { console.warn(e); }
+}
+
+// ══════════════════════════════════════
+//  GULFSTREAM MODELS — fixed shared list, real FAA/EASA type-certificate designations
+// ══════════════════════════════════════
+let KO_GSMODELS = [];   // ['GVII-G600', 'GV-SP (G550)', ...]
+
+// Sources: FAA TCDS A12EA (GIV-X/GV-SP family), FAA TCDS T00015AT (GVI/G650 family),
+// EASA.IM.A.595 (GVII-G500/G600), TCCA A-226 / GVIII (G700/G800), legacy G150/G200/G280.
+const KO_GSMODELS_DEFAULT = [
+  'G150 (G-1159C)',
+  'G200 (G-1159D)',
+  'G280 (G-VPA)',
+  'GIV-X (G350)',
+  'GIV-X (G450)',
+  'GV-SP (G500-5000 Series)',
+  'GV-SP (G550)',
+  'GVII-G500',
+  'GVII-G600',
+  'GVI (G650)',
+  'GVI (G650ER)',
+  'GVIII-G700',
+  'GVIII-G800'
+];
+
+async function koLoadGsModels() {
+  try {
+    const snap = await get(ref(db, 'config/gulfstreamModels'));
+    KO_GSMODELS = snap.exists() ? snap.val() : [];
+    if (!KO_GSMODELS.length) {
+      KO_GSMODELS = [...KO_GSMODELS_DEFAULT];
+      koSaveGsModels();
+    }
+  } catch(e) { KO_GSMODELS = [...KO_GSMODELS_DEFAULT]; }
+  koRenderGsModelSelect();
+  renderGsModelsManageList();
+}
+
+async function koSaveGsModels() {
+  try { await set(ref(db, 'config/gulfstreamModels'), KO_GSMODELS); } catch(e) { console.warn(e); }
+}
+
+function koRenderGsModelSelect() {
+  const sel = document.getElementById('pt-new-model');
+  if (!sel) return;
+  const prev = sel.value;
+  const sorted = [...KO_GSMODELS].sort();
+  sel.innerHTML = '<option value="">Select model…</option>' +
+    sorted.map(m => `<option value="${m.replace(/"/g,'&quot;')}" ${m===prev?'selected':''}>${m}</option>`).join('');
+}
+
+G.koManageGsModels = function() { renderGsModelsManageList(); openModal('modal-gsmodels'); };
+
+function renderGsModelsManageList() {
+  const list = document.getElementById('gsmodels-manage-list');
+  if (!list) return;
+  if (!KO_GSMODELS.length) { list.innerHTML = '<p style="font-size:12px;color:var(--g400)">No models yet.</p>'; return; }
+  const sorted = [...KO_GSMODELS].sort();
+  list.innerHTML = sorted.map(m => {
+    const i = KO_GSMODELS.indexOf(m);
+    return `<div style="display:flex;align-items:center;gap:8px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:6px 8px;margin-bottom:5px">
+      <span style="flex:1;font-size:13px">✈️ ${m}</span>
+      <button onclick="koDeleteGsModel(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+G.koAddGsModel = function() {
+  const el = document.getElementById('gsm-new-name');
+  const name = (el?.value || '').trim();
+  if (!name) return;
+  if (KO_GSMODELS.some(m => m.toLowerCase() === name.toLowerCase())) { alert('This model is already in the list.'); return; }
+  KO_GSMODELS.push(name);
+  el.value = '';
+  renderGsModelsManageList(); koRenderGsModelSelect(); koRenderPartTplChips(); koSaveGsModels();
+};
+
+G.koDeleteGsModel = function(i) {
+  const removed = KO_GSMODELS[i];
+  const usedByTemplate = KO_PARTTPL.some(t => t.model === removed);
+  if (usedByTemplate && !confirm(`"${removed}" is used by at least one saved template. Delete it from the list anyway? Existing templates will keep the old value but it will no longer be selectable for new ones.`)) return;
+  KO_GSMODELS.splice(i, 1);
+  renderGsModelsManageList(); koRenderGsModelSelect(); koRenderPartTplChips(); koSaveGsModels();
+};
+
+// ══════════════════════════════════════
+//  PARTS ORDER TEMPLATES (full kits, grouped by aircraft model)
+//  The "new template" line editor below mirrors the main parts table exactly
+//  (same columns, same S/N-per-category behaviour, same small-qty/DG note).
+// ══════════════════════════════════════
+let KO_PARTTPL = [];        // [{ model, name, parts:[{pn,desc,sn,qty,cat,note,smallQty}] }]
+let _ptNewLines = [];       // temp lines while building a new template in the modal
+let _ptLineSeq = 0;
+let _ptSearchQuery = '';
+
+G.koFilterPartTpl = function(val) {
+  _ptSearchQuery = val || '';
+  koRenderPartTplChips();
+};
+
+const KO_PARTTPL_AMM_WARNING = 'Mandatory: the applicable aircraft Maintenance Documentation (AMM) must be checked and followed before using this template to place an order. Part numbers, quantities and applicability may vary by aircraft configuration/effectivity.';
+
+async function koLoadPartTplCatalog() {
+  try {
+    const snap = await get(ref(db, 'config/partTemplates'));
+    KO_PARTTPL = snap.exists() ? snap.val() : [];
+  } catch(e) { KO_PARTTPL = []; }
+  koRenderPartTplChips();
+}
+
+function koCurrentModel() {
+  return (document.getElementById('f_model')?.value || '').trim().toUpperCase();
+}
+
+function koPartTplGrouped(list) {
+  const groups = {};
+  list.forEach((t, i) => {
+    const model = t.model || '—';
+    if (!groups[model]) groups[model] = [];
+    groups[model].push({ ...t, _idx: i });
+  });
+  return groups;
+}
+
+function koRenderPartTplChips() {
+  const wrap = document.getElementById('ko-parttpl-chips');
+  if (!wrap) return;
+  if (!KO_PARTTPL.length) { wrap.innerHTML = '<span style="font-size:11px;color:#166534">No templates yet — use "Manage list".</span>'; return; }
+
+  const q = _ptSearchQuery.trim().toLowerCase();
+  const curModel = koCurrentModel();
+
+  const filtered = KO_PARTTPL
+    .map((t, i) => ({ ...t, _idx: i }))
+    .filter(t => !q || (t.name || '').toLowerCase().includes(q));
+
+  if (!filtered.length) {
+    wrap.innerHTML = '<span style="font-size:11px;color:#9a3412">Aucun résultat — essaie un autre mot-clé.</span>';
+    return;
+  }
+
+  const groups = {};
+  filtered.forEach(t => {
+    const model = t.model || '—';
+    if (!groups[model]) groups[model] = [];
+    groups[model].push(t);
+  });
+
+  const models = Object.keys(groups).sort((a, b) => {
+    const aMatch = curModel && a.toUpperCase().includes(curModel);
+    const bMatch = curModel && b.toUpperCase().includes(curModel);
+    if (aMatch && !bMatch) return -1;
+    if (bMatch && !aMatch) return 1;
+    return a.localeCompare(b);
+  });
+
+  wrap.innerHTML = `<div style="font-size:10.5px;color:#9a3412;margin-bottom:6px">⚠️ ${KO_PARTTPL_AMM_WARNING}</div>` +
+    models.map(model => {
+      const isCurrent = curModel && model.toUpperCase().includes(curModel);
+      return `<div style="width:100%;margin-bottom:6px">
+        <div style="font-size:10px;font-weight:700;color:${isCurrent ? '#166534' : 'var(--g600)'};text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">✈️ ${model}${isCurrent ? ' (current aircraft)' : ''}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${groups[model].map(t => `
+            <button onclick="koUsePartTpl(${t._idx})" style="font-size:12px;padding:5px 11px;border-radius:20px;cursor:pointer;border:1px solid #22c55e;background:#fff;color:#166534">
+              📋 ${(t.name || 'Template').replace(/</g,'&lt;')} (${(t.parts||[]).length} lines)
+            </button>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
+}
+
+G.koUsePartTpl = function(i) {
+  const t = KO_PARTTPL[i]; if (!t) return;
+  if (!confirm('⚠️ ' + KO_PARTTPL_AMM_WARNING + '\n\nHave you checked the AMM and confirmed applicability for this aircraft? Click OK to add the parts.')) return;
+  (t.parts || []).forEach(p => {
+    G.koAddPartRow(p.pn || '', p.desc || '', p.sn || '', p.qty || '1', p.cat || 'Part', p.note || '', '');
+    if (p.smallQty) {
+      const rows = document.querySelectorAll('#ko-parts-tbody tr');
+      const lastRow = rows[rows.length - 1];
+      const cb = lastRow?.querySelector('.ko-smallqty-cb');
+      if (cb) cb.checked = true;
+    }
+  });
+  koSortPartsTable(); koUpdatePreview(); koSaveState();
+};
+
+G.koManagePartTpl = function() {
+  _ptNewLines = [];
+  koRenderGsModelSelect();
+  renderPartTplManageList();
+  renderPartTplNewLines();
+  openModal('modal-parttpl');
+};
+
+function renderPartTplManageList() {
+  const list = document.getElementById('parttpl-manage-list');
+  if (!list) return;
+  if (!KO_PARTTPL.length) { list.innerHTML = '<p style="font-size:12px;color:var(--g400)">No templates yet.</p>'; return; }
+
+  const groups = koPartTplGrouped(KO_PARTTPL);
+  const models = Object.keys(groups).sort();
+
+  list.innerHTML = models.map(model => {
+    return `<div style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin:10px 0 5px">✈️ ${model}</div>` +
+      groups[model].map(t => `
+        <div style="background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:8px;margin-bottom:6px">
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+            <input type="text" value="${(t.name||'').replace(/"/g,'&quot;')}" placeholder="Template name" oninput="koPartTplEdit(${t._idx},'name',this.value)" style="flex:1;font-size:12px;padding:4px 6px"/>
+            <button onclick="koDeletePartTpl(${t._idx})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
+          </div>
+          <div style="font-size:10.5px;color:var(--g600)">
+            ${(t.parts||[]).map(p => `• ${p.desc || '(no desc)'} ${p.pn ? '— P/N ' + p.pn : ''}${p.sn ? ' — S/N ' + p.sn : ''} — qty ${p.qty || 1} — ${p.cat || 'Part'}${p.smallQty ? ' — small qty/DG' : ''}${p.note ? ' — ' + p.note : ''}`).join('<br>') || '<em>No lines</em>'}
+          </div>
+        </div>`).join('');
+  }).join('');
+}
+
+G.koDeletePartTpl = function(i) {
+  KO_PARTTPL.splice(i, 1);
+  renderPartTplManageList(); koRenderPartTplChips(); koSavePartTplCatalog();
+};
+
+let _ptEditTimer = null;
+G.koPartTplEdit = function(i, field, val) {
+  if (!KO_PARTTPL[i]) return;
+  KO_PARTTPL[i][field] = val;
+  koRenderPartTplChips();
+  clearTimeout(_ptEditTimer);
+  _ptEditTimer = setTimeout(koSavePartTplCatalog, 600);
+};
+
+// --- building a NEW template inside the modal — mirrors the main parts table exactly ---
+function renderPartTplNewLines() {
+  const tbody = document.getElementById('pt-new-parts-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = _ptNewLines.map(l => `
+    <tr id="pt-line-${l._id}">
+      <td><input type="text" value="${(l.desc||'').replace(/"/g,'&quot;')}" placeholder="Description" oninput="koPartTplNewLineEdit(${l._id},'desc',this.value)"/></td>
+      <td><input type="text" value="${(l.pn||'').replace(/"/g,'&quot;')}" placeholder="P/N" oninput="koPartTplNewLineEdit(${l._id},'pn',this.value)"/></td>
+      <td><input type="text" value="${(l.sn||'').replace(/"/g,'&quot;')}" placeholder="S/N off" class="pt-sn-field-${l._id}" ${l.cat==='Consumable'?'disabled style="background:var(--g100);color:var(--g400)"':''} oninput="koPartTplNewLineEdit(${l._id},'sn',this.value)"/></td>
+      <td><input type="text" value="${l.qty||''}" placeholder="Qty" oninput="koPartTplNewLineEdit(${l._id},'qty',this.value)"/></td>
+      <td>
+        <select onchange="koPartTplNewLineCatChange(${l._id},this.value)" style="${!l.cat?'border:1px solid #e07700;background:#fef9e7':''}">
+          <option value="" ${!l.cat?'selected':''} style="color:#aaa">— Type —</option>
+          <option ${l.cat==='Part'?'selected':''}>Part</option>
+          <option ${l.cat==='Consumable'?'selected':''}>Consumable</option>
+          <option ${l.cat==='Tool'?'selected':''}>Tool</option>
+        </select>
+      </td>
+      <td>
+        <label style="display:${l.cat==='Consumable'?'flex':'none'};align-items:center;gap:4px;font-size:11px;color:var(--g600);white-space:nowrap">
+          <input type="checkbox" ${l.smallQty?'checked':''} onchange="koPartTplNewLineEdit(${l._id},'smallQty',this.checked)"/> small qty — avoid DG
+        </label>
+        <input type="text" value="${(l.note||'').replace(/"/g,'&quot;')}" placeholder="Note…" oninput="koPartTplNewLineEdit(${l._id},'note',this.value)"/>
+      </td>
+      <td><button class="ko-parts-tbl rm-btn" onclick="koRemovePartTplLine(${l._id})">×</button></td>
+    </tr>`).join('') || '';
+}
+
+G.koPartTplNewLineEdit = function(id, field, val) {
+  const l = _ptNewLines.find(x => x._id === id);
+  if (!l) return;
+  l[field] = val;
+};
+
+G.koPartTplNewLineCatChange = function(id, cat) {
+  const l = _ptNewLines.find(x => x._id === id);
+  if (!l) return;
+  l.cat = cat;
+  if (cat === 'Consumable') l.sn = '';
+  renderPartTplNewLines();
+};
+
+G.koAddPartTplLine = function() {
+  _ptNewLines.push({ _id: ++_ptLineSeq, pn:'', desc:'', sn:'', qty:'1', cat:'', note:'', smallQty:false });
+  renderPartTplNewLines();
+};
+
+G.koRemovePartTplLine = function(id) {
+  _ptNewLines = _ptNewLines.filter(x => x._id !== id);
+  renderPartTplNewLines();
+};
+
+G.koAddPartTpl = function() {
+  const model = (document.getElementById('pt-new-model')?.value || '').trim();
+  const name  = (document.getElementById('pt-new-name')?.value || '').trim();
+  const parts = _ptNewLines
+    .filter(l => (l.desc || '').trim())
+    .map(({ _id, ...rest }) => rest); // strip the temp _id before saving
+
+  if (!model)        { alert('Please select an aircraft model from the list.'); return; }
+  if (!name)         { alert('Please enter a template name.'); return; }
+  if (!parts.length) { alert('Please add at least one part line with a description.'); return; }
+
+  KO_PARTTPL.push({ model, name, parts });
+  document.getElementById('pt-new-model').value = '';
+  document.getElementById('pt-new-name').value = '';
+  _ptNewLines = [];
+  renderPartTplNewLines(); renderPartTplManageList(); koRenderPartTplChips(); koSavePartTplCatalog();
+};
+
+async function koSavePartTplCatalog() {
+  try { await set(ref(db, 'config/partTemplates'), KO_PARTTPL); } catch(e) { console.warn(e); }
+}
+
+// ══════════════════════════════════════
 //  SEALANT LOOKUP — MIL Spec → approved P/Ns (source: 20-42-00)
 // ══════════════════════════════════════
 let SEALANT_MIL_SPECS = [];
@@ -7993,20 +8535,43 @@ function koPopulateSealantSpecSelect() {
     SEALANT_MIL_SPECS.map((s, i) => `<option value="${i}">${s.spec} — ${s.app}</option>`).join('');
 }
 
+const SEALANT_TYPE_OPTIONS = ['A-1/2','A-1','A-2','B-1/2','B-1','B-2'];
+const SEALANT_SIZE_OPTIONS = ['2.5oz','6oz'];
+
 G.koRenderSealantPns = function() {
   const sel = document.getElementById('ko-sealant-spec-sel');
   const wrap = document.getElementById('ko-sealant-pn-list');
   const btn = document.getElementById('ko-sealant-add-btn');
+  const hintRow = document.getElementById('ko-sealant-hint-row');
   if (!sel || !wrap || !btn) return;
   const idx = sel.value;
-  if (idx === '') { wrap.style.display = 'none'; wrap.innerHTML = ''; btn.style.display = 'none'; return; }
+  if (idx === '') { wrap.style.display = 'none'; wrap.innerHTML = ''; btn.style.display = 'none'; if (hintRow) hintRow.style.display = 'none'; return; }
   const entry = SEALANT_MIL_SPECS[idx];
   wrap.style.display = 'flex';
-  wrap.innerHTML = entry.pns.map(pn => `
-    <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:5px 9px">
-      <input type="checkbox" class="ko-sealant-pn-cb" value="${pn.replace(/"/g,'&quot;')}"/> ${pn}
-    </label>`).join('');
+  wrap.innerHTML = entry.pns.map((pn, i) => `
+    <div style="display:flex;flex-direction:column;gap:5px;background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:6px 9px">
+      <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer">
+        <input type="checkbox" class="ko-sealant-pn-cb" value="${pn.replace(/"/g,'&quot;')}"/> ${pn}
+      </label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding-left:22px">
+        <select class="ko-sealant-pn-type" style="font-size:11px;padding:3px 6px;border:1px solid var(--g200);border-radius:4px;background:#fff">
+          <option value="">Type —</option>
+          ${SEALANT_TYPE_OPTIONS.map(t => `<option value="${t}">${t}</option>`).join('')}
+        </select>
+        <select class="ko-sealant-pn-size" style="font-size:11px;padding:3px 6px;border:1px solid var(--g200);border-radius:4px;background:#fff">
+          <option value="">Size —</option>
+          ${SEALANT_SIZE_OPTIONS.map(s => `<option value="${s}">${s}</option>`).join('')}
+        </select>
+        <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer">
+          <input type="checkbox" class="ko-sealant-pn-semkit"/> Semkit
+        </label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer">
+          Group # <input type="number" class="ko-sealant-pn-group" min="1" max="9" value="${i+1}" style="width:36px;font-size:11px;padding:2px 4px;border:1px solid var(--g200);border-radius:4px"/>
+        </label>
+      </div>
+    </div>`).join('');
   btn.style.display = '';
+  if (hintRow) hintRow.style.display = entry.pns.length > 1 ? 'block' : 'none';
 };
 
 G.koAddSelectedSealants = function() {
@@ -8014,12 +8579,50 @@ G.koAddSelectedSealants = function() {
   const idx = sel?.value;
   if (idx === '' || idx == null) return;
   const entry = SEALANT_MIL_SPECS[idx];
-  const checked = Array.from(document.querySelectorAll('.ko-sealant-pn-cb:checked'));
-  if (!checked.length) { alert('Please select at least one P/N.'); return; }
-  checked.forEach(cb => {
-    const desc = `Sealant — ${entry.spec} — ${entry.app}`;
-    G.koAddPartRow(cb.value, desc, '', '1', 'Consumable', '', '');
+
+  const rows = Array.from(document.querySelectorAll('#ko-sealant-pn-list > div'));
+  const picked = [];
+  rows.forEach(row => {
+    const cb = row.querySelector('.ko-sealant-pn-cb');
+    if (!cb || !cb.checked) return;
+    picked.push({
+      pn: cb.value,
+      type: row.querySelector('.ko-sealant-pn-type')?.value || '',
+      size: row.querySelector('.ko-sealant-pn-size')?.value || '',
+      semkit: row.querySelector('.ko-sealant-pn-semkit')?.checked || false,
+      group: row.querySelector('.ko-sealant-pn-group')?.value || ''
+    });
   });
+  if (!picked.length) { alert('Please select at least one P/N.'); return; }
+
+  const tagStr = p => {
+    const tags = [];
+    if (p.type) tags.push(`Type ${p.type}`);
+    if (p.size) tags.push(p.size);
+    if (p.semkit) tags.push('Semkit');
+    return tags.length ? ` — ${tags.join(', ')}` : '';
+  };
+
+  // Items sharing the same Group # are combined as OR on one row.
+  // Each distinct Group # becomes its own row (so different groups are effectively AND).
+  const groups = {};
+  picked.forEach(p => {
+    const key = p.group || `_${Math.random()}`;
+    (groups[key] = groups[key] || []).push(p);
+  });
+
+  Object.values(groups).forEach(group => {
+    if (group.length > 1) {
+      const pnCombo = group.map(p => `${p.pn}${tagStr(p)}`).join('  OR  ');
+      const desc = `Sealant — ${entry.spec} — ${entry.app} (pick ONE option)`;
+      G.koAddPartRow(pnCombo, desc, '', '1', 'Consumable', 'OR — only one of the listed options is required', '');
+    } else {
+      const p = group[0];
+      const desc = `Sealant — ${entry.spec} — ${entry.app}${tagStr(p)}`;
+      G.koAddPartRow(p.pn, desc, '', '1', 'Consumable', '', '');
+    }
+  });
+
   koSortPartsTable();
   koUpdatePreview();
   koSaveState();
@@ -8027,6 +8630,8 @@ G.koAddSelectedSealants = function() {
   document.getElementById('ko-sealant-pn-list').style.display = 'none';
   document.getElementById('ko-sealant-pn-list').innerHTML = '';
   document.getElementById('ko-sealant-add-btn').style.display = 'none';
+  const hintRow = document.getElementById('ko-sealant-hint-row');
+  if (hintRow) hintRow.style.display = 'none';
 };
 
 G.koManageSealants = function() { renderSealantManageList(); openModal('modal-sealant-manage'); };
@@ -8268,7 +8873,7 @@ G.koNewJob = async function() {
     'kofbo_steps','kofbo_steps_engine','kofbo_hangar','kofbo_lavatory','kofbo_hpbay',
     'kofbo_q_days','kofbo_q_confirm','kofbo_q_shipping','kofbo_q_parts_delivery','kofbo_q_importer','kofbo_q_transport','kofbo_q_access_docs','kofbo_q_toolbox_docs',
     'koq_broker','koq_hours','koq_po','koq_next_flight','koq_keys','koq_fbo_name','koq_fbo_mail',
-    'koq_contact','koq_troubleshoot','koq_cas','koq_fhdb',
+    'koq_contact','koq_login','koq_troubleshoot','koq_cas','koq_fhdb',
     'koq_techops','koq_self_parts','koq_handcarry','koq_order_before_tshoot',
     'kofbo_doc_passport','kofbo_doc_photo','kofbo_doc_ibac',
     'kofbo_doc_license','kofbo_doc_authorization','kofbo_doc_toolbox','kofbo_doc_visa',
@@ -8410,6 +9015,24 @@ window.koAddQuickPart = G.koAddQuickPart;
 window.koDeleteQuickPart = G.koDeleteQuickPart;
 window.koQuickPartEdit = G.koQuickPartEdit;
 window.koUseQuickPart = G.koUseQuickPart;
+window.koManageGsModels = G.koManageGsModels;
+window.koAddGsModel = G.koAddGsModel;
+window.koDeleteGsModel = G.koDeleteGsModel;
+window.koManagePartTpl = G.koManagePartTpl;
+window.koUsePartTpl = G.koUsePartTpl;
+window.koDeletePartTpl = G.koDeletePartTpl;
+window.koPartTplEdit = G.koPartTplEdit;
+window.koPartTplNewLineEdit = G.koPartTplNewLineEdit;
+window.koPartTplNewLineCatChange = G.koPartTplNewLineCatChange;
+window.koAddPartTplLine = G.koAddPartTplLine;
+window.koRemovePartTplLine = G.koRemovePartTplLine;
+window.koAddPartTpl = G.koAddPartTpl;
+window.koFilterPartTpl = G.koFilterPartTpl;
+window.koManageShipAddr = G.koManageShipAddr;
+window.koAddShipAddr = G.koAddShipAddr;
+window.koDeleteShipAddr = G.koDeleteShipAddr;
+window.koShipAddrEdit = G.koShipAddrEdit;
+window.koUseShipAddr = G.koUseShipAddr;
 
 </script>
 
