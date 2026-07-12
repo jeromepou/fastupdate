@@ -1586,6 +1586,25 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     </div>
     <div class="fg" style="margin-bottom:10px"><label>Supporting documents</label><textarea id="hov_supporting_documents" style="min-height:60px"></textarea></div>
 
+    <div class="ko-section-lbl">✅ Corridor / CMP / Handover checklist</div>
+    <div class="grid g3" style="margin-bottom:10px">
+      <div class="fg"><label>Corridor squawk/s complete</label>
+        <select id="hov_corridor_complete"><option value="NO">NO</option><option value="YES">YES</option></select>
+      </div>
+      <div class="fg"><label>CMP cards up to date</label>
+        <select id="hov_cmp_uptodate"><option value="NO">NO</option><option value="YES">YES</option></select>
+      </div>
+      <div class="fg"><label>CMP partial steps signed</label>
+        <select id="hov_cmp_partial_signed"><option value="N/A">N/A</option><option value="YES">YES</option><option value="NO">NO</option></select>
+      </div>
+      <div class="fg"><label>CMP inspected &amp; retained</label>
+        <select id="hov_cmp_inspected_retained"><option value="NO">NO</option><option value="YES">YES</option></select>
+      </div>
+      <div class="fg"><label>Handover email compiled (incl. FASTOPS)</label>
+        <select id="hov_email_compiled"><option value="NO">NO</option><option value="YES">YES</option></select>
+      </div>
+    </div>
+
     <div class="ko-section-lbl">✍️ Sign-off</div>
     <div class="grid g3" style="margin-bottom:10px">
       <div class="fg"><label>Support prepared by</label><input type="text" id="hov_prepared_by"/></div>
@@ -3788,6 +3807,11 @@ G.openHandoverModal = async function() {
   sv('hov_parts_ordered', handoverBuildPartsOrdered(proj, koParts, koConsumables));
   sv('hov_tools', handoverBuildTools(koTools));
   sv('hov_supporting_documents', '');
+  sv('hov_corridor_complete', 'NO');
+  sv('hov_cmp_uptodate', 'NO');
+  sv('hov_cmp_partial_signed', 'N/A');
+  sv('hov_cmp_inspected_retained', 'NO');
+  sv('hov_email_compiled', 'NO');
   sv('hov_cmp_s', '');
   sv('hov_handover_date', rtagTodayFormatted());
 
@@ -3840,7 +3864,6 @@ G.confirmHandoverAndTransfer = async function() {
   const origLabel = btn.textContent;
   btn.disabled = true; btn.textContent = '⏳ Generating…';
   try {
-    if (!window.JSZip) throw new Error("JSZip n'est pas chargé — vérifie que jszip.min.js est bien ajouté au HTML.");
     const data = {
       operator_name: gv('hov_operator_name'), location: gv('hov_location'), airport_code: gv('hov_airport_code'),
       fa_number: gv('hov_fa_number'), ac_type: gv('hov_ac_type'), ac_sn: gv('hov_ac_sn'), ac_reg: gv('hov_ac_reg'),
@@ -3852,6 +3875,9 @@ G.confirmHandoverAndTransfer = async function() {
       ac_rts_date: gv('hov_ac_rts_date'), support_updates: gv('hov_support_updates'),
       shipping_address: gv('hov_shipping_address'), parts_ordered: gv('hov_parts_ordered'),
       tools: gv('hov_tools'), supporting_documents: gv('hov_supporting_documents'),
+      corridor_complete: gv('hov_corridor_complete'), cmp_uptodate: gv('hov_cmp_uptodate'),
+      cmp_partial_signed: gv('hov_cmp_partial_signed'), cmp_inspected_retained: gv('hov_cmp_inspected_retained'),
+      email_compiled: gv('hov_email_compiled'),
       cmp_s: gv('hov_cmp_s'), handover_date: gv('hov_handover_date'),
     };
     await docxGenerateHandover(data);
