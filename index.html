@@ -8811,7 +8811,8 @@ function koRenderSealantCart() {
       <button onclick="koRemoveSealantFromCart(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
     </div>`).join('');
 }
-
+window.koRenderSealantCart = koRenderSealantCart;
+	
 G.koRemoveSealantFromCart = function(i) {
   koSealantCart.splice(i, 1);
   koRenderSealantCart();
