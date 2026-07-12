@@ -377,6 +377,9 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   color: var(--g400); font-size: 16px; line-height: 1; padding: 0 2px;
 }
 .ko-parts-tbl .rm-btn:hover { color: var(--red) }
+.ko-parts-tbl tr.ko-cat-part{background:#eafaf0}
+.ko-parts-tbl tr.ko-cat-consumable{background:#fff8e6}
+.ko-parts-tbl tr.ko-cat-tool{background:#eaf2fc}	
 
 /* airline rows */
 .ko-airline-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px }
@@ -1186,7 +1189,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 	    <select id="ko-sealant-spec-sel" onchange="koRenderSealantPns()" style="width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;margin-bottom:8px">
 	      <option value="">— select MIL Spec / application —</option>
 	    </select>
-	    <div id="ko-sealant-hint-row" style="display:none;font-size:11px;color:#3730a3;margin-bottom:6px">Add P/Ns from any MIL Spec to your selection below. Give two items the same "Equivalent set #" to mean "either one" (OR) — leave it blank if it's simply required on its own.</div>
+	    <div id="ko-sealant-hint-row" style="display:none;font-size:11px;color:#3730a3;margin-bottom:6px">Pick your P/Ns below, then set each one to "Required" or to the same Alternative group letter (A/B/C/D) if only ONE of them is actually needed.</div>
       <div id="ko-sealant-pn-list" style="display:none;flex-direction:column;gap:5px;margin-bottom:8px"></div>
       <div id="ko-sealant-cart-wrap" style="display:none;margin-bottom:8px">
         <div style="font-size:11px;font-weight:700;color:#3730a3;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">Your selection</div>
@@ -1210,17 +1213,9 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         </div>
       </div>
       <table class="ko-parts-tbl">
-        <thead>
+       <thead>
           <tr>
-            <th style="width:28px"><input type="checkbox" id="ko-parts-select-all" onclick="koToggleAllPartRows(this.checked)" title="Select all"/></th>
-            <th style="min-width:130px">Description</th>
-            <th style="min-width:100px">P/N</th>
-            <th style="min-width:70px">S/N</th>
-            <th style="width:45px">Qty</th>
-            <th style="width:90px">Category</th>
-            <th style="min-width:110px">Note</th>
-            <th style="min-width:120px">Squawk / item</th>
-            <th style="width:28px"></th>
+            <th style="width:16%">Description</th><th style="width:12%">P/N</th><th style="width:9%">S/N</th><th style="width:6%">Qty</th><th style="width:11%">Category</th><th style="width:34%">Note / options</th><th style="width:4%"></th>
           </tr>
         </thead>
         <tbody id="ko-parts-tbody"></tbody>
@@ -1592,7 +1587,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 
 <!-- PARTS TEMPLATES MANAGE MODAL -->
 <div class="modal-bg" id="modal-parttpl">
-  <div class="modal" style="max-width:820px">
+  <div class="modal" style="max-width:980px">
     <h3>🛠️ Manage parts order templates</h3>
     <p style="font-size:12px;color:var(--g600);margin-bottom:10px">Shared with the whole team. One click adds every line to the parts table.</p>
     <div id="parttpl-manage-list" style="max-height:280px;overflow-y:auto;margin-bottom:12px"></div>
@@ -6503,6 +6498,8 @@ window.koPartCatChange = function(sel) {
   const smallQtyLbl = tr.querySelector('.ko-smallqty-lbl');
   if (!snInput) return;
   const cat = sel.value;
+  tr.classList.remove('ko-cat-part','ko-cat-consumable','ko-cat-tool');
+  if (cat) tr.classList.add('ko-cat-' + cat.toLowerCase());
   // Remove warning style once a category is chosen
   if (cat) { sel.style.border = ''; sel.style.background = ''; }
   if (!cat) return; // No category selected yet — don't sort or change fields
@@ -8505,12 +8502,11 @@ function renderPartTplManageList() {
           </div>
           <table class="ko-parts-tbl" style="width:100%;margin-bottom:6px">
             <thead><tr>
-              <th style="min-width:120px">Description</th><th style="min-width:90px">P/N</th><th style="min-width:60px">S/N</th>
-              <th style="width:40px">Qty</th><th style="width:85px">Category</th><th style="min-width:150px">Note / options</th><th style="width:24px"></th>
+              <th style="width:16%">Description</th><th style="width:12%">P/N</th><th style="width:9%">S/N</th><th style="width:6%">Qty</th><th style="width:11%">Category</th><th style="width:34%">Note / options</th><th style="width:4%"></th>
             </tr></thead>
             <tbody>
               ${(t.parts||[]).map((p, li) => `
-                <tr>
+                <tr class="${p.cat ? 'ko-cat-' + p.cat.toLowerCase() : ''}">
                   <td><input type="text" value="${(p.desc||'').replace(/"/g,'&quot;')}" oninput="koPartTplLineEdit(${t._idx},${li},'desc',this.value)"/></td>
                   <td><input type="text" value="${(p.pn||'').replace(/"/g,'&quot;')}" oninput="koPartTplLineEdit(${t._idx},${li},'pn',this.value)"/></td>
                   <td><input type="text" value="${(p.sn||'').replace(/"/g,'&quot;')}" ${p.cat==='Consumable'?'disabled style="background:var(--g100)"':''} oninput="koPartTplLineEdit(${t._idx},${li},'sn',this.value)"/></td>
@@ -8554,6 +8550,7 @@ G.koPartTplLineCatChange = function(tplIdx, lineIdx, cat) {
   const t = KO_PARTTPL[tplIdx]; if (!t || !t.parts?.[lineIdx]) return;
   t.parts[lineIdx].cat = cat;
   if (cat === 'Consumable') t.parts[lineIdx].sn = '';
+  koSortByCat(t.parts);
   renderPartTplManageList();
   koRenderPartTplChips();
   koSavePartTplCatalog();
@@ -8589,12 +8586,17 @@ G.koPartTplEdit = function(i, field, val) {
   _ptEditTimer = setTimeout(koSavePartTplCatalog, 600);
 };
 
+const KO_CAT_ORDER = { 'Part':0, 'Consumable':1, 'Tool':2, '':3 };
+function koSortByCat(list) {
+  list.sort((a,b) => (KO_CAT_ORDER[a.cat||''] ?? 3) - (KO_CAT_ORDER[b.cat||''] ?? 3));
+}
+	
 // --- building a NEW template inside the modal — mirrors the main parts table exactly ---
 function renderPartTplNewLines() {
   const tbody = document.getElementById('pt-new-parts-tbody');
   if (!tbody) return;
   tbody.innerHTML = _ptNewLines.map(l => `
-    <tr id="pt-line-${l._id}">
+    <tr id="pt-line-${l._id}" class="${l.cat ? 'ko-cat-' + l.cat.toLowerCase() : ''}">
       <td><input type="text" value="${(l.desc||'').replace(/"/g,'&quot;')}" placeholder="Description" oninput="koPartTplNewLineEdit(${l._id},'desc',this.value)"/></td>
       <td><input type="text" value="${(l.pn||'').replace(/"/g,'&quot;')}" placeholder="P/N" oninput="koPartTplNewLineEdit(${l._id},'pn',this.value)"/></td>
       <td><input type="text" value="${(l.sn||'').replace(/"/g,'&quot;')}" placeholder="S/N off" class="pt-sn-field-${l._id}" ${l.cat==='Consumable'?'disabled style="background:var(--g100);color:var(--g400)"':''} oninput="koPartTplNewLineEdit(${l._id},'sn',this.value)"/></td>
@@ -8631,6 +8633,7 @@ G.koPartTplNewLineCatChange = function(id, cat) {
   if (!l) return;
   l.cat = cat;
   if (cat === 'Consumable') l.sn = '';
+  koSortByCat(_ptNewLines);
   renderPartTplNewLines();
 };
 
@@ -8724,6 +8727,7 @@ const SEALANT_TYPE_OPTIONS = ['A-1/2','A-1','A-2','B-1/2','B-1','B-2'];
 const SEALANT_SIZE_OPTIONS = ['2.5oz','6oz'];
 
 let koSealantCart = []; // persiste entre les changements de MIL Spec
+window.koSealantCart = koSealantCart; // requis : les oninput inline tournent hors du scope du module
 
 G.koRenderSealantPns = function() {
   const sel = document.getElementById('ko-sealant-spec-sel');
@@ -8783,16 +8787,20 @@ function koRenderSealantCart() {
   if (!wrap || !list || !btn) return;
   if (!koSealantCart.length) { wrap.style.display = 'none'; btn.style.display = 'none'; return; }
   wrap.style.display = ''; btn.style.display = '';
+  const groupColors = { A:'#3b82f6', B:'#f59e0b', C:'#8b5cf6', D:'#ef4444' };
   list.innerHTML = koSealantCart.map((c, i) => `
-    <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:6px 9px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--g200);border-left:4px solid ${groupColors[c.setNum]||'#d1d5db'};border-radius:var(--r);padding:6px 9px;flex-wrap:wrap">
       <div style="flex:1;min-width:160px;font-size:12px">
-        <b>${c.pn}</b>${koSealantTagStr(c)}
+        <b>${c.pn}</b>${koSealantTagStr(c)} ${c.setNum?`<span style="font-size:10px;font-weight:700;color:${groupColors[c.setNum]}">· Group ${c.setNum}</span>`:''}
         <div style="font-size:10px;color:var(--g600)">${c.specLabel}</div>
       </div>
-      <label style="display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap">
-        Equivalent set #
-        <input type="number" min="1" max="9" placeholder="—" value="${c.setNum}" oninput="koSealantCart[${i}].setNum=this.value" style="width:44px;font-size:11px;padding:3px 5px;border:1px solid var(--g200);border-radius:4px"/>
-      </label>
+      <select onchange="koSealantCart[${i}].setNum=this.value;koRenderSealantCart()" style="font-size:11px;padding:4px 7px;border:1px solid var(--g200);border-radius:4px;background:#fff">
+        <option value="">✅ Required — always needed</option>
+        <option value="A" ${c.setNum==='A'?'selected':''}>🅰️ Alternative group A — pick ONE</option>
+        <option value="B" ${c.setNum==='B'?'selected':''}>🅱️ Alternative group B — pick ONE</option>
+        <option value="C" ${c.setNum==='C'?'selected':''}>🇨 Alternative group C — pick ONE</option>
+        <option value="D" ${c.setNum==='D'?'selected':''}>🇩 Alternative group D — pick ONE</option>
+      </select>
       <button onclick="koRemoveSealantFromCart(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
     </div>`).join('');
 }
@@ -8825,7 +8833,7 @@ G.koAddSelectedSealants = function() {
   koUpdatePreview();
   koSaveState();
 
-  koSealantCart = [];
+  koSealantCart.length = 0; // vider SANS réassigner, sinon window.koSealantCart pointe vers l'ancien tableau
   koRenderSealantCart();
   document.getElementById('ko-sealant-spec-sel').value = '';
   document.getElementById('ko-sealant-pn-list').style.display = 'none';
