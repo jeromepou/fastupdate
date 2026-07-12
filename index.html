@@ -1572,7 +1572,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div class="fg"><label>WOA status (green/red/amber)</label><input type="text" id="hov_woa_status"/></div>
       <div class="fg"><label>A/C RTS (date)</label><input type="text" id="hov_ac_rts_date"/></div>
       <div class="fg"><label>Spare part order required</label><input type="text" id="hov_spare_part_required"/></div>
-      <div class="fg"><label>Parts AWB / Tracking numbers</label><textarea id="hov_parts_awb" style="min-height:60px" placeholder="Une ligne par colis…"></textarea></div>
+      <div class="fg"><label>Parts AWB / Tracking numbers</label><textarea id="hov_parts_awb" style="min-height:60px" placeholder="One line by parcel…"></textarea></div>
       <div class="fg"><label>P-135 (yes/no)</label><input type="text" id="hov_p135"/></div>
     </div>
 
@@ -2683,7 +2683,7 @@ function koInsertEtaNoteIntoUpdate(itemNum, description, etaText) {
   const loadedWo = (gv('f_wo') || '').trim().toUpperCase();
   const replyWo  = (koReplyCurrentFA || '').trim().toUpperCase();
   if (loadedWo && replyWo && loadedWo !== replyWo) {
-    if (!confirm('⚠️ Le projet actuellement chargé (' + loadedWo + ') ne correspond pas à ce Work Order (' + replyWo + ').\n\nAjouter quand même dans le tableau Update actuellement affiché ?')) return false;
+    if (!confirm('⚠️ The project currently loaded (' + loadedWo + ') does not match this Work Order (' + replyWo + ').\n\nAdd it anyway to the Update table currently displayed?')) return false;
   }
 
   let todayBlock = Array.from(document.querySelectorAll('.update-day')).find(d => d.dataset.date === todayLabel());
@@ -2773,9 +2773,9 @@ function koPartUpdateNoteLine(item) {
   if (item.eta_text)        bits.push('ETA ' + item.eta_text);
   if (item.source_location) bits.push(item.source_location);
   if (item.tracking_number) bits.push('tracking: ' + item.tracking_number);
-  const stamp = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit' });
-  let line = '[' + stamp + '] ' + (bits.join(' — ') || 'mise à jour via réponse email');
-  if (item.alternative_pn) line += ' — Alt proposé : ' + item.alternative_pn;
+  const stamp = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit' });
+  let line = '[' + stamp + '] ' + (bits.join(' — ') || 'updated via email reply');
+  if (item.alternative_pn) line += ' — Alternative offered: ' + item.alternative_pn;
   return line;
 }
 
@@ -2833,11 +2833,11 @@ G.koApplyPartsUpdate = async function(btn, idx) {
           if (row) { row.style.outline = '2px solid #10b981'; setTimeout(() => { row.style.outline = ''; }, 2000); }
           koUpdatePreview();
         }
-        btn.textContent = '✓ Mis à jour';
+        btn.textContent = '✓ Updated';
 
       } else {
         const desc = item.pn && item.description ? item.pn + ' — ' + item.description : (item.pn || item.description || '?');
-        if (!confirm('Cette pièce (' + desc + ') ne correspond à aucune ligne existante de la commande ' + wo + '.\n\nL\'ajouter au tableau ?')) { cancel(); return; }
+        if (!confirm('This part (' + desc + ') doesn\'t match any existing line in the ' + wo + ' order.\n\nAdd it to the table?')) { cancel(); return; }
         const newEntry = { pn:item.pn||'', desc:item.description||'', sn:'', qty:'1', cat:'Part', note: koPartUpdateNoteLine(item), addedAt: Date.now() };
         await runTransaction(ref(db, 'orders/' + key), (order) => {
           order = order || {};
@@ -2850,14 +2850,14 @@ G.koApplyPartsUpdate = async function(btn, idx) {
           koSortPartsTable();
           koUpdatePreview();
         }
-        btn.textContent = '✓ Ajouté';
+        btn.textContent = '✓ Added';
       }
 
     } else if (item.kind === 'add') {
       const desc = item.pn && item.description ? item.pn + ' — ' + item.description : (item.pn || item.description || '?');
-      if (!confirm('Ton collègue HSA a ajouté cette pièce : ' + desc + '.\n\nL\'ajouter au tableau de ' + wo + ' ?')) { cancel(); return; }
+      if (!confirm('Your HSA colleague added this part: ' + desc + '.\n\nAdd it to the ' + wo + ' table?')) { cancel(); return; }
       if (!koFindOrderPartMatch(preAllItems, item)) {
-        const newEntry = { pn:item.pn||'', desc:item.description||'', sn:'', qty:'1', cat:'Part', note:'[ajouté via réponse email — collègue HSA]', addedAt: Date.now() };
+        const newEntry = { pn:item.pn||'', desc:item.description||'', sn:'', qty:'1', cat:'Part', note:'[added via email reply — HSA colleague]', addedAt: Date.now() };
         await runTransaction(ref(db, 'orders/' + key), (order) => {
           order = order || {};
           order.parts = order.parts || []; order.tools = order.tools || []; order.consumables = order.consumables || [];
@@ -2871,11 +2871,11 @@ G.koApplyPartsUpdate = async function(btn, idx) {
           koUpdatePreview();
         }
       }
-      btn.textContent = '✓ Ajouté';
+      btn.textContent = '✓ Added';
 
     } else if (item.kind === 'remove') {
       const desc = item.pn && item.description ? item.pn + ' — ' + item.description : (item.pn || item.description || '?');
-      if (!confirm('Ton collègue HSA indique que cette pièce n\'est plus nécessaire : ' + desc + '.\n\nLa retirer du tableau de ' + wo + ' ?')) { cancel(); return; }
+      if (!confirm('Your HSA colleague indicates this part is no longer needed: ' + desc + '.\n\nRemove it from the ' + wo + ' table?')) { cancel(); return; }
       const match = koFindOrderPartMatch(preAllItems, item);
       if (match) {
         await runTransaction(ref(db, 'orders/' + key), (order) => {
@@ -2887,12 +2887,12 @@ G.koApplyPartsUpdate = async function(btn, idx) {
         });
         if (koIsKickoffOpenForWo(wo)) { koFindPartRowByPn(match.pn)?.remove(); koUpdatePreview(); }
       }
-      btn.textContent = '✓ Retiré';
+      btn.textContent = '✓ Removed';
     }
 
   } catch(e) {
     console.warn('koApplyPartsUpdate error:', e);
-    btn.textContent = '❌ Erreur — réessayer';
+    btn.textContent = '❌ Error — try again';
     btn.disabled = false;
     btn.style.opacity = '';
     return;
