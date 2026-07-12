@@ -372,6 +372,14 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 }
 .ko-parts-tbl td input:focus,
 .ko-parts-tbl td select:focus { background: var(--g50) }
+.ko-parts-tbl td textarea.ko-desc-ta {
+  width: 100%; font-size: 12px; background: transparent;
+  border: none; color: var(--g900); outline: none; padding: 3px 4px;
+  border-radius: var(--r); font-family: inherit; line-height: 1.35;
+  white-space: pre-wrap; word-break: break-word; resize: none;
+  overflow: hidden; min-height: 22px; display: block;
+}
+.ko-parts-tbl td textarea.ko-desc-ta:focus { background: var(--g50) }
 .ko-parts-tbl .rm-btn {
   background: none; border: none; cursor: pointer;
   color: var(--g400); font-size: 16px; line-height: 1; padding: 0 2px;
@@ -1162,7 +1170,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="ko-card">
     <div class="ko-card-head">
       <h3>🔧 Parts & tools list</h3>
-      <button class="btn" onclick="koAddPartRow()" style="font-size:12px;padding:4px 10px">+ Add row</button>
     </div>
     <div class="ko-card-body" style="padding-top:.75rem;overflow-x:auto">
 	<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:var(--r);padding:8px 12px;margin-bottom:10px">
@@ -1189,7 +1196,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 	    <select id="ko-sealant-spec-sel" onchange="koRenderSealantPns()" style="width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;margin-bottom:8px">
 	      <option value="">— select MIL Spec / application —</option>
 	    </select>
-	    <div id="ko-sealant-hint-row" style="display:none;font-size:11px;color:#3730a3;margin-bottom:6px">Pick your P/Ns below, then set each one to "Required" or to the same Alternative group letter (A/B/C/D) if only ONE of them is actually needed.</div>
+	    <div id="ko-sealant-hint-row" style="display:none;font-size:11px;color:#3730a3;margin-bottom:6px">Choisis tes P/Ns ci-dessous. Laisse "Required" si l'item est toujours nécessaire. Donne la MÊME lettre de groupe (A/B/C/D) à deux items ou plus si un seul des deux suffit — ils seront fusionnés en une seule ligne "à choisir".</div>
       <div id="ko-sealant-pn-list" style="display:none;flex-direction:column;gap:5px;margin-bottom:8px"></div>
       <div id="ko-sealant-cart-wrap" style="display:none;margin-bottom:8px">
         <div style="font-size:11px;font-weight:700;color:#3730a3;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">Your selection</div>
@@ -1216,13 +1223,13 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
        <thead>
           <tr>
             <th style="width:30px;text-align:center"><input type="checkbox" id="ko-parts-select-all" onchange="koToggleAllPartRows(this.checked)"/></th>
-            <th style="min-width:130px">Description</th>
-            <th style="min-width:100px">P/N</th>
+            <th style="min-width:180px">Description</th>
+            <th style="min-width:90px">P/N</th>
             <th style="min-width:70px">S/N</th>
             <th style="width:45px">Qty</th>
-            <th style="width:90px">Category</th>
-            <th style="min-width:110px">Note</th>
-            <th style="min-width:110px">Squawk</th>
+            <th style="width:85px">Category</th>
+            <th style="min-width:160px">Note</th>
+            <th style="min-width:100px">Squawk</th>
             <th style="width:28px"></th>
           </tr>
         </thead>
@@ -1712,12 +1719,12 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <table class="ko-parts-tbl" style="width:100%">
         <thead>
           <tr>
-            <th style="min-width:130px">Description</th>
-            <th style="min-width:100px">P/N</th>
+            <th style="min-width:180px">Description</th>
+            <th style="min-width:90px">P/N</th>
             <th style="min-width:70px">S/N</th>
             <th style="width:45px">Qty</th>
-            <th style="width:90px">Category</th>
-            <th style="min-width:110px">Note</th>
+            <th style="width:85px">Category</th>
+            <th style="min-width:180px">Note</th>
             <th style="width:28px"></th>
           </tr>
         </thead>
@@ -2750,8 +2757,7 @@ function koFindPartRowByPn(pn) {
   if (!target) return null;
   const rows = document.querySelectorAll('#ko-parts-tbody tr');
   for (const tr of rows) {
-    const inputs = tr.querySelectorAll('input[type="text"]');
-    if (koNormPn(inputs[1]?.value) === target) return tr;
+    if (koNormPn(tr.querySelector('.ko-f-pn')?.value) === target) return tr;
   }
   return null;
 }
@@ -2835,8 +2841,8 @@ G.koApplyPartsUpdate = async function(btn, idx) {
         });
         if (koIsKickoffOpenForWo(wo)) {
           const row = koFindPartRowByPn(match.pn);
-          const inputs = row?.querySelectorAll('input[type="text"]');
-          if (inputs?.[4]) inputs[4].value = savedNote;
+          const noteEl = row?.querySelector('.ko-f-note');
+          if (noteEl) { noteEl.value = savedNote; koAutoGrow(noteEl); }
           if (row) { row.style.outline = '2px solid #10b981'; setTimeout(() => { row.style.outline = ''; }, 2000); }
           koUpdatePreview();
         }
@@ -6349,6 +6355,7 @@ G.openKickoff = async function(forceWo) {
   koRenderAllRecips();
   koInitToggles();
   await koRestoreState(forceWo);
+  document.querySelectorAll('#ko-parts-tbody .ko-desc-ta').forEach(koAutoGrow);
 
   // Auto-add scanned customer email to customer recipients if not already present
   const scannedCustEmail = (gv('f_cust_email') || '').trim().toLowerCase();
@@ -6751,6 +6758,14 @@ G.koRefreshSquawkSelects = window.koRefreshSquawkSelects = function() {
   koRefreshTroubleshootingSquawks();
 };
 
+// Agrandit un textarea (description/note) pour afficher tout le texte, sans scroll
+function koAutoGrow(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+G.koAutoGrow = koAutoGrow;
+
 G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='', note='', sqLabel='') {
   KO.partRows++;
   const tbody = document.getElementById('ko-parts-tbody');
@@ -6758,10 +6773,10 @@ G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='', note='', sqLabe
   tr.id = 'ko-part-' + KO.partRows;
   tr.innerHTML = `
     <td style="text-align:center"><input type="checkbox" class="ko-part-row-cb" onchange="koUpdateBulkBar()"/></td>
-    <td><input type="text" value="${desc.replace(/"/g,'&quot;')}" placeholder="Description"/></td>
-    <td><input type="text" value="${pn.replace(/"/g,'&quot;')}" placeholder="P/N"/></td>
-    <td><input type="text" value="${sn.replace(/"/g,'&quot;')}" placeholder="S/N off" class="ko-sn-field"/></td>
-    <td><input type="text" value="${qty}" placeholder="Qty"/></td>
+    <td><textarea class="ko-desc-ta ko-f-desc" rows="1" oninput="koAutoGrow(this)" placeholder="Description">${koEscapeHtml(desc)}</textarea></td>
+    <td><input type="text" class="ko-f-pn" value="${pn.replace(/"/g,'&quot;')}" placeholder="P/N"/></td>
+    <td><input type="text" class="ko-f-sn ko-sn-field" value="${sn.replace(/"/g,'&quot;')}" placeholder="S/N off"/></td>
+    <td><input type="text" class="ko-f-qty" value="${qty}" placeholder="Qty"/></td>
     <td>
       <select onchange="koPartCatChange(this)" style="${!cat?'border:1px solid #e07700;background:#fef9e7':''}">
         <option value="" ${!cat?'selected':''} style="color:#aaa">— Type —</option>
@@ -6774,7 +6789,7 @@ G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='', note='', sqLabe
       <label class="ko-smallqty-lbl" style="display:none;align-items:center;gap:4px;font-size:11px;color:var(--g600);white-space:nowrap">
         <input type="checkbox" class="ko-smallqty-cb"/> small qty — avoid DG
       </label>
-      <input type="text" value="${note.replace(/"/g,'&quot;')}" placeholder="Note…"/>
+      <textarea class="ko-desc-ta ko-f-note" rows="1" oninput="koAutoGrow(this)" placeholder="Note…">${koEscapeHtml(note)}</textarea>
     </td>
     <td>
       <select class="ko-sq-sel" style="font-size:11px;padding:2px 4px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;color:var(--g900);width:100%;min-width:110px">
@@ -6785,6 +6800,7 @@ G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='', note='', sqLabe
   tbody.appendChild(tr);
   const sel = tr.querySelector('select');
   if (sel && cat) koPartCatChange(sel);
+  tr.querySelectorAll('.ko-desc-ta').forEach(koAutoGrow);
 };
 
 window.koPartCatChange = function(sel) {
@@ -6855,14 +6871,21 @@ window.koSortPartsTable = koSortPartsTable;
 
 function koGetParts() {
   return Array.from(document.querySelectorAll('#ko-parts-tbody tr')).map(tr => {
-    const inputs = tr.querySelectorAll('input[type="text"]');
     const cat    = tr.querySelector('select')?.value || 'Part';
     const smallQty = cat === 'Consumable' && tr.querySelector('.ko-smallqty-cb')?.checked;
     const sqVal  = tr.querySelector('.ko-sq-sel')?.value || '';
     const sqParts = sqVal.split('|');
     const sqNum  = sqParts[0] || '';
     const sqLabel= sqParts.slice(1).join('|') || '';
-    return { desc: inputs[0]?.value||'', pn: inputs[1]?.value||'', sn: inputs[2]?.value||'', qty: inputs[3]?.value||'', cat, note: inputs[4]?.value||'', smallQty, sqNum, sqLabel };
+    return {
+      desc: tr.querySelector('.ko-f-desc')?.value || '',
+      pn:   tr.querySelector('.ko-f-pn')?.value   || '',
+      sn:   tr.querySelector('.ko-f-sn')?.value   || '',
+      qty:  tr.querySelector('.ko-f-qty')?.value  || '',
+      cat,
+      note: tr.querySelector('.ko-f-note')?.value || '',
+      smallQty, sqNum, sqLabel
+    };
   }).filter(p => p.pn || p.desc);
 }
 
@@ -8798,13 +8821,13 @@ function renderPartTplManageList() {
           </div>
           <table class="ko-parts-tbl" style="width:100%;margin-bottom:6px">
             <thead><tr>
-              <th style="min-width:120px">Description</th><th style="min-width:90px">P/N</th><th style="min-width:60px">S/N</th>
-              <th style="width:40px">Qty</th><th style="width:85px">Category</th><th style="min-width:150px">Note / options</th><th style="width:24px"></th>
+              <th style="min-width:170px">Description</th><th style="min-width:90px">P/N</th><th style="min-width:60px">S/N</th>
+              <th style="width:40px">Qty</th><th style="width:85px">Category</th><th style="min-width:180px">Note / options</th><th style="width:24px"></th>
             </tr></thead>
             <tbody>
               ${(t.parts||[]).map((p, li) => `
                 <tr class="${p.cat ? 'ko-cat-' + p.cat.toLowerCase() : ''}">
-                  <td><input type="text" value="${(p.desc||'').replace(/"/g,'&quot;')}" oninput="koPartTplLineEdit(${t._idx},${li},'desc',this.value)"/></td>
+                  <td><textarea class="ko-desc-ta" rows="1" oninput="koAutoGrow(this);koPartTplLineEdit(${t._idx},${li},'desc',this.value)">${koEscapeHtml(p.desc||'')}</textarea></td>
                   <td><input type="text" value="${(p.pn||'').replace(/"/g,'&quot;')}" oninput="koPartTplLineEdit(${t._idx},${li},'pn',this.value)"/></td>
                   <td><input type="text" value="${(p.sn||'').replace(/"/g,'&quot;')}" ${p.cat==='Consumable'?'disabled style="background:var(--g100)"':''} oninput="koPartTplLineEdit(${t._idx},${li},'sn',this.value)"/></td>
                   <td><input type="text" value="${p.qty||''}" oninput="koPartTplLineEdit(${t._idx},${li},'qty',this.value)"/></td>
@@ -8817,7 +8840,7 @@ function renderPartTplManageList() {
                     </select>
                   </td>
                   <td>
-                    <input type="text" value="${(p.note||'').replace(/"/g,'&quot;')}" placeholder="Note…" oninput="koPartTplLineEdit(${t._idx},${li},'note',this.value)"/>
+                    <textarea class="ko-desc-ta" rows="1" placeholder="Note…" oninput="koAutoGrow(this);koPartTplLineEdit(${t._idx},${li},'note',this.value)">${koEscapeHtml(p.note||'')}</textarea>
                     <label style="display:${p.cat==='Consumable'?'flex':'none'};align-items:center;gap:4px;font-size:10px;color:var(--g600);margin-top:3px">
                       <input type="checkbox" ${p.smallQty?'checked':''} onchange="koPartTplLineEdit(${t._idx},${li},'smallQty',this.checked)"/> small qty/DG
                     </label>
@@ -8832,6 +8855,7 @@ function renderPartTplManageList() {
           <button class="btn-add" onclick="koAddPartTplExistingLine(${t._idx})" style="font-size:11px;padding:5px">+ Add line</button>
         </div>`).join('');
   }).join('');
+  list.querySelectorAll('.ko-desc-ta').forEach(koAutoGrow);
 }
 
 let _ptExistingEditTimer = null;
@@ -8894,7 +8918,7 @@ function renderPartTplNewLines() {
   if (!tbody) return;
   tbody.innerHTML = _ptNewLines.map(l => `
     <tr id="pt-line-${l._id}" class="${l.cat ? 'ko-cat-' + l.cat.toLowerCase() : ''}">
-      <td><input type="text" value="${(l.desc||'').replace(/"/g,'&quot;')}" placeholder="Description" oninput="koPartTplNewLineEdit(${l._id},'desc',this.value)"/></td>
+      <td><textarea class="ko-desc-ta" rows="1" placeholder="Description" oninput="koAutoGrow(this);koPartTplNewLineEdit(${l._id},'desc',this.value)">${koEscapeHtml(l.desc||'')}</textarea></td>
       <td><input type="text" value="${(l.pn||'').replace(/"/g,'&quot;')}" placeholder="P/N" oninput="koPartTplNewLineEdit(${l._id},'pn',this.value)"/></td>
       <td><input type="text" value="${(l.sn||'').replace(/"/g,'&quot;')}" placeholder="S/N off" class="pt-sn-field-${l._id}" ${l.cat==='Consumable'?'disabled style="background:var(--g100);color:var(--g400)"':''} oninput="koPartTplNewLineEdit(${l._id},'sn',this.value)"/></td>
       <td><input type="text" value="${l.qty||''}" placeholder="Qty" oninput="koPartTplNewLineEdit(${l._id},'qty',this.value)"/></td>
@@ -8910,13 +8934,14 @@ function renderPartTplNewLines() {
         <label style="display:${l.cat==='Consumable'?'flex':'none'};align-items:center;gap:4px;font-size:11px;color:var(--g600);white-space:nowrap">
           <input type="checkbox" ${l.smallQty?'checked':''} onchange="koPartTplNewLineEdit(${l._id},'smallQty',this.checked)"/> small qty — avoid DG
         </label>
-        <input type="text" value="${(l.note||'').replace(/"/g,'&quot;')}" placeholder="Note…" oninput="koPartTplNewLineEdit(${l._id},'note',this.value)"/>
+        <textarea class="ko-desc-ta" rows="1" placeholder="Note…" oninput="koAutoGrow(this);koPartTplNewLineEdit(${l._id},'note',this.value)">${koEscapeHtml(l.note||'')}</textarea>
         <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#9a3412;white-space:nowrap;margin-top:3px">
           <input type="checkbox" ${l.optional?'checked':''} onchange="koPartTplNewLineEdit(${l._id},'optional',this.checked)"/> if required (optional)
         </label>
       </td>
       <td><button class="ko-parts-tbl rm-btn" onclick="koRemovePartTplLine(${l._id})">×</button></td>
     </tr>`).join('') || '';
+  tbody.querySelectorAll('.ko-desc-ta').forEach(koAutoGrow);
 }
 
 G.koPartTplNewLineEdit = function(id, field, val) {
@@ -9059,6 +9084,7 @@ G.koAddSealantToCart = function(specIdx, pnIdx) {
   const entry = SEALANT_MIL_SPECS[specIdx];
   const pn = entry.pns[pnIdx];
   koSealantCart.push({
+    _cid: 'sc_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
     pn,
     specLabel: `${entry.spec} — ${entry.app}`,
     type: document.getElementById('ko-sealant-type-' + pnIdx)?.value || '',
@@ -9088,20 +9114,26 @@ function koRenderSealantCart() {
   list.innerHTML = koSealantCart.map((c, i) => `
     <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--g200);border-left:4px solid ${groupColors[c.setNum]||'#d1d5db'};border-radius:var(--r);padding:6px 9px;flex-wrap:wrap">
       <div style="flex:1;min-width:160px;font-size:12px">
-        <b>${c.pn}</b>${koSealantTagStr(c)} ${c.setNum?`<span style="font-size:10px;font-weight:700;color:${groupColors[c.setNum]}">· Group ${c.setNum}</span>`:''}
+        <b>${c.pn}</b>${koSealantTagStr(c)} ${c.setNum?`<span style="font-size:10px;font-weight:700;color:${groupColors[c.setNum]}">· Group ${c.setNum} — sera fusionné en UNE ligne</span>`:''}
         <div style="font-size:10px;color:var(--g600)">${c.specLabel}</div>
       </div>
-      <select onchange="koSealantCart[${i}].setNum=this.value;koRenderSealantCart()" style="font-size:11px;padding:4px 7px;border:1px solid var(--g200);border-radius:4px;background:#fff">
-        <option value="">✅ Required — always needed</option>
-        <option value="A" ${c.setNum==='A'?'selected':''}>🅰️ Alternative group A — pick ONE</option>
-        <option value="B" ${c.setNum==='B'?'selected':''}>🅱️ Alternative group B — pick ONE</option>
-        <option value="C" ${c.setNum==='C'?'selected':''}>🇨 Alternative group C — pick ONE</option>
-        <option value="D" ${c.setNum==='D'?'selected':''}>🇩 Alternative group D — pick ONE</option>
+      <select onchange="koSealantSetGroup('${c._cid}',this.value)" style="font-size:11px;padding:4px 7px;border:1px solid var(--g200);border-radius:4px;background:#fff">
+        <option value="">✅ Required — toujours nécessaire, sa propre ligne</option>
+        <option value="A" ${c.setNum==='A'?'selected':''}>🅰️ Group A — interchangeable, choisir UN SEUL</option>
+        <option value="B" ${c.setNum==='B'?'selected':''}>🅱️ Group B — interchangeable, choisir UN SEUL</option>
+        <option value="C" ${c.setNum==='C'?'selected':''}>🇨 Group C — interchangeable, choisir UN SEUL</option>
+        <option value="D" ${c.setNum==='D'?'selected':''}>🇩 Group D — interchangeable, choisir UN SEUL</option>
       </select>
       <button onclick="koRemoveSealantFromCart(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
     </div>`).join('');
 }
 window.koRenderSealantCart = koRenderSealantCart;
+
+G.koSealantSetGroup = function(cid, val) {
+  const item = koSealantCart.find(c => c._cid === cid);
+  if (item) item.setNum = val;
+  koRenderSealantCart();
+};
 	
 G.koRemoveSealantFromCart = function(i) {
   koSealantCart.splice(i, 1);
@@ -9113,14 +9145,22 @@ G.koAddSelectedSealants = function() {
 
   const groups = {};
   koSealantCart.forEach(p => {
-    const key = p.setNum ? p.setNum : `_${Math.random()}`;
+    const key = p.setNum ? ('grp_' + p.setNum) : ('single_' + p._cid);
     (groups[key] = groups[key] || []).push(p);
   });
 
   Object.values(groups).forEach(group => {
     if (group.length > 1) {
-      const pnCombo = group.map(p => `${p.pn}${koSealantTagStr(p)} (${p.specLabel})`).join('  OR  ');
-      G.koAddPartRow(pnCombo, 'Sealant — equivalent options (pick ONE)', '', '1', 'Consumable', 'OR — only one of the listed options is required', '');
+      const letter = group[0].setNum;
+      const specLabel = group[0].specLabel;
+      const pnList = group.map(p => `${p.pn}${koSealantTagStr(p)}`).join('  OR  ');
+      G.koAddPartRow(
+        '',
+        `Sealant — Group ${letter} — pick ONLY ONE (${specLabel})`,
+        '', '1', 'Consumable',
+        `Choose only ONE of: ${pnList}`,
+        ''
+      );
     } else {
       const p = group[0];
       G.koAddPartRow(p.pn, `Sealant — ${p.specLabel}${koSealantTagStr(p)}`, '', '1', 'Consumable', '', '');
