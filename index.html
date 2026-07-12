@@ -503,8 +503,10 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 @media (max-width: 600px) {
   .ko-g3 { grid-template-columns: 1fr 1fr }
   .ko-g2 { grid-template-columns: 1fr }
+  /*
   .ko-parts-tbl th:nth-child(1),
   .ko-parts-tbl td:nth-child(1) { display: none }
+  */
 }
 </style>
 
@@ -1215,12 +1217,14 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <table class="ko-parts-tbl">
        <thead>
           <tr>
+            <th style="width:30px;text-align:center"><input type="checkbox" id="ko-parts-select-all" onchange="koToggleAllPartRows(this.checked)"/></th>
             <th style="min-width:130px">Description</th>
             <th style="min-width:100px">P/N</th>
             <th style="min-width:70px">S/N</th>
             <th style="width:45px">Qty</th>
             <th style="width:90px">Category</th>
             <th style="min-width:110px">Note</th>
+            <th style="min-width:110px">Squawk</th>
             <th style="width:28px"></th>
           </tr>
         </thead>
