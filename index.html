@@ -1186,9 +1186,13 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 	    <select id="ko-sealant-spec-sel" onchange="koRenderSealantPns()" style="width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;margin-bottom:8px">
 	      <option value="">— select MIL Spec / application —</option>
 	    </select>
-	    <div id="ko-sealant-hint-row" style="display:none;font-size:11px;color:#3730a3;margin-bottom:6px">Tip: give items the same Group # to mean "either one" (OR). Different Group # = all required (AND).</div>
-	    <div id="ko-sealant-pn-list" style="display:none;flex-direction:column;gap:5px;margin-bottom:8px"></div>
-	    <button class="btn" id="ko-sealant-add-btn" onclick="koAddSelectedSealants()" style="display:none;font-size:12px;padding:5px 10px">+ Add selected to parts list</button>
+	    <div id="ko-sealant-hint-row" style="display:none;font-size:11px;color:#3730a3;margin-bottom:6px">Add P/Ns from any MIL Spec to your selection below. Give two items the same "Equivalent set #" to mean "either one" (OR) — leave it blank if it's simply required on its own.</div>
+      <div id="ko-sealant-pn-list" style="display:none;flex-direction:column;gap:5px;margin-bottom:8px"></div>
+      <div id="ko-sealant-cart-wrap" style="display:none;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:700;color:#3730a3;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">Your selection</div>
+        <div id="ko-sealant-cart-list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px"></div>
+      </div>
+      <button class="btn" id="ko-sealant-add-btn" onclick="koAddSelectedSealants()" style="display:none;font-size:12px;padding:5px 10px">+ Add selection to parts list</button>
 	  </div>	
       <div style="background:var(--bl);border:1px solid #b8d0e8;border-radius:var(--r);padding:8px 12px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -1632,6 +1636,24 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
+<div class="modal-bg" id="modal-parttpl-apply">
+  <div class="modal" style="max-width:560px">
+    <h3>📋 Add template to parts list</h3>
+    <div style="background:#fff7ed;border:1px solid #fdba74;border-radius:var(--r);padding:8px 10px;margin-bottom:12px;font-size:12px;color:#9a3412;font-weight:600">
+      ⚠️ Mandatory: check the applicable AMM before ordering — P/Ns and quantities may vary by aircraft configuration/effectivity.
+    </div>
+    <div class="fg" style="margin-bottom:10px">
+      <label>Assign to squawk (optional)</label>
+      <select id="pt-apply-sq-sel"></select>
+    </div>
+    <div id="pt-apply-lines-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px"></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('modal-parttpl-apply')">Cancel</button>
+      <button class="btn primary" onclick="koConfirmApplyPartTpl()">✓ Add selected lines</button>
+    </div>
+  </div>
+</div>
+
 <!-- SEALANT MIL SPEC MANAGE MODAL -->
 <div class="modal-bg" id="modal-sealant-manage">
   <div class="modal" style="max-width:620px">
@@ -1986,7 +2008,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/11.9.0/firebase-auth.js";
-import { getDatabase, ref, set, get, update, remove, onValue, child }
+import { getDatabase, ref, set, get, update, remove, onValue, child, runTransaction }
   from "https://www.gstatic.com/firebasejs/11.9.0/firebase-database.js";
 
 // ══════════════════════════════════════
@@ -2682,25 +2704,41 @@ G.koApplyPartsUpdate = async function(btn, idx) {
     btn.textContent = originalLabel;
   };
 
+  // Garde order.draft (utilisé en priorité par koRestoreState) synchronisé
+  // avec parts/tools/consumables, et marque l'entrée touchée avec addedAt —
+  // sans ça, un ajout ici restait invisible à la prochaine ouverture de
+  // Start Job, et pouvait même être effacé par le prochain koSaveState()
+  // (autosave) si le panneau était ouvert ailleurs entretemps.
+  const syncDraft = (order) => {
+    order.draft = { ...(order.draft || {}), parts: [...order.parts, ...order.tools, ...order.consumables] };
+    order.lastUpdated = Date.now();
+    return order;
+  };
+
   try {
     const key = 'WO' + wo.toUpperCase().replace(/[^a-zA-Z0-9_-]/g, '_');
-    const snap = await get(ref(db, 'orders/' + key));
-    const order = snap.exists() ? snap.val() : {};
-    order.parts       = order.parts       || [];
-    order.tools        = order.tools        || [];
-    order.consumables = order.consumables || [];
-    const allItems = [...order.parts, ...order.tools, ...order.consumables];
+    // Pré-lecture pour déterminer le texte de confirmation à afficher.
+    const preSnap = await get(ref(db, 'orders/' + key));
+    const preOrder = preSnap.exists() ? preSnap.val() : {};
+    const preAllItems = [...(preOrder.parts||[]), ...(preOrder.tools||[]), ...(preOrder.consumables||[])];
 
     if (item.kind === 'update') {
-      const match = koFindOrderPartMatch(allItems, item);
+      const match = koFindOrderPartMatch(preAllItems, item);
 
       if (match) {
-        match.note = (match.note ? match.note + '\n' : '') + koPartUpdateNoteLine(item);
-        await set(ref(db, 'orders/' + key), order);
+        let savedNote = match.note;
+        await runTransaction(ref(db, 'orders/' + key), (order) => {
+          order = order || {};
+          order.parts = order.parts || []; order.tools = order.tools || []; order.consumables = order.consumables || [];
+          const allItems = [...order.parts, ...order.tools, ...order.consumables];
+          const m = koFindOrderPartMatch(allItems, item);
+          if (m) { m.note = (m.note ? m.note + '\n' : '') + koPartUpdateNoteLine(item); savedNote = m.note; }
+          return syncDraft(order);
+        });
         if (koIsKickoffOpenForWo(wo)) {
           const row = koFindPartRowByPn(match.pn);
           const inputs = row?.querySelectorAll('input[type="text"]');
-          if (inputs?.[4]) inputs[4].value = match.note;
+          if (inputs?.[4]) inputs[4].value = savedNote;
           if (row) { row.style.outline = '2px solid #10b981'; setTimeout(() => { row.style.outline = ''; }, 2000); }
           koUpdatePreview();
         }
@@ -2709,9 +2747,13 @@ G.koApplyPartsUpdate = async function(btn, idx) {
       } else {
         const desc = item.pn && item.description ? item.pn + ' — ' + item.description : (item.pn || item.description || '?');
         if (!confirm('Cette pièce (' + desc + ') ne correspond à aucune ligne existante de la commande ' + wo + '.\n\nL\'ajouter au tableau ?')) { cancel(); return; }
-        const newEntry = { pn:item.pn||'', desc:item.description||'', sn:'', qty:'1', cat:'Part', note: koPartUpdateNoteLine(item) };
-        order.parts.push(newEntry);
-        await set(ref(db, 'orders/' + key), order);
+        const newEntry = { pn:item.pn||'', desc:item.description||'', sn:'', qty:'1', cat:'Part', note: koPartUpdateNoteLine(item), addedAt: Date.now() };
+        await runTransaction(ref(db, 'orders/' + key), (order) => {
+          order = order || {};
+          order.parts = order.parts || [];
+          order.parts.push(newEntry);
+          return syncDraft(order);
+        });
         if (koIsKickoffOpenForWo(wo)) {
           G.koAddPartRow(newEntry.pn, newEntry.desc, '', '1', 'Part', newEntry.note, '');
           koSortPartsTable();
@@ -2723,10 +2765,15 @@ G.koApplyPartsUpdate = async function(btn, idx) {
     } else if (item.kind === 'add') {
       const desc = item.pn && item.description ? item.pn + ' — ' + item.description : (item.pn || item.description || '?');
       if (!confirm('Ton collègue HSA a ajouté cette pièce : ' + desc + '.\n\nL\'ajouter au tableau de ' + wo + ' ?')) { cancel(); return; }
-      if (!koFindOrderPartMatch(allItems, item)) {
-        const newEntry = { pn:item.pn||'', desc:item.description||'', sn:'', qty:'1', cat:'Part', note:'[ajouté via réponse email — collègue HSA]' };
-        order.parts.push(newEntry);
-        await set(ref(db, 'orders/' + key), order);
+      if (!koFindOrderPartMatch(preAllItems, item)) {
+        const newEntry = { pn:item.pn||'', desc:item.description||'', sn:'', qty:'1', cat:'Part', note:'[ajouté via réponse email — collègue HSA]', addedAt: Date.now() };
+        await runTransaction(ref(db, 'orders/' + key), (order) => {
+          order = order || {};
+          order.parts = order.parts || []; order.tools = order.tools || []; order.consumables = order.consumables || [];
+          const allItems = [...order.parts, ...order.tools, ...order.consumables];
+          if (!koFindOrderPartMatch(allItems, item)) order.parts.push(newEntry);
+          return syncDraft(order);
+        });
         if (koIsKickoffOpenForWo(wo)) {
           G.koAddPartRow(newEntry.pn, newEntry.desc, '', '1', 'Part', newEntry.note, '');
           koSortPartsTable();
@@ -2738,10 +2785,15 @@ G.koApplyPartsUpdate = async function(btn, idx) {
     } else if (item.kind === 'remove') {
       const desc = item.pn && item.description ? item.pn + ' — ' + item.description : (item.pn || item.description || '?');
       if (!confirm('Ton collègue HSA indique que cette pièce n\'est plus nécessaire : ' + desc + '.\n\nLa retirer du tableau de ' + wo + ' ?')) { cancel(); return; }
-      const match = koFindOrderPartMatch(allItems, item);
+      const match = koFindOrderPartMatch(preAllItems, item);
       if (match) {
-        ['parts','tools','consumables'].forEach(cat => { order[cat] = order[cat].filter(p => p !== match); });
-        await set(ref(db, 'orders/' + key), order);
+        await runTransaction(ref(db, 'orders/' + key), (order) => {
+          order = order || {};
+          ['parts','tools','consumables'].forEach(cat => {
+            order[cat] = (order[cat]||[]).filter(p => !(p.pn === match.pn && p.desc === match.desc && p.sn === match.sn));
+          });
+          return syncDraft(order);
+        });
         if (koIsKickoffOpenForWo(wo)) { koFindPartRowByPn(match.pn)?.remove(); koUpdatePreview(); }
       }
       btn.textContent = '✓ Retiré';
@@ -5752,10 +5804,23 @@ function koBuildStateSnapshot() {
   };
 }
 
+// Horodatage de la dernière donnée orders/WO{wo} effectivement chargée par
+// CETTE session (koRestoreState). Sert de repère pour koSaveState : tout
+// élément parts/tools/consumables apparu côté serveur APRÈS cet horodatage
+// (ex: ajouté via une réponse email pendant que ce panneau était fermé, ou
+// écrit par un autre onglet/appareil) est une pièce que ce panneau "n'a
+// jamais vue" — koSaveState ne doit surtout pas l'effacer en écrasant le
+// nœud avec le tableau tel qu'affiché ici.
+let koOrderLoadedVersion = 0;
+
 // Sauvegarde le brouillon Start Job. Rattaché au WO dès qu'il est connu
 // (orders/WO{wo} — permanent, tant que le job existe), sinon replié sur
 // l'ancien brouillon temporaire par profil (5 jours, tant qu'aucun WO
 // n'est encore saisi).
+//
+// Écrite en transaction (et non plus en set() brut) : deux sessions
+// (2 onglets, 2 appareils, ou toi + un collègue) ouvertes sur le même WO
+// ne s'écrasent plus silencieusement l'une l'autre — voir koOrderLoadedVersion.
 async function koSaveState() {
   const state = koBuildStateSnapshot();
   state.savedAt = Date.now();
@@ -5763,22 +5828,40 @@ async function koSaveState() {
 
   if (wo && curProfile) {
     const key = 'WO' + wo.toUpperCase().replace(/[^a-zA-Z0-9_-]/g, '_');
-    const parts = state.parts || [];
-    const payload = {
-      wo,
-      reg:         (document.getElementById('ko_reg')?.value   || '').trim(),
-      sn:          (document.getElementById('ko_sn')?.value    || '').trim(),
-      model:       (document.getElementById('ko_model')?.value || '').trim(),
-      icao:        (document.getElementById('ko_icao')?.value  || '').trim(),
-      defect:      (document.getElementById('ko_defect')?.value|| '').trim(),
-      engineer:    curProfile.name || '',
-      lastUpdated: Date.now(),
-      parts:       parts.filter(p => p.cat === 'Part'),
-      tools:       parts.filter(p => p.cat === 'Tool'),
-      consumables: parts.filter(p => p.cat === 'Consumable'),
-      draft:       state,
-    };
-    try { await set(ref(db, 'orders/' + key), payload); } catch(e) { console.warn('koSaveState error:', e); }
+    const localParts = state.parts || [];
+    const reg   = (document.getElementById('ko_reg')?.value   || '').trim();
+    const sn    = (document.getElementById('ko_sn')?.value    || '').trim();
+    const model = (document.getElementById('ko_model')?.value || '').trim();
+    const icao  = (document.getElementById('ko_icao')?.value  || '').trim();
+    const defect= (document.getElementById('ko_defect')?.value|| '').trim();
+
+    try {
+      await runTransaction(ref(db, 'orders/' + key), (current) => {
+        current = current || {};
+        // Pièces apparues côté serveur depuis le dernier chargement de CE
+        // panneau (addedAt posé par koApplyPartsUpdate) : à préserver même
+        // si notre tableau local ne les affiche pas.
+        const serverExtras = [
+          ...(current.parts       || []),
+          ...(current.tools       || []),
+          ...(current.consumables || []),
+        ].filter(p => (p.addedAt || 0) > koOrderLoadedVersion);
+
+        const allItems = [...localParts, ...serverExtras];
+
+        return {
+          ...current,
+          wo, reg, sn, model, icao, defect,
+          engineer:    curProfile.name || '',
+          lastUpdated: Date.now(),
+          parts:       allItems.filter(p => p.cat === 'Part'),
+          tools:       allItems.filter(p => p.cat === 'Tool'),
+          consumables: allItems.filter(p => p.cat === 'Consumable'),
+          draft:       { ...state, parts: allItems },
+        };
+      });
+      koOrderLoadedVersion = Date.now();
+    } catch(e) { console.warn('koSaveState error:', e); }
     return;
   }
 
@@ -5801,8 +5884,11 @@ async function koRestoreState(forceWo) {
     try {
       const key = 'WO' + wo.toUpperCase().replace(/[^a-zA-Z0-9_-]/g, '_');
       const snap = await get(ref(db, 'orders/' + key));
-      if (!snap.exists()) return;
+      if (!snap.exists()) { koOrderLoadedVersion = 0; return; }
       const order = snap.val();
+      // Repère utilisé par koSaveState pour ne jamais effacer une pièce
+      // apparue côté serveur après ce chargement (cf. koOrderLoadedVersion).
+      koOrderLoadedVersion = order.lastUpdated || 0;
       const state = order.draft || {
         parts: [...(order.parts||[]), ...(order.tools||[]), ...(order.consumables||[])]
       };
@@ -8116,11 +8202,13 @@ G.koUseShipAddr = function(i) {
   const a = KO_SHIPADDR[i]; if (!a) return;
   const reg = (document.getElementById('f_reg')?.value || '').trim().toUpperCase();
   const label = (a.label || '').trim();
-  const labelWithReg = label ? (reg ? `${label} — A/C ${reg}` : label) : (reg ? `A/C ${reg}` : '');
   const body = (a.body || '').trim();
-  const full = labelWithReg ? `${labelWithReg}\n${body}` : body;
+  const lines = [];
+  if (label) lines.push(label);
+  if (reg) lines.push(`A/C ${reg}`);
+  if (body) lines.push(body);
   const el = document.getElementById('ko_shipping_addr');
-  if (el) el.value = full;
+  if (el) el.value = lines.join('\n');
   koUpdatePreview();
   koSaveState();
 };
@@ -8347,19 +8435,48 @@ function koRenderPartTplChips() {
     }).join('');
 }
 
+let _ptApplyTplIdx = null;
+
 G.koUsePartTpl = function(i) {
   const t = KO_PARTTPL[i]; if (!t) return;
-  if (!confirm('⚠️ ' + KO_PARTTPL_AMM_WARNING + '\n\nHave you checked the AMM and confirmed applicability for this aircraft? Click OK to add the parts.')) return;
-  (t.parts || []).forEach(p => {
-    G.koAddPartRow(p.pn || '', p.desc || '', p.sn || '', p.qty || '1', p.cat || 'Part', p.note || '', '');
+  _ptApplyTplIdx = i;
+
+  const sqSel = document.getElementById('pt-apply-sq-sel');
+  if (sqSel) sqSel.innerHTML = koSquawkSelectOptions();
+
+  const list = document.getElementById('pt-apply-lines-list');
+  if (list) {
+    list.innerHTML = (t.parts||[]).map((p, li) => `
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:6px 9px">
+        <input type="checkbox" class="pt-apply-line-cb" data-li="${li}" ${p.optional ? '' : 'checked disabled'}/>
+        <span style="flex:1">${p.desc || '(no desc)'}${p.pn ? ' — P/N ' + p.pn : ''}${p.cat ? ' — ' + p.cat : ''}</span>
+        ${p.optional ? '<span style="font-size:10px;color:var(--amb);font-weight:700">if required</span>' : ''}
+      </label>`).join('') || '<p style="font-size:12px;color:var(--g400)">No lines in this template.</p>';
+  }
+  openModal('modal-parttpl-apply');
+};
+
+G.koConfirmApplyPartTpl = function() {
+  const t = KO_PARTTPL[_ptApplyTplIdx]; if (!t) return;
+  const sqVal = document.getElementById('pt-apply-sq-sel')?.value || '';
+  const sqLabel = sqVal ? sqVal.split('|').slice(1).join('|') : '';
+
+  document.querySelectorAll('.pt-apply-line-cb').forEach(cb => {
+    if (!cb.checked) return;
+    const p = t.parts[parseInt(cb.dataset.li)];
+    if (!p) return;
+    G.koAddPartRow(p.pn || '', p.desc || '', p.sn || '', p.qty || '1', p.cat || 'Part', p.note || '', sqLabel);
     if (p.smallQty) {
       const rows = document.querySelectorAll('#ko-parts-tbody tr');
       const lastRow = rows[rows.length - 1];
-      const cb = lastRow?.querySelector('.ko-smallqty-cb');
-      if (cb) cb.checked = true;
+      lastRow?.querySelector('.ko-smallqty-cb') && (lastRow.querySelector('.ko-smallqty-cb').checked = true);
     }
   });
-  koSortPartsTable(); koUpdatePreview(); koSaveState();
+
+  koSortPartsTable();
+  koUpdatePreview();
+  koSaveState();
+  closeModal('modal-parttpl-apply');
 };
 
 G.koManagePartTpl = function() {
@@ -8381,17 +8498,82 @@ function renderPartTplManageList() {
   list.innerHTML = models.map(model => {
     return `<div style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin:10px 0 5px">✈️ ${model}</div>` +
       groups[model].map(t => `
-        <div style="background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:8px;margin-bottom:6px">
-          <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
-            <input type="text" value="${(t.name||'').replace(/"/g,'&quot;')}" placeholder="Template name" oninput="koPartTplEdit(${t._idx},'name',this.value)" style="flex:1;font-size:12px;padding:4px 6px"/>
+        <div style="background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:8px;margin-bottom:8px">
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+            <input type="text" value="${(t.name||'').replace(/"/g,'&quot;')}" placeholder="Template name" oninput="koPartTplEdit(${t._idx},'name',this.value)" style="flex:1;font-size:12px;padding:4px 6px;font-weight:700"/>
             <button onclick="koDeletePartTpl(${t._idx})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
           </div>
-          <div style="font-size:10.5px;color:var(--g600)">
-            ${(t.parts||[]).map(p => `• ${p.desc || '(no desc)'} ${p.pn ? '— P/N ' + p.pn : ''}${p.sn ? ' — S/N ' + p.sn : ''} — qty ${p.qty || 1} — ${p.cat || 'Part'}${p.smallQty ? ' — small qty/DG' : ''}${p.note ? ' — ' + p.note : ''}`).join('<br>') || '<em>No lines</em>'}
-          </div>
+          <table class="ko-parts-tbl" style="width:100%;margin-bottom:6px">
+            <thead><tr>
+              <th style="min-width:120px">Description</th><th style="min-width:90px">P/N</th><th style="min-width:60px">S/N</th>
+              <th style="width:40px">Qty</th><th style="width:85px">Category</th><th style="min-width:150px">Note / options</th><th style="width:24px"></th>
+            </tr></thead>
+            <tbody>
+              ${(t.parts||[]).map((p, li) => `
+                <tr>
+                  <td><input type="text" value="${(p.desc||'').replace(/"/g,'&quot;')}" oninput="koPartTplLineEdit(${t._idx},${li},'desc',this.value)"/></td>
+                  <td><input type="text" value="${(p.pn||'').replace(/"/g,'&quot;')}" oninput="koPartTplLineEdit(${t._idx},${li},'pn',this.value)"/></td>
+                  <td><input type="text" value="${(p.sn||'').replace(/"/g,'&quot;')}" ${p.cat==='Consumable'?'disabled style="background:var(--g100)"':''} oninput="koPartTplLineEdit(${t._idx},${li},'sn',this.value)"/></td>
+                  <td><input type="text" value="${p.qty||''}" oninput="koPartTplLineEdit(${t._idx},${li},'qty',this.value)"/></td>
+                  <td>
+                    <select onchange="koPartTplLineCatChange(${t._idx},${li},this.value)">
+                      <option value="" ${!p.cat?'selected':''}>— Type —</option>
+                      <option ${p.cat==='Part'?'selected':''}>Part</option>
+                      <option ${p.cat==='Consumable'?'selected':''}>Consumable</option>
+                      <option ${p.cat==='Tool'?'selected':''}>Tool</option>
+                    </select>
+                  </td>
+                  <td>
+                    <input type="text" value="${(p.note||'').replace(/"/g,'&quot;')}" placeholder="Note…" oninput="koPartTplLineEdit(${t._idx},${li},'note',this.value)"/>
+                    <label style="display:${p.cat==='Consumable'?'flex':'none'};align-items:center;gap:4px;font-size:10px;color:var(--g600);margin-top:3px">
+                      <input type="checkbox" ${p.smallQty?'checked':''} onchange="koPartTplLineEdit(${t._idx},${li},'smallQty',this.checked)"/> small qty/DG
+                    </label>
+                    <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#9a3412;margin-top:3px;font-weight:600">
+                      <input type="checkbox" ${p.optional?'checked':''} onchange="koPartTplLineEdit(${t._idx},${li},'optional',this.checked)"/> if required (optional — not all engineers need it)
+                    </label>
+                  </td>
+                  <td><button class="ko-parts-tbl rm-btn" onclick="koRemovePartTplExistingLine(${t._idx},${li})">×</button></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+          <button class="btn-add" onclick="koAddPartTplExistingLine(${t._idx})" style="font-size:11px;padding:5px">+ Add line</button>
         </div>`).join('');
   }).join('');
 }
+
+let _ptExistingEditTimer = null;
+G.koPartTplLineEdit = function(tplIdx, lineIdx, field, val) {
+  const t = KO_PARTTPL[tplIdx]; if (!t || !t.parts?.[lineIdx]) return;
+  t.parts[lineIdx][field] = val;
+  koRenderPartTplChips();
+  clearTimeout(_ptExistingEditTimer);
+  _ptExistingEditTimer = setTimeout(koSavePartTplCatalog, 600);
+};
+
+G.koPartTplLineCatChange = function(tplIdx, lineIdx, cat) {
+  const t = KO_PARTTPL[tplIdx]; if (!t || !t.parts?.[lineIdx]) return;
+  t.parts[lineIdx].cat = cat;
+  if (cat === 'Consumable') t.parts[lineIdx].sn = '';
+  renderPartTplManageList();
+  koRenderPartTplChips();
+  koSavePartTplCatalog();
+};
+
+G.koAddPartTplExistingLine = function(tplIdx) {
+  const t = KO_PARTTPL[tplIdx]; if (!t) return;
+  t.parts = t.parts || [];
+  t.parts.push({ pn:'', desc:'', sn:'', qty:'1', cat:'', note:'', smallQty:false, optional:false });
+  renderPartTplManageList();
+  koSavePartTplCatalog();
+};
+
+G.koRemovePartTplExistingLine = function(tplIdx, lineIdx) {
+  const t = KO_PARTTPL[tplIdx]; if (!t) return;
+  t.parts.splice(lineIdx, 1);
+  renderPartTplManageList();
+  koRenderPartTplChips();
+  koSavePartTplCatalog();
+};
 
 G.koDeletePartTpl = function(i) {
   KO_PARTTPL.splice(i, 1);
@@ -8430,6 +8612,9 @@ function renderPartTplNewLines() {
           <input type="checkbox" ${l.smallQty?'checked':''} onchange="koPartTplNewLineEdit(${l._id},'smallQty',this.checked)"/> small qty — avoid DG
         </label>
         <input type="text" value="${(l.note||'').replace(/"/g,'&quot;')}" placeholder="Note…" oninput="koPartTplNewLineEdit(${l._id},'note',this.value)"/>
+        <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#9a3412;white-space:nowrap;margin-top:3px">
+          <input type="checkbox" ${l.optional?'checked':''} onchange="koPartTplNewLineEdit(${l._id},'optional',this.checked)"/> if required (optional)
+        </label>
       </td>
       <td><button class="ko-parts-tbl rm-btn" onclick="koRemovePartTplLine(${l._id})">×</button></td>
     </tr>`).join('') || '';
@@ -8450,7 +8635,7 @@ G.koPartTplNewLineCatChange = function(id, cat) {
 };
 
 G.koAddPartTplLine = function() {
-  _ptNewLines.push({ _id: ++_ptLineSeq, pn:'', desc:'', sn:'', qty:'1', cat:'', note:'', smallQty:false });
+  _ptNewLines.push({ _id: ++_ptLineSeq, pn:'', desc:'', sn:'', qty:'1', cat:'', note:'', smallQty:false, optional:false });
   renderPartTplNewLines();
 };
 
@@ -8538,100 +8723,114 @@ function koPopulateSealantSpecSelect() {
 const SEALANT_TYPE_OPTIONS = ['A-1/2','A-1','A-2','B-1/2','B-1','B-2'];
 const SEALANT_SIZE_OPTIONS = ['2.5oz','6oz'];
 
+let koSealantCart = []; // persiste entre les changements de MIL Spec
+
 G.koRenderSealantPns = function() {
   const sel = document.getElementById('ko-sealant-spec-sel');
   const wrap = document.getElementById('ko-sealant-pn-list');
-  const btn = document.getElementById('ko-sealant-add-btn');
-  const hintRow = document.getElementById('ko-sealant-hint-row');
-  if (!sel || !wrap || !btn) return;
+  if (!sel || !wrap) return;
   const idx = sel.value;
-  if (idx === '') { wrap.style.display = 'none'; wrap.innerHTML = ''; btn.style.display = 'none'; if (hintRow) hintRow.style.display = 'none'; return; }
+  if (idx === '') { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
   const entry = SEALANT_MIL_SPECS[idx];
   wrap.style.display = 'flex';
   wrap.innerHTML = entry.pns.map((pn, i) => `
     <div style="display:flex;flex-direction:column;gap:5px;background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:6px 9px">
-      <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer">
-        <input type="checkbox" class="ko-sealant-pn-cb" value="${pn.replace(/"/g,'&quot;')}"/> ${pn}
-      </label>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding-left:22px">
-        <select class="ko-sealant-pn-type" style="font-size:11px;padding:3px 6px;border:1px solid var(--g200);border-radius:4px;background:#fff">
+      <div style="font-size:12px;font-weight:600">${pn}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <select id="ko-sealant-type-${i}" style="font-size:11px;padding:3px 6px;border:1px solid var(--g200);border-radius:4px;background:#fff">
           <option value="">Type —</option>
           ${SEALANT_TYPE_OPTIONS.map(t => `<option value="${t}">${t}</option>`).join('')}
         </select>
-        <select class="ko-sealant-pn-size" style="font-size:11px;padding:3px 6px;border:1px solid var(--g200);border-radius:4px;background:#fff">
+        <select id="ko-sealant-size-${i}" style="font-size:11px;padding:3px 6px;border:1px solid var(--g200);border-radius:4px;background:#fff">
           <option value="">Size —</option>
           ${SEALANT_SIZE_OPTIONS.map(s => `<option value="${s}">${s}</option>`).join('')}
         </select>
         <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer">
-          <input type="checkbox" class="ko-sealant-pn-semkit"/> Semkit
+          <input type="checkbox" id="ko-sealant-semkit-${i}"/> Semkit
         </label>
-        <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer">
-          Group # <input type="number" class="ko-sealant-pn-group" min="1" max="9" value="${i+1}" style="width:36px;font-size:11px;padding:2px 4px;border:1px solid var(--g200);border-radius:4px"/>
-        </label>
+        <button class="btn" onclick="koAddSealantToCart(${idx},${i})" style="font-size:11px;padding:3px 10px;margin-left:auto">+ Add</button>
       </div>
     </div>`).join('');
-  btn.style.display = '';
-  if (hintRow) hintRow.style.display = entry.pns.length > 1 ? 'block' : 'none';
+  document.getElementById('ko-sealant-hint-row').style.display = 'block';
+};
+
+G.koAddSealantToCart = function(specIdx, pnIdx) {
+  const entry = SEALANT_MIL_SPECS[specIdx];
+  const pn = entry.pns[pnIdx];
+  koSealantCart.push({
+    pn,
+    specLabel: `${entry.spec} — ${entry.app}`,
+    type: document.getElementById('ko-sealant-type-' + pnIdx)?.value || '',
+    size: document.getElementById('ko-sealant-size-' + pnIdx)?.value || '',
+    semkit: document.getElementById('ko-sealant-semkit-' + pnIdx)?.checked || false,
+    setNum: ''
+  });
+  koRenderSealantCart();
+};
+
+function koSealantTagStr(p) {
+  const tags = [];
+  if (p.type) tags.push(`Type ${p.type}`);
+  if (p.size) tags.push(p.size);
+  if (p.semkit) tags.push('Semkit');
+  return tags.length ? ` — ${tags.join(', ')}` : '';
+}
+
+function koRenderSealantCart() {
+  const wrap = document.getElementById('ko-sealant-cart-wrap');
+  const list = document.getElementById('ko-sealant-cart-list');
+  const btn = document.getElementById('ko-sealant-add-btn');
+  if (!wrap || !list || !btn) return;
+  if (!koSealantCart.length) { wrap.style.display = 'none'; btn.style.display = 'none'; return; }
+  wrap.style.display = ''; btn.style.display = '';
+  list.innerHTML = koSealantCart.map((c, i) => `
+    <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:6px 9px;flex-wrap:wrap">
+      <div style="flex:1;min-width:160px;font-size:12px">
+        <b>${c.pn}</b>${koSealantTagStr(c)}
+        <div style="font-size:10px;color:var(--g600)">${c.specLabel}</div>
+      </div>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap">
+        Equivalent set #
+        <input type="number" min="1" max="9" placeholder="—" value="${c.setNum}" oninput="koSealantCart[${i}].setNum=this.value" style="width:44px;font-size:11px;padding:3px 5px;border:1px solid var(--g200);border-radius:4px"/>
+      </label>
+      <button onclick="koRemoveSealantFromCart(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
+    </div>`).join('');
+}
+
+G.koRemoveSealantFromCart = function(i) {
+  koSealantCart.splice(i, 1);
+  koRenderSealantCart();
 };
 
 G.koAddSelectedSealants = function() {
-  const sel = document.getElementById('ko-sealant-spec-sel');
-  const idx = sel?.value;
-  if (idx === '' || idx == null) return;
-  const entry = SEALANT_MIL_SPECS[idx];
+  if (!koSealantCart.length) { alert('Please add at least one P/N to your selection.'); return; }
 
-  const rows = Array.from(document.querySelectorAll('#ko-sealant-pn-list > div'));
-  const picked = [];
-  rows.forEach(row => {
-    const cb = row.querySelector('.ko-sealant-pn-cb');
-    if (!cb || !cb.checked) return;
-    picked.push({
-      pn: cb.value,
-      type: row.querySelector('.ko-sealant-pn-type')?.value || '',
-      size: row.querySelector('.ko-sealant-pn-size')?.value || '',
-      semkit: row.querySelector('.ko-sealant-pn-semkit')?.checked || false,
-      group: row.querySelector('.ko-sealant-pn-group')?.value || ''
-    });
-  });
-  if (!picked.length) { alert('Please select at least one P/N.'); return; }
-
-  const tagStr = p => {
-    const tags = [];
-    if (p.type) tags.push(`Type ${p.type}`);
-    if (p.size) tags.push(p.size);
-    if (p.semkit) tags.push('Semkit');
-    return tags.length ? ` — ${tags.join(', ')}` : '';
-  };
-
-  // Items sharing the same Group # are combined as OR on one row.
-  // Each distinct Group # becomes its own row (so different groups are effectively AND).
   const groups = {};
-  picked.forEach(p => {
-    const key = p.group || `_${Math.random()}`;
+  koSealantCart.forEach(p => {
+    const key = p.setNum ? p.setNum : `_${Math.random()}`;
     (groups[key] = groups[key] || []).push(p);
   });
 
   Object.values(groups).forEach(group => {
     if (group.length > 1) {
-      const pnCombo = group.map(p => `${p.pn}${tagStr(p)}`).join('  OR  ');
-      const desc = `Sealant — ${entry.spec} — ${entry.app} (pick ONE option)`;
-      G.koAddPartRow(pnCombo, desc, '', '1', 'Consumable', 'OR — only one of the listed options is required', '');
+      const pnCombo = group.map(p => `${p.pn}${koSealantTagStr(p)} (${p.specLabel})`).join('  OR  ');
+      G.koAddPartRow(pnCombo, 'Sealant — equivalent options (pick ONE)', '', '1', 'Consumable', 'OR — only one of the listed options is required', '');
     } else {
       const p = group[0];
-      const desc = `Sealant — ${entry.spec} — ${entry.app}${tagStr(p)}`;
-      G.koAddPartRow(p.pn, desc, '', '1', 'Consumable', '', '');
+      G.koAddPartRow(p.pn, `Sealant — ${p.specLabel}${koSealantTagStr(p)}`, '', '1', 'Consumable', '', '');
     }
   });
 
   koSortPartsTable();
   koUpdatePreview();
   koSaveState();
-  sel.value = '';
+
+  koSealantCart = [];
+  koRenderSealantCart();
+  document.getElementById('ko-sealant-spec-sel').value = '';
   document.getElementById('ko-sealant-pn-list').style.display = 'none';
   document.getElementById('ko-sealant-pn-list').innerHTML = '';
-  document.getElementById('ko-sealant-add-btn').style.display = 'none';
-  const hintRow = document.getElementById('ko-sealant-hint-row');
-  if (hintRow) hintRow.style.display = 'none';
+  document.getElementById('ko-sealant-hint-row').style.display = 'none';
 };
 
 G.koManageSealants = function() { renderSealantManageList(); openModal('modal-sealant-manage'); };
