@@ -1572,7 +1572,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div class="fg"><label>WOA status (green/red/amber)</label><input type="text" id="hov_woa_status"/></div>
       <div class="fg"><label>A/C RTS (date)</label><input type="text" id="hov_ac_rts_date"/></div>
       <div class="fg"><label>Spare part order required</label><input type="text" id="hov_spare_part_required"/></div>
-      <div class="fg"><label>Parts AWB / Tracking numbers</label><input type="text" id="hov_parts_awb"/></div>
+      <div class="fg"><label>Parts AWB / Tracking numbers</label><textarea id="hov_parts_awb" style="min-height:60px" placeholder="Une ligne par colis…"></textarea></div>
       <div class="fg"><label>P-135 (yes/no)</label><input type="text" id="hov_p135"/></div>
     </div>
 
@@ -3700,11 +3700,30 @@ function handoverBuildSupportUpdates(proj) {
   }).join('\n\n');
 }
 
-function handoverBuildPartsOrdered(proj) {
+function handoverBuildPartsOrdered(proj, koParts, koConsumables) {
+  const lines = [];
+
+  // Pièces du tableau FAST Update ("Parts replaced")
   const parts = Array.isArray(proj.parts) ? proj.parts : Object.values(proj.parts || {});
   const filled = parts.filter(p => p.nom || p.pn_off || p.sn_off || p.pn_on || p.sn_on);
-  if (!filled.length) return '';
-  return filled.map(p => `${p.nom || '—'} — PN OFF: ${p.pn_off||'—'} / SN OFF: ${p.sn_off||'—'} / PN ON: ${p.pn_on||'—'} / SN ON: ${p.sn_on||'—'}`).join('\n');
+  filled.forEach(p => {
+    lines.push(`${p.nom || '—'} — PN OFF: ${p.pn_off||'—'} / SN OFF: ${p.sn_off||'—'} / PN ON: ${p.pn_on||'—'} / SN ON: ${p.sn_on||'—'}`);
+  });
+
+  // Pièces + consommables commandés dans Start Job
+  (koParts || []).forEach(p => {
+    lines.push(`[PART] ${p.desc||'—'}${p.pn?' — P/N: '+p.pn:''}${p.sn?', S/N: '+p.sn:''}${p.qty?', Qty: '+p.qty:''}`);
+  });
+  (koConsumables || []).forEach(p => {
+    lines.push(`[CONSUMABLE] ${p.desc||'—'}${p.pn?' — P/N: '+p.pn:''}${p.qty?', Qty: '+p.qty:''}`);
+  });
+
+  return lines.join('\n');
+}
+
+function handoverBuildTools(koTools) {
+  if (!koTools || !koTools.length) return '';
+  return koTools.map(p => `${p.desc||'—'}${p.pn?' — P/N: '+p.pn:''}${p.note?' ('+p.note+')':''}`).join('\n');
 }
 
 G.openHandoverModal = async function() {
@@ -3725,6 +3744,23 @@ G.openHandoverModal = async function() {
 
   const items = Array.isArray(proj.items) ? proj.items : Object.values(proj.items || {});
 
+  // ── Va chercher les infos saisies dans Start Job (orders/WO{wo}) ──
+  let orderData = null;
+  if (proj.wo) {
+    try {
+      const key = 'WO' + proj.wo.toUpperCase().replace(/[^a-zA-Z0-9_-]/g, '_');
+      const orderSnap = await get(ref(db, 'orders/' + key));
+      if (orderSnap.exists()) orderData = orderSnap.val();
+    } catch(e) { console.warn('openHandoverModal: could not read orders/WO', e); }
+  }
+  const koParts       = orderData?.parts       || [];
+  const koTools       = orderData?.tools       || [];
+  const koConsumables = orderData?.consumables || [];
+  const koShipAddr    = orderData?.draft?.texts?.ko_shipping_addr || '';
+
+  const anySpareParts = (proj.parts && (Array.isArray(proj.parts) ? proj.parts.length : Object.keys(proj.parts).length))
+    || koParts.length || koConsumables.length;
+
   sv('hov_operator_name', proj.cust_company || '');
   sv('hov_location', proj.fbo || '');
   sv('hov_airport_code', proj.loc || '');
@@ -3739,7 +3775,7 @@ G.openHandoverModal = async function() {
   sv('hov_eng3_name', extraNames[0] || '');
   sv('hov_eng4_name', extraNames[1] || '');
   sv('hov_customer_followup', [proj.cust_name, proj.cust_tel, proj.cust_email].filter(Boolean).join(' / '));
-  sv('hov_spare_part_required', (proj.parts && (Array.isArray(proj.parts) ? proj.parts.length : Object.keys(proj.parts).length)) ? 'Yes' : 'No');
+  sv('hov_spare_part_required', anySpareParts ? 'Yes' : 'No');
   sv('hov_p135', '');
   sv('hov_engineer_status', '');
   sv('hov_parts_awb', '');
@@ -3748,9 +3784,9 @@ G.openHandoverModal = async function() {
   sv('hov_woa_status', '');
   sv('hov_ac_rts_date', proj.erts || '');
   sv('hov_support_updates', handoverBuildSupportUpdates(proj));
-  sv('hov_shipping_address', '');
-  sv('hov_parts_ordered', handoverBuildPartsOrdered(proj));
-  sv('hov_tools', '');
+  sv('hov_shipping_address', koShipAddr);
+  sv('hov_parts_ordered', handoverBuildPartsOrdered(proj, koParts, koConsumables));
+  sv('hov_tools', handoverBuildTools(koTools));
   sv('hov_supporting_documents', '');
   sv('hov_cmp_s', '');
   sv('hov_handover_date', rtagTodayFormatted());
