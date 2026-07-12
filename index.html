@@ -1529,7 +1529,74 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div class="err-msg" id="transfer-error"></div>
     <div class="modal-btns">
       <button class="btn" onclick="closeModal('modal-transfer-proj')">Cancel</button>
-      <button class="btn primary" id="btn-confirm-transfer" onclick="confirmTransferProject()">🔄 Transfer project</button>
+      <button class="btn primary" id="btn-confirm-transfer" onclick="openHandoverModal()">📄 Handover form →</button>
+    </div>
+  </div>
+</div>
+
+<!-- HANDOVER FORM MODAL (HAS-DOC-008) -->
+<div class="modal-bg" id="modal-handover">
+  <div class="modal" style="max-width:720px">
+    <h3>📄 Engineer's Support Info — Handover Form</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:12px">Champs pré-remplis automatiquement depuis le projet — vérifie et complète avant de générer le .docx.</p>
+
+    <div class="ko-section-lbl">✈️ Aircraft & Job</div>
+    <div class="grid g3" style="margin-bottom:10px">
+      <div class="fg"><label>FA# (Work Order)</label><input type="text" id="hov_fa_number"/></div>
+      <div class="fg"><label>Type</label><input type="text" id="hov_ac_type"/></div>
+      <div class="fg"><label>S/N</label><input type="text" id="hov_ac_sn"/></div>
+      <div class="fg"><label>Registration #</label><input type="text" id="hov_ac_reg"/></div>
+      <div class="fg"><label>Airport code</label><input type="text" id="hov_airport_code"/></div>
+      <div class="fg"><label>Location</label><input type="text" id="hov_location"/></div>
+      <div class="fg"><label>Date of support</label><input type="text" id="hov_date_of_support"/></div>
+    </div>
+
+    <div class="ko-section-lbl">👤 Operator / Customer</div>
+    <div class="grid g2" style="margin-bottom:10px">
+      <div class="fg"><label>Operator's name</label><input type="text" id="hov_operator_name"/></div>
+      <div class="fg"><label>Customer Follow-up</label><input type="text" id="hov_customer_followup"/></div>
+      <div class="fg"><label>Visa / Airside access</label><input type="text" id="hov_visa_access"/></div>
+    </div>
+
+    <div class="ko-section-lbl">👷 Engineers</div>
+    <div class="grid g2" style="margin-bottom:10px">
+      <div class="fg"><label>Engineer's Name #1 (outgoing)</label><input type="text" id="hov_eng1_name"/></div>
+      <div class="fg"><label>Engineer's Name #2 (receiving)</label><input type="text" id="hov_eng2_name"/></div>
+      <div class="fg"><label>Engineer's Name #3</label><input type="text" id="hov_eng3_name"/></div>
+      <div class="fg"><label>Engineer's Name #4</label><input type="text" id="hov_eng4_name"/></div>
+    </div>
+
+    <div class="ko-section-lbl">📋 Status</div>
+    <div class="grid g3" style="margin-bottom:10px">
+      <div class="fg"><label>Engineer status during allocation</label><input type="text" id="hov_engineer_status"/></div>
+      <div class="fg"><label>WOA status (green/red/amber)</label><input type="text" id="hov_woa_status"/></div>
+      <div class="fg"><label>A/C RTS (date)</label><input type="text" id="hov_ac_rts_date"/></div>
+      <div class="fg"><label>Spare part order required</label><input type="text" id="hov_spare_part_required"/></div>
+      <div class="fg"><label>Parts AWB / Tracking numbers</label><input type="text" id="hov_parts_awb"/></div>
+      <div class="fg"><label>P-135 (yes/no)</label><input type="text" id="hov_p135"/></div>
+    </div>
+
+    <div class="ko-section-lbl">🔧 Defect / Updates / Parts</div>
+    <div class="fg" style="margin-bottom:10px"><label>Defect</label><textarea id="hov_defect" style="min-height:60px"></textarea></div>
+    <div class="fg" style="margin-bottom:10px"><label>Support updates</label><textarea id="hov_support_updates" style="min-height:140px"></textarea></div>
+    <div class="fg" style="margin-bottom:10px"><label>Parts ordered</label><textarea id="hov_parts_ordered" style="min-height:80px"></textarea></div>
+    <div class="grid g2" style="margin-bottom:10px">
+      <div class="fg"><label>Shipping address</label><textarea id="hov_shipping_address" style="min-height:60px"></textarea></div>
+      <div class="fg"><label>Tools</label><textarea id="hov_tools" style="min-height:60px"></textarea></div>
+    </div>
+    <div class="fg" style="margin-bottom:10px"><label>Supporting documents</label><textarea id="hov_supporting_documents" style="min-height:60px"></textarea></div>
+
+    <div class="ko-section-lbl">✍️ Sign-off</div>
+    <div class="grid g3" style="margin-bottom:10px">
+      <div class="fg"><label>Support prepared by</label><input type="text" id="hov_prepared_by"/></div>
+      <div class="fg"><label>CMP/s</label><input type="text" id="hov_cmp_s"/></div>
+      <div class="fg"><label>Handover date</label><input type="text" id="hov_handover_date"/></div>
+    </div>
+
+    <div class="err-msg" id="hov-error"></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('modal-handover');openModal('modal-transfer-proj')">← Back</button>
+      <button class="btn primary" id="hov-gen-btn" onclick="confirmHandoverAndTransfer()">📄 Generate handover & confirm transfer</button>
     </div>
   </div>
 </div>
@@ -2003,6 +2070,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 </div>
 
 <script src="pdf-lib.min.js" defer></script>
+<script src="pizzip_min.js" defer></script>
+<script src="docxtemplater_min.js" defer></script>
 	
 <!-- ═══════════════════════════════════
      FIREBASE SDK (CDN — no npm needed)
@@ -3553,6 +3622,7 @@ G.deleteProjUI = async function(pid) {
 //  copies exist), never data loss.
 // ══════════════════════════════════════
 let _transferTargetPid = null;
+let _transferProjData = null;
 
 G.openTransferModal = async function(pid) {
   if (!curProfile) return;
@@ -3560,6 +3630,7 @@ G.openTransferModal = async function(pid) {
   const snap = await get(ref(db, 'team/' + curProfile.id + '/projects/' + pid));
   if (!snap.exists()) return;
   const proj = snap.val();
+  _transferProjData = proj;
   document.getElementById('transfer-proj-summary').textContent =
     `${proj.wo || '(no WO)'} — ${[proj.model, proj.sn, proj.reg].filter(Boolean).join(' / ')}`;
   document.getElementById('transfer-target-sel').innerHTML = await buildColleagueOptions();
@@ -3600,6 +3671,156 @@ G.confirmTransferProject = async function() {
     closeModal('modal-transfer-proj');
     renderProjList();
     setStatus('done', '✅ Project transferred.');
+  } catch(e) {
+    errEl.textContent = '❌ ' + e.message;
+    btn.disabled = false; btn.textContent = origLabel;
+    return;
+  }
+  btn.disabled = false; btn.textContent = origLabel;
+};
+
+// ══════════════════════════════════════
+//  HANDOVER FORM (HAS-DOC-008) — auto-fill + docx generation
+// ══════════════════════════════════════
+function handoverBuildSupportUpdates(proj) {
+  const items = Array.isArray(proj.items) ? proj.items : Object.values(proj.items || {});
+  const updates = Array.isArray(proj.updates) ? proj.updates : Object.values(proj.updates || {});
+  if (!updates.length) return '';
+  const sorted = [...updates].sort((a,b) => (a.ts||0) - (b.ts||0));
+  return sorted.map(u => {
+    const lines = [u.date + (u.isRTS ? ' — A/C RTS' : '')];
+    (u.itemUpdates||[]).filter(iu => iu.checked).forEach(iu => {
+      const it = items.find(x => x.num === iu.num);
+      const label = it ? it.label : ('Item ' + iu.num);
+      const status = SL[iu.status] || '';
+      lines.push('- ' + label + (status ? ' (' + status + ')' : '') + (iu.detail ? ': ' + iu.detail : ''));
+    });
+    if (u.freeText) lines.push('Note: ' + u.freeText);
+    return lines.join('\n');
+  }).join('\n\n');
+}
+
+function handoverBuildPartsOrdered(proj) {
+  const parts = Array.isArray(proj.parts) ? proj.parts : Object.values(proj.parts || {});
+  const filled = parts.filter(p => p.nom || p.pn_off || p.sn_off || p.pn_on || p.sn_on);
+  if (!filled.length) return '';
+  return filled.map(p => `${p.nom || '—'} — PN OFF: ${p.pn_off||'—'} / SN OFF: ${p.sn_off||'—'} / PN ON: ${p.pn_on||'—'} / SN ON: ${p.sn_on||'—'}`).join('\n');
+}
+
+G.openHandoverModal = async function() {
+  const targetId = document.getElementById('transfer-target-sel').value;
+  const errEl = document.getElementById('transfer-error');
+  errEl.textContent = '';
+  if (!targetId) { errEl.textContent = 'Please select a colleague.'; return; }
+  if (!_transferProjData) return;
+
+  const proj = _transferProjData;
+  const colleagueName = await koFetchEngineerName(targetId);
+
+  const extraNames = [];
+  const cols = Array.isArray(proj.colleagues) ? proj.colleagues : Object.values(proj.colleagues || {});
+  for (const c of cols) {
+    if (c && c.id) { const n = await koFetchEngineerName(c.id); if (n) extraNames.push(n); }
+  }
+
+  const items = Array.isArray(proj.items) ? proj.items : Object.values(proj.items || {});
+
+  sv('hov_operator_name', proj.cust_company || '');
+  sv('hov_location', proj.fbo || '');
+  sv('hov_airport_code', proj.loc || '');
+  sv('hov_fa_number', proj.wo || '');
+  sv('hov_ac_type', proj.model || '');
+  sv('hov_ac_sn', proj.sn || '');
+  sv('hov_ac_reg', proj.reg || '');
+  sv('hov_date_of_support', rtagTodayFormatted());
+  sv('hov_visa_access', '');
+  sv('hov_eng1_name', curProfile?.name || '');
+  sv('hov_eng2_name', colleagueName || '');
+  sv('hov_eng3_name', extraNames[0] || '');
+  sv('hov_eng4_name', extraNames[1] || '');
+  sv('hov_customer_followup', [proj.cust_name, proj.cust_tel, proj.cust_email].filter(Boolean).join(' / '));
+  sv('hov_spare_part_required', (proj.parts && (Array.isArray(proj.parts) ? proj.parts.length : Object.keys(proj.parts).length)) ? 'Yes' : 'No');
+  sv('hov_p135', '');
+  sv('hov_engineer_status', '');
+  sv('hov_parts_awb', '');
+  sv('hov_prepared_by', curProfile?.name || '');
+  sv('hov_defect', items.map(it => `${it.num}. ${it.label}`).join('\n'));
+  sv('hov_woa_status', '');
+  sv('hov_ac_rts_date', proj.erts || '');
+  sv('hov_support_updates', handoverBuildSupportUpdates(proj));
+  sv('hov_shipping_address', '');
+  sv('hov_parts_ordered', handoverBuildPartsOrdered(proj));
+  sv('hov_tools', '');
+  sv('hov_supporting_documents', '');
+  sv('hov_cmp_s', '');
+  sv('hov_handover_date', rtagTodayFormatted());
+
+  document.getElementById('hov-error').textContent = '';
+  closeModal('modal-transfer-proj');
+  openModal('modal-handover');
+};
+
+async function docxGenerateHandover(data) {
+  const res = await fetch('handover-template.docx');
+  if (!res.ok) throw new Error('handover-template.docx introuvable (HTTP ' + res.status + ') — vérifie qu\'il est bien à la racine du repo.');
+  const buf = await res.arrayBuffer();
+  const zip = new PizZip(buf);
+  let doc;
+  try {
+    doc = new window.docxtemplater.default(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+      delimiters: { start: '{{', end: '}}' },
+      nullGetter: () => ''
+    });
+  } catch(e) {
+    throw new Error('Erreur de chargement du template : ' + e.message);
+  }
+  try {
+    doc.render(data);
+  } catch(error) {
+    const details = error.properties && error.properties.errors
+      ? error.properties.errors.map(er => er.properties?.explanation || er.message).join(' ; ')
+      : error.message;
+    throw new Error('Erreur de génération : ' + details);
+  }
+  const blob = doc.getZip().generate({
+    type: 'blob',
+    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const safeWo = (data.fa_number || 'job').replace(/[^a-zA-Z0-9-]/g, '');
+  a.href = url;
+  a.download = 'HANDOVER_' + safeWo + '.docx';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+G.confirmHandoverAndTransfer = async function() {
+  const btn = document.getElementById('hov-gen-btn');
+  const errEl = document.getElementById('hov-error');
+  errEl.textContent = '';
+  const origLabel = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Generating…';
+  try {
+    if (!window.JSZip) throw new Error("JSZip n'est pas chargé — vérifie que jszip.min.js est bien ajouté au HTML.");
+    const data = {
+      operator_name: gv('hov_operator_name'), location: gv('hov_location'), airport_code: gv('hov_airport_code'),
+      fa_number: gv('hov_fa_number'), ac_type: gv('hov_ac_type'), ac_sn: gv('hov_ac_sn'), ac_reg: gv('hov_ac_reg'),
+      date_of_support: gv('hov_date_of_support'), visa_access: gv('hov_visa_access'),
+      eng1_name: gv('hov_eng1_name'), eng2_name: gv('hov_eng2_name'), eng3_name: gv('hov_eng3_name'), eng4_name: gv('hov_eng4_name'),
+      customer_followup: gv('hov_customer_followup'), spare_part_required: gv('hov_spare_part_required'),
+      p135: gv('hov_p135'), engineer_status: gv('hov_engineer_status'), parts_awb: gv('hov_parts_awb'),
+      prepared_by: gv('hov_prepared_by'), defect: gv('hov_defect'), woa_status: gv('hov_woa_status'),
+      ac_rts_date: gv('hov_ac_rts_date'), support_updates: gv('hov_support_updates'),
+      shipping_address: gv('hov_shipping_address'), parts_ordered: gv('hov_parts_ordered'),
+      tools: gv('hov_tools'), supporting_documents: gv('hov_supporting_documents'),
+      cmp_s: gv('hov_cmp_s'), handover_date: gv('hov_handover_date'),
+    };
+    await docxGenerateHandover(data);
+    closeModal('modal-handover');
+    await G.confirmTransferProject();
   } catch(e) {
     errEl.textContent = '❌ ' + e.message;
     btn.disabled = false; btn.textContent = origLabel;
