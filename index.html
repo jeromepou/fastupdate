@@ -1215,7 +1215,13 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <table class="ko-parts-tbl">
        <thead>
           <tr>
-            <th style="width:16%">Description</th><th style="width:12%">P/N</th><th style="width:9%">S/N</th><th style="width:6%">Qty</th><th style="width:11%">Category</th><th style="width:34%">Note / options</th><th style="width:4%"></th>
+            <th style="min-width:130px">Description</th>
+            <th style="min-width:100px">P/N</th>
+            <th style="min-width:70px">S/N</th>
+            <th style="width:45px">Qty</th>
+            <th style="width:90px">Category</th>
+            <th style="min-width:110px">Note</th>
+            <th style="width:28px"></th>
           </tr>
         </thead>
         <tbody id="ko-parts-tbody"></tbody>
@@ -8502,7 +8508,8 @@ function renderPartTplManageList() {
           </div>
           <table class="ko-parts-tbl" style="width:100%;margin-bottom:6px">
             <thead><tr>
-              <th style="width:16%">Description</th><th style="width:12%">P/N</th><th style="width:9%">S/N</th><th style="width:6%">Qty</th><th style="width:11%">Category</th><th style="width:34%">Note / options</th><th style="width:4%"></th>
+              <th style="min-width:120px">Description</th><th style="min-width:90px">P/N</th><th style="min-width:60px">S/N</th>
+              <th style="width:40px">Qty</th><th style="width:85px">Category</th><th style="min-width:150px">Note / options</th><th style="width:24px"></th>
             </tr></thead>
             <tbody>
               ${(t.parts||[]).map((p, li) => `
