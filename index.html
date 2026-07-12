@@ -6318,7 +6318,8 @@ G.koCheckWoDraft = async function(wo) {
 G.openKickoff = async function(forceWo) {
   document.getElementById('app-screen').style.display    = 'none';
   document.getElementById('kickoff-panel').style.display = 'block';
-  koSetupAccordion();	
+  koSetupAccordion();
+  koApplyMobileState(true);	
   // Fill engineer header
   if (curProfile) {
     const initials = (curProfile.name||'').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
@@ -9286,11 +9287,17 @@ G.deleteFSR = async function(i) {
 async function koLoadFSRSelector() {
   const sel = document.getElementById('ko-fsr-sel');
   if (!sel) return;
-  const snap = await get(ref(db, 'fsrContacts'));
-  const fsrs = snap.exists() ? snap.val() : [];
-  sel.innerHTML = '<option value="">— select FSR (optional) —</option>' +
-    fsrs.map((f, i) => `<option value="${i}">${f.name} · ${f.email}</option>`).join('');
-  sel._fsrData = fsrs;
+  try {
+    const snap = await get(ref(db, 'fsrContacts'));
+    const fsrs = snap.exists() ? snap.val() : [];
+    sel.innerHTML = '<option value="">— select FSR (optional) —</option>' +
+      fsrs.map((f, i) => `<option value="${i}">${f.name} · ${f.email}</option>`).join('');
+    sel._fsrData = fsrs;
+  } catch(e) {
+    console.warn('koLoadFSRSelector failed:', e);
+    sel.innerHTML = '<option value="">— select FSR (optional) —</option>';
+    sel._fsrData = [];
+  }
 }
 
 G.koApplyFSR = function() {
