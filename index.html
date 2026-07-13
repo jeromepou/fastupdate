@@ -391,6 +391,16 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 }
 .ko-parts-tbl td input:focus,
 .ko-parts-tbl td select:focus { background: var(--g50) }
+.ko-parts-tbl td select {
+  padding-right: 18px;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236c757d'><path d='M5.25 7.5L10 12.25L14.75 7.5H5.25Z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 3px center;
+  background-size: 11px;
+}
 .ko-parts-tbl td textarea.ko-desc-ta {
   width: 100%; font-size: 12px; background: transparent;
   border: none; color: var(--g900); outline: none; padding: 3px 4px;
@@ -1246,7 +1256,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
             <th style="min-width:90px">P/N</th>
             <th style="min-width:70px">S/N</th>
             <th style="width:45px">Qty</th>
-            <th style="width:85px">Category</th>
+            <th style="width:96px">Category</th>
             <th style="min-width:160px">Note</th>
             <th style="min-width:100px">Squawk</th>
             <th style="width:28px"></th>
@@ -6867,8 +6877,8 @@ G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='', note='', sqLabe
   tr.innerHTML = `
     <td style="text-align:center"><input type="checkbox" class="ko-part-row-cb" onchange="koUpdateBulkBar()"/></td>
     <td><textarea class="ko-desc-ta ko-f-desc" rows="1" oninput="koAutoGrow(this)" placeholder="Description">${koEscapeHtml(desc)}</textarea></td>
-    <td><input type="text" class="ko-f-pn" value="${pn.replace(/"/g,'&quot;')}" placeholder="P/N"/></td>
-    <td><input type="text" class="ko-f-sn ko-sn-field" value="${sn.replace(/"/g,'&quot;')}" placeholder="S/N off"/></td>
+    <td><textarea class="ko-desc-ta ko-f-pn" rows="1" oninput="koAutoGrow(this)" placeholder="P/N">${koEscapeHtml(pn)}</textarea></td>
+    <td><textarea class="ko-desc-ta ko-f-sn ko-sn-field" rows="1" oninput="koAutoGrow(this)" placeholder="S/N off">${koEscapeHtml(sn)}</textarea></td>
     <td><input type="text" class="ko-f-qty" value="${qty}" placeholder="Qty"/></td>
     <td>
       <select onchange="koPartCatChange(this)" style="${!cat?'border:1px solid #e07700;background:#fef9e7':''}">
@@ -9249,11 +9259,11 @@ G.koAddSelectedSealants = function() {
 
   Object.values(groups).forEach(group => {
     if (group.length > 1) {
-      const specLabel = group[0].specLabel;
+      const specLabels = [...new Set(group.map(p => p.specLabel))].join(' / ');
       const pnList = group.map(p => `${p.pn}${koSealantTagStr(p)}`).join(' OR ');
       G.koAddPartRow(
         pnList,
-        `Sealant — ${specLabel}`,
+        `Sealant — ${specLabels} — pick ONE of the P/Ns listed`,
         '', '1', 'Consumable',
         '',
         ''
