@@ -251,6 +251,24 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   .part-fields{grid-template-columns:1fr 1fr}
 }
 
+/* Corrige le débordement horizontal du picker sur mobile (bug CSS Grid
+   classique : les grid items ne rétrécissent pas sous leur contenu par
+   défaut, donc l'ellipsis sur .pb-name ne s'active jamais sans ça) */
+#picker-grid{
+  min-width:0;
+}
+#picker-grid .profile-btn{
+  min-width:0;
+  overflow:hidden;
+}
+
+/* En dessous de 400px de large, une seule colonne pour les noms longs */
+@media(max-width:400px){
+  #picker-grid{
+    grid-template-columns:1fr !important;
+  }
+}
+
 /* ── KICKOFF PANEL ── */
 #kickoff-panel { display:none }
 
