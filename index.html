@@ -6165,6 +6165,7 @@ function koBuildStateSnapshot() {
 // écrit par un autre onglet/appareil) est une pièce que ce panneau "n'a
 // jamais vue" — koSaveState ne doit surtout pas l'effacer en écrasant le
 // nœud avec le tableau tel qu'affiché ici.
+let koOrderLoadedWo = '';
 let koOrderLoadedVersion = 0;
 
 // Sauvegarde le brouillon Start Job. Rattaché au WO dès qu'il est connu
@@ -6195,11 +6196,25 @@ async function koSaveState() {
         // Pièces apparues côté serveur depuis le dernier chargement de CE
         // panneau (addedAt posé par koApplyPartsUpdate) : à préserver même
         // si notre tableau local ne les affiche pas.
-        const serverExtras = [
+        const existingItems = [
           ...(current.parts       || []),
           ...(current.tools       || []),
           ...(current.consumables || []),
-        ].filter(p => (p.addedAt || 0) > koOrderLoadedVersion);
+        ];
+
+        let serverExtras;
+        if (koOrderLoadedWo === wo) {
+          // Cette session a chargé/vérifié CE WO précis — le tableau local fait foi.
+          serverExtras = existingItems.filter(p => (p.addedAt || 0) > koOrderLoadedVersion);
+        } else {
+          // Jamais chargé pour CE WO (panneau ouvert sans WO, Clear & New Job,
+          // chargement décliné…) — le tableau local n'est pas fiable : on fusionne
+          // au lieu d'écraser, en gardant tout ce qui existe déjà côté serveur
+          // et n'est pas déjà représenté localement.
+          const normKey = p => (p.pn||'').trim().toUpperCase() + '|' + (p.desc||'').trim().toUpperCase();
+          const localKeys = new Set(localParts.map(normKey));
+          serverExtras = existingItems.filter(p => !localKeys.has(normKey(p)));
+        }
 
         const allItems = [...localParts, ...serverExtras];
 
@@ -6214,6 +6229,7 @@ async function koSaveState() {
           draft:       { ...state, parts: allItems },
         };
       });
+      koOrderLoadedWo = wo;
       koOrderLoadedVersion = Date.now();
     } catch(e) { console.warn('koSaveState error:', e); }
     return;
@@ -6238,6 +6254,7 @@ async function koRestoreState(forceWo) {
     try {
       const key = 'WO' + wo.toUpperCase().replace(/[^a-zA-Z0-9_-]/g, '_');
       const snap = await get(ref(db, 'orders/' + key));
+      koOrderLoadedWo = wo; // ce WO précis vient d'être vérifié
       if (!snap.exists()) { koOrderLoadedVersion = 0; return; }
       const order = snap.val();
       // Repère utilisé par koSaveState pour ne jamais effacer une pièce
@@ -9516,6 +9533,7 @@ G.koNewJob = async function() {
   // Clear parts table
   document.getElementById('ko-parts-tbody').innerHTML = '';
   KO.partRows = 0;
+  koOrderLoadedWo = ''; // le tableau local n'est plus fiable tant qu'il n'est pas rechargé pour ce WO
 
   // Clear co-engineers
   KO._coEngineers = [];
