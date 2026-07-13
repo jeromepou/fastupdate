@@ -60,14 +60,19 @@ header h1{font-size:15px;font-weight:600;flex:1}
 .btn-rm:hover{color:var(--red)}
 
 /* AUTH / LOGIN SCREEN */
-.auth-screen{min-height:80vh;display:flex;align-items:center;justify-content:center}
-.auth-box{background:#fff;border-radius:var(--rlg);border:1px solid var(--g200);box-shadow:var(--sh);padding:2rem;width:100%;max-width:560px;text-align:center}
+.auth-screen{min-height:80vh;display:flex;align-items:center;justify-content:center;padding:1rem 0}
+.auth-box{background:#fff;border-radius:var(--rlg);border:1px solid var(--g200);box-shadow:var(--sh);padding:2rem;width:100%;max-width:560px;text-align:center;transition:max-width .15s}
+.auth-box.auth-box-wide{max-width:760px}
+@media(max-width:480px){
+  .auth-box{padding:1.5rem 1rem}
+}
 .auth-box h2{font-size:18px;font-weight:700;color:var(--gd);margin-bottom:.5rem}
 .auth-box p{font-size:13px;color:var(--g600);margin-bottom:1.5rem}
 .auth-tabs{display:flex;gap:0;margin-bottom:1.5rem;border:1px solid var(--g200);border-radius:var(--r);overflow:hidden}
 .auth-tab{flex:1;padding:8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;border:none;color:var(--g600);transition:background .15s}
 .auth-tab.active{background:var(--gd);color:#fff}
-.profile-picker{display:flex;flex-direction:column;gap:8px;margin-bottom:1rem;max-height:300px;overflow-y:auto;padding-right:4px}
+/* Only the name grid scrolls — tabs & search stay fully visible above it */
+.profile-picker{display:flex;flex-direction:column;gap:8px;margin-bottom:1rem}
 .profile-btn{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--g200);border-radius:var(--r);cursor:pointer;background:#fff;transition:background .15s;text-align:left;width:100%}
 .profile-btn:hover{background:var(--gl);border-color:var(--gb)}
 .profile-btn .pb-avatar{width:32px;height:32px;border-radius:50%;background:var(--gd);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
@@ -251,22 +256,15 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   .part-fields{grid-template-columns:1fr 1fr}
 }
 
-/* Corrige le débordement horizontal du picker sur mobile (bug CSS Grid
-   classique : les grid items ne rétrécissent pas sous leur contenu par
-   défaut, donc l'ellipsis sur .pb-name ne s'active jamais sans ça) */
+/* Fixes horizontal overflow of the picker on mobile (a classic CSS Grid
+   bug: grid items don't shrink below their content by default, so the
+   ellipsis on .pb-name never kicks in without this) */
 #picker-grid{
   min-width:0;
 }
 #picker-grid .profile-btn{
   min-width:0;
   overflow:hidden;
-}
-
-/* En dessous de 400px de large, une seule colonne pour les noms longs */
-@media(max-width:400px){
-  #picker-grid{
-    grid-template-columns:1fr !important;
-  }
 }
 
 /* ── KICKOFF PANEL ── */
@@ -564,7 +562,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 ════════════════════════════════════════════ -->
 <div class="main" id="login-screen">
   <div class="auth-screen">
-    <div class="auth-box">
+    <div class="auth-box" id="auth-box">
       <div style="font-size:48px;margin-bottom:.5rem">✈</div>
       <h2>FAST Update Generator</h2>
       <p id="auth-subtitle">Sign in to access your projects.</p>
@@ -761,7 +759,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="card-body">
     <div id="parts-container"></div>
     <button class="btn-add" onclick="addPart()">+ Add part</button>
-    <button class="btn" onclick="openRepairTagModal()" style="width:100%;justify-content:center;margin-top:8px" title="Ouvre la fiche GA3671 vierge — utile si la pièce n'est pas (ou pas encore) dans le tableau ci-dessus">🏷️ Generate GA3671 tag (standalone)</button>
+    <button class="btn" onclick="openRepairTagModal()" style="width:100%;justify-content:center;margin-top:8px" title="Opens a blank GA3671 tag — useful if the part isn't (or isn't yet) in the table above">🏷️ Generate GA3671 tag (standalone)</button>
   </div>
 </div>
 
@@ -1411,9 +1409,9 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div style="background:#eef6ff;border:1px solid #93c5fd;border-radius:var(--r);padding:12px;margin-bottom:14px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
         <div style="font-size:12px;font-weight:700;color:#1e40af;flex:1">🧠 AI Team Briefing — tous les chantiers actifs</div>
-        <button class="btn primary" id="btn-ai-briefing" onclick="generateAIBriefing()" style="font-size:11px;padding:5px 12px">🧠 Générer</button>
+        <button class="btn primary" id="btn-ai-briefing" onclick="generateAIBriefing()" style="font-size:11px;padding:5px 12px">🧠 Generate</button>
       </div>
-      <p style="font-size:11px;color:var(--g600);margin-bottom:0">Synthèse basée sur le cache Reply Sync (rafraîchi toutes les 2h) — instantané, aucun appel Gmail en direct.</p>
+      <p style="font-size:11px;color:var(--g600);margin-bottom:0">Summary based on the Reply Sync cache (refreshed every 2h) — instant, no live Gmail calls.</p>
       <div id="ai-briefing-output" style="display:none;background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:10px 12px;margin-top:8px;max-height:400px;overflow-y:auto;font-size:12px;line-height:1.6"></div>
     </div>
 
@@ -1574,7 +1572,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 <div class="modal-bg" id="modal-handover">
   <div class="modal" style="max-width:720px">
     <h3>📄 Engineer's Support Info — Handover Form</h3>
-    <p style="font-size:12px;color:var(--g600);margin-bottom:12px">Champs pré-remplis automatiquement depuis le projet — vérifie et complète avant de générer le .docx.</p>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:12px">Fields pre-filled automatically from the project — check and complete before generating the .docx.</p>
 
     <div class="ko-section-lbl">✈️ Aircraft & Job</div>
     <div class="grid g3" style="margin-bottom:10px">
@@ -2292,7 +2290,7 @@ G.koAddCustomSubjectPattern = async function(cat) {
     await set(ref(db, 'config/replySubjectPatterns/' + cat), updated);
   } catch(e) {
     console.warn('Could not save custom subject pattern:', e);
-    alert('⚠️ Sauvegarde impossible (droits Firebase ?) — ce sujet ne sera PAS pris en compte :\n' + e.message);
+    alert('⚠️ Could not save (Firebase permissions?) — this subject will NOT be taken into account:\n' + e.message);
     return;
   }
   koCustomSubjPatterns[cat] = updated;
@@ -2309,7 +2307,7 @@ G.koRemoveCustomSubjectPattern = async function(cat, idx) {
     await set(ref(db, 'config/replySubjectPatterns/' + cat), updated);
   } catch(e) {
     console.warn('Could not remove custom subject pattern:', e);
-    alert('⚠️ Suppression impossible (droits Firebase ?) :\n' + e.message);
+    alert('⚠️ Could not delete (Firebase permissions?):\n' + e.message);
     return;
   }
   koCustomSubjPatterns[cat] = updated;
@@ -2962,10 +2960,17 @@ onAuthStateChanged(auth, async (user) => {
 // ══════════════════════════════════════
 //  LOGIN SCREEN VIEWS
 // ══════════════════════════════════════
+// The team picker needs more room than a PIN/admin form — widen the card
+// only while it's the active view, so everything else stays compact.
+function setAuthBoxWide(isWide) {
+  document.getElementById('auth-box')?.classList.toggle('auth-box-wide', isWide);
+}
+
 G.showPicker = function() {
   document.getElementById('view-picker').style.display = '';
   document.getElementById('view-pin').style.display = 'none';
   document.getElementById('view-admin-login').style.display = 'none';
+  setAuthBoxWide(true);
   loadTeamForPicker();
 };
 
@@ -2974,6 +2979,7 @@ G.showAdminLogin = function() {
   document.getElementById('view-pin').style.display = 'none';
   document.getElementById('view-admin-login').style.display = '';
   document.getElementById('admin-login-error').textContent = '';
+  setAuthBoxWide(false);
   setTimeout(() => document.getElementById('admin-email-input').focus(), 100);
 };
 
@@ -2998,7 +3004,7 @@ async function loadTeamForPicker() {
       <input type="text" id="picker-search" placeholder="🔍 Search…"
         style="width:100%;margin-bottom:8px;padding:7px 10px;border:1px solid var(--g200);border-radius:var(--r);font-size:13px"
         oninput="filterPicker()"/>
-      <div id="picker-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:280px;overflow-y:auto;padding-right:2px"></div>`;
+      <div id="picker-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;max-height:min(52vh,460px);overflow-y:auto;padding-right:2px"></div>`;
 
     // Injecter le style des onglets
     if (!document.getElementById('ptab-style')) {
@@ -3037,7 +3043,7 @@ function renderPickerGrid() {
   if (q) members = members.filter(p => p.name.toLowerCase().includes(q));
 
   if (!members.length) {
-    grid.innerHTML = '<p style="font-size:13px;color:var(--g400);text-align:center;grid-column:span 2;padding:1rem 0">No results.</p>';
+    grid.innerHTML = '<p style="font-size:13px;color:var(--g400);text-align:center;grid-column:1/-1;padding:1rem 0">No results.</p>';
     return;
   }
 
@@ -3072,7 +3078,8 @@ function showPinEntry(profile) {
   pendingUserToLogin = profile;
   document.getElementById('view-picker').style.display = 'none';
   document.getElementById('view-pin').style.display = '';
-  // Reset état oublié/question secrète
+  setAuthBoxWide(false);
+  // Reset state for forgotten PIN / security question
   document.getElementById('view-secret-question').style.display = 'none';
   document.getElementById('view-new-pin').style.display = 'none';
   document.getElementById('btn-forgot-pin').style.display = '';
@@ -3583,15 +3590,15 @@ G.generateAIBriefing = async function() {
   if (!btn || !out) return;
   btn.disabled = true;
   const origLabel = btn.innerHTML;
-  btn.innerHTML = '<span class="spin"></span> Génération…';
+  btn.innerHTML = '<span class="spin"></span> Generating…';
   out.style.display = '';
-  out.textContent = '⏳ Analyse des chantiers actifs en cours (peut prendre 15-30s)…';
+  out.textContent = '⏳ Analyzing active jobs (can take 15-30s)…';
   try {
     const res = await fetch(KO_WORKER + '/daily-briefing', { method: 'POST' });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Erreur ' + res.status);
-    const stamp = new Date(data.generatedAt || Date.now()).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
-    out.innerHTML = `<div style="font-size:11px;color:var(--g600);margin-bottom:8px">🧠 ${data.jobCount} chantier(s) actif(s) — généré à ${stamp}</div>` +
+    if (!res.ok) throw new Error(data.error || 'Error ' + res.status);
+    const stamp = new Date(data.generatedAt || Date.now()).toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
+    out.innerHTML = `<div style="font-size:11px;color:var(--g600);margin-bottom:8px">🧠 ${data.jobCount} active job(s) — generated at ${stamp}</div>` +
       `<div>${nl2br(data.briefing)}</div>`;
   } catch(e) {
     out.innerHTML = '<span style="color:var(--red)">❌ ' + escHtml(e.message) + '</span>';
@@ -3919,7 +3926,7 @@ G.openHandoverModal = async function() {
 
 async function docxGenerateHandover(data) {
   const res = await fetch('handover-template.docx');
-  if (!res.ok) throw new Error('handover-template.docx introuvable (HTTP ' + res.status + ') — vérifie qu\'il est bien à la racine du repo.');
+  if (!res.ok) throw new Error('handover-template.docx not found (HTTP ' + res.status + ') — check that it is at the root of the repo.');
   const buf = await res.arrayBuffer();
   const zip = new PizZip(buf);
   let doc;
@@ -3931,7 +3938,7 @@ async function docxGenerateHandover(data) {
       nullGetter: () => ''
     });
   } catch(e) {
-    throw new Error('Erreur de chargement du template : ' + e.message);
+    throw new Error('Template loading error: ' + e.message);
   }
   try {
     doc.render(data);
@@ -3939,7 +3946,7 @@ async function docxGenerateHandover(data) {
     const details = error.properties && error.properties.errors
       ? error.properties.errors.map(er => er.properties?.explanation || er.message).join(' ; ')
       : error.message;
-    throw new Error('Erreur de génération : ' + details);
+    throw new Error('Generation error: ' + details);
   }
   const blob = doc.getZip().generate({
     type: 'blob',
@@ -4469,7 +4476,7 @@ G.addPart = function(nom='',pn_off='',sn_off='',pn_on='',sn_on='') {
     <div class="fg"><label>SN OFF</label><input type="text" class="p-snoff" value="${sn_off}" placeholder="SN OFF" oninput="autosave()"/></div>
     <div class="fg"><label>PN ON</label><input type="text" class="p-pnon" value="${pn_on}" placeholder="Auto-fills from PN OFF" oninput="autosave()"/></div>
     <div class="fg"><label>SN ON</label><input type="text" class="p-snon" value="${sn_on}" placeholder="SN ON" oninput="autosave()"/></div>
-  </div><button class="btn" onclick="openRepairTagModal(this)" title="Générer la fiche GA3671 pour cette pièce" style="margin-top:18px;padding:6px 9px;font-size:11px;white-space:nowrap">🏷️</button><button class="btn-rm" onclick="this.parentElement.remove();autosave()" style="margin-top:18px">×</button>`;
+  </div><button class="btn" onclick="openRepairTagModal(this)" title="Generate the GA3671 tag for this part" style="margin-top:18px;padding:6px 9px;font-size:11px;white-space:nowrap">🏷️</button><button class="btn-rm" onclick="this.parentElement.remove();autosave()" style="margin-top:18px">×</button>`;
   c.appendChild(d);
 };
 G.onPnOffInput = function(el) {
@@ -4644,21 +4651,21 @@ function rtagDataUrlToBytes(dataUrl) {
 G.generateRepairTag = async function() {
   const errEl = document.getElementById('rtag-error');
   errEl.textContent = '';
-  if (!window.PDFLib) { errEl.textContent = "❌ pdf-lib.min.js introuvable — vérifie qu'il est à la racine du repo et que le <script> est bien ajouté."; return; }
+  if (!window.PDFLib) { errEl.textContent = "❌ pdf-lib.min.js not found — check that it is at the root of the repo and that the <script> tag was added."; return; }
 
   const btn = document.getElementById('rtag-gen-btn');
   const origLabel = btn.textContent;
-  btn.disabled = true; btn.textContent = '⏳ Génération…';
+  btn.disabled = true; btn.textContent = '⏳ Generating…';
 
   try {
     const res = await fetch('ga3671-template.pdf');
-    if (!res.ok) throw new Error('ga3671-template.pdf introuvable (HTTP ' + res.status + ') — vérifie qu\'il est uploadé à la racine du repo.');
+    if (!res.ok) throw new Error('ga3671-template.pdf not found (HTTP ' + res.status + ') — check that it is uploaded at the root of the repo.');
     const bytes = await res.arrayBuffer();
     const pdfDoc = await PDFLib.PDFDocument.load(bytes);
     const form = pdfDoc.getForm();
 
-    const setText = (name, val) => { try { form.getTextField(name).setText(val || ''); } catch(e) { console.warn('Champ introuvable:', name); } };
-    const setCheck = (name, checked) => { try { const cb = form.getCheckBox(name); checked ? cb.check() : cb.uncheck(); } catch(e) { console.warn('Case introuvable:', name); } };
+    const setText = (name, val) => { try { form.getTextField(name).setText(val || ''); } catch(e) { console.warn('Field not found:', name); } };
+    const setCheck = (name, checked) => { try { const cb = form.getCheckBox(name); checked ? cb.check() : cb.uncheck(); } catch(e) { console.warn('Checkbox not found:', name); } };
 
     setText('Text Field0',  gv('rtag_date'));
     setText('Text Field1',  gv('rtag_qty'));
@@ -4726,7 +4733,7 @@ G.generateRepairTag = async function() {
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
 
-    btn.textContent = '✅ Téléchargé !';
+    btn.textContent = '✅ Downloaded!';
     setTimeout(() => { btn.textContent = origLabel; btn.disabled = false; }, 2500);
   } catch(e) {
     errEl.textContent = '❌ ' + e.message;
@@ -6408,7 +6415,7 @@ G.koCheckWoDraft = async function(wo) {
     const key = 'WO' + wo.toUpperCase().replace(/[^a-zA-Z0-9_-]/g, '_');
     const snap = await get(ref(db, 'orders/' + key));
     if (!snap.exists()) return;
-    if (!confirm('Un brouillon Start Job existe déjà pour ' + wo + '. Le charger ?\n\n(Ça remplacera ce qui est déjà rempli dans ce panneau)')) return;
+    if (!confirm('A Start Job draft already exists for ' + wo + '. Load it?\n\n(This will replace what is already filled in this panel)')) return;
     await koRestoreState(wo);
     koUpdatePreview();
   } catch(e) { console.warn('koCheckWoDraft error:', e); }
@@ -7059,11 +7066,11 @@ function koComputeBodies() {
 G.koToggleDraftPreview = function(type) {
   if (type === 'parts') {
     if (!KO.prefixSel) {
-      alert('⚠️ Veuillez sélectionner un Email Prefix avant de prévisualiser.');
+      alert('⚠️ Please select an Email Prefix before previewing.');
       return;
     }
     if (!KO.reqType) {
-          alert('⚠️ Veuillez sélectionner un Request Type (Order ou Availability only) avant de prévisualiser.');
+          alert('⚠️ Please select a Request Type (Order or Availability only) before previewing.');
        return;
     }
    }
@@ -7687,12 +7694,12 @@ G.koGenerate = async function() {
   }
   // ── Warn if required Part Request options are missing
   const warnings = [];
-  if (!KO.prefixSel) warnings.push('• Email Prefix (Part request options) : aucune sélection');
-  if (!KO.reqType)   warnings.push('• Request Type (Part request options) : aucune sélection');
+  if (!KO.prefixSel) warnings.push('• Email Prefix (Part request options): nothing selected');
+  if (!KO.reqType)   warnings.push('• Request Type (Part request options): nothing selected');
   const skipTravel = document.getElementById('ko_skip_travel')?.checked;
-  if (!skipTravel && !KO.cabinClass) warnings.push('• Cabin Class (Travel) : aucune sélection');
+  if (!skipTravel && !KO.cabinClass) warnings.push('• Cabin Class (Travel): nothing selected');
   if (warnings.length) {
-    const go = confirm('⚠️ Certaines options ne sont pas sélectionnées :\n\n' + warnings.join('\n') + '\n\nGénérer quand même ?');
+    const go = confirm('⚠️ Some options are not selected:\n\n' + warnings.join('\n') + '\n\nGenerate anyway?');
     if (!go) return;
   }
 
@@ -8492,7 +8499,7 @@ function koRenderQuickPartsChips() {
   KO_QP_CAT_ORDER.forEach(cat => groups[cat].sort((a,b) => (a.desc||'').localeCompare(b.desc||'')));
 
   if (!KO_QP_CAT_ORDER.some(cat => groups[cat].length)) {
-    wrap.innerHTML = '<span style="font-size:11px;color:#9a3412">Aucun résultat — essaie un autre mot-clé.</span>';
+    wrap.innerHTML = '<span style="font-size:11px;color:#9a3412">No results — try another keyword.</span>';
     return;
   }
 
@@ -8825,7 +8832,7 @@ function koRenderPartTplChips() {
     .filter(t => !q || (t.name || '').toLowerCase().includes(q));
 
   if (!filtered.length) {
-    wrap.innerHTML = '<span style="font-size:11px;color:#9a3412">Aucun résultat — essaie un autre mot-clé.</span>';
+    wrap.innerHTML = '<span style="font-size:11px;color:#9a3412">No results — try another keyword.</span>';
     return;
   }
 
