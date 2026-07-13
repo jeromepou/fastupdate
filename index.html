@@ -1578,10 +1578,10 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div class="grid g3" style="margin-bottom:10px">
       <div class="fg"><label>Engineer status during allocation</label><input type="text" id="hov_engineer_status"/></div>
       <div class="fg"><label>WOA status (green/red/amber)</label><input type="text" id="hov_woa_status"/></div>
-      <div class="fg"><label>A/C RTS (date)</label><input type="text" id="hov_ac_rts_date"/></div>
+      <div class="fg"><label>A/C RTS<br>(date)</label><input type="text" id="hov_ac_rts_date"/></div>
       <div class="fg"><label>Spare part order required</label><input type="text" id="hov_spare_part_required"/></div>
       <div class="fg"><label>Parts AWB / Tracking numbers</label><textarea id="hov_parts_awb" style="min-height:60px" placeholder="One line by parcel…"></textarea></div>
-      <div class="fg"><label>P-135 (yes/no)</label><input type="text" id="hov_p135"/></div>
+      <div class="fg"><label>P-135<br>(yes/no)</label><input type="text" id="hov_p135"/></div>
     </div>
 
     <div class="ko-section-lbl">🔧 Defect / Updates / Parts</div>
@@ -3602,22 +3602,57 @@ async function renderProjList() {
     list.innerHTML = `<div class="proj-empty">${projTab === 'archive' ? 'No archived projects.' : 'No active projects — create one or upload a PDF.'}</div>`;
     return;
   }
-  const sorted = [...filtered].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+  // Pour les projets transférés, on va chercher l'état actuel chez le
+  // collègue (pointeur "vivant" — jamais de copie figée à faire évoluer).
+  const enriched = await Promise.all(filtered.map(async proj => {
+    if (!proj.transferred) return proj;
+    try {
+      const liveSnap = await get(ref(db, 'team/' + proj.transferredTo + '/projects/' + proj.id));
+      if (liveSnap.exists()) {
+        return { ...proj, _live: liveSnap.val() }; // état actuel chez le collègue
+      }
+    } catch(e) { console.warn('renderProjList: live fetch failed for transferred project', proj.id, e); }
+    return proj; // fallback sur le stub si le fetch échoue
+  }));
+
+  const sorted = [...enriched].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   list.innerHTML = '';
   sorted.forEach(proj => {
+    const live = proj._live; // undefined si non transféré ou fetch raté
+    const wo   = live?.wo   || proj.wo;
+    const model= live?.model|| proj.model;
+    const sn   = live?.sn   || proj.sn;
+    const reg  = live?.reg  || proj.reg;
+    const loc  = live?.loc  || proj.loc;
+
     const div = document.createElement('div');
     div.className = 'proj-item' + (proj.id === curProj ? ' active' : '');
     const ds = new Date(proj.updatedAt || proj.createdAt).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'2-digit'});
+
+    const tagHtml = proj.transferred
+      ? `<span class="tag-arch">🔄 Transferred to ${proj.transferredToName}${live?.rts ? ' · RTS ✓' : ''}</span>`
+      : (proj.rts ? '<span class="tag-arch">RTS ✓</span>' : '<span class="tag-open">OPEN</span>');
+
+    // Un projet transféré n'est plus le tien : pas de Start Job ni de
+    // suppression directe (ça supprimerait le pointeur, pas le vrai projet).
+    const actionsHtml = proj.transferred
+      ? ''
+      : `<button class="btn-start-job" style="padding:5px 10px;font-size:11px" onclick="event.stopPropagation();koStartFromProject('${proj.id}')">🚀 Start Job</button>
+         <button class="btn" onclick="event.stopPropagation();openTransferModal('${proj.id}')" style="padding:4px 8px;font-size:11px" title="Transfer this project to a colleague">🔄</button>
+         <button class="btn danger" onclick="event.stopPropagation();deleteProjUI('${proj.id}')" style="padding:4px 8px;font-size:11px">🗑</button>`;
+
     div.innerHTML = `
       <div class="proj-item-info">
-        <div class="proj-item-wo">${proj.wo||'(no WO)'} ${proj.rts ? '<span class="tag-arch">RTS ✓</span>' : '<span class="tag-open">OPEN</span>'}</div>
-        <div class="proj-item-sub">${[proj.model, proj.sn, proj.reg, proj.loc].filter(Boolean).join(' · ')}</div>
+        <div class="proj-item-wo">${wo||'(no WO)'} ${tagHtml}</div>
+        <div class="proj-item-sub">${[model, sn, reg, loc].filter(Boolean).join(' · ')}</div>
       </div>
       <div class="proj-item-date">${ds}</div>
-      <button class="btn-start-job" style="padding:5px 10px;font-size:11px" onclick="event.stopPropagation();koStartFromProject('${proj.id}')">🚀 Start Job</button>
-      <button class="btn" onclick="event.stopPropagation();openTransferModal('${proj.id}')" style="padding:4px 8px;font-size:11px" title="Transfer this project to a colleague">🔄</button>
-      <button class="btn danger" onclick="event.stopPropagation();deleteProjUI('${proj.id}')" style="padding:4px 8px;font-size:11px">🗑</button>`;
-    div.onclick = () => loadProject(proj.id);
+      ${actionsHtml}`;
+    div.onclick = () => {
+      if (proj.transferred) { alert('This project was transferred to ' + proj.transferredToName + ' — it now lives in their profile.'); return; }
+      loadProject(proj.id);
+    };
     list.appendChild(div);
   });
 }
@@ -3638,7 +3673,9 @@ G.loadProject = async function(pid) {
 
 G.deleteProjUI = async function(pid) {
   const snap = await get(ref(db, 'team/' + curProfile.id + '/projects/' + pid));
-  const wo = snap.exists() ? (snap.val().wo || '(no WO)') : pid;
+  const p = snap.exists() ? snap.val() : null;
+  if (p?.transferred) { alert('This project was transferred — nothing to delete here.'); return; }
+  const wo = p ? (p.wo || '(no WO)') : pid;
   if (!confirm(`Delete project "${wo}"?`)) return;
   await remove(ref(db, 'team/' + curProfile.id + '/projects/' + pid));
   if (curProj === pid) { curProj = null; clearForm(); }
@@ -3682,8 +3719,6 @@ G.confirmTransferProject = async function() {
   const origLabel = btn.textContent;
   btn.disabled = true; btn.textContent = '⏳ Transferring…';
 
-  // Cancel any pending autosave for this project so it can't re-create
-  // itself under the old owner right after we delete it below.
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
 
   try {
@@ -3692,18 +3727,39 @@ G.confirmTransferProject = async function() {
     if (!snap.exists()) throw new Error('Project not found — it may have already been moved.');
     const proj = snap.val();
 
-    proj.leadEngId = targetId;
-    proj.updatedAt = Date.now();
-    proj.transferredFrom = curProfile.id;
-    proj.transferredAt = Date.now();
+    const targetName = await koFetchEngineerName(targetId);
 
-    await set(ref(db, 'team/' + targetId + '/projects/' + _transferTargetPid), proj);
-    await remove(srcRef);
+    // Copie active chez le collègue — c'est la SEULE source de vérité
+    // désormais pour ce projet.
+    const projForTarget = {
+      ...proj,
+      leadEngId: targetId,
+      updatedAt: Date.now(),
+      transferredFrom: curProfile.id,
+      transferredFromName: curProfile.name,
+      transferredAt: Date.now(),
+    };
+    await set(ref(db, 'team/' + targetId + '/projects/' + _transferTargetPid), projForTarget);
+
+    // Chez toi : un pointeur léger, pas une copie complète — renderProjList
+    // va lire l'état à jour chez le collègue à chaque affichage, donc les
+    // deux ne peuvent jamais diverger.
+    await set(srcRef, {
+      id: _transferTargetPid,
+      transferred: true,
+      transferredTo: targetId,
+      transferredToName: targetName || '(unknown)',
+      transferredAt: Date.now(),
+      updatedAt: Date.now(),
+      rts: true, // pour tomber dans l'onglet Archives
+      wo: proj.wo || '', model: proj.model || '', sn: proj.sn || '',
+      reg: proj.reg || '', loc: proj.loc || ''
+    });
 
     if (curProj === _transferTargetPid) { curProj = null; clearForm(); }
     closeModal('modal-transfer-proj');
-    renderProjList();
-    setStatus('done', '✅ Project transferred.');
+    projTab = 'archive'; G.switchProjTab('archive');
+    setStatus('done', '✅ Project transferred — you\'ll still see its live status in your Archives.');
   } catch(e) {
     errEl.textContent = '❌ ' + e.message;
     btn.disabled = false; btn.textContent = origLabel;
@@ -7716,7 +7772,12 @@ document.addEventListener('input', e => {
 (function() {
   const panel = document.getElementById('kickoff-panel');
   if (panel) {
-    panel.addEventListener('input', koSaveState);
+    let koSaveTimer = null;
+    const koDebouncedSave = () => {
+      clearTimeout(koSaveTimer);
+      koSaveTimer = setTimeout(koSaveState, 900);
+    };
+    panel.addEventListener('input', koDebouncedSave);
     panel.addEventListener('change', koSaveState);
   }
 })();
