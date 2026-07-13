@@ -5404,7 +5404,7 @@ G.generate = async function() {
         const it=items.find(x=>x.num===iu.num);
         const statusLabel = SL[iu.status];
         const statusColor = SC[iu.status]||'#555';
-        const statusHtml = statusLabel ? ` — <span style="color:#fff;font-weight:700;background:${statusColor};padding:1px 7px;border-radius:10px;font-size:11px">${statusLabel}</span>` : '';
+        const statusHtml = statusLabel ? ` — <span style="color:#fff;font-weight:700;background:${statusColor};padding:1px 7px;border-radius:10px;font-size:11px;white-space:nowrap;display:inline-block;">${statusLabel.replace(/ /g, '&nbsp;')}</span>` : '';
         updContent += `${it?`${iu.num}-${it.label.toUpperCase()}`:`Item ${iu.num}`}${statusHtml}<br>`;
         if(iu.detail) updContent += `<span>${nl2br(iu.detail)}</span><br>`;
       });
