@@ -3590,6 +3590,7 @@ async function renderTeamAdminList() {
       <button class="btn" onclick="promptEditMember('${id}')" style="padding:4px 8px;font-size:11px">✏️ Edit</button>
       <button class="btn" onclick="promptResetPin('${id}')" style="padding:4px 8px;font-size:11px">🔑 PIN</button>
       <button class="btn" onclick="forceSetupPin('${id}')" style="padding:4px 8px;font-size:11px" title="Force engineer to choose a new PIN on next login">🔄</button>
+      <button class="btn danger" onclick="resetEngineerFully('${id}')" style="padding:4px 8px;font-size:11px" title="Full reset — PIN + security question (engineer starts fresh)">🔄🔐</button>
       <button class="btn danger" onclick="deleteTeamMember('${id}')" style="padding:4px 8px;font-size:11px">🗑</button>
     </div>`).join('');
 }
@@ -6042,6 +6043,23 @@ G.forceSetupPin = async function(id) {
   if (!confirm('This will ask the engineer to choose a new PIN on next login.')) return;
   await set(ref(db, 'teamSecrets/' + id + '/pinHash'), 'SETUP_REQUIRED');
   renderTeamAdminList();
+};
+
+G.resetEngineerFully = async function(id) {
+  if (!confirm("This will reset this engineer's PIN AND security question. They will set up both again from scratch on next login. Continue?")) return;
+  try {
+    await update(ref(db, 'teamSecrets/' + id), {
+      pinHash: 'SETUP_REQUIRED',
+      secretQuestion: null,
+      secretAnswer: null,
+      resetToken: null,
+      resetTokenExpires: null
+    });
+    setStatus('done', '✅ Engineer fully reset — PIN and security question cleared.');
+    renderTeamAdminList();
+  } catch(e) {
+    alert('❌ Reset failed: ' + e.message);
+  }
 };
 
 G.promptEditMember = async function(id) {
@@ -9786,6 +9804,7 @@ window.adminEmailLogin   = G.adminEmailLogin;
 window.logout            = G.logout;
 window.openModal         = G.openModal;
 window.closeModal        = G.closeModal;
+window.resetEngineerFully = G.resetEngineerFully;
 
 // Expose all ko functions to window for HTML inline handlers
 window.koUpdatePreview = koUpdatePreview;
