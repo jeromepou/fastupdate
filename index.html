@@ -2029,7 +2029,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <li>A personalised greeting using the customer contact name you entered.</li>
         <li>A statement of the defect and an action plan — either typed manually in the Action plan field, or a generic line if left blank.</li>
         <li>Your <strong>ETA on site</strong> — if filled in, it appears as a sentence. Leave blank or write N/A to omit it. Write UNK for a generic "I will keep you informed" line.</li>
-        <li>A list of <strong>questions to include</strong> — tick only the ones relevant to this job. Available questions: broker for import, aircraft hours and cycles, PO/WO number, <strong>next scheduled flight</strong> (pre-filled from the project's "Next Flight" field if available), keys location, FBO name, FBO authorisation email, airside access details, local contact/crew details, troubleshooting already carried out, CAS messages / CMC faults, FHDB downloaded, Techops reply received, self-sourced parts certificates, hand carry approval, order before or after confirmed diagnosis.</li>
+        <li>A list of <strong>questions to include</strong> — tick only the ones relevant to this job. Available questions: broker for import, aircraft hours and cycles, PO/WO number, <strong>next scheduled flight</strong> (pre-filled from the project's "Next Flight" field if available), <strong>JDM / IDM access</strong> to download the aircraft database update, keys location, FBO name, FBO authorisation email, local contact/crew details, troubleshooting already carried out, CAS messages / CMC faults, FHDB downloaded, Techops reply received, self-sourced parts certificates, hand carry approval, order before or after confirmed diagnosis.</li>
         <li>For troubleshooting questions (CAS, FHDB, Techops, previous troubleshooting): if you tick the question AND select specific work items in the sub-list that appears, the question is asked once per selected squawk — e.g. "Regarding item 2.1 (APU FAIL) — has any troubleshooting been carried out?". If no item is selected, the question is asked generically.</li>
         <li>Your <strong>own saved custom questions</strong> — add any recurring question you always ask via the "My custom questions" section (saved permanently to your profile, invisible to other engineers). Tick the ones to include per job.</li>
         <li>A free-text field for any other one-off question, one per line.</li>
@@ -2059,13 +2059,17 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <li><strong>Avoid NFF clause</strong> — tick to include a sentence asking Materials to favour overhauled or repaired units over new ones, to reduce the risk of No Fault Found returns.</li>
         <li><strong>Priority warehouse</strong> — optionally ask Materials to check a specific warehouse first (Savannah, Farnborough, Amsterdam, Singapore).</li>
         <li><strong>Certificates, hand carry approval</strong> — tick to include the relevant sentences in the email.</li>
-        <li><strong>Shipping address</strong> — either "Will be provided shortly" (default) or enter the full FBO address manually.</li>
+        <li><strong>Shipping address</strong> — either "Will be provided shortly" (default), a saved address chip (grouped by ICAO airport — tap to fill it in automatically), or type/edit the address manually. Use <strong>"⚙️ Manage list"</strong> to add, edit or remove saved addresses, shared with the whole team.</li>
         <li><strong>Customer's broker</strong> — paste broker contact details if the customer has provided one for import.</li>
       </ul>
 
-	  <h4 style="margin-top:1rem">⭐ Quick add &amp; 🧪 Sealant lookup</h4>
-	  <p>Above the parts table, <strong>Quick add</strong> shows one-tap chips for your team's frequently used tools and consumables (grouped by Parts/Consumables/Tools, filterable with the search box) — tapping a chip adds it straight to the table. Use <strong>"⚙️ Manage list"</strong> to add, edit or remove entries; this list is shared with the whole team.</p>
-	  <p>The <strong>Sealant lookup</strong> panel lets you pick a MIL Spec / application (e.g. fuel tank sealant, firewall sealing) to see the approved part numbers, tick the ones you need, and add them to the parts table in one click. Use its own <strong>"⚙️ Manage list"</strong> to maintain the shared MIL Spec ↔ P/N reference.</p>	
+	  <h4 style="margin-top:1rem">📋 Order templates, ⭐ Quick add &amp; 🧪 Sealant lookup</h4>
+	  <p>Above the parts table, three shared shortcuts help you fill it faster:</p>
+	  <ul>
+	    <li><strong>📋 Order templates</strong> — full kits (e.g. main wheel change, brake change) saved per aircraft model. Filter by name with the search box, then tap a template to open it: mandatory lines are pre-ticked and always added, while lines marked <strong>"if required"</strong> are optional — tick them only if actually needed for this job. You can also assign the whole template to a squawk before adding it. Use <strong>"⚙️ Manage list"</strong> to create new templates (grouped by aircraft model — manage the model list itself from there too) or edit/delete existing ones. <strong>⚠️ Always check the applicable AMM before ordering</strong> — part numbers, quantities and applicability can vary by aircraft configuration/effectivity; templates are a starting point, not a substitute for engineering documentation.</li>
+	    <li><strong>⭐ Quick add</strong> — one-tap chips for your team's frequently used tools and consumables (grouped by Parts/Consumables/Tools, filterable with the search box) — tapping a chip adds it straight to the table. Use its own <strong>"⚙️ Manage list"</strong> to add, edit or remove entries; shared with the whole team.</li>
+	    <li><strong>🧪 Sealant lookup</strong> — pick a MIL Spec / application (e.g. fuel tank sealant, firewall sealing) to see the approved part numbers. For each P/N you can specify a Type (A-1/2, A-1, A-2, B-1/2, B-1, B-2), a Size (2.5oz, 6oz) and whether it's a Semkit, then add it to your selection. If several P/Ns are interchangeable and only one is actually needed, give them the same group letter (A, B, C or D) — they'll be merged into a single "pick one of the following" line in the parts table instead of ordering all of them. Leave a P/N ungrouped if it's always required. Once ready, tap "+ Add selection to parts list". Use "⚙️ Manage list" to maintain the shared MIL Spec ↔ P/N reference.</li>
+	  </ul>
       
 	  <h4 style="margin-top:1rem">🏢 FBO Coordination</h4>
       <p>This email contacts the FBO at the aircraft location to introduce the engineer and arrange ground support. Configure it with:</p>
@@ -2109,7 +2113,14 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div class="help-section">
       <h4>☁️ Cloud sync &amp; archives</h4>
       <p>All project data is saved to Firebase in real time and is accessible from any device — the <strong>☁️ Synced</strong> badge in the header confirms your latest changes are saved (it briefly shows "⏳ Saving…" while a save is in progress). Mark a project as RTS to move it to Archives — it stays fully accessible but is separated from your active projects list.</p>
-	  <p>Use the <strong>🔄 button</strong> on any project card to transfer that project (aircraft info, work items, daily updates, parts) to a colleague's account — it disappears from your list and appears in theirs. Parts orders and Reply Sync history stay linked to the Work Order number, so nothing is lost.</p>
+	  <p>Use the <strong>🔄 button</strong> on any project card to transfer that project to a colleague — see <strong>"🔄📄 Transferring a project — handover form"</strong> below.</p>
+    </div>
+
+    <div class="help-section">
+      <h4>🔄📄 Transferring a project — handover form</h4>
+      <p>The 🔄 button on any project card (active or archived) hands the whole project over to a colleague — aircraft info, work items, daily updates and parts move to their account, and the project disappears from your active list. It stays visible in your Archives, now showing its <strong>live status</strong> at the colleague's end, since it's a pointer to their copy rather than a duplicate.</p>
+      <p>Select the colleague to transfer to, then tap <strong>"📄 Handover form"</strong> to open the HAS-DOC-008 Engineer's Support Info form. It's pre-filled automatically from the project: aircraft/job details, operator, both engineers' names, the defect list, daily update history, parts ordered (from both "Parts replaced" and Start Job's parts table), tools, and shipping address. Check and complete what's left — status fields, the corridor/CMP checklist, and sign-off — before generating.</p>
+      <p>Tapping <strong>"📄 Generate handover &amp; confirm transfer"</strong> downloads the filled .docx <em>and</em> completes the transfer in the same step. Parts orders and Reply Sync history stay linked to the Work Order number, so nothing is lost regardless of who holds the project.</p>
     </div>
 
     <div class="help-section">
