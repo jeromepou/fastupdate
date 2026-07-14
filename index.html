@@ -2665,7 +2665,7 @@ G.koApplyReply = function(btn, key, val) {
 };
 
 function koAttrEscape(s) {
-  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return escHtml(s).replace(/"/g,'&quot;');
 }
 
 // Ouvre un petit sélecteur inline pour choisir l'item du jour (Step 3/4)
@@ -2889,6 +2889,7 @@ G.koApplyPartsUpdate = async function(btn, idx) {
           G.koAddPartRow(newEntry.pn, newEntry.desc, '', '1', 'Part', newEntry.note, '');
           koSortPartsTable();
           koUpdatePreview();
+          koOrderLoadedVersion = Date.now();
         }
         btn.textContent = '✓ Added';
       }
@@ -2909,6 +2910,7 @@ G.koApplyPartsUpdate = async function(btn, idx) {
           G.koAddPartRow(newEntry.pn, newEntry.desc, '', '1', 'Part', newEntry.note, '');
           koSortPartsTable();
           koUpdatePreview();
+          koOrderLoadedVersion = Date.now();
         }
       }
       btn.textContent = '✓ Added';
@@ -3054,9 +3056,9 @@ function renderPickerGrid() {
     btn.style.cssText = 'padding:8px 10px;';
     const initials = (p.name||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
     btn.innerHTML = `
-      <div class="pb-avatar" style="width:28px;height:28px;font-size:12px;flex-shrink:0">${initials}</div>
+      <div class="pb-avatar" style="width:28px;height:28px;font-size:12px;flex-shrink:0">${escHtml(initials)}</div>
       <div style="flex:1;min-width:0;text-align:left">
-        <div class="pb-name" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+        <div class="pb-name" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(p.name)}</div>
       </div>
       <div style="font-size:13px">🔒</div>`;
     btn.onclick = () => showPinEntry(p);
@@ -3095,18 +3097,10 @@ function showPinEntry(profile) {
   const setupView = document.getElementById('view-secret-setup');
   if (setupView) setupView.style.display = 'none';
   
-  if (profile.pinHash === 'SETUP_REQUIRED') {
-    document.getElementById('pin-subtitle').textContent = `Welcome ${profile.name}! Choose your 4-digit PIN:`;
-    document.getElementById('pin-error').textContent = '';
-    pendingUserToLogin._settingUpPin = true;
-    pendingUserToLogin._newPinStep = 1;
-    pendingUserToLogin._newPinFirst = '';
-    // cacher biométrie
-    document.getElementById('btn-biometric').style.display = 'none';
-    document.getElementById('pin-or-divider').style.display = 'none';
-    setTimeout(() => document.getElementById('pin-input').focus(), 100);
-    return; // sortir avant la logique biométrique normale
-  }  
+  // Le statut "PIN pas encore configuré" n'est plus lisible ici (pinHash
+  // fermé côté Firebase pour la sécurité) — userPinInput() bascule
+  // maintenant vers l'écran de setup dynamiquement si le Worker répond
+  // pinIsSetup:false, une fois que la personne a tapé 4 chiffres.
   document.getElementById('pin-subtitle').textContent = `Enter PIN for: ${profile.name}`;
   document.getElementById('pin-input').value = '';
   document.getElementById('pin-error').textContent = '';
@@ -3166,11 +3160,9 @@ G.userPinInput = async function() {
   if (!pendingUserToLogin) return;
 
   const id = pendingUserToLogin.id;
-  // Désactiver l'input pendant la vérification async pour éviter les doubles soumissions
   document.getElementById('pin-input').disabled = true;
   const attempts = await getPinAttempts(id);
 
-  // Vérifier lockout
   if (attempts.until > Date.now()) {
     const mins = Math.ceil((attempts.until - Date.now()) / 60000);
     document.getElementById('pin-error').textContent = `🔒 Too many attempts. Try again in ${mins} min.`;
@@ -3179,25 +3171,6 @@ G.userPinInput = async function() {
     return;
   }
   document.getElementById('pin-input').disabled = false;
-
-  // ── Migration sécurité : ancien hash DJB2 détecté (longueur < 64 chars) ──
-  if (pendingUserToLogin.pinHash !== 'SETUP_REQUIRED' &&
-      pendingUserToLogin.pinHash.length < 64 &&
-      !pendingUserToLogin._settingUpPin) {
-    // Pas d'écriture Firebase ici (bloqué par les règles de sécurité).
-    // On indique simplement à l'app locale que le setup est requis.
-    pendingUserToLogin.pinHash = 'SETUP_REQUIRED';
-    pendingUserToLogin._settingUpPin = true;
-    pendingUserToLogin._newPinStep = 1;
-    pendingUserToLogin._newPinFirst = '';
-    document.getElementById('pin-subtitle').textContent =
-      `🔒 Security upgrade — ${pendingUserToLogin.name}, please choose a new 4-digit PIN:`;
-    document.getElementById('pin-input').value = '';
-    document.getElementById('pin-error').textContent =
-      '⚠️ Your PIN needs to be renewed for security reasons.';
-    document.getElementById('pin-input').disabled = false;
-    return;
-  }
 
   // ── Flux première connexion / setup ──
   if (pendingUserToLogin._settingUpPin) {
@@ -3220,69 +3193,120 @@ G.userPinInput = async function() {
         pendingUserToLogin._newPinFirst = '';
         document.getElementById('pin-subtitle').textContent = `Welcome ${pendingUserToLogin.name}! Choose your 4-digit PIN:`;
       } else {
-        const newHash = await hashPin(val, id);
-        set(ref(db, 'team/' + id + '/pinHash'), newHash).then(async () => {
-          pendingUserToLogin.pinHash = newHash;
+        try {
+          const res = await fetch(KO_WORKER + '/setup-pin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ engineerId: id, pin: val, allowOverwriteMigration: true })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.ok) throw new Error(data.error || 'Setup failed');
+
           delete pendingUserToLogin._settingUpPin;
           delete pendingUserToLogin._newPinStep;
           delete pendingUserToLogin._newPinFirst;
           await resetPinAttempts(id);
-          
-          // Si l'ingénieur a déjà une question secrète (cas de la migration), on saute le setup
-          if (pendingUserToLogin.secretQuestion) {
+
+          if (data.hasSecretQuestion) {
             loginAs(pendingUserToLogin);
           } else {
             showSecretQuestionSetup();
           }
-        }).catch(err => {
+        } catch(err) {
           console.error('Failed to save PIN hash:', err);
           document.getElementById('pin-error').textContent =
             '❌ Failed to save PIN. Check your connection and try again.';
           pendingUserToLogin._newPinStep = 1;
           pendingUserToLogin._newPinFirst = '';
           document.getElementById('pin-input').value = '';
-        });
+        }
       }
     }
     return;
   }
 
-  // ── Flux normal ──
-  if (await hashPin(val, id) !== pendingUserToLogin.pinHash) {
-    attempts.count = (attempts.count || 0) + 1;
-    if (attempts.count >= 5) {
-      attempts.until = Date.now() + 15 * 60 * 1000;
-      attempts.count = 0;
-      await setPinAttempts(id, attempts);
-      document.getElementById('pin-error').textContent = '🔒 Too many attempts. Locked for 15 minutes.';
+  // ── Flux normal — vérification déléguée au Worker, jamais de pinHash en local ──
+  try {
+    const res = await fetch(KO_WORKER + '/verify-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ engineerId: id, pin: val })
+    });
+    const data = await res.json();
+
+    if (data.pinIsSetup === false) {
+      pendingUserToLogin._settingUpPin = true;
+      pendingUserToLogin._newPinStep = 1;
+      pendingUserToLogin._newPinFirst = '';
+      document.getElementById('pin-subtitle').textContent = `Welcome ${pendingUserToLogin.name}! Choose your 4-digit PIN:`;
       document.getElementById('pin-input').value = '';
-      document.getElementById('pin-input').disabled = true;
-    } else {
-      await setPinAttempts(id, attempts);
-      const left = 5 - attempts.count;
-      document.getElementById('pin-error').textContent = `❌ Incorrect PIN. ${left} attempt${left > 1 ? 's' : ''} left.`;
-      document.getElementById('pin-input').value = '';
+      document.getElementById('pin-error').textContent = '';
+      return;
     }
-  } else {
-    await resetPinAttempts(id);
-    loginAs(pendingUserToLogin);
+
+    if (data.needsMigration) {
+      pendingUserToLogin._settingUpPin = true;
+      pendingUserToLogin._newPinStep = 1;
+      pendingUserToLogin._newPinFirst = '';
+      document.getElementById('pin-subtitle').textContent =
+        `🔒 Security upgrade — ${pendingUserToLogin.name}, please choose a new 4-digit PIN:`;
+      document.getElementById('pin-input').value = '';
+      document.getElementById('pin-error').textContent =
+        '⚠️ Your PIN needs to be renewed for security reasons.';
+      return;
+    }
+
+    if (!data.valid) {
+      attempts.count = (attempts.count || 0) + 1;
+      if (attempts.count >= 5) {
+        attempts.until = Date.now() + 15 * 60 * 1000;
+        attempts.count = 0;
+        await setPinAttempts(id, attempts);
+        document.getElementById('pin-error').textContent = '🔒 Too many attempts. Locked for 15 minutes.';
+        document.getElementById('pin-input').value = '';
+        document.getElementById('pin-input').disabled = true;
+      } else {
+        await setPinAttempts(id, attempts);
+        const left = 5 - attempts.count;
+        document.getElementById('pin-error').textContent = `❌ Incorrect PIN. ${left} attempt${left > 1 ? 's' : ''} left.`;
+        document.getElementById('pin-input').value = '';
+      }
+    } else {
+      await resetPinAttempts(id);
+      loginAs(pendingUserToLogin);
+    }
+  } catch(e) {
+    console.error('verify-pin request failed:', e);
+    document.getElementById('pin-error').textContent = '❌ Connection error — please try again.';
+    document.getElementById('pin-input').value = '';
   }
 };
 
 // ── Question secrète — affichage (forgot PIN) ──
-G.showForgotPin = function() {
-  if (!pendingUserToLogin || !pendingUserToLogin.secretQuestion) {
-    document.getElementById('pin-error').textContent = '❌ No security question set — contact your admin to reset your PIN.';
-    return;
+G.showForgotPin = async function() {
+  if (!pendingUserToLogin) return;
+  const errEl = document.getElementById('pin-error');
+  try {
+    const res = await fetch(KO_WORKER + '/get-secret-question', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ engineerId: pendingUserToLogin.id })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.hasQuestion) {
+      errEl.textContent = '❌ No security question set — contact your admin to reset your PIN.';
+      return;
+    }
+    document.getElementById('secret-question-label').textContent = '🔐 ' + data.question;
+    document.getElementById('secret-answer-input').value = '';
+    document.getElementById('secret-answer-error').textContent = '';
+    document.getElementById('view-secret-question').style.display = '';
+    document.getElementById('btn-forgot-pin').style.display = 'none';
+    document.getElementById('pin-input').style.display = 'none';
+    errEl.textContent = '';
+    setTimeout(() => document.getElementById('secret-answer-input').focus(), 100);
+  } catch(e) {
+    errEl.textContent = '❌ Connection error — please try again.';
   }
-  document.getElementById('secret-question-label').textContent = '🔐 ' + pendingUserToLogin.secretQuestion;
-  document.getElementById('secret-answer-input').value = '';
-  document.getElementById('secret-answer-error').textContent = '';
-  document.getElementById('view-secret-question').style.display = '';
-  document.getElementById('btn-forgot-pin').style.display = 'none';
-  document.getElementById('pin-input').style.display = 'none';
-  document.getElementById('pin-error').textContent = '';
-  setTimeout(() => document.getElementById('secret-answer-input').focus(), 100);
 };
 
 G.hideForgotPin = function() {
@@ -3296,17 +3320,30 @@ G.hideForgotPin = function() {
 
 G.checkSecretAnswer = async function() {
   if (!pendingUserToLogin) return;
-  const answer = document.getElementById('secret-answer-input').value.trim().toLowerCase();
+  const answer = document.getElementById('secret-answer-input').value.trim();
   if (!answer) { document.getElementById('secret-answer-error').textContent = 'Please enter your answer.'; return; }
-  // On ne compare plus localement : secretAnswer n'est plus lisible.
-  // On stocke le hash pour que Firebase le valide au moment du write.
-  pendingUserToLogin._pendingResetAuth = legacyHashPin(answer);
-  document.getElementById('view-secret-question').style.display = 'none';
-  document.getElementById('view-new-pin').style.display = '';
-  document.getElementById('new-pin-label').textContent = 'Choose your new PIN:';
-  document.getElementById('new-pin-input').value = '';
-  document.getElementById('new-pin-error').textContent = '';
-  setTimeout(() => document.getElementById('new-pin-input').focus(), 100);
+
+  try {
+    const res = await fetch(KO_WORKER + '/verify-secret-answer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ engineerId: pendingUserToLogin.id, answer })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.valid) {
+      document.getElementById('secret-answer-error').textContent = '❌ Incorrect answer. Please try again.';
+      return;
+    }
+    pendingUserToLogin._pendingSecretAnswer = answer; // gardé en mémoire pour le reset final, jamais dans Firebase
+    document.getElementById('view-secret-question').style.display = 'none';
+    document.getElementById('view-new-pin').style.display = '';
+    document.getElementById('new-pin-label').textContent = 'Choose your new PIN:';
+    document.getElementById('new-pin-input').value = '';
+    document.getElementById('new-pin-error').textContent = '';
+    setTimeout(() => document.getElementById('new-pin-input').focus(), 100);
+  } catch(e) {
+    document.getElementById('secret-answer-error').textContent = '❌ Connection error — please try again.';
+  }
 };
 
 G.newPinInput = async function() {
@@ -3333,15 +3370,21 @@ G.newPinInput = async function() {
       document.getElementById('new-pin-label').textContent = 'Choose your new PIN:';
     } else {
       try {
-        const newHash = await hashPin(val, pendingUserToLogin.id);
-        await update(ref(db, 'team/' + pendingUserToLogin.id), {
-          pinHash: newHash,
-          _pinResetAuth: pendingUserToLogin._pendingResetAuth
+        const res = await fetch(KO_WORKER + '/reset-pin-with-secret', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            engineerId: pendingUserToLogin.id,
+            answer: pendingUserToLogin._pendingSecretAnswer,
+            newPin: val
+          })
         });
-        pendingUserToLogin.pinHash = newHash;
+        const data = await res.json();
+        if (!res.ok || !data.valid) throw new Error('Wrong answer or connection error');
+
         delete pendingUserToLogin._resetStep;
         delete pendingUserToLogin._resetPinFirst;
-        delete pendingUserToLogin._pendingResetAuth;
+        delete pendingUserToLogin._pendingSecretAnswer;
         await resetPinAttempts(pendingUserToLogin.id);
         document.getElementById('view-new-pin').style.display = 'none';
         loginAs(pendingUserToLogin);
@@ -3398,17 +3441,19 @@ G.saveSecretQuestion = async function() {
   const answer = document.getElementById('secret-q-answer').value.trim();
   if (!answer) { document.getElementById('secret-q-error').textContent = 'Please enter an answer.'; return; }
   const question = SECRET_QUESTIONS[parseInt(qIndex)];
-  const answerHash = legacyHashPin(answer.toLowerCase()); // hash avant stockage — jamais en clair
-  set(ref(db, 'team/' + pendingUserToLogin.id + '/secretQuestion'), question);
-  set(ref(db, 'team/' + pendingUserToLogin.id + '/secretAnswer'), answerHash).then(() => {
-    pendingUserToLogin.secretQuestion = question;
-    pendingUserToLogin.secretAnswer = answerHash; // stocker le hash localement aussi
-    
+  try {
+    const res = await fetch(KO_WORKER + '/setup-secret-question', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ engineerId: pendingUserToLogin.id, question, answer })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Failed');
     const setupView = document.getElementById('view-secret-setup');
     if (setupView) setupView.style.display = 'none';
-    
     loginAs(pendingUserToLogin);
-  });
+  } catch(e) {
+    document.getElementById('secret-q-error').textContent = '❌ ' + e.message;
+  }
 };
 
 G.adminEmailLogin = async function() {
@@ -3564,12 +3609,12 @@ G.addTeamMember = async function() {
     phone: document.getElementById('nt_phone').value.trim(),
     homeBase: document.getElementById('nt_homebase').value.trim(),
     fnNumber: document.getElementById('nt_fn').value.trim(),
-    pinHash: pin ? await hashPin(pin, id) : 'SETUP_REQUIRED',
     role: document.getElementById('nt_role').value || 'engineer',
     defaultRecipients: '',
     projects: {}
   };
   await set(ref(db, 'team/' + id), member);
+  await set(ref(db, 'teamSecrets/' + id + '/pinHash'), pin ? await hashPin(pin, id) : 'SETUP_REQUIRED');
   ['nt_name','nt_email','nt_team','nt_phone','nt_pin','nt_homebase','nt_fn'].forEach(i => { const el=document.getElementById(i); if(el) el.value=''; });
   document.getElementById('nt_role').value = 'engineer';
   renderTeamAdminList();
@@ -3679,8 +3724,8 @@ async function renderProjList() {
 
     div.innerHTML = `
       <div class="proj-item-info">
-        <div class="proj-item-wo">${wo||'(no WO)'} ${tagHtml}</div>
-        <div class="proj-item-sub">${[model, sn, reg, loc].filter(Boolean).join(' · ')}</div>
+        <div class="proj-item-wo">${escHtml(wo)||'(no WO)'} ${tagHtml}</div>
+        <div class="proj-item-sub">${[model, sn, reg, loc].map(escHtml).filter(Boolean).join(' · ')}</div>
       </div>
       <div class="proj-item-date">${ds}</div>
       ${actionsHtml}`;
@@ -4128,7 +4173,7 @@ async function loadDefaultRecipients() {
 }
 
 async function saveDefaultRecipients() {
-  try { await set(ref(db, 'config/defaultRecipients'), _defaultRecipients); } catch(e) {}
+  try { await set(ref(db, 'config/defaultRecipients'), _defaultRecipients); } catch(e) { console.warn('saveDefaultRecipients failed:', e); }
 }
 
 function renderDefaultRecipientTags() {
@@ -4466,10 +4511,11 @@ function getUpdatesData() {
 // ══════════════════════════════════════
 //  PARTS
 // ══════════════════════════════════════
-G.addPart = function(nom='',pn_off='',sn_off='',pn_on='',sn_on='') {
+G.addPart = function(nom='',pn_off='',sn_off='',pn_on='',sn_on='', koSrcUid='') {
   partCount++;
   const c = document.getElementById('parts-container');
   const d = document.createElement('div'); d.className = 'part-row'; d.id = 'part-'+partCount;
+  if (koSrcUid) d.dataset.koSrc = koSrcUid;
   d.innerHTML = `<div class="part-fields">
     <div class="fg"><label>Nomenclature</label><input type="text" class="p-nom" value="${nom}" placeholder="e.g. MAIN TIRE" oninput="autosave()"/></div>
     <div class="fg"><label>PN OFF</label><input type="text" class="p-pnoff" value="${pn_off}" placeholder="PN OFF" oninput="onPnOffInput(this)"/></div>
@@ -4491,6 +4537,72 @@ function getParts() {
     sn_off: r.querySelector('.p-snoff').value, pn_on: r.querySelector('.p-pnon').value,
     sn_on: r.querySelector('.p-snon').value
   }));
+}
+
+// Vrai seulement si le projet affiché à l'écran principal a le même WO
+// que Start Job — condition nécessaire avant de toucher à Parts replaced.
+function koMainProjectMatchesWo() {
+  if (!curProj) return false;
+  const mainWo = (gv('f_wo') || '').trim().toUpperCase();
+  const koWo   = (document.getElementById('ko_wo')?.value || '').trim().toUpperCase();
+  return !!mainWo && mainWo === koWo;
+}
+
+// SYNC — lignes "Part" de Start Job → tableau Parts replaced.
+// Sens unique, catégorie "Part" uniquement. Ne touche jamais aux lignes
+// sans data-ko-src (saisie manuelle, Extract from email...).
+function koSyncPartsToMainTable() {
+  if (!koMainProjectMatchesWo()) return;
+
+  const seenUids = new Set();
+
+  document.querySelectorAll('#ko-parts-tbody tr').forEach(tr => {
+    const cat = tr.querySelector('select')?.value || '';
+    if (cat !== 'Part') return; // jamais Consumable ni Tool
+
+    const uid  = tr.dataset.koUid; if (!uid) return;
+    const desc = (tr.querySelector('.ko-f-desc')?.value || '').trim();
+    const pn   = (tr.querySelector('.ko-f-pn')?.value   || '').trim();
+    const sn   = (tr.querySelector('.ko-f-sn')?.value   || '').trim();
+    if (!desc && !pn) return;
+
+    seenUids.add(uid);
+
+    let row = document.querySelector(`#parts-container .part-row[data-ko-src="${uid}"]`);
+    if (!row) {
+      G.addPart('', '', '', '', '', uid);
+      row = document.querySelector(`#parts-container .part-row[data-ko-src="${uid}"]`);
+    }
+    if (!row) return;
+
+    const nomEl   = row.querySelector('.p-nom');
+    const pnOffEl = row.querySelector('.p-pnoff');
+    const snOffEl = row.querySelector('.p-snoff');
+    const descUp  = desc.toUpperCase();
+
+    if (nomEl && nomEl.value !== descUp) nomEl.value = descUp;
+    if (snOffEl && snOffEl.value !== sn) snOffEl.value = sn;
+    if (pnOffEl && pnOffEl.value !== pn) {
+      pnOffEl.value = pn;
+      pnOffEl.dispatchEvent(new Event('input')); // recopie vers PN ON si pas encore modifié à la main
+    }
+  });
+
+  // Ligne Start Job supprimée ou recatégorisée entre-temps
+  document.querySelectorAll('#parts-container .part-row[data-ko-src]').forEach(row => {
+    const uid = row.dataset.koSrc;
+    if (seenUids.has(uid)) return;
+    const pnOff = row.querySelector('.p-pnoff')?.value || '';
+    const pnOn  = row.querySelector('.p-pnon')?.value  || '';
+    const snOn  = row.querySelector('.p-snon')?.value  || '';
+    if (pnOn === pnOff && !snOn) {
+      row.remove(); // rien de personnalisé depuis → on retire proprement
+    } else {
+      delete row.dataset.koSrc; // déjà complétée à la main → on détache sans effacer
+    }
+  });
+
+  G.autosave();
 }
 
 // ══════════════════════════════════════
@@ -4812,7 +4924,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
 
     // Si PDF : extraire le texte via OCR Mistral d'abord
     if (isPdf) {
-      const ocrRes = await fetch('https://orange-snow-95f7.jeromepoupinel.workers.dev/ocr', {
+      const ocrRes = await fetch(KO_WORKER + '/ocr', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({
@@ -4825,7 +4937,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
       emailText = ocrData.pages.map(p => p.markdown).join('\n\n');
     }
 
-    const chatRes = await fetch('https://orange-snow-95f7.jeromepoupinel.workers.dev/chat', {
+    const chatRes = await fetch(KO_WORKER + '/chat', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
@@ -4931,7 +5043,7 @@ ${original}
 """`;
 
   try {
-    const res = await fetch('https://orange-snow-95f7.jeromepoupinel.workers.dev/chat', {
+    const res = await fetch(KO_WORKER + '/chat', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
@@ -5191,7 +5303,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
 {"doc_type":"RFS or WORK_ORDER_DETAIL or WCR","work_order":"","model":"e.g. GVIII-G700","serial_number":"","registration":"","location":"ICAO","rts_assist":"RTS or Assist","far_certification":"","country":"","fbo":"","po_number":"","customer_name":"UPPERCASE","customer_company":"","customer_code":"","customer_phone":"","customer_email":"","estimated_rts":"","next_flight":"UNKWN if unknown","constraints":"","work_items":[{"label":"UPPERCASE"}]}`;
   try {
     // Étape 1 : OCR pour extraire le texte du PDF
-    const ocrRes = await fetch('https://orange-snow-95f7.jeromepoupinel.workers.dev/ocr', {
+    const ocrRes = await fetch(KO_WORKER + '/ocr', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
@@ -5204,7 +5316,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
     const extractedText = ocrData.pages.map(p => p.markdown).join('\n\n');
 
     // Étape 2 : Analyse du texte extrait
-    const chatRes = await fetch('https://orange-snow-95f7.jeromepoupinel.workers.dev/chat', {
+    const chatRes = await fetch(KO_WORKER + '/chat', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
@@ -5332,7 +5444,7 @@ function countryFromRegistration(reg) {
     [/^EZ-/,'Turkmenistan'],[/^VQ-T/,'Turks and Caicos'],[/^T2-/,'Tuvalu'],[/^5X-/,'Uganda'],
     [/^UR-/,'Ukraine'],[/^A6-/,'United Arab Emirates'],[/^G-/,'United Kingdom'],[/^N/,'United States'],
     [/^CX-/,'Uruguay'],[/^UK/,'Uzbekistan'],[/^YJ-/,'Vanuatu'],[/^YV/,'Venezuela'],
-    [/^VN-/,'Vietnam'],[/^A4/,'Oman'],
+    [/^VN-/,'Vietnam'],
   ];
   for (const [re, country] of map) if (re.test(reg)) return country;
   return '';
@@ -5471,14 +5583,14 @@ G.generate = async function() {
   document.getElementById('tbl-out').innerHTML=`
   <table class="fast-tbl" id="gen-tbl">
     <colgroup><col style="width:20%"><col style="width:20%"><col style="width:20%"><col style="width:20%"><col style="width:20%"></colgroup>
-    <tr class="thr"><td colspan="5"><b>WORK ORDER #: ${wo}</b></td></tr>
-    <tr><td class="lbl lbl-ctr"><b>Condition:</b></td><td colspan="4">${items.length>0?items.map(it=>`${it.num}-${it.label.toUpperCase()}`).join('<br>'):'—'}</td></tr>
+    <tr class="thr"><td colspan="5"><b>WORK ORDER #: ${escHtml(wo)}</b></td></tr>
+    <tr><td class="lbl lbl-ctr"><b>Condition:</b></td><td colspan="4">${items.length>0?items.map(it=>`${it.num}-${escHtml(it.label.toUpperCase())}`).join('<br>'):'—'}</td></tr>
     ${updRows}
     <tr><td class="lbl lbl-ctr"><b><span style="white-space:nowrap">Additional Info:</span><br>(Constraints)</b></td><td colspan="4">${info?nl2br(info):'—'}</td></tr>
     <tr><td class="lbl"><b>Estimated RTS:</b></td><td>${erts||'—'}</td><td class="lbl"><b>Next Flight:</b></td><td colspan="2">${nxt||'—'}</td></tr>
     <tr><td class="lbl"><b>Return Date:</b></td><td>${retdate||'—'}</td><td class="lbl"><b>Return Time</b></td><td colspan="2">${rettime||'—'}</td></tr>
     <tr><td class="lbl"><b>FAR</b></td><td>${far||'—'}</td><td class="lbl"><b>RTS/Assist</b></td><td colspan="2">${rtsA}</td></tr>
-    <tr><td class="lbl"><b>Model and S/N:</b></td><td>${model} / ${sn}</td><td class="lbl"><b>A/C Registry:</b></td><td colspan="2">${reg||'—'}</td></tr>
+    <tr><td class="lbl"><b>Model and S/N:</b></td><td>${escHtml(model)} / ${escHtml(sn)}</td><td class="lbl"><b>A/C Registry:</b></td><td colspan="2">${escHtml(reg)||'—'}</td></tr>
     <tr class="thr"><td colspan="5"><b>Parts</b></td></tr>
     <tr><td style="background:#fff;font-weight:700;font-size:13px;padding:6px 8px;color:#000"><b>Nomenclature</b></td><td style="background:#fff;font-weight:700;font-size:13px;padding:6px 8px;color:#000"><b>PN OFF</b></td><td style="background:#fff;font-weight:700;font-size:13px;padding:6px 8px;color:#000"><b>SN OFF</b></td><td style="background:#fff;font-weight:700;font-size:13px;padding:6px 8px;color:#000"><b>PN ON</b></td><td style="background:#fff;font-weight:700;font-size:13px;padding:6px 8px;color:#000"><b>SN ON</b></td></tr>
     ${partRows}
@@ -5626,9 +5738,14 @@ G.copyTable = async function() {
 G.copySubject = function() { navigator.clipboard.writeText(document.getElementById('email-subject')?.textContent||'').catch(()=>{}); setStatus('done','✓ Email subject copied!'); };
 
 G.draftInGmail = async function() {
-  if (!ensureGToken()) { setStatus('idle','Please sign in with Google first to use Draft in Gmail.'); return; }
   const tbl = document.getElementById('gen-tbl');
   if (!tbl) { setStatus('err','Generate the table first.'); return; }
+
+  if (!(gToken && Date.now() < gTokenExp)) {
+    setStatus('load','<span class="spin"></span> Waiting for Google sign-in…');
+    const ok = await ensureGTokenAsync();
+    if (!ok) { setStatus('err','⚠️ Google sign-in was cancelled or failed. Please click "Draft in Gmail" again to retry.'); return; }
+  }
 
   const draftBtn = document.getElementById('draft-btn');
   draftBtn.disabled = true;
@@ -5915,7 +6032,7 @@ G.confirmResetPin = async function() {
   const pin = document.getElementById('reset-pin-input').value;
   const errEl = document.getElementById('reset-pin-error');
   if (!/^\d{4}$/.test(pin)) { errEl.textContent = 'PIN must be exactly 4 digits.'; return; }
-  await update(ref(db, 'team/' + resetPinTargetId), { pinHash: await hashPin(pin, resetPinTargetId) });
+  await set(ref(db, 'teamSecrets/' + resetPinTargetId + '/pinHash'), await hashPin(pin, resetPinTargetId));
   closeModal('modal-reset-pin');
   setStatus('done', '✅ PIN updated successfully.');
 };
@@ -5923,7 +6040,7 @@ G.confirmResetPin = async function() {
 // ── Force re-setup (admin) ──
 G.forceSetupPin = async function(id) {
   if (!confirm('This will ask the engineer to choose a new PIN on next login.')) return;
-  await update(ref(db, 'team/' + id), { pinHash: 'SETUP_REQUIRED' });
+  await set(ref(db, 'teamSecrets/' + id + '/pinHash'), 'SETUP_REQUIRED');
   renderTeamAdminList();
 };
 
@@ -6059,11 +6176,11 @@ async function koSaveAirlines() {
   if (!curProfile) return;
   try {
     await set(ref(db, 'team/' + curProfile.id + '/airlines'), KO.airlines);
-  } catch(e) {}
+  } catch(e) { console.warn('koSaveAirlines failed:', e); }
 }
 
 function koEscapeHtml(s) {
-  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return escHtml(s);
 }
 
 // ── Per-engineer custom questions, saved under the engineer's own profile
@@ -6081,7 +6198,7 @@ async function koSaveCustomQuestions() {
   if (!curProfile) return;
   try {
     await set(ref(db, 'team/' + curProfile.id + '/customQuestions'), KO.customQuestions);
-  } catch(e) {}
+  } catch(e) { console.warn('koSaveCustomQuestions failed:', e); }
 }
 
 function koRenderCustomQuestions() {
@@ -6272,7 +6389,7 @@ async function koSaveState() {
 
   // Pas encore de WO saisi — brouillon temporaire par profil, comme avant.
   if (!curProfile) return;
-  try { await set(ref(db, 'team/' + curProfile.id + '/koState'), state); } catch(e) {}
+  try { await set(ref(db, 'team/' + curProfile.id + '/koState'), state); } catch(e) { console.warn('koSaveState (profile fallback) failed:', e); }
 }
 
 // Restaure le brouillon Start Job.
@@ -6388,7 +6505,7 @@ function koApplyStateToForm(state) {
     document.getElementById('ko-parts-tbody').innerHTML = '';
     KO.partRows = 0;
     state.parts.forEach(p => {
-      G.koAddPartRow(p.pn||'', p.desc||'', p.sn||'', p.qty||'', p.cat||'Part', p.note||'', p.sqLabel||'');
+      G.koAddPartRow(p.pn||'', p.desc||'', p.sn||'', p.qty||'', p.cat||'Part', p.note||'', p.sqLabel||'', p.uid||'');
     });
   }
   // Restore co-engineers
@@ -6494,6 +6611,7 @@ G.openKickoff = async function(forceWo) {
   G.koApplyMobileState(true);
   koRefreshHistorySelect();
   G.koRefreshSquawkSelects();
+  koSyncPartsToMainTable(); // NEW
   window.scrollTo({top:0, behavior:'smooth'});
 };
 
@@ -6504,6 +6622,9 @@ G.koStartFromProject = async function(pid) {
   const snap = await get(ref(db, 'team/' + curProfile.id + '/projects/' + pid));
   if (!snap.exists()) return;
   const proj = snap.val();
+
+  curProj = pid;
+  fillFromProj(proj);
 
   await G.openKickoff(proj.wo);
 
@@ -6734,10 +6855,6 @@ G.koToggleColleague = function(checked) {
         cb.classList.remove('coeng-auto');
       }
     });
-    // Also remove from KO._coEngineers
-    if (colleagueName) {
-      KO._coEngineers = (KO._coEngineers || []).filter(n => n.toLowerCase().trim() !== colleagueName);
-    }
     koCoEngChange();
   }
   koUpdatePreview();
@@ -6876,11 +6993,12 @@ function koAutoGrow(el) {
 }
 G.koAutoGrow = koAutoGrow;
 
-G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='', note='', sqLabel='') {
+G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='', note='', sqLabel='', uid='') {
   KO.partRows++;
   const tbody = document.getElementById('ko-parts-tbody');
   const tr = document.createElement('tr');
   tr.id = 'ko-part-' + KO.partRows;
+  tr.dataset.koUid = uid || ('kp_' + Date.now() + '_' + Math.random().toString(36).slice(2,8)); // NEW
   tr.innerHTML = `
     <td style="text-align:center"><input type="checkbox" class="ko-part-row-cb" onchange="koUpdateBulkBar()"/></td>
     <td><textarea class="ko-desc-ta ko-f-desc" rows="1" oninput="koAutoGrow(this)" placeholder="Description">${koEscapeHtml(desc)}</textarea></td>
@@ -6906,7 +7024,7 @@ G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='', note='', sqLabe
         ${koSquawkSelectOptions(sqLabel)}
       </select>
     </td>
-    <td><button class="ko-parts-tbl rm-btn" onclick="document.getElementById('ko-part-${KO.partRows}').remove();koRenderRecips('parts');koUpdatePreview();">×</button></td>`;
+    <td><button class="ko-parts-tbl rm-btn" onclick="document.getElementById('ko-part-${KO.partRows}').remove();koRenderRecips('parts');koUpdatePreview();koSyncPartsToMainTable();">×</button></td>`;
   tbody.appendChild(tr);
   const sel = tr.querySelector('select');
   if (sel && cat) koPartCatChange(sel);
@@ -6994,7 +7112,8 @@ function koGetParts() {
       qty:  tr.querySelector('.ko-f-qty')?.value  || '',
       cat,
       note: tr.querySelector('.ko-f-note')?.value || '',
-      smallQty, sqNum, sqLabel
+      smallQty, sqNum, sqLabel,
+      uid: tr.dataset.koUid || '' // NEW
     };
   }).filter(p => p.pn || p.desc);
 }
@@ -7669,7 +7788,7 @@ function koSetStatus(type, msg) {
 }
 
 function koFormatEmailHtml(text) {
-  return text
+  return escHtml(text)
     .replace(/\*\*([^*]+):\*\*/g, '<b style="font-size:15px">$1:</b>')
     .replace(/=== (SQUAWK [\d.]+ — [^=]+) ===/g, (m,p1) => `<b style="font-size:15px;color:#1a5fa8">=== ${p1} ===</b>`)
     .replace(/(Shipping Address:|Customer's broker contact for import:)/g, '<b style="font-size:14px">$1</b>')
@@ -7842,7 +7961,17 @@ document.getElementById('items-container')?.addEventListener('input', () => {
 document.getElementById('ko-parts-tbody')?.addEventListener('change', () => {
   koRenderRecips('parts');
   koUpdatePreview();
+  koSyncPartsToMainTable(); // NEW
 });
+(function() {
+  const tbody = document.getElementById('ko-parts-tbody');
+  if (!tbody) return;
+  let t = null;
+  tbody.addEventListener('input', () => {
+    clearTimeout(t);
+    t = setTimeout(koSyncPartsToMainTable, 600);
+  });
+})();
 ['customer','travel','parts','fbo'].forEach(type => {
   const inp = document.getElementById('ko-add-' + type + '-inp');
   if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); G.koAddRecip(type); } });
@@ -9613,17 +9742,19 @@ G.koNewJob = async function() {
   if (token && uid) {
     // Nettoyer l'URL
     window.history.replaceState({}, '', window.location.pathname);
-    const snap = await get(ref(db, 'team/' + uid));
-    if (!snap.exists()) { showPicker(); return; }
-    const profile = snap.val();
-    if (profile.resetToken !== token || Date.now() > (profile.resetTokenExpires || 0)) {
-      alert('This reset link has expired or is invalid. Please request a new one.');
-      showPicker();
-      return;
+    
+    const res = await fetch(KO_WORKER + '/verify-reset-token', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ uid, token })
+    });
+    const data = await res.json();
+    if (!data.valid) { 
+      alert('This reset link has expired or is invalid. Please request a new one.'); 
+      showPicker(); 
+      return; 
     }
-    // Token valide : effacer le token et lancer le setup PIN
-    await update(ref(db, 'team/' + uid), { resetToken: null, resetTokenExpires: null });
-    pendingUserToLogin = { ...profile, id: uid, _settingUpPin: true, _newPinStep: 1, _newPinFirst: '' };
+    
+    pendingUserToLogin = { id: uid, name: data.name || '', _settingUpPin: true, _newPinStep: 1, _newPinFirst: '' };
     document.getElementById('login-screen').style.display = '';
     document.getElementById('view-picker').style.display = 'none';
     document.getElementById('view-pin').style.display = '';
@@ -9699,6 +9830,7 @@ window.koAddShipAddr = G.koAddShipAddr;
 window.koDeleteShipAddr = G.koDeleteShipAddr;
 window.koShipAddrEdit = G.koShipAddrEdit;
 window.koUseShipAddr = G.koUseShipAddr;
+window.koSyncPartsToMainTable = koSyncPartsToMainTable;
 
 </script>
 
