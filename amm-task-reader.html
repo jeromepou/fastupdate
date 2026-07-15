@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AMM Task Reader</title>
+<style>
+  :root{
+    --bg:#f7f8fa; --panel:#fff; --border:#e2e5ea; --border-strong:#c9cfd8;
+    --text:#1a1d23; --muted:#6b7280; --accent:#2563eb; --accent-dark:#1d4ed8;
+    --ok:#059669; --ok-bg:#ecfdf5; --warn:#d97706; --warn-bg:#fffbeb;
+    --err:#dc2626; --err-bg:#fef2f2; --r:10px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+  .wrap{max-width:900px;margin:0 auto;padding:20px}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:14px}
+  label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.02em}
+  textarea,input[type=text]{width:100%;border:1px solid var(--border-strong);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;color:var(--text);background:#fff}
+  textarea{min-height:130px;resize:vertical}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .btn{border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:hover{background:var(--accent-dark)}
+  .btn-primary:disabled{background:#9ca3af;cursor:not-allowed}
+  .btn-ghost{background:#fff;border:1px solid var(--border-strong);color:var(--text)}
+  .btn-ghost:hover{background:#f3f4f6}
+  .btn-sm{padding:5px 10px;font-size:12px;border-radius:6px}
+  .tabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid var(--border)}
+  .tab{padding:9px 14px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+  .tab.active{color:var(--accent);border-color:var(--accent)}
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid #ffffff55;border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
+  .spin-dark{border:2px solid #cbd5e155;border-top-color:var(--accent)}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .status{font-size:12.5px;padding:9px 12px;border-radius:8px;margin-top:10px;display:none}
+  .status.show{display:block}
+  .status.load{background:#eff6ff;color:var(--accent-dark)}
+  .status.done{background:var(--ok-bg);color:var(--ok)}
+  .status.err{background:var(--err-bg);color:var(--err)}
+  .status.warn{background:var(--warn-bg);color:var(--warn)}
+
+  .section-title{font-size:14px;font-weight:700;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+  .count-pill{background:#eef1f5;color:var(--muted);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
+
+  .item{border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fff;display:flex;gap:10px;align-items:flex-start}
+  .item.ignored{opacity:.4}
+  .item.flag-checked{border-left:3px solid var(--ok)}
+  .item.flag-warn{border-left:3px solid var(--warn);background:var(--warn-bg)}
+  .item input[type=checkbox]{margin-top:3px;flex-shrink:0;width:16px;height:16px;cursor:pointer}
+  .item-body{flex:1;min-width:0}
+  .item-main{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .item-name{font-weight:600;font-size:13.5px}
+  .item-pn{font-size:12px;color:var(--muted);font-family:ui-monospace,monospace}
+  .item-meta{font-size:12px;color:var(--muted);margin-top:2px}
+  .badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
+  .badge-ipc{background:#fef3c7;color:#92400e}
+  .badge-mand{background:#e0e7ff;color:#3730a3}
+  .badge-opt{background:#f3f4f6;color:var(--muted)}
+  .badge-verified{background:var(--ok-bg);color:var(--ok)}
+  .badge-review{background:var(--warn-bg);color:var(--warn)}
+  .note-ipc{font-size:12px;background:#fef3c7;color:#92400e;border-radius:6px;padding:5px 9px;margin-top:6px;display:flex;gap:6px;align-items:flex-start}
+  .note-flag{font-size:12px;background:var(--warn-bg);color:#92400e;border:1px dashed #f0b429;border-radius:6px;padding:5px 9px;margin-top:6px}
+  .step-ref{font-size:12px;font-weight:600;color:var(--accent-dark);background:#eff6ff;border-radius:6px;padding:4px 9px;margin-top:6px;display:inline-block}
+  .step-ref-missing{color:var(--warn);background:var(--warn-bg)}
+
+  .task-item{border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fff}
+  .task-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+  .task-ref{font-family:ui-monospace,monospace;font-size:12px;background:#f3f4f6;padding:2px 7px;border-radius:5px;color:var(--muted)}
+  .task-when{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
+  .when-before{background:#e0e7ff;color:#3730a3}
+  .when-after{background:#dcfce7;color:#166534}
+  .when-during{background:#fef3c7;color:#92400e}
+  .task-reason{font-size:12.5px;color:var(--muted);margin-top:4px}
+  .task-done-toggle{font-size:12px;display:flex;align-items:center;gap:5px;white-space:nowrap;cursor:pointer;color:var(--muted)}
+
+  .known-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .known-tag{font-size:11px;background:#eef1f5;color:var(--muted);padding:3px 9px;border-radius:20px;display:flex;align-items:center;gap:5px}
+  .known-tag button{border:none;background:none;color:var(--err);cursor:pointer;font-size:13px;line-height:1;padding:0}
+
+  .empty{color:var(--muted);font-size:13px;text-align:center;padding:20px}
+  .checkstep{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);padding:4px 0}
+  .checkstep .dot{width:7px;height:7px;border-radius:50%;background:var(--border-strong);flex-shrink:0}
+  .checkstep.done .dot{background:var(--ok)}
+  .checkstep.active .dot{background:var(--accent);animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  .toolbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+  .footer-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+  details.raw{margin-top:10px}
+  details.raw summary{font-size:12px;color:var(--muted);cursor:pointer}
+  details.raw pre{font-size:11px;background:#0f172a;color:#cbd5e1;padding:10px;border-radius:8px;overflow:auto;max-height:220px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🔧 AMM Task Reader</h1>
+  <div class="sub">Colle un texte d'AMM (ou un PDF) — l'IA extrait les consommables, outils et tâches liées, puis se recontrôle avant affichage.</div>
+
+  <div class="card">
+    <div class="tabs">
+      <div class="tab active" data-mode="paste" onclick="setInputMode('paste')">📋 Coller le texte</div>
+      <div class="tab" data-mode="pdf" onclick="setInputMode('pdf')">📄 PDF</div>
+    </div>
+
+    <div id="pane-paste">
+      <label>Texte de la carte AMM</label>
+      <textarea id="amm-text" placeholder="Colle ici le texte complet de la tâche AMM (Support Equipment, Material Required, Procedure, Requirements After Job Completion…)"></textarea>
+    </div>
+    <div id="pane-pdf" style="display:none">
+      <label>Fichier PDF de la carte AMM</label>
+      <input type="file" id="amm-pdf" accept="application/pdf" onchange="onPdfChosen(event)">
+      <div id="pdf-filename" style="font-size:12px;color:var(--muted);margin-top:6px"></div>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <label style="margin:0">Référence de la carte (optionnel, pour la mémoire de session)</label>
+    </div>
+    <div class="row">
+      <input type="text" id="amm-ref" placeholder="ex: 32-42-01" style="max-width:220px">
+      <button class="btn btn-primary" id="btn-analyze" onclick="analyzeAmm()">🔍 Analyser cette carte</button>
+    </div>
+
+    <div id="check-progress" style="display:none;margin-top:10px;padding:10px 12px;background:#f8fafc;border-radius:8px;border:1px solid var(--border)">
+      <div class="checkstep" id="step-extract"><div class="dot"></div><div>Extraction des consommables, outils et tâches liées</div></div>
+      <div class="checkstep" id="step-verify"><div class="dot"></div><div>Auto-contrôle : chaque élément revérifié contre le texte source</div></div>
+      <div class="checkstep" id="step-done"><div class="dot"></div><div>Résultats prêts</div></div>
+    </div>
+
+    <div class="status" id="amm-status"></div>
+  </div>
+
+  <div class="card" id="already-done-card" style="display:none">
+    <div class="section-title">✅ Cartes déjà traitées dans cette session <span class="count-pill" id="known-count">0</span></div>
+    <div style="font-size:12.5px;color:var(--muted)">Ces cartes ne seront pas redemandées automatiquement — si tu les recolles, l'IA te préviendra qu'elles ont déjà été vues.</div>
+    <div class="known-tags" id="known-tags"></div>
+  </div>
+
+  <div id="results" style="display:none">
+
+    <div class="card">
+      <div class="toolbar">
+        <div class="section-title">🧰 Outils / Support Equipment <span class="count-pill" id="tools-count">0</span></div>
+      </div>
+      <div id="tools-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <div class="section-title">📦 Consommables / Material Required <span class="count-pill" id="consumables-count">0</span></div>
+      </div>
+      <div id="consumables-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <div class="section-title">🧴 Matériel implicite détecté dans la procédure <span class="count-pill" id="implicit-count">0</span></div>
+      </div>
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Éléments mentionnés dans le texte des étapes (nettoyage, protection, fixation…) mais absents du tableau "Material Required" — souvent implicites dans le vocabulaire AMM (chiffon, ruban, tyrap, protection…).</div>
+      <div id="implicit-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <div class="section-title">🔗 Tâches liées nécessaires <span class="count-pill" id="tasks-count">0</span></div>
+      </div>
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Décoche "Ignorer" les tâches dont tu sais qu'elles ne s'appliquent pas à ce job (ex: connecteurs non utilisés sur ta config).</div>
+      <div id="tasks-list"></div>
+    </div>
+
+    <div class="card" id="verify-summary-card" style="display:none">
+      <div class="section-title">🛡️ Résumé de l'auto-contrôle</div>
+      <div id="verify-summary"></div>
+      <details class="raw">
+        <summary>Voir la réponse brute de l'IA (debug)</summary>
+        <pre id="raw-debug"></pre>
+      </details>
+    </div>
+
+    <div class="footer-actions">
+      <button class="btn btn-ghost" onclick="resetResults()">↺ Nouvelle carte</button>
+      <button class="btn btn-primary" onclick="exportSelection()">✅ Envoyer la sélection vers Start Job</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG — adapte KO_WORKER si besoin. Réutilise le même Cloudflare
+   Worker que le reste de l'app (endpoints /ocr et /chat, Mistral).
+   ============================================================ */
+const KO_WORKER = 'https://orange-snow-95f7.jeromepoupinel.workers.dev';
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let inputMode = 'paste';
+let ammPdfB64 = null;
+let lastResult = null;      // { tools, consumables, tasks } after verify pass
+let lastRawExtract = null;  // raw extraction JSON, for debug
+let lastVerifyReport = null;
+
+// Session memory of AMM refs already processed, so we don't re-ask for the same card twice.
+// Persisted in-memory only for this session (per your app's constraint: no browser storage in artifacts;
+// in the real app, back this with the same Firebase path you already use for KO state).
+let knownCards = []; // [{ref, title, addedAt}]
+
+/* ============================================================
+   UI: input mode toggle
+   ============================================================ */
+function setInputMode(mode) {
+  inputMode = mode;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+  document.getElementById('pane-paste').style.display = mode === 'paste' ? 'block' : 'none';
+  document.getElementById('pane-pdf').style.display = mode === 'pdf' ? 'block' : 'none';
+}
+
+function onPdfChosen(ev) {
+  const f = ev.target.files[0];
+  if (!f) return;
+  document.getElementById('pdf-filename').textContent = '📎 ' + f.name;
+  const r = new FileReader();
+  r.onload = () => { ammPdfB64 = r.result.split(',')[1]; };
+  r.readAsDataURL(f);
+}
+
+function setStatus(type, msg) {
+  const el = document.getElementById('amm-status');
+  el.className = 'status show ' + type;
+  el.innerHTML = msg;
+}
+
+function setStep(id, state) {
+  // state: 'active' | 'done'
+  const el = document.getElementById(id);
+  el.classList.remove('active', 'done');
+  if (state) el.classList.add(state);
+}
+
+/* ============================================================
+   PROMPTS
+   ============================================================ */
+function buildExtractPrompt(alreadyKnownRefs) {
+  return `You are an aviation maintenance assistant reading one AMM (Aircraft Maintenance Manual) task card, verbatim as provided below. Your job is ONLY extraction — do not add, infer, or guess anything that is not explicitly written in the text.
+
+Extract three things:
+
+1. TOOLS (from any "Support Equipment" / "Special Tools" table): nomenclature, part number, quantity if given.
+   - Give a "step_reference" for every tool: normally this will be something like "Support Equipment table" since tools are listed in that table, not in the numbered procedure. If the same tool is also explicitly referenced again inside a specific numbered step (e.g. "Use the axle nut socket... Step 3"), mention that step too in the same field (e.g. "Support Equipment table (used in Step 3)").
+
+2. CONSUMABLES (from any "Material Required" / "Consumable Materials" table): nomenclature, part number, quantity if given.
+   - IMPORTANT: if a line does NOT give a specific part number and instead says something like "Refer to IPC", "See IPC", "Consult IPC", or similar — you MUST still include this item, set "note_ipc": true, and copy the exact phrase used into "ipc_note_text". Never silently drop these lines and never invent a part number for them.
+   - If a part number IS given, set "note_ipc": false and "ipc_note_text": "".
+   - Give a "step_reference" for every consumable: normally "Material Required table", but if the numbered procedure also tells the tech exactly when/where to use it (e.g. "Step 2: Lubricate... with grease"), give that step number too (e.g. "Material Required table (used in Step 2)").
+
+3. IMPLICIT MATERIALS mentioned in the procedure steps but NOT listed in the "Material Required" / "Support Equipment" tables. Read every numbered step, warning, caution, and note in the procedure body and flag any consumable, shop supply, or physical material implied by the action described, even if never named explicitly as a nomenclature with a part number. Typical signal words/actions to watch for (this list is illustrative, not exhaustive — apply the same reasoning to any similar action): cleaning (cloth, lint-free wipe, solvent), lubricating/greasing, sealing or bonding (sealant, tape, RTV), protecting threads or surfaces (thread protector, masking, covers), securing wires/hoses/cables (tie wraps / cable ties, lockwire, clamps), labeling/tagging (labels, tags), marking (paint pen, marker), temporary caps/plugs on open lines or ports.
+   - For each one, give: "name" (generic description, e.g. "Lint-free cloth", "Tie wraps / cable ties", "Lockwire"), "step_reference" (the EXACT step number or section where it's implied, as precisely as the card allows — e.g. "Step 4.2", "Step 8, Warning box", "Requirements After Job Completion" — never leave this vague when a specific step number is available), and "source_quote" (a short paraphrase — NOT a verbatim quote — of what that step says that implies this need).
+   - Do NOT duplicate an item that is already captured in the CONSUMABLES table above (e.g. if "lint free cloth" already has its own row with a P/N in Material Required, do not repeat it here). Only list items that are implied by the procedure text but absent from the tables.
+   - Do not invent a need that isn't reasonably implied by an actual instruction in the text.
+
+4. RELATED TASKS: any OTHER maintenance task (with its own task-number reference, e.g. "32-42-02" or a named procedure like "Main Wheel Assembly – Preparation") that this card explicitly tells the technician to do:
+   - "when": "before" if it's a Preliminary Requirement / must be done first (e.g. "Do X" under Preliminary Requirements, or a numbered step referring to another task before/during the procedure).
+   - "when": "after" if it's a Requirements After Job Completion step, a follow-on task, or a functional/operational check done once the main task is finished (e.g. "Do Tire Pressure Monitor System - Functional Check").
+   - "when": "during" if it's referenced mid-procedure as a required sub-step (e.g. "Refer to Main Rotating Pressure Sensing Assembly - Removal/Installation" cited inside a numbered step).
+   - Give a short "reason" quoting/paraphrasing (in your own words) why it's needed, and the "ref" (task number if present, else the task title as written) and "title".
+   - Give "step_reference": exactly where in THIS card that instruction appears — e.g. "Preliminary Requirements", "Step 9", "Requirements After Job Completion". This must point to a specific place in the source card, not a generic phrase.
+   - Do NOT include purely informational cross-references that are not instructions to perform another task (e.g. a "Reference Materials" list at the top is NOT automatically a related task unless the procedure body also tells the tech to actually go do it).
+
+The technician has already processed these AMM references earlier in this session: ${JSON.stringify(alreadyKnownRefs)}
+If any related task you find matches one of these refs, still include it in the list but set "already_known": true. Otherwise set "already_known": false.
+
+Do not invent quantities, part numbers, task numbers, or step references. If a step_reference is genuinely not determinable, use "" — do not guess a step number that isn't actually where the text appears.
+
+Reply ONLY with valid JSON, no markdown, in this exact shape:
+{
+  "card_ref": "",
+  "card_title": "",
+  "tools": [{"name":"","pn":"","qty":"","step_reference":""}],
+  "consumables": [{"name":"","pn":"","qty":"","note_ipc":false,"ipc_note_text":"","step_reference":""}],
+  "implicit_materials": [{"name":"","step_reference":"","source_quote":""}],
+  "related_tasks": [{"ref":"","title":"","when":"before|during|after","reason":"","step_reference":"","already_known":false}]
+}`;
+}
+
+function buildVerifyPrompt(extractedJson) {
+  return `You are performing a strict self-check (quality control) on a JSON extraction that another pass produced from an AMM task card. You will be given the ORIGINAL SOURCE TEXT and the EXTRACTED JSON. Your job is to catch and fix errors — do not trust the extraction blindly.
+
+For EACH item in tools, consumables, implicit_materials, and related_tasks, go back to the source text and verify:
+- Does this item actually appear in the source text? If you cannot find clear textual support for an item, mark it for removal (do not include it in your corrected output) and explain why in the report.
+- Is the part number / quantity / reference EXACTLY as written in the source (no transposed digits, no invented values)? Fix it if wrong.
+- Is "step_reference" correct and specific? It must point to where the item ACTUALLY appears — a table name ("Support Equipment table", "Material Required table") and/or an exact step number ("Step 4.2", "Requirements After Job Completion"). If the first pass left it empty, vague, or wrong, fill in or correct it yourself by locating the item in the source. Never leave a "needs_review" item without also giving the most specific step_reference you can find — the whole point of flagging something is so the technician knows exactly where to go re-check it.
+- For consumables: if the source says to refer to the IPC instead of giving a P/N, confirm "note_ipc" is true and "ipc_note_text" captures the actual phrase. If the extraction missed an IPC reference, add "note_ipc":true and fill it in.
+- For implicit_materials: this category is the highest-risk for hallucination — be strict. Only keep an item if you can point to a specific step/warning/note in the source that genuinely implies that material is needed for THIS task (not a generic assumption about aviation maintenance in general). Remove any implicit_materials item that isn't clearly tied to actual text. Also scan the source yourself for any implied consumable the first pass missed (cleaning, lubricating, sealing, securing/tie-wrapping, protecting, labeling, capping/plugging) and add it if genuinely present, with its own precise step_reference. Do not duplicate anything already in the consumables table.
+- For related_tasks: confirm the "when" classification (before/during/after) actually matches how the source describes it (Preliminary Requirements = before, Requirements After Job Completion or a follow-on functional check = after, a step referenced mid-procedure = during). Reclassify if wrong. Confirm step_reference points to the exact section/step of THIS card where that instruction is given.
+- Flag ("needs_review": true) any item you are not fully confident about, with a short reason in "review_note" that tells the technician specifically what to double check (not just that something is uncertain) — rather than silently guessing.
+
+Return a CORRECTED version of the full JSON (same shape as input, each item additionally carrying "needs_review": boolean and "review_note": string, empty string if none, and keeping/fixing "step_reference" on every item), plus a short top-level "verification_summary" array of strings describing what you checked/changed/removed (e.g. "Removed 'GPU connection' — not actually an instructed task in this card", "Confirmed IPC note on O-RING line (Material Required table)", "Fixed related task ref from 32-420-2 to 32-42-02, step_reference corrected to 'Requirements After Job Completion'").
+
+Reply ONLY with valid JSON, no markdown, in this exact shape:
+{
+  "card_ref": "",
+  "card_title": "",
+  "tools": [{"name":"","pn":"","qty":"","step_reference":"","needs_review":false,"review_note":""}],
+  "consumables": [{"name":"","pn":"","qty":"","note_ipc":false,"ipc_note_text":"","step_reference":"","needs_review":false,"review_note":""}],
+  "implicit_materials": [{"name":"","step_reference":"","source_quote":"","needs_review":false,"review_note":""}],
+  "related_tasks": [{"ref":"","title":"","when":"before|during|after","reason":"","step_reference":"","already_known":false,"needs_review":false,"review_note":""}],
+  "verification_summary": [""]
+}
+
+EXTRACTED JSON TO VERIFY:
+${extractedJson}`;
+}
+
+/* ============================================================
+   MAIN FLOW: extract -> self-check -> render
+   ============================================================ */
+async function analyzeAmm() {
+  const pastedText = document.getElementById('amm-text').value.trim();
+  const isPdf = inputMode === 'pdf';
+  if (isPdf && !ammPdfB64) { setStatus('err', 'Charge un PDF d\'abord.'); return; }
+  if (!isPdf && !pastedText) { setStatus('err', 'Colle le texte de la carte AMM d\'abord.'); return; }
+
+  const btn = document.getElementById('btn-analyze');
+  btn.disabled = true;
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('check-progress').style.display = 'block';
+  setStep('step-extract', 'active'); setStep('step-verify', null); setStep('step-done', null);
+  setStatus('load', '<span class="spin spin-dark" style="border-color:#cbd5e1;border-top-color:var(--accent)"></span> Lecture de la carte AMM…');
+
+  try {
+    let ammText = pastedText;
+
+    if (isPdf) {
+      const ocrRes = await fetch(KO_WORKER + '/ocr', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          model: 'mistral-ocr-latest',
+          document: { type: 'document_url', document_url: `data:application/pdf;base64,${ammPdfB64}` }
+        })
+      });
+      const ocrData = await ocrRes.json();
+      if (!ocrRes.ok) throw new Error(ocrData.message || ('OCR error ' + ocrRes.status));
+      ammText = ocrData.pages.map(p => p.markdown).join('\n\n');
+    }
+
+    // ---------- PASS 1: extraction ----------
+    const knownRefs = knownCards.map(c => c.ref);
+    const extractRes = await fetch(KO_WORKER + '/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'mistral-small-latest',
+        temperature: 0,
+        messages: [{ role: 'user', content: buildExtractPrompt(knownRefs) + '\n\nAMM TASK CARD TEXT:\n' + ammText }],
+        response_format: { type: 'json_object' }
+      })
+    });
+    const extractData = await extractRes.json();
+    if (!extractRes.ok) throw new Error(extractData.message || ('Chat error ' + extractRes.status));
+    const extractRaw = extractData.choices[0].message.content.replace(/```json|```/g, '').trim();
+    lastRawExtract = extractRaw;
+
+    setStep('step-extract', 'done'); setStep('step-verify', 'active');
+    setStatus('load', '<span class="spin spin-dark"></span> Auto-contrôle en cours — l\'IA revérifie chaque élément contre le texte source…');
+
+    // ---------- PASS 2: self-check / verify ----------
+    const verifyRes = await fetch(KO_WORKER + '/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model: 'mistral-small-latest',
+        temperature: 0,
+        messages: [{ role: 'user', content: buildVerifyPrompt(extractRaw) + '\n\nORIGINAL SOURCE TEXT:\n' + ammText }],
+        response_format: { type: 'json_object' }
+      })
+    });
+    const verifyData = await verifyRes.json();
+    if (!verifyRes.ok) throw new Error(verifyData.message || ('Chat error ' + verifyRes.status));
+    const verifyRaw = verifyData.choices[0].message.content.replace(/```json|```/g, '').trim();
+    const verified = JSON.parse(verifyRaw);
+
+    setStep('step-verify', 'done'); setStep('step-done', 'done');
+
+    lastResult = verified;
+    lastVerifyReport = verified.verification_summary || [];
+
+    // Manual ref override if user typed one
+    const manualRef = document.getElementById('amm-ref').value.trim();
+    if (manualRef) verified.card_ref = manualRef;
+
+    renderResults(verified);
+    setStatus('done', `✓ Analyse terminée${verified.card_ref ? ' — carte ' + escapeHtml(verified.card_ref) : ''}. Vérifie les éléments marqués "à revoir" avant d'envoyer.`);
+  } catch (e) {
+    setStep('step-extract', null); setStep('step-verify', null);
+    setStatus('err', 'Erreur : ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ============================================================
+   RENDERING
+   ============================================================ */
+function escapeHtml(s) {
+  return (s || '').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderResults(data) {
+  document.getElementById('results').style.display = 'block';
+
+  // Tools
+  const tools = data.tools || [];
+  document.getElementById('tools-count').textContent = tools.length;
+  document.getElementById('tools-list').innerHTML = tools.length ? tools.map((t, i) => `
+    <div class="item ${t.needs_review ? 'flag-warn' : 'flag-checked'}" data-kind="tools" data-idx="${i}">
+      <input type="checkbox" checked onchange="toggleItem('tools', ${i}, this.checked)">
+      <div class="item-body">
+        <div class="item-main">
+          <div>
+            <span class="item-name">${escapeHtml(t.name)}</span>
+            ${t.pn ? `<span class="item-pn">&nbsp;· ${escapeHtml(t.pn)}</span>` : ''}
+          </div>
+          <div class="row" style="gap:6px">
+            ${t.qty ? `<span class="badge badge-opt">Qty: ${escapeHtml(t.qty)}</span>` : ''}
+            <span class="badge ${t.needs_review ? 'badge-review' : 'badge-verified'}">${t.needs_review ? '⚠ à revoir' : '✓ vérifié'}</span>
+          </div>
+        </div>
+        ${t.step_reference ? `<div class="step-ref">📍 ${escapeHtml(t.step_reference)}</div>` : ''}
+        ${t.needs_review && t.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(t.review_note)}${!t.step_reference ? ' <i>(référence exacte non trouvée — vérifie l\'ensemble de la carte)</i>' : ''}</div>` : ''}
+      </div>
+    </div>
+  `).join('') : '<div class="empty">Aucun outil identifié dans cette carte.</div>';
+
+  // Consumables
+  const cons = data.consumables || [];
+  document.getElementById('consumables-count').textContent = cons.length;
+  document.getElementById('consumables-list').innerHTML = cons.length ? cons.map((c, i) => `
+    <div class="item ${c.needs_review ? 'flag-warn' : 'flag-checked'}" data-kind="consumables" data-idx="${i}">
+      <input type="checkbox" checked onchange="toggleItem('consumables', ${i}, this.checked)">
+      <div class="item-body">
+        <div class="item-main">
+          <div>
+            <span class="item-name">${escapeHtml(c.name)}</span>
+            ${c.pn ? `<span class="item-pn">&nbsp;· ${escapeHtml(c.pn)}</span>` : ''}
+          </div>
+          <div class="row" style="gap:6px">
+            ${c.qty ? `<span class="badge badge-opt">Qty: ${escapeHtml(c.qty)}</span>` : ''}
+            ${c.note_ipc ? `<span class="badge badge-ipc">📘 Voir IPC</span>` : ''}
+            <span class="badge ${c.needs_review ? 'badge-review' : 'badge-verified'}">${c.needs_review ? '⚠ à revoir' : '✓ vérifié'}</span>
+          </div>
+        </div>
+        ${c.step_reference ? `<div class="step-ref">📍 ${escapeHtml(c.step_reference)}</div>` : ''}
+        ${c.note_ipc ? `<div class="note-ipc">📘 <span><b>Consulter l'IPC</b> — ${escapeHtml(c.ipc_note_text || 'aucun P/N donné dans cette carte, se référer à l\'IPC.')}</span></div>` : ''}
+        ${c.needs_review && c.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(c.review_note)}${!c.step_reference ? ' <i>(référence exacte non trouvée — vérifie l\'ensemble de la carte)</i>' : ''}</div>` : ''}
+      </div>
+    </div>
+  `).join('') : '<div class="empty">Aucun consommable identifié dans cette carte.</div>';
+
+  // Implicit materials
+  const implicit = data.implicit_materials || [];
+  document.getElementById('implicit-count').textContent = implicit.length;
+  document.getElementById('implicit-list').innerHTML = implicit.length ? implicit.map((m, i) => `
+    <div class="item ${m.needs_review ? 'flag-warn' : 'flag-checked'}" data-kind="implicit_materials" data-idx="${i}">
+      <input type="checkbox" checked onchange="toggleItem('implicit_materials', ${i}, this.checked)">
+      <div class="item-body">
+        <div class="item-main">
+          <div>
+            <span class="item-name">${escapeHtml(m.name)}</span>
+          </div>
+          <span class="badge ${m.needs_review ? 'badge-review' : 'badge-verified'}">${m.needs_review ? '⚠ à revoir' : '✓ vérifié'}</span>
+        </div>
+        ${m.step_reference ? `<div class="step-ref">📍 ${escapeHtml(m.step_reference)}</div>` : '<div class="step-ref step-ref-missing">📍 Référence de step non précisée — relis la carte en entier pour localiser</div>'}
+        ${m.source_quote ? `<div class="item-meta" style="margin-top:4px">💡 ${escapeHtml(m.source_quote)}</div>` : ''}
+        ${m.needs_review && m.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(m.review_note)}</div>` : ''}
+      </div>
+    </div>
+  `).join('') : '<div class="empty">Aucun matériel implicite détecté hors des tableaux.</div>';
+
+  // Related tasks
+  const tasks = data.related_tasks || [];
+  document.getElementById('tasks-count').textContent = tasks.length;
+  document.getElementById('tasks-list').innerHTML = tasks.length ? tasks.map((t, i) => `
+    <div class="task-item" data-kind="tasks" data-idx="${i}">
+      <div class="task-head">
+        <div class="row" style="gap:8px">
+          <span class="task-ref">${escapeHtml(t.ref || '—')}</span>
+          <span style="font-weight:600;font-size:13px">${escapeHtml(t.title)}</span>
+          <span class="task-when when-${t.when || 'during'}">${(t.when||'during').toUpperCase()}</span>
+          ${t.already_known ? '<span class="badge badge-opt">déjà vu cette session</span>' : ''}
+          ${t.needs_review ? '<span class="badge badge-review">⚠ à revoir</span>' : '<span class="badge badge-verified">✓ vérifié</span>'}
+        </div>
+        <label class="task-done-toggle">
+          <input type="checkbox" checked onchange="toggleItem('tasks', ${i}, this.checked)"> Inclure
+        </label>
+      </div>
+      ${t.step_reference ? `<div class="step-ref">📍 ${escapeHtml(t.step_reference)}</div>` : ''}
+      ${t.reason ? `<div class="task-reason">${escapeHtml(t.reason)}</div>` : ''}
+      ${t.needs_review && t.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(t.review_note)}</div>` : ''}
+    </div>
+  `).join('') : '<div class="empty">Aucune tâche liée détectée.</div>';
+
+  // Verify summary
+  const summary = data.verification_summary || [];
+  if (summary.length) {
+    document.getElementById('verify-summary-card').style.display = 'block';
+    document.getElementById('verify-summary').innerHTML = summary.map(s => `<div style="font-size:12.5px;padding:4px 0;color:var(--muted)">• ${escapeHtml(s)}</div>`).join('');
+  } else {
+    document.getElementById('verify-summary-card').style.display = 'none';
+  }
+  document.getElementById('raw-debug').textContent = JSON.stringify(data, null, 2);
+
+  // Register this card in session memory
+  if (data.card_ref) {
+    const already = knownCards.find(c => c.ref === data.card_ref);
+    if (!already) {
+      knownCards.push({ ref: data.card_ref, title: data.card_title || '', addedAt: Date.now() });
+      renderKnownCards();
+    }
+  }
+}
+
+function toggleItem(kind, idx, checked) {
+  if (!lastResult || !lastResult[kind] || !lastResult[kind][idx]) return;
+  lastResult[kind][idx]._include = checked;
+  const el = document.querySelector(`.item[data-kind="${kind}"][data-idx="${idx}"], .task-item[data-kind="${kind}"][data-idx="${idx}"]`);
+  if (el) el.classList.toggle('ignored', !checked);
+}
+
+function renderKnownCards() {
+  const card = document.getElementById('already-done-card');
+  const list = document.getElementById('known-tags');
+  document.getElementById('known-count').textContent = knownCards.length;
+  if (!knownCards.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  list.innerHTML = knownCards.map((c, i) => `
+    <div class="known-tag">
+      <span>${escapeHtml(c.ref)}${c.title ? ' — ' + escapeHtml(c.title) : ''}</span>
+      <button onclick="removeKnownCard(${i})" title="Retirer de la mémoire de session">×</button>
+    </div>
+  `).join('');
+}
+
+function removeKnownCard(i) {
+  knownCards.splice(i, 1);
+  renderKnownCards();
+}
+
+function resetResults() {
+  document.getElementById('amm-text').value = '';
+  document.getElementById('amm-ref').value = '';
+  ammPdfB64 = null;
+  document.getElementById('pdf-filename').textContent = '';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('check-progress').style.display = 'none';
+  setStatus('idle', '');
+  document.getElementById('amm-status').className = 'status';
+  lastResult = null;
+}
+
+/* ============================================================
+   EXPORT — hook point to plug into your existing app
+   (e.g. call koSyncPartsToMainTable() equivalent, or Start Job template
+   population). Here it just prints the payload; replace with your
+   integration call.
+   ============================================================ */
+function exportSelection() {
+  if (!lastResult) return;
+  const payload = {
+    card_ref: lastResult.card_ref,
+    card_title: lastResult.card_title,
+    tools: (lastResult.tools || []).filter((t, i) => lastResult.tools[i]._include !== false),
+    consumables: (lastResult.consumables || []).filter((c, i) => lastResult.consumables[i]._include !== false),
+    implicit_materials: (lastResult.implicit_materials || []).filter((m, i) => lastResult.implicit_materials[i]._include !== false),
+    related_tasks: (lastResult.related_tasks || []).filter((t, i) => lastResult.related_tasks[i]._include !== false)
+  };
+
+  // ---- INTEGRATION POINT ----
+  // Sends the filtered selection up to the parent app (index.html), which
+  // listens via window.addEventListener('message', ...) and calls
+  // koImportFromAmmReader(payload) to push rows into the Kickoff parts table.
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'amm-task-reader:export', payload }, '*');
+  } else {
+    // Standalone (not in an iframe) — nothing to send to, just log for debug.
+    console.log('AMM reader export payload:', payload);
+    alert('Sélection prête (' + payload.tools.length + ' outil(s), ' + payload.consumables.length + ' consommable(s), ' + payload.implicit_materials.length + ' matériel(s) implicite(s), ' + payload.related_tasks.length + ' tâche(s)).\n\nOuvert en standalone : voir la console pour le payload JSON.');
+  }
+}
+</script>
+</body>
+</html>
