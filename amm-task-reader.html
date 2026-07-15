@@ -9,11 +9,11 @@
     --bg:#f7f8fa; --panel:#fff; --border:#e2e5ea; --border-strong:#c9cfd8;
     --text:#1a1d23; --muted:#6b7280; --accent:#2563eb; --accent-dark:#1d4ed8;
     --ok:#059669; --ok-bg:#ecfdf5; --warn:#d97706; --warn-bg:#fffbeb;
-    --err:#dc2626; --err-bg:#fef2f2; --r:10px;
+    --err:#dc2626; --err-bg:#fef2f2; --purple:#7c3aed; --purple-bg:#f5f3ff; --r:10px;
   }
   *{box-sizing:border-box}
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
-  .wrap{max-width:900px;margin:0 auto;padding:20px}
+  .wrap{max-width:920px;margin:0 auto;padding:20px}
   h1{font-size:19px;margin:0 0 4px}
   .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
   .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:14px}
@@ -28,6 +28,8 @@
   .btn-ghost{background:#fff;border:1px solid var(--border-strong);color:var(--text)}
   .btn-ghost:hover{background:#f3f4f6}
   .btn-sm{padding:5px 10px;font-size:12px;border-radius:6px}
+  .btn-purple{background:var(--purple);color:#fff}
+  .btn-purple:hover{background:#6d28d9}
   .tabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid var(--border)}
   .tab{padding:9px 14px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
   .tab.active{color:var(--accent);border-color:var(--accent)}
@@ -60,25 +62,12 @@
   .badge-opt{background:#f3f4f6;color:var(--muted)}
   .badge-verified{background:var(--ok-bg);color:var(--ok)}
   .badge-review{background:var(--warn-bg);color:var(--warn)}
-  .badge-access{background:#e0e7ff;color:#3730a3}
+  .badge-cond{background:#fef3c7;color:#92400e}
   .note-ipc{font-size:12px;background:#fef3c7;color:#92400e;border-radius:6px;padding:5px 9px;margin-top:6px;display:flex;gap:6px;align-items:flex-start}
   .note-flag{font-size:12px;background:var(--warn-bg);color:#92400e;border:1px dashed #f0b429;border-radius:6px;padding:5px 9px;margin-top:6px}
+  .note-cond{font-size:12px;background:#fef3c7;color:#92400e;border-radius:6px;padding:5px 9px;margin-top:6px}
   .step-ref{font-size:12px;font-weight:600;color:var(--accent-dark);background:#eff6ff;border-radius:6px;padding:4px 9px;margin-top:6px;display:inline-block}
   .step-ref-missing{color:var(--warn);background:var(--warn-bg)}
-
-  .task-item{border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fff}
-  .task-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
-  .task-ref{font-family:ui-monospace,monospace;font-size:12px;background:#f3f4f6;padding:2px 7px;border-radius:5px;color:var(--muted)}
-  .task-when{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
-  .when-before{background:#e0e7ff;color:#3730a3}
-  .when-after{background:#dcfce7;color:#166534}
-  .when-during{background:#fef3c7;color:#92400e}
-  .task-reason{font-size:12.5px;color:var(--muted);margin-top:4px}
-  .task-done-toggle{font-size:12px;display:flex;align-items:center;gap:5px;white-space:nowrap;cursor:pointer;color:var(--muted)}
-
-  .known-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-  .known-tag{font-size:11px;background:#eef1f5;color:var(--muted);padding:3px 9px;border-radius:20px;display:flex;align-items:center;gap:5px}
-  .known-tag button{border:none;background:none;color:var(--err);cursor:pointer;font-size:13px;line-height:1;padding:0}
 
   .empty{color:var(--muted);font-size:13px;text-align:center;padding:20px}
   .checkstep{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);padding:4px 0}
@@ -92,27 +81,49 @@
   details.raw{margin-top:10px}
   details.raw summary{font-size:12px;color:var(--muted);cursor:pointer}
   details.raw pre{font-size:11px;background:#0f172a;color:#cbd5e1;padding:10px;border-radius:8px;overflow:auto;max-height:220px}
+
+  /* ---- Task tree (related tasks, recursively scannable) ---- */
+  .task-node{border:1px solid var(--border);border-radius:8px;background:#fff;margin-bottom:10px;overflow:hidden}
+  .task-node-head{padding:10px 12px;display:flex;gap:10px;align-items:flex-start}
+  .task-node-head input[type=checkbox]{margin-top:3px;flex-shrink:0;width:16px;height:16px;cursor:pointer}
+  .task-node-body{flex:1;min-width:0}
+  .task-node-main{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+  .task-ref{font-family:ui-monospace,monospace;font-size:12px;background:#f3f4f6;padding:2px 7px;border-radius:5px;color:var(--muted)}
+  .task-when{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
+  .when-before{background:#e0e7ff;color:#3730a3}
+  .when-after{background:#dcfce7;color:#166534}
+  .when-during{background:#fef3c7;color:#92400e}
+  .task-reason{font-size:12.5px;color:var(--muted);margin-top:4px}
+  .task-scan-zone{border-top:1px dashed var(--border);padding:12px;background:#fafbfc}
+  .task-children{padding:0 12px 12px 32px;border-left:2px solid var(--border-strong);margin-left:20px}
+  .task-children-inner{padding-left:12px}
+  .scan-toggle-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+  .mini-tabs{display:flex;gap:4px;margin-bottom:8px}
+  .mini-tab{padding:5px 10px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+  .mini-tab.active{color:var(--accent);border-color:var(--accent)}
+  .sub-section-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.02em;margin:10px 0 6px;display:flex;align-items:center;gap:6px}
+  .depth-badge{font-size:10px;font-weight:700;background:var(--purple-bg);color:var(--purple);padding:1px 7px;border-radius:20px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>🔧 AMM Task Reader</h1>
-  <div class="sub">Paste AMM text (or upload a PDF) — the AI extracts consumables, tools, and related tasks, then self-checks before displaying results.</div>
+  <div class="sub">Upload the AMM task card PDF (or paste text) — the AI extracts consumables, tools, access panels, and related tasks, then self-checks before displaying results. Related tasks can be scanned individually too, so you can drill into a sub-task's own parts and access requirements.</div>
 
   <div class="card">
     <div class="tabs">
-      <div class="tab active" data-mode="paste" onclick="setInputMode('paste')">📋 Paste text</div>
       <div class="tab" data-mode="pdf" onclick="setInputMode('pdf')">📄 PDF</div>
+      <div class="tab active" data-mode="paste" onclick="setInputMode('paste')">📋 Paste text</div>
     </div>
 
-    <div id="pane-paste">
-      <label>AMM task card text</label>
-      <textarea id="amm-text" placeholder="Paste the full AMM task text here (Support Equipment, Material Required, Procedure, Requirements After Job Completion…)"></textarea>
-    </div>
-    <div id="pane-pdf" style="display:none">
+    <div id="pane-pdf">
       <label>AMM task card PDF file</label>
       <input type="file" id="amm-pdf" accept="application/pdf" onchange="onPdfChosen(event)">
       <div id="pdf-filename" style="font-size:12px;color:var(--muted);margin-top:6px"></div>
+    </div>
+    <div id="pane-paste" style="display:none">
+      <label>AMM task card text</label>
+      <textarea id="amm-text" placeholder="Paste the full AMM task text here (Support Equipment, Material Required, Procedure, Requirements After Job Completion…)"></textarea>
     </div>
 
     <div class="row" style="margin-top:12px">
@@ -124,7 +135,7 @@
     </div>
 
     <div id="check-progress" style="display:none;margin-top:10px;padding:10px 12px;background:#f8fafc;border-radius:8px;border:1px solid var(--border)">
-      <div class="checkstep" id="step-extract"><div class="dot"></div><div>Extracting consumables, tools, access steps and related tasks</div></div>
+      <div class="checkstep" id="step-extract"><div class="dot"></div><div>Extracting consumables, tools, access panels and related tasks</div></div>
       <div class="checkstep" id="step-verify"><div class="dot"></div><div>Self-check: every item re-verified against the source text</div></div>
       <div class="checkstep" id="step-done"><div class="dot"></div><div>Results ready</div></div>
     </div>
@@ -133,9 +144,9 @@
   </div>
 
   <div class="card" id="already-done-card" style="display:none">
-    <div class="section-title">✅ Cards already processed this session <span class="count-pill" id="known-count">0</span></div>
-    <div style="font-size:12.5px;color:var(--muted)">These cards won't be re-asked about automatically — if you paste them again, the AI will flag that they've already been seen.</div>
-    <div class="known-tags" id="known-tags"></div>
+    <div class="section-title">✅ Cards already scanned this session <span class="count-pill" id="known-count">0</span></div>
+    <div style="font-size:12.5px;color:var(--muted)">These cards won't need to be re-scanned — if a related task points to one of them, it's flagged as already known instead of asking you to scan it again.</div>
+    <div class="known-tags" id="known-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
   </div>
 
   <div id="results" style="display:none">
@@ -164,9 +175,19 @@
 
     <div class="card">
       <div class="toolbar">
-        <div class="section-title">🔗 Related tasks required <span class="count-pill" id="tasks-count">0</span></div>
+        <div class="section-title">🔓 Access required <span class="count-pill" id="access-count">0</span></div>
       </div>
-      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Uncheck "Include" for any task you know doesn't apply to this job (e.g. connectors not used on your configuration). Boilerplate references (Safe Ground Maintenance, Electrical Power Application, SSPC General Maintenance) and the current card's own sub-sections are intentionally excluded from this list.</div>
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">All panels / access doors needed across this task, grouped in one place. Some access points are marked <span class="badge badge-cond">if required</span> — they only apply depending on which specific part you're working on, since not all parts sit behind the same panel.</div>
+      <div id="access-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <div class="section-title">🔗 Related tasks <span class="count-pill" id="tasks-count">0</span></div>
+      </div>
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">
+        These are separate AMM procedures this card tells you to perform. Check the box to include a task's own reason/reference in your export. Click <b>"📄 Scan this task"</b> to upload that sub-task's own PDF and pull its tools, consumables, access panels and further related tasks — recursively, as deep as needed. Boilerplate references (Safe Ground Maintenance, Electrical Power Application, SSPC General Maintenance) and the current card's own sub-sections are intentionally excluded from this list.
+      </div>
       <div id="tasks-list"></div>
     </div>
 
@@ -188,33 +209,40 @@
 
 <script>
 /* ============================================================
-   CONFIG — adjust KO_WORKER if needed. Reuses the same Cloudflare
-   Worker as the rest of the app (/ocr and /chat endpoints, Mistral).
+   CONFIG
    ============================================================ */
 const KO_WORKER = 'https://orange-snow-95f7.jeromepoupinel.workers.dev';
 
 /* ============================================================
    STATE
+   ============================================================
+   The root scan result is stored in `rootResult`. Every related_task
+   item can itself carry a `scan` property once the user scans it:
+     task.scan = {
+       status: 'idle' | 'loading' | 'done' | 'error',
+       inputMode: 'pdf' | 'paste',
+       pdfB64: null,
+       pastedText: '',
+       data: null,          // the verified JSON for that sub-task
+       errorMsg: ''
+     }
+   task.scan.data.related_tasks then recurses the same way, so the tree
+   can go arbitrarily deep. Every leaf item (tool/consumable/implicit/
+   access/task) carries `_include` (default true) used at export time.
    ============================================================ */
-let inputMode = 'paste';
+let inputMode = 'pdf';
 let ammPdfB64 = null;
-let lastResult = null;      // { tools, consumables, implicit_materials, related_tasks } after verify pass
-let lastRawExtract = null;  // raw extraction JSON, for debug
-let lastVerifyReport = null;
-
-// Session memory of AMM refs already processed, so we don't re-ask for the same card twice.
-// In-memory only for this session (per this app's constraint: no browser storage in artifacts;
-// in the real app, back this with the same Firebase path already used for KO state).
+let rootResult = null;
 let knownCards = []; // [{ref, title, addedAt}]
 
 /* ============================================================
-   UI: input mode toggle
+   UI: top-level input mode toggle
    ============================================================ */
 function setInputMode(mode) {
   inputMode = mode;
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
-  document.getElementById('pane-paste').style.display = mode === 'paste' ? 'block' : 'none';
+  document.querySelectorAll('.wrap > .card:first-child .tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
   document.getElementById('pane-pdf').style.display = mode === 'pdf' ? 'block' : 'none';
+  document.getElementById('pane-paste').style.display = mode === 'paste' ? 'block' : 'none';
 }
 
 function onPdfChosen(ev) {
@@ -233,10 +261,13 @@ function setStatus(type, msg) {
 }
 
 function setStep(id, state) {
-  // state: 'active' | 'done'
   const el = document.getElementById(id);
   el.classList.remove('active', 'done');
   if (state) el.classList.add(state);
+}
+
+function escapeHtml(s) {
+  return (s || '').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 /* ============================================================
@@ -245,49 +276,51 @@ function setStep(id, state) {
 function buildExtractPrompt(alreadyKnownRefs) {
   return `You are an aviation maintenance assistant reading one AMM (Aircraft Maintenance Manual) task card, verbatim as provided below. Your job is ONLY extraction — do not add, infer, or guess anything that is not explicitly written in the text.
 
-Extract four things:
+Extract five things:
 
 1. TOOLS (from any "Support Equipment" / "Special Tools" table): nomenclature, part number, quantity if given.
-   - Give a "step_reference" for every tool: normally this will be something like "Support Equipment table" since tools are listed in that table, not in the numbered procedure. If the same tool is also explicitly referenced again inside a specific numbered step (e.g. "Use the axle nut socket... Step 3"), mention that step too in the same field (e.g. "Support Equipment table (used in Step 3)").
+   - Give a "step_reference" for every tool: normally "Support Equipment table". If the same tool is also explicitly referenced again inside a specific numbered step, mention that step too (e.g. "Support Equipment table (used in Step 3)").
 
 2. CONSUMABLES (from any "Material Required" / "Consumable Materials" table): nomenclature, part number, quantity if given.
    - IMPORTANT: if a line does NOT give a specific part number and instead says something like "Refer to IPC", "See IPC", "Consult IPC", or similar — you MUST still include this item, set "note_ipc": true, and copy the exact phrase used into "ipc_note_text". Never silently drop these lines and never invent a part number for them.
    - If a part number IS given, set "note_ipc": false and "ipc_note_text": "".
-   - Give a "step_reference" for every consumable: normally "Material Required table", but if the numbered procedure also tells the tech exactly when/where to use it (e.g. "Step 2: Lubricate... with grease"), give that step number too (e.g. "Material Required table (used in Step 2)").
+   - Give a "step_reference" for every consumable: normally "Material Required table", plus the exact step number if the procedure also specifies when/where it's used.
 
-3. IMPLICIT MATERIALS mentioned in the procedure steps but NOT listed in the "Material Required" / "Support Equipment" tables. Read every numbered step, warning, caution, and note in the procedure body and flag any consumable, shop supply, or physical material implied by the action described, even if never named explicitly as a nomenclature with a part number. Typical signal words/actions to watch for (this list is illustrative, not exhaustive — apply the same reasoning to any similar action): cleaning (cloth, lint-free wipe, solvent), lubricating/greasing, sealing or bonding (sealant, tape, RTV), protecting threads or surfaces (thread protector, masking, covers), securing wires/hoses/cables (tie wraps / cable ties, lockwire, clamps), labeling/tagging (labels, tags), marking (paint pen, marker), temporary caps/plugs on open lines or ports, catching fluid (drain container/pan).
-   - For each one, give: "name" (generic description, e.g. "Lint-free cloth", "Tie wraps / cable ties", "Container to catch hydraulic fluid"), "step_reference" (the EXACT step number or section where it's implied, as precisely as the card allows — e.g. "Step 4.2", "Step 1 (Removal)", "Requirements After Job Completion" — never leave this vague when a specific step number is available), and "source_quote" (a short paraphrase — NOT a verbatim quote — of what that step says that implies this need).
-   - Do NOT duplicate an item that is already captured in the CONSUMABLES table above (e.g. if "lint free cloth" already has its own row with a P/N in Material Required, do not repeat it here). Only list items that are implied by the procedure text but absent from the tables.
-   - Do not invent a need that isn't reasonably implied by an actual instruction in the text.
+3. IMPLICIT MATERIALS mentioned in the procedure steps but NOT listed in the "Material Required" / "Support Equipment" tables. Read every numbered step, warning, caution, and note in the procedure body and flag any consumable, shop supply, or physical material implied by the action described, even if never named explicitly with a part number. Typical signal actions (illustrative, not exhaustive): cleaning (cloth, solvent), lubricating/greasing, sealing or bonding (sealant, tape, RTV), protecting threads or surfaces, securing wires/hoses/cables (tie wraps, lockwire, clamps), labeling/tagging, marking, temporary caps/plugs on open lines or ports, catching fluid (drain container/pan).
+   - For each: "name", "step_reference" (as precise as the card allows), "source_quote" (a short paraphrase, NOT verbatim, of what implies the need).
+   - Do NOT duplicate anything already captured in CONSUMABLES. Do not invent needs not reasonably implied by an actual instruction.
 
-4. RELATED TASKS: any OTHER maintenance task (with its own task-number reference, e.g. "32-42-02" or a named procedure like "Main Wheel Assembly – Preparation") that this card explicitly tells the technician to do, OR an access panel/door removal-installation instruction described inline in the procedure.
+4. ACCESS PANELS — every access panel, access door, or cover removal/installation instruction described inline in the procedure (e.g. "Remove the panel as follows (see Figure X, WTBFs, Access Doors and Panels): 193AL" or "Install the panel..."). This is a DEDICATED category, separate from related_tasks.
+   - For each panel/door: "panel_id" (e.g. "193AL"), "action" ("remove" or "install"), "step_reference" (exact step, e.g. "Step 4 (Preparation)"), "figure_reference" if given (e.g. "Figure 1, WTBFs, Access Doors and Panels").
+   - "conditional": set to true ONLY if the text itself signals the access is situational / depends on which specific part or area is being worked on (wording like "as necessary", "if applicable", "depending on the affected component", or when the card explicitly lists this panel as an alternative among several options for reaching the same system). Set to false for a panel that is always required for this specific procedure.
+   - "conditional_note": if conditional is true, a short plain-English note explaining what it depends on (e.g. "Only required if the affected shuttle valve is on the side behind this panel"). Empty string if conditional is false.
+   - If the same physical panel is both removed (in a "Removal"/"Preparation" section) and later re-installed (in an "Installation"/"Follow-on" section) within this same card, create ONE entry with action "remove_and_install" rather than two separate entries, and give both step references in "step_reference" (e.g. "Step 4 (Preparation) / Step 6 (Follow-on Maintenance)").
 
-   STRICT EXCLUSION LIST — never include any of the following as a related task, no matter how many times or where they are cited in the card:
+5. RELATED TASKS: any OTHER maintenance task (with its own task-number reference, e.g. "32-42-02" or a named procedure like "Main Wheel Assembly – Preparation") that this card explicitly tells the technician to do. Access panels belong in category 4 above, NOT here — do not duplicate a panel as a related task.
+
+   STRICT EXCLUSION LIST — never include any of the following as a related task, no matter how many times or where they are cited:
    - "Safe Ground Maintenance - General Maintenance, 20-00-00"
    - "Electrical Power Application - General Maintenance, 20-20-01"
    - "SSPC - General Maintenance, 20-20-02"
-   These are boilerplate preliminary/reference items present on nearly every AMM card and carry no engineering value for the technician. Read them for context if needed, but never output them in "related_tasks".
+   These are boilerplate preliminary/reference items present on nearly every AMM card and carry no engineering value. Read them for context if needed, but never output them in "related_tasks".
 
-   Also NEVER include the current card itself (same task number as "card_ref") even when one of its own internal sub-sections (e.g. "Preparation", "Removal", "Installation", "Follow-on Maintenance") lists another sub-section of the SAME card as a Preliminary Requirement. That is internal structure of this same card, not a related task, and must be completely excluded from the list.
+   Also NEVER include the current card itself (same task number as "card_ref") even when one of its own internal sub-sections (e.g. "Preparation", "Removal", "Installation", "Follow-on Maintenance") lists another sub-section of the SAME card as a Preliminary Requirement. That is internal structure of this same card, not a related task.
 
-   ALWAYS include, when present in the text:
-   - Any other AMM reference cited as a Preliminary Requirement, Reference Material, or inline "Do X" / "Refer to X" instruction (e.g. Landing Gear Door - Normal Operation, Hydraulic System - Bleed, Main Wheel Brakes - Function Test, Open/Close Checks - Visual Examination).
-   - Access panel or door removal/installation steps described inline in the numbered procedure (e.g. "Remove the panel as follows (see Figure X, WTBFs, Access Doors and Panels): 193AL" or "Install the panel..."). These are real, necessary preparatory/closing work — just as important as the main removal/installation task — and must always be captured as a related task. Use the panel/door identifier (e.g. "193AL") as "ref", a title like "Access Panel Removal — 193AL" or "Access Panel Installation — 193AL", "when":"before" if it's a removal step done to gain access, "when":"after" if it's an installation step done to close up afterward, and the exact step_reference (e.g. "Step 4 (Preparation)", "Step 6 (Follow-on Maintenance)").
+   ALWAYS include, when present in the text: any other AMM reference cited as a Preliminary Requirement, Reference Material, or inline "Do X" / "Refer to X" instruction (e.g. Landing Gear Door - Normal Operation, Hydraulic System - Bleed, Main Wheel Brakes - Function Test, Open/Close Checks - Visual Examination).
 
    For every included item, classify:
-   - "when": "before" if it's a Preliminary Requirement / must be done first (e.g. under Preliminary Requirements, or a numbered step referring to another task before/during the procedure, including opening access panels).
-   - "when": "after" if it's a Requirements After Job Completion step, a follow-on task, a functional/operational check done once the main task is finished, or closing an access panel that was opened earlier.
-   - "when": "during" if it's referenced mid-procedure as a required sub-step.
-   - Give a short "reason" quoting/paraphrasing (in your own words) why it's needed, the "ref" (task number or panel/door identifier if present, else the task title as written) and "title".
-   - Give "step_reference": exactly where in THIS card that instruction appears — e.g. "Preliminary Requirements", "Step 4", "Requirements After Job Completion". This must point to a specific place in the source card, not a generic phrase.
-   - Do NOT include purely informational cross-references that are not instructions to perform another task (e.g. a "Reference Materials" list at the top is NOT automatically a related task unless the procedure body also tells the tech to actually go do it).
+   - "when": "before" (Preliminary Requirement / must be done first), "after" (Requirements After Job Completion, follow-on task, functional/operational check done once finished), or "during" (referenced mid-procedure as a required sub-step).
+   - "reason": short paraphrase (your own words) of why it's needed.
+   - "ref": task number if present, else the task title as written. "title": the task title.
+   - "step_reference": exactly where in THIS card that instruction appears (e.g. "Preliminary Requirements", "Step 9", "Requirements After Job Completion").
+   - Do NOT include purely informational cross-references that are not instructions to perform another task.
 
-   DEDUPLICATION — MANDATORY: before finalizing the list, deduplicate by "ref". If the same ref is cited in multiple sub-sections of this card (e.g. cited in the Preliminary Requirements of both "Removal" and "Installation"), output it ONCE only, using the step_reference of its clearest/first relevant occurrence. Never output the same ref twice in the final array.
+   DEDUPLICATION — MANDATORY: deduplicate by "ref" before finalizing. If the same ref is cited in multiple sub-sections of this card, output it ONCE only, using the clearest step_reference. Never output the same ref twice.
 
-The technician has already processed these AMM references earlier in this session: ${JSON.stringify(alreadyKnownRefs)}
-If any related task you find matches one of these refs, still include it in the list but set "already_known": true. Otherwise set "already_known": false.
+The technician has already scanned these AMM references earlier in this session: ${JSON.stringify(alreadyKnownRefs)}
+If any related task you find matches one of these refs, still include it but set "already_known": true. Otherwise set "already_known": false.
 
-Do not invent quantities, part numbers, task numbers, or step references. If a step_reference is genuinely not determinable, use "" — do not guess a step number that isn't actually where the text appears.
+Do not invent quantities, part numbers, task numbers, or step references. If a step_reference is genuinely not determinable, use "".
 
 Reply ONLY with valid JSON, no markdown, in this exact shape:
 {
@@ -296,6 +329,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
   "tools": [{"name":"","pn":"","qty":"","step_reference":""}],
   "consumables": [{"name":"","pn":"","qty":"","note_ipc":false,"ipc_note_text":"","step_reference":""}],
   "implicit_materials": [{"name":"","step_reference":"","source_quote":""}],
+  "access_panels": [{"panel_id":"","action":"remove|install|remove_and_install","step_reference":"","figure_reference":"","conditional":false,"conditional_note":""}],
   "related_tasks": [{"ref":"","title":"","when":"before|during|after","reason":"","step_reference":"","already_known":false}]
 }`;
 }
@@ -303,21 +337,22 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
 function buildVerifyPrompt(extractedJson) {
   return `You are performing a strict self-check (quality control) on a JSON extraction that another pass produced from an AMM task card. You will be given the ORIGINAL SOURCE TEXT and the EXTRACTED JSON. Your job is to catch and fix errors — do not trust the extraction blindly.
 
-For EACH item in tools, consumables, implicit_materials, and related_tasks, go back to the source text and verify:
-- Does this item actually appear in the source text? If you cannot find clear textual support for an item, mark it for removal (do not include it in your corrected output) and explain why in the report.
-- Is the part number / quantity / reference EXACTLY as written in the source (no transposed digits, no invented values)? Fix it if wrong.
-- Is "step_reference" correct and specific? It must point to where the item ACTUALLY appears — a table name ("Support Equipment table", "Material Required table") and/or an exact step number ("Step 4", "Requirements After Job Completion"). If the first pass left it empty, vague, or wrong, fill in or correct it yourself by locating the item in the source. Never leave a "needs_review" item without also giving the most specific step_reference you can find.
-- For consumables: if the source says to refer to the IPC instead of giving a P/N, confirm "note_ipc" is true and "ipc_note_text" captures the actual phrase. If the extraction missed an IPC reference, add "note_ipc":true and fill it in.
-- For implicit_materials: this category is the highest-risk for hallucination — be strict. Only keep an item if you can point to a specific step/warning/note in the source that genuinely implies that material is needed for THIS task (not a generic assumption about aviation maintenance in general). Remove any implicit_materials item that isn't clearly tied to actual text. Also scan the source yourself for any implied consumable the first pass missed (cleaning, lubricating, sealing, securing/tie-wrapping, protecting, labeling, capping/plugging, catching fluid) and add it if genuinely present, with its own precise step_reference. Do not duplicate anything already in the consumables table.
+For EACH item in tools, consumables, implicit_materials, access_panels, and related_tasks, go back to the source text and verify:
+- Does this item actually appear in the source text? If not, mark for removal and explain why in the report.
+- Is the part number / quantity / reference EXACTLY as written in the source? Fix if wrong.
+- Is "step_reference" correct and specific? Fill in or correct it by locating the item in the source. Never leave a "needs_review" item without also giving the most specific step_reference you can find.
+- For consumables: confirm/fix "note_ipc" and "ipc_note_text" per the extraction rules.
+- For implicit_materials: be strict — only keep items clearly tied to actual text (not generic aviation assumptions). Remove unsupported ones. Scan yourself for anything the first pass missed. Do not duplicate anything already in consumables.
+- For access_panels: confirm every panel removal/installation instruction in the procedure is captured (do not miss any). Merge a remove+install pair of the SAME panel into one "remove_and_install" entry if the first pass split it into two. Confirm "conditional" is only true when the text itself signals situational/depends-on-part wording — do not mark a panel conditional just because you're unsure; if it's clearly always required for this procedure, conditional must be false.
 - For related_tasks — apply the SAME strict exclusion rules as the extraction pass:
-  - Remove any entry referencing "Safe Ground Maintenance - General Maintenance, 20-00-00", "Electrical Power Application - General Maintenance, 20-20-01", or "SSPC - General Maintenance, 20-20-02" — these must never appear in the final list, even if the first pass included them.
-  - Remove any entry that is actually the current card itself referencing its own sub-sections (same task number as "card_ref") as a Preliminary Requirement — that is internal structure, not a related task.
-  - Confirm every access panel/door removal-installation step described inline in the procedure (e.g. "Remove the panel... 193AL", "Install the panel...") IS present in related_tasks. If the first pass missed one, add it with the correct "ref" (panel/door identifier), "when" (before if opening for access, after if closing), and exact step_reference.
-  - DEDUPLICATE by "ref": if the same ref appears more than once in the extracted JSON (e.g. because it was cited in several sub-sections), keep only ONE entry for that ref in your corrected output, merging into the clearest step_reference. The final related_tasks array must never contain two entries with the same "ref".
-  - Confirm the "when" classification (before/during/after) actually matches how the source describes it (Preliminary Requirements = before, Requirements After Job Completion or a follow-on functional check = after, a step referenced mid-procedure = during). Reclassify if wrong. Confirm step_reference points to the exact section/step of THIS card where that instruction is given.
-- Flag ("needs_review": true) any item you are not fully confident about, with a short reason in "review_note" that tells the technician specifically what to double check (not just that something is uncertain) — rather than silently guessing.
+  - Remove any entry referencing "Safe Ground Maintenance - General Maintenance, 20-00-00", "Electrical Power Application - General Maintenance, 20-20-01", or "SSPC - General Maintenance, 20-20-02".
+  - Remove any entry that is actually the current card itself referencing its own sub-sections.
+  - Remove any entry that is actually an access panel — those belong exclusively in access_panels, never duplicated in related_tasks.
+  - DEDUPLICATE by "ref": keep only ONE entry per ref, merging into the clearest step_reference.
+  - Confirm the "when" classification matches the source. Confirm step_reference points to the exact section/step.
+- Flag ("needs_review": true) any item you are not fully confident about, with a specific, actionable "review_note".
 
-Return a CORRECTED version of the full JSON (same shape as input, each item additionally carrying "needs_review": boolean and "review_note": string, empty string if none, and keeping/fixing "step_reference" on every item), plus a short top-level "verification_summary" array of strings describing what you actually checked/changed/removed in THIS pass (e.g. "Removed duplicate '32-00-04' entry, merged into one before-task", "Removed boilerplate refs 20-00-00 and 20-20-01 per exclusion rule", "Added missing access panel task 193AL (Step 4, before)", "Confirmed IPC note on O-RING line (Material Required table)"). Only list actions you genuinely performed on the final output — do not claim a cleanup step that isn't reflected in the returned JSON.
+Return a CORRECTED version of the full JSON (same shape as input, each item additionally carrying "needs_review": boolean and "review_note": string, empty if none, and keeping/fixing "step_reference" on every item), plus a top-level "verification_summary" array of strings describing what you actually checked/changed/removed in THIS pass. Only list actions genuinely reflected in the returned JSON.
 
 Reply ONLY with valid JSON, no markdown, in this exact shape:
 {
@@ -326,6 +361,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
   "tools": [{"name":"","pn":"","qty":"","step_reference":"","needs_review":false,"review_note":""}],
   "consumables": [{"name":"","pn":"","qty":"","note_ipc":false,"ipc_note_text":"","step_reference":"","needs_review":false,"review_note":""}],
   "implicit_materials": [{"name":"","step_reference":"","source_quote":"","needs_review":false,"review_note":""}],
+  "access_panels": [{"panel_id":"","action":"remove|install|remove_and_install","step_reference":"","figure_reference":"","conditional":false,"conditional_note":"","needs_review":false,"review_note":""}],
   "related_tasks": [{"ref":"","title":"","when":"before|during|after","reason":"","step_reference":"","already_known":false,"needs_review":false,"review_note":""}],
   "verification_summary": [""]
 }
@@ -335,7 +371,103 @@ ${extractedJson}`;
 }
 
 /* ============================================================
-   MAIN FLOW: extract -> self-check -> render
+   CLIENT-SIDE SAFETY NET — deterministic backstop regardless of
+   what the model returns.
+   ============================================================ */
+const RELATED_TASK_EXCLUDE_REFS = ['20-00-00', '20-20-01', '20-20-02'];
+
+function normalizeRef(ref) {
+  return (ref || '').toString().trim().toUpperCase();
+}
+
+function dedupeAndFilterRelatedTasks(tasks, cardRef) {
+  const cardRefNorm = normalizeRef(cardRef);
+  const seen = new Set();
+  const out = [];
+  for (const t of (tasks || [])) {
+    const refNorm = normalizeRef(t.ref);
+    if (!refNorm) continue;
+    if (RELATED_TASK_EXCLUDE_REFS.includes(refNorm)) continue;
+    if (cardRefNorm && refNorm === cardRefNorm) continue;
+    if (seen.has(refNorm)) continue;
+    seen.add(refNorm);
+    out.push(t);
+  }
+  return out;
+}
+
+function dedupeAccessPanels(panels) {
+  const seen = new Map();
+  for (const p of (panels || [])) {
+    const key = normalizeRef(p.panel_id);
+    if (!key) continue;
+    if (!seen.has(key)) { seen.set(key, p); continue; }
+    // merge remove+install duplicates of the same panel into one entry
+    const existing = seen.get(key);
+    if (existing.action !== p.action) {
+      existing.action = 'remove_and_install';
+      existing.step_reference = [existing.step_reference, p.step_reference].filter(Boolean).join(' / ');
+    }
+  }
+  return Array.from(seen.values());
+}
+
+/* ============================================================
+   CORE SCAN — used for both the root card and any related_task
+   drill-down. Returns the verified JSON (with client-side cleanup
+   applied), or throws.
+   ============================================================ */
+async function runScan(text, knownRefs) {
+  const extractRes = await fetch(KO_WORKER + '/chat', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model: 'mistral-small-latest',
+      temperature: 0,
+      messages: [{ role: 'user', content: buildExtractPrompt(knownRefs) + '\n\nAMM TASK CARD TEXT:\n' + text }],
+      response_format: { type: 'json_object' }
+    })
+  });
+  const extractData = await extractRes.json();
+  if (!extractRes.ok) throw new Error(extractData.message || ('Chat error ' + extractRes.status));
+  const extractRaw = extractData.choices[0].message.content.replace(/```json|```/g, '').trim();
+
+  const verifyRes = await fetch(KO_WORKER + '/chat', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model: 'mistral-small-latest',
+      temperature: 0,
+      messages: [{ role: 'user', content: buildVerifyPrompt(extractRaw) + '\n\nORIGINAL SOURCE TEXT:\n' + text }],
+      response_format: { type: 'json_object' }
+    })
+  });
+  const verifyData = await verifyRes.json();
+  if (!verifyRes.ok) throw new Error(verifyData.message || ('Chat error ' + verifyRes.status));
+  const verifyRaw = verifyData.choices[0].message.content.replace(/```json|```/g, '').trim();
+  const verified = JSON.parse(verifyRaw);
+
+  verified.related_tasks = dedupeAndFilterRelatedTasks(verified.related_tasks || [], verified.card_ref || '');
+  verified.access_panels = dedupeAccessPanels(verified.access_panels || []);
+  return verified;
+}
+
+async function pdfToText(pdfB64) {
+  const ocrRes = await fetch(KO_WORKER + '/ocr', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model: 'mistral-ocr-latest',
+      document: { type: 'document_url', document_url: `data:application/pdf;base64,${pdfB64}` }
+    })
+  });
+  const ocrData = await ocrRes.json();
+  if (!ocrRes.ok) throw new Error(ocrData.message || ('OCR error ' + ocrRes.status));
+  return ocrData.pages.map(p => p.markdown).join('\n\n');
+}
+
+/* ============================================================
+   ROOT SCAN FLOW
    ============================================================ */
 async function analyzeAmm() {
   const pastedText = document.getElementById('amm-text').value.trim();
@@ -348,75 +480,25 @@ async function analyzeAmm() {
   document.getElementById('results').style.display = 'none';
   document.getElementById('check-progress').style.display = 'block';
   setStep('step-extract', 'active'); setStep('step-verify', null); setStep('step-done', null);
-  setStatus('load', '<span class="spin spin-dark" style="border-color:#cbd5e1;border-top-color:var(--accent)"></span> Reading the AMM card…');
+  setStatus('load', '<span class="spin spin-dark"></span> Reading the AMM card…');
 
   try {
-    let ammText = pastedText;
-
-    if (isPdf) {
-      const ocrRes = await fetch(KO_WORKER + '/ocr', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({
-          model: 'mistral-ocr-latest',
-          document: { type: 'document_url', document_url: `data:application/pdf;base64,${ammPdfB64}` }
-        })
-      });
-      const ocrData = await ocrRes.json();
-      if (!ocrRes.ok) throw new Error(ocrData.message || ('OCR error ' + ocrRes.status));
-      ammText = ocrData.pages.map(p => p.markdown).join('\n\n');
-    }
-
-    // ---------- PASS 1: extraction ----------
-    const knownRefs = knownCards.map(c => c.ref);
-    const extractRes = await fetch(KO_WORKER + '/chat', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model: 'mistral-small-latest',
-        temperature: 0,
-        messages: [{ role: 'user', content: buildExtractPrompt(knownRefs) + '\n\nAMM TASK CARD TEXT:\n' + ammText }],
-        response_format: { type: 'json_object' }
-      })
-    });
-    const extractData = await extractRes.json();
-    if (!extractRes.ok) throw new Error(extractData.message || ('Chat error ' + extractRes.status));
-    const extractRaw = extractData.choices[0].message.content.replace(/```json|```/g, '').trim();
-    lastRawExtract = extractRaw;
+    const ammText = isPdf ? await pdfToText(ammPdfB64) : pastedText;
 
     setStep('step-extract', 'done'); setStep('step-verify', 'active');
     setStatus('load', '<span class="spin spin-dark"></span> Self-checking — the AI is re-verifying every item against the source text…');
 
-    // ---------- PASS 2: self-check / verify ----------
-    const verifyRes = await fetch(KO_WORKER + '/chat', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model: 'mistral-small-latest',
-        temperature: 0,
-        messages: [{ role: 'user', content: buildVerifyPrompt(extractRaw) + '\n\nORIGINAL SOURCE TEXT:\n' + ammText }],
-        response_format: { type: 'json_object' }
-      })
-    });
-    const verifyData = await verifyRes.json();
-    if (!verifyRes.ok) throw new Error(verifyData.message || ('Chat error ' + verifyRes.status));
-    const verifyRaw = verifyData.choices[0].message.content.replace(/```json|```/g, '').trim();
-    const verified = JSON.parse(verifyRaw);
-
-    // Belt-and-braces client-side cleanup, in case the model still slips up:
-    // strip boilerplate refs and hard-dedupe related_tasks by ref.
-    verified.related_tasks = dedupeAndFilterRelatedTasks(verified.related_tasks || [], verified.card_ref || '');
+    const knownRefs = knownCards.map(c => c.ref);
+    const verified = await runScan(ammText, knownRefs);
 
     setStep('step-verify', 'done'); setStep('step-done', 'done');
 
-    lastResult = verified;
-    lastVerifyReport = verified.verification_summary || [];
-
-    // Manual ref override if user typed one
     const manualRef = document.getElementById('amm-ref').value.trim();
     if (manualRef) verified.card_ref = manualRef;
 
-    renderResults(verified);
+    rootResult = verified;
+    registerKnownCard(verified.card_ref, verified.card_title);
+    renderAll();
     setStatus('done', `✓ Analysis complete${verified.card_ref ? ' — card ' + escapeHtml(verified.card_ref) : ''}. Review items flagged "needs review" before sending.`);
   } catch (e) {
     setStep('step-extract', null); setStep('step-verify', null);
@@ -426,162 +508,12 @@ async function analyzeAmm() {
   }
 }
 
-/* ============================================================
-   CLIENT-SIDE SAFETY NET
-   The prompts already instruct the model to exclude boilerplate refs
-   and dedupe by ref, but LLMs occasionally miss an instruction — this
-   is a deterministic backstop so the UI never shows the known issues
-   (20-00-00 / 20-20-01 / 20-20-02 spam, the card citing itself, or the
-   same ref listed twice) regardless of what the model returns.
-   ============================================================ */
-const RELATED_TASK_EXCLUDE_REFS = ['20-00-00', '20-20-01', '20-20-02'];
-
-function normalizeRef(ref) {
-  return (ref || '').toString().trim().toUpperCase();
-}
-
-function dedupeAndFilterRelatedTasks(tasks, cardRef) {
-  const cardRefNorm = normalizeRef(cardRef);
-  const seen = new Set();
-  const out = [];
-  for (const t of tasks) {
-    const refNorm = normalizeRef(t.ref);
-    if (!refNorm) continue;
-    if (RELATED_TASK_EXCLUDE_REFS.includes(refNorm)) continue;
-    if (cardRefNorm && refNorm === cardRefNorm) continue;
-    if (seen.has(refNorm)) continue;
-    seen.add(refNorm);
-    out.push(t);
+function registerKnownCard(ref, title) {
+  if (!ref) return;
+  if (!knownCards.find(c => c.ref === ref)) {
+    knownCards.push({ ref, title: title || '', addedAt: Date.now() });
+    renderKnownCards();
   }
-  return out;
-}
-
-/* ============================================================
-   RENDERING
-   ============================================================ */
-function escapeHtml(s) {
-  return (s || '').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function renderResults(data) {
-  document.getElementById('results').style.display = 'block';
-
-  // Tools
-  const tools = data.tools || [];
-  document.getElementById('tools-count').textContent = tools.length;
-  document.getElementById('tools-list').innerHTML = tools.length ? tools.map((t, i) => `
-    <div class="item ${t.needs_review ? 'flag-warn' : 'flag-checked'}" data-kind="tools" data-idx="${i}">
-      <input type="checkbox" checked onchange="toggleItem('tools', ${i}, this.checked)">
-      <div class="item-body">
-        <div class="item-main">
-          <div>
-            <span class="item-name">${escapeHtml(t.name)}</span>
-            ${t.pn ? `<span class="item-pn">&nbsp;· ${escapeHtml(t.pn)}</span>` : ''}
-          </div>
-          <div class="row" style="gap:6px">
-            ${t.qty ? `<span class="badge badge-opt">Qty: ${escapeHtml(t.qty)}</span>` : ''}
-            <span class="badge ${t.needs_review ? 'badge-review' : 'badge-verified'}">${t.needs_review ? '⚠ needs review' : '✓ verified'}</span>
-          </div>
-        </div>
-        ${t.step_reference ? `<div class="step-ref">📍 ${escapeHtml(t.step_reference)}</div>` : ''}
-        ${t.needs_review && t.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(t.review_note)}${!t.step_reference ? ' <i>(exact reference not found — re-check the whole card)</i>' : ''}</div>` : ''}
-      </div>
-    </div>
-  `).join('') : '<div class="empty">No tools identified in this card.</div>';
-
-  // Consumables
-  const cons = data.consumables || [];
-  document.getElementById('consumables-count').textContent = cons.length;
-  document.getElementById('consumables-list').innerHTML = cons.length ? cons.map((c, i) => `
-    <div class="item ${c.needs_review ? 'flag-warn' : 'flag-checked'}" data-kind="consumables" data-idx="${i}">
-      <input type="checkbox" checked onchange="toggleItem('consumables', ${i}, this.checked)">
-      <div class="item-body">
-        <div class="item-main">
-          <div>
-            <span class="item-name">${escapeHtml(c.name)}</span>
-            ${c.pn ? `<span class="item-pn">&nbsp;· ${escapeHtml(c.pn)}</span>` : ''}
-          </div>
-          <div class="row" style="gap:6px">
-            ${c.qty ? `<span class="badge badge-opt">Qty: ${escapeHtml(c.qty)}</span>` : ''}
-            ${c.note_ipc ? `<span class="badge badge-ipc">📘 See IPC</span>` : ''}
-            <span class="badge ${c.needs_review ? 'badge-review' : 'badge-verified'}">${c.needs_review ? '⚠ needs review' : '✓ verified'}</span>
-          </div>
-        </div>
-        ${c.step_reference ? `<div class="step-ref">📍 ${escapeHtml(c.step_reference)}</div>` : ''}
-        ${c.note_ipc ? `<div class="note-ipc">📘 <span><b>Refer to the IPC</b> — ${escapeHtml(c.ipc_note_text || 'no P/N given in this card, refer to the IPC.')}</span></div>` : ''}
-        ${c.needs_review && c.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(c.review_note)}${!c.step_reference ? ' <i>(exact reference not found — re-check the whole card)</i>' : ''}</div>` : ''}
-      </div>
-    </div>
-  `).join('') : '<div class="empty">No consumables identified in this card.</div>';
-
-  // Implicit materials
-  const implicit = data.implicit_materials || [];
-  document.getElementById('implicit-count').textContent = implicit.length;
-  document.getElementById('implicit-list').innerHTML = implicit.length ? implicit.map((m, i) => `
-    <div class="item ${m.needs_review ? 'flag-warn' : 'flag-checked'}" data-kind="implicit_materials" data-idx="${i}">
-      <input type="checkbox" checked onchange="toggleItem('implicit_materials', ${i}, this.checked)">
-      <div class="item-body">
-        <div class="item-main">
-          <div>
-            <span class="item-name">${escapeHtml(m.name)}</span>
-          </div>
-          <span class="badge ${m.needs_review ? 'badge-review' : 'badge-verified'}">${m.needs_review ? '⚠ needs review' : '✓ verified'}</span>
-        </div>
-        ${m.step_reference ? `<div class="step-ref">📍 ${escapeHtml(m.step_reference)}</div>` : '<div class="step-ref step-ref-missing">📍 Step reference not given — re-read the full card to locate it</div>'}
-        ${m.source_quote ? `<div class="item-meta" style="margin-top:4px">💡 ${escapeHtml(m.source_quote)}</div>` : ''}
-        ${m.needs_review && m.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(m.review_note)}</div>` : ''}
-      </div>
-    </div>
-  `).join('') : '<div class="empty">No implicit materials detected outside the tables.</div>';
-
-  // Related tasks
-  const tasks = data.related_tasks || [];
-  document.getElementById('tasks-count').textContent = tasks.length;
-  document.getElementById('tasks-list').innerHTML = tasks.length ? tasks.map((t, i) => `
-    <div class="task-item" data-kind="tasks" data-idx="${i}">
-      <div class="task-head">
-        <div class="row" style="gap:8px">
-          <span class="task-ref">${escapeHtml(t.ref || '—')}</span>
-          <span style="font-weight:600;font-size:13px">${escapeHtml(t.title)}</span>
-          <span class="task-when when-${t.when || 'during'}">${(t.when||'during').toUpperCase()}</span>
-          ${t.already_known ? '<span class="badge badge-opt">already seen this session</span>' : ''}
-          ${t.needs_review ? '<span class="badge badge-review">⚠ needs review</span>' : '<span class="badge badge-verified">✓ verified</span>'}
-        </div>
-        <label class="task-done-toggle">
-          <input type="checkbox" checked onchange="toggleItem('tasks', ${i}, this.checked)"> Include
-        </label>
-      </div>
-      ${t.step_reference ? `<div class="step-ref">📍 ${escapeHtml(t.step_reference)}</div>` : ''}
-      ${t.reason ? `<div class="task-reason">${escapeHtml(t.reason)}</div>` : ''}
-      ${t.needs_review && t.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(t.review_note)}</div>` : ''}
-    </div>
-  `).join('') : '<div class="empty">No related tasks detected.</div>';
-
-  // Verify summary
-  const summary = data.verification_summary || [];
-  if (summary.length) {
-    document.getElementById('verify-summary-card').style.display = 'block';
-    document.getElementById('verify-summary').innerHTML = summary.map(s => `<div style="font-size:12.5px;padding:4px 0;color:var(--muted)">• ${escapeHtml(s)}</div>`).join('');
-  } else {
-    document.getElementById('verify-summary-card').style.display = 'none';
-  }
-  document.getElementById('raw-debug').textContent = JSON.stringify(data, null, 2);
-
-  // Register this card in session memory
-  if (data.card_ref) {
-    const already = knownCards.find(c => c.ref === data.card_ref);
-    if (!already) {
-      knownCards.push({ ref: data.card_ref, title: data.card_title || '', addedAt: Date.now() });
-      renderKnownCards();
-    }
-  }
-}
-
-function toggleItem(kind, idx, checked) {
-  if (!lastResult || !lastResult[kind] || !lastResult[kind][idx]) return;
-  lastResult[kind][idx]._include = checked;
-  const el = document.querySelector(`.item[data-kind="${kind}"][data-idx="${idx}"], .task-item[data-kind="${kind}"][data-idx="${idx}"]`);
-  if (el) el.classList.toggle('ignored', !checked);
 }
 
 function renderKnownCards() {
@@ -591,17 +523,13 @@ function renderKnownCards() {
   if (!knownCards.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
   list.innerHTML = knownCards.map((c, i) => `
-    <div class="known-tag">
+    <div style="font-size:11px;background:#eef1f5;color:var(--muted);padding:3px 9px;border-radius:20px;display:flex;align-items:center;gap:5px">
       <span>${escapeHtml(c.ref)}${c.title ? ' — ' + escapeHtml(c.title) : ''}</span>
-      <button onclick="removeKnownCard(${i})" title="Remove from session memory">×</button>
+      <button onclick="removeKnownCard(${i})" title="Remove from session memory" style="border:none;background:none;color:var(--err);cursor:pointer;font-size:13px;line-height:1;padding:0">×</button>
     </div>
   `).join('');
 }
-
-function removeKnownCard(i) {
-  knownCards.splice(i, 1);
-  renderKnownCards();
-}
+function removeKnownCard(i) { knownCards.splice(i, 1); renderKnownCards(); }
 
 function resetResults() {
   document.getElementById('amm-text').value = '';
@@ -610,38 +538,413 @@ function resetResults() {
   document.getElementById('pdf-filename').textContent = '';
   document.getElementById('results').style.display = 'none';
   document.getElementById('check-progress').style.display = 'none';
-  setStatus('idle', '');
   document.getElementById('amm-status').className = 'status';
-  lastResult = null;
+  rootResult = null;
 }
 
 /* ============================================================
-   EXPORT — hook point to plug into your existing app
-   (e.g. call koSyncPartsToMainTable() equivalent, or Start Job template
-   population). Here it just prints the payload; replace with your
-   integration call.
+   RENDERING — root-level lists (tools / consumables / implicit / access)
    ============================================================ */
+function renderAll() {
+  if (!rootResult) return;
+  document.getElementById('results').style.display = 'block';
+  renderLeafList('tools-list', 'tools-count', rootResult.tools, renderToolItem, 'tools');
+  renderLeafList('consumables-list', 'consumables-count', rootResult.consumables, renderConsumableItem, 'consumables');
+  renderLeafList('implicit-list', 'implicit-count', rootResult.implicit_materials, renderImplicitItem, 'implicit_materials');
+  renderLeafList('access-list', 'access-count', rootResult.access_panels, renderAccessItem, 'access_panels');
+  renderTasksList('tasks-list', 'tasks-count', rootResult.related_tasks, rootResult, []);
+
+  const summary = rootResult.verification_summary || [];
+  const summaryCard = document.getElementById('verify-summary-card');
+  if (summary.length) {
+    summaryCard.style.display = 'block';
+    document.getElementById('verify-summary').innerHTML = summary.map(s => `<div style="font-size:12.5px;padding:4px 0;color:var(--muted)">• ${escapeHtml(s)}</div>`).join('');
+  } else {
+    summaryCard.style.display = 'none';
+  }
+  document.getElementById('raw-debug').textContent = JSON.stringify(rootResult, null, 2);
+}
+
+function renderLeafList(listId, countId, items, itemRenderer, kind) {
+  items = items || [];
+  document.getElementById(countId).textContent = items.length;
+  const el = document.getElementById(listId);
+  if (!items.length) { el.innerHTML = `<div class="empty">None identified in this card.</div>`; return; }
+  el.innerHTML = items.map((it, i) => itemRenderer(it, i, kind)).join('');
+}
+
+function leafCheckbox(kind, path, checked) {
+  const pathAttr = JSON.stringify(path).replace(/"/g,'&quot;');
+  return `<input type="checkbox" ${checked !== false ? 'checked' : ''} onchange="toggleLeaf('${kind}', ${pathAttr}, this.checked)">`;
+}
+
+function renderToolItem(t, i, kind) {
+  return `
+    <div class="item ${t.needs_review ? 'flag-warn' : 'flag-checked'}">
+      ${leafCheckbox(kind, [i], t._include)}
+      <div class="item-body">
+        <div class="item-main">
+          <div><span class="item-name">${escapeHtml(t.name)}</span>${t.pn ? `<span class="item-pn">&nbsp;· ${escapeHtml(t.pn)}</span>` : ''}</div>
+          <div class="row" style="gap:6px">
+            ${t.qty ? `<span class="badge badge-opt">Qty: ${escapeHtml(t.qty)}</span>` : ''}
+            <span class="badge ${t.needs_review ? 'badge-review' : 'badge-verified'}">${t.needs_review ? '⚠ needs review' : '✓ verified'}</span>
+          </div>
+        </div>
+        ${t.step_reference ? `<div class="step-ref">📍 ${escapeHtml(t.step_reference)}</div>` : ''}
+        ${t.needs_review && t.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(t.review_note)}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+function renderConsumableItem(c, i, kind) {
+  return `
+    <div class="item ${c.needs_review ? 'flag-warn' : 'flag-checked'}">
+      ${leafCheckbox(kind, [i], c._include)}
+      <div class="item-body">
+        <div class="item-main">
+          <div><span class="item-name">${escapeHtml(c.name)}</span>${c.pn ? `<span class="item-pn">&nbsp;· ${escapeHtml(c.pn)}</span>` : ''}</div>
+          <div class="row" style="gap:6px">
+            ${c.qty ? `<span class="badge badge-opt">Qty: ${escapeHtml(c.qty)}</span>` : ''}
+            ${c.note_ipc ? `<span class="badge badge-ipc">📘 See IPC</span>` : ''}
+            <span class="badge ${c.needs_review ? 'badge-review' : 'badge-verified'}">${c.needs_review ? '⚠ needs review' : '✓ verified'}</span>
+          </div>
+        </div>
+        ${c.step_reference ? `<div class="step-ref">📍 ${escapeHtml(c.step_reference)}</div>` : ''}
+        ${c.note_ipc ? `<div class="note-ipc">📘 <span><b>Refer to the IPC</b> — ${escapeHtml(c.ipc_note_text || 'no P/N given in this card, refer to the IPC.')}</span></div>` : ''}
+        ${c.needs_review && c.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(c.review_note)}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+function renderImplicitItem(m, i, kind) {
+  return `
+    <div class="item ${m.needs_review ? 'flag-warn' : 'flag-checked'}">
+      ${leafCheckbox(kind, [i], m._include)}
+      <div class="item-body">
+        <div class="item-main">
+          <div><span class="item-name">${escapeHtml(m.name)}</span></div>
+          <span class="badge ${m.needs_review ? 'badge-review' : 'badge-verified'}">${m.needs_review ? '⚠ needs review' : '✓ verified'}</span>
+        </div>
+        ${m.step_reference ? `<div class="step-ref">📍 ${escapeHtml(m.step_reference)}</div>` : '<div class="step-ref step-ref-missing">📍 Step reference not given</div>'}
+        ${m.source_quote ? `<div class="item-meta" style="margin-top:4px">💡 ${escapeHtml(m.source_quote)}</div>` : ''}
+        ${m.needs_review && m.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(m.review_note)}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+const ACCESS_ACTION_LABEL = { remove: 'Removal', install: 'Installation', remove_and_install: 'Removal & Installation' };
+
+function renderAccessItem(p, i, kind) {
+  return `
+    <div class="item ${p.needs_review ? 'flag-warn' : 'flag-checked'}">
+      ${leafCheckbox(kind, [i], p._include)}
+      <div class="item-body">
+        <div class="item-main">
+          <div>
+            <span class="item-name">Access Panel ${escapeHtml(p.panel_id)} — ${escapeHtml(ACCESS_ACTION_LABEL[p.action] || p.action || '')}</span>
+          </div>
+          <div class="row" style="gap:6px">
+            ${p.conditional ? `<span class="badge badge-cond">if required</span>` : ''}
+            <span class="badge ${p.needs_review ? 'badge-review' : 'badge-verified'}">${p.needs_review ? '⚠ needs review' : '✓ verified'}</span>
+          </div>
+        </div>
+        ${p.step_reference ? `<div class="step-ref">📍 ${escapeHtml(p.step_reference)}</div>` : ''}
+        ${p.figure_reference ? `<div class="item-meta" style="margin-top:4px">🖼️ ${escapeHtml(p.figure_reference)}</div>` : ''}
+        ${p.conditional && p.conditional_note ? `<div class="note-cond">🔀 <b>Depends on the part:</b> ${escapeHtml(p.conditional_note)}</div>` : ''}
+        ${p.needs_review && p.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(p.review_note)}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+/* ============================================================
+   RECURSIVE TASK TREE — related tasks, each individually scannable
+   ============================================================ */
+let taskScanSeq = 0; // unique DOM ids for scan widgets at any depth
+
+function renderTasksList(listId, countId, tasks, ownerData, path) {
+  tasks = tasks || [];
+  document.getElementById(countId).textContent = tasks.length;
+  const el = document.getElementById(listId);
+  if (!tasks.length) { el.innerHTML = `<div class="empty">No related tasks detected.</div>`; return; }
+  el.innerHTML = tasks.map((t, i) => renderTaskNode(t, i, path)).join('');
+}
+
+function renderTaskNode(t, i, parentPath) {
+  const path = [...parentPath, i];
+  const pathAttr = JSON.stringify(path).replace(/"/g,'&quot;');
+  const scan = t.scan || { status: 'idle' };
+  const nodeId = 'tasknode_' + path.join('_');
+  const depth = parentPath.length;
+
+  let scanZoneHtml = '';
+  if (scan.status === 'idle') {
+    scanZoneHtml = `
+      <div class="task-scan-zone">
+        <div class="scan-toggle-row">
+          <span style="font-size:12px;color:var(--muted)">Want this task's own tools, parts and access panels too?</span>
+          <button class="btn btn-purple btn-sm" onclick="openScanWidget(${pathAttr})">📄 Scan this task</button>
+        </div>
+        <div id="scanwidget_${nodeId}"></div>
+      </div>`;
+  } else if (scan.status === 'widget_open') {
+    scanZoneHtml = `<div class="task-scan-zone">${renderScanWidget(path, nodeId, scan)}</div>`;
+  } else if (scan.status === 'loading') {
+    scanZoneHtml = `
+      <div class="task-scan-zone">
+        <div class="checkstep active"><div class="dot"></div><div><span class="spin spin-dark" style="margin-right:6px"></span>Scanning ${escapeHtml(t.ref)} — extracting, then self-checking…</div></div>
+      </div>`;
+  } else if (scan.status === 'error') {
+    scanZoneHtml = `
+      <div class="task-scan-zone">
+        <div class="status show err">❌ ${escapeHtml(scan.errorMsg || 'Scan failed.')}</div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="openScanWidget(${pathAttr})">↺ Try again</button>
+      </div>`;
+  } else if (scan.status === 'done' && scan.data) {
+    scanZoneHtml = renderScannedChildren(scan.data, path, nodeId);
+  }
+
+  return `
+    <div class="task-node">
+      <div class="task-node-head">
+        <input type="checkbox" ${t._include !== false ? 'checked' : ''} onchange="toggleLeaf('related_tasks', ${pathAttr}, this.checked)">
+        <div class="task-node-body">
+          <div class="task-node-main">
+            <div class="row" style="gap:8px">
+              <span class="task-ref">${escapeHtml(t.ref || '—')}</span>
+              <span style="font-weight:600;font-size:13px">${escapeHtml(t.title)}</span>
+              <span class="task-when when-${t.when || 'during'}">${(t.when||'during').toUpperCase()}</span>
+              ${depth > 0 ? `<span class="depth-badge">nested ${depth} level${depth>1?'s':''} deep</span>` : ''}
+              ${t.already_known ? '<span class="badge badge-opt">already scanned this session</span>' : ''}
+              ${t.needs_review ? '<span class="badge badge-review">⚠ needs review</span>' : '<span class="badge badge-verified">✓ verified</span>'}
+            </div>
+          </div>
+          ${t.step_reference ? `<div class="step-ref">📍 ${escapeHtml(t.step_reference)}</div>` : ''}
+          ${t.reason ? `<div class="task-reason">${escapeHtml(t.reason)}</div>` : ''}
+          ${t.needs_review && t.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(t.review_note)}</div>` : ''}
+        </div>
+      </div>
+      ${scanZoneHtml}
+    </div>`;
+}
+
+function renderScanWidget(path, nodeId, scan) {
+  const pathAttr = JSON.stringify(path).replace(/"/g,'&quot;');
+  const mode = scan.inputMode || 'pdf';
+  return `
+    <div class="mini-tabs">
+      <div class="mini-tab ${mode==='pdf'?'active':''}" onclick="setSubScanMode(${pathAttr}, 'pdf')">📄 PDF</div>
+      <div class="mini-tab ${mode==='paste'?'active':''}" onclick="setSubScanMode(${pathAttr}, 'paste')">📋 Paste text</div>
+    </div>
+    ${mode === 'pdf' ? `
+      <input type="file" accept="application/pdf" id="subpdf_${nodeId}" onchange="onSubPdfChosen(${pathAttr}, event)">
+      <div style="font-size:12px;color:var(--muted);margin-top:6px">${scan.pdfFileName ? '📎 ' + escapeHtml(scan.pdfFileName) : ''}</div>
+    ` : `
+      <textarea id="subtext_${nodeId}" placeholder="Paste this sub-task's AMM text here…" oninput="onSubTextInput(${pathAttr}, this.value)" style="min-height:100px">${escapeHtml(scan.pastedText || '')}</textarea>
+    `}
+    <div class="row" style="margin-top:8px">
+      <button class="btn btn-purple btn-sm" onclick="runSubScan(${pathAttr})">🔍 Scan</button>
+      <button class="btn btn-ghost btn-sm" onclick="cancelScanWidget(${pathAttr})">Cancel</button>
+    </div>`;
+}
+
+function renderScannedChildren(data, path, nodeId) {
+  const pathAttr = JSON.stringify(path).replace(/"/g,'&quot;');
+  const summary = data.verification_summary || [];
+  return `
+    <div class="task-children">
+      <div class="task-children-inner">
+        ${sectionBlock('🧰 Tools', data.tools, (it,i) => renderToolItem(it, i, 'tools'), path, 'tools')}
+        ${sectionBlock('📦 Consumables', data.consumables, (it,i) => renderConsumableItem(it, i, 'consumables'), path, 'consumables')}
+        ${sectionBlock('🧴 Implicit materials', data.implicit_materials, (it,i) => renderImplicitItem(it, i, 'implicit_materials'), path, 'implicit_materials')}
+        ${sectionBlock('🔓 Access required', data.access_panels, (it,i) => renderAccessItem(it, i, 'access_panels'), path, 'access_panels')}
+        <div class="sub-section-title">🔗 Related tasks <span class="count-pill">${(data.related_tasks||[]).length}</span></div>
+        ${(data.related_tasks && data.related_tasks.length) ? data.related_tasks.map((t,i) => renderTaskNode(t, i, path)).join('') : '<div class="empty">No further related tasks.</div>'}
+        ${summary.length ? `<div class="sub-section-title">🛡️ Self-check notes for this sub-task</div>` + summary.map(s => `<div style="font-size:12px;padding:3px 0;color:var(--muted)">• ${escapeHtml(s)}</div>`).join('') : ''}
+        <div class="row" style="margin-top:10px">
+          <button class="btn btn-ghost btn-sm" onclick="rescanTask(${pathAttr})">↺ Re-scan this task</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function sectionBlock(title, items, renderer, path, kind) {
+  items = items || [];
+  return `
+    <div class="sub-section-title">${title} <span class="count-pill">${items.length}</span></div>
+    ${items.length ? items.map((it, i) => renderer(it, i)).join('') : '<div class="empty">None.</div>'}`;
+}
+
+/* ============================================================
+   TREE HELPERS — get/set a task node or leaf item by path
+   ============================================================ */
+// path is an array of indices into nested related_tasks arrays, e.g.
+// [] -> root, [2] -> rootResult.related_tasks[2],
+// [2, 0] -> rootResult.related_tasks[2].scan.data.related_tasks[0]
+function getTaskContainer(path) {
+  // returns the object that HAS a `.related_tasks` array matching `path`
+  // (i.e. either rootResult, or some ancestor task's scan.data)
+  let container = rootResult;
+  for (let d = 0; d < path.length - 1; d++) {
+    const idx = path[d];
+    const task = container.related_tasks[idx];
+    container = task.scan && task.scan.data;
+    if (!container) return null;
+  }
+  return container;
+}
+function getTaskNode(path) {
+  const container = getTaskContainer(path);
+  if (!container) return null;
+  const idx = path[path.length - 1];
+  return container.related_tasks[idx];
+}
+function getDataContainerAtPath(path) {
+  // returns the `data` object (rootResult, or a sub-task's scan.data)
+  // whose OWN leaf arrays (tools/consumables/...) are being addressed —
+  // used by toggleLeaf when path targets a leaf list nested under a task.
+  let container = rootResult;
+  for (const idx of path) {
+    const task = container.related_tasks[idx];
+    if (!task.scan || !task.scan.data) return null;
+    container = task.scan.data;
+  }
+  return container;
+}
+
+/* ============================================================
+   LEAF CHECKBOX TOGGLE
+   For root-level leaves, path = [itemIndex].
+   For leaves nested under a scanned task, callers pass a compound path
+   via toggleNestedLeaf (built in renderScannedChildren callbacks) —
+   to keep this simple we resolve nested leaves through a wrapper that
+   knows the owning task path separately (see toggleLeafNested below).
+   ============================================================ */
+function toggleLeaf(kind, path, checked) {
+  if (!rootResult[kind]) return;
+  const idx = path[0];
+  if (!rootResult[kind][idx]) return;
+  rootResult[kind][idx]._include = checked;
+}
+
+// Nested leaves (inside a scanned sub-task) use this instead — called
+// with the task path + leaf kind + leaf index.
+function toggleLeafNested(taskPath, kind, idx, checked) {
+  const container = getDataContainerAtPath(taskPath);
+  if (!container || !container[kind] || !container[kind][idx]) return;
+  container[kind][idx]._include = checked;
+}
+
+/* ============================================================
+   SUB-TASK SCAN WIDGET — open/cancel/mode/inputs
+   ============================================================ */
+function openScanWidget(path) {
+  const t = getTaskNode(path);
+  if (!t) return;
+  t.scan = { status: 'widget_open', inputMode: 'pdf', pdfB64: null, pdfFileName: '', pastedText: '', data: null, errorMsg: '' };
+  renderAll();
+}
+
+function cancelScanWidget(path) {
+  const t = getTaskNode(path);
+  if (!t) return;
+  t.scan = { status: 'idle' };
+  renderAll();
+}
+
+function setSubScanMode(path, mode) {
+  const t = getTaskNode(path);
+  if (!t || !t.scan) return;
+  t.scan.inputMode = mode;
+  renderAll();
+}
+
+function onSubPdfChosen(path, ev) {
+  const t = getTaskNode(path);
+  if (!t || !t.scan) return;
+  const f = ev.target.files[0];
+  if (!f) return;
+  t.scan.pdfFileName = f.name;
+  const r = new FileReader();
+  r.onload = () => { t.scan.pdfB64 = r.result.split(',')[1]; };
+  r.readAsDataURL(f);
+}
+
+function onSubTextInput(path, val) {
+  const t = getTaskNode(path);
+  if (!t || !t.scan) return;
+  // Store the value without re-rendering — re-rendering the whole tree on
+  // every keystroke would destroy this very textarea (losing focus/cursor).
+  // The value is only read back when the user clicks "Scan".
+  t.scan.pastedText = val;
+}
+
+async function runSubScan(path) {
+  const t = getTaskNode(path);
+  if (!t || !t.scan) return;
+  const isPdf = t.scan.inputMode === 'pdf';
+  if (isPdf && !t.scan.pdfB64) { alert('Please choose a PDF first.'); return; }
+  if (!isPdf && !t.scan.pastedText.trim()) { alert('Please paste the sub-task text first.'); return; }
+
+  t.scan.status = 'loading';
+  renderAll();
+
+  try {
+    const text = isPdf ? await pdfToText(t.scan.pdfB64) : t.scan.pastedText.trim();
+    const knownRefs = knownCards.map(c => c.ref);
+    const verified = await runScan(text, knownRefs);
+    t.scan.status = 'done';
+    t.scan.data = verified;
+    registerKnownCard(verified.card_ref || t.ref, verified.card_title || t.title);
+  } catch (e) {
+    t.scan.status = 'error';
+    t.scan.errorMsg = e.message;
+  }
+  renderAll();
+}
+
+function rescanTask(path) {
+  const t = getTaskNode(path);
+  if (!t) return;
+  t.scan = { status: 'widget_open', inputMode: 'pdf', pdfB64: null, pdfFileName: '', pastedText: '', data: null, errorMsg: '' };
+  renderAll();
+}
+
+/* ============================================================
+   EXPORT — recursively walks the whole tree and collects every
+   included leaf item, regardless of depth.
+   ============================================================ */
+function collectIncluded(data, out) {
+  ['tools','consumables','implicit_materials','access_panels'].forEach(kind => {
+    (data[kind] || []).forEach(it => { if (it._include !== false) out[kind].push(it); });
+  });
+  (data.related_tasks || []).forEach(t => {
+    if (t._include !== false) out.related_tasks.push(t);
+    if (t.scan && t.scan.status === 'done' && t.scan.data) {
+      collectIncluded(t.scan.data, out);
+    }
+  });
+}
+
 function exportSelection() {
-  if (!lastResult) return;
+  if (!rootResult) return;
+  const out = { tools: [], consumables: [], implicit_materials: [], access_panels: [], related_tasks: [] };
+  collectIncluded(rootResult, out);
+
   const payload = {
-    card_ref: lastResult.card_ref,
-    card_title: lastResult.card_title,
-    tools: (lastResult.tools || []).filter((t, i) => lastResult.tools[i]._include !== false),
-    consumables: (lastResult.consumables || []).filter((c, i) => lastResult.consumables[i]._include !== false),
-    implicit_materials: (lastResult.implicit_materials || []).filter((m, i) => lastResult.implicit_materials[i]._include !== false),
-    related_tasks: (lastResult.related_tasks || []).filter((t, i) => lastResult.related_tasks[i]._include !== false)
+    card_ref: rootResult.card_ref,
+    card_title: rootResult.card_title,
+    tools: out.tools,
+    consumables: out.consumables,
+    implicit_materials: out.implicit_materials,
+    access_panels: out.access_panels,
+    related_tasks: out.related_tasks
   };
 
-  // ---- INTEGRATION POINT ----
-  // Sends the filtered selection up to the parent app (index.html), which
-  // listens via window.addEventListener('message', ...) and calls
-  // koImportFromAmmReader(payload) to push rows into the Kickoff parts table.
   if (window.parent && window.parent !== window) {
     window.parent.postMessage({ type: 'amm-task-reader:export', payload }, '*');
   } else {
-    // Standalone (not in an iframe) — nothing to send to, just log for debug.
     console.log('AMM reader export payload:', payload);
-    alert('Selection ready (' + payload.tools.length + ' tool(s), ' + payload.consumables.length + ' consumable(s), ' + payload.implicit_materials.length + ' implicit material(s), ' + payload.related_tasks.length + ' task(s)).\n\nOpened standalone: see the console for the JSON payload.');
+    alert('Selection ready (' + payload.tools.length + ' tool(s), ' + payload.consumables.length + ' consumable(s), ' + payload.implicit_materials.length + ' implicit material(s), ' + payload.access_panels.length + ' access panel(s), ' + payload.related_tasks.length + ' related task(s) across the whole tree).\n\nOpened standalone: see the console for the JSON payload.');
   }
 }
 </script>
