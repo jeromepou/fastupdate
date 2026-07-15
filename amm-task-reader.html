@@ -112,13 +112,14 @@
 
   <div class="card">
     <div class="tabs">
-      <div class="tab" data-mode="pdf" onclick="setInputMode('pdf')">📄 PDF</div>
-      <div class="tab active" data-mode="paste" onclick="setInputMode('paste')">📋 Paste text</div>
+      <div class="tab active" data-mode="pdf" onclick="setInputMode('pdf')">📄 PDF</div>
+      <div class="tab" data-mode="paste" onclick="setInputMode('paste')">📋 Paste text</div>
     </div>
 
     <div id="pane-pdf">
       <label>AMM task card PDF file</label>
-      <input type="file" id="amm-pdf" accept="application/pdf" onchange="onPdfChosen(event)">
+      <input type="file" id="amm-pdf" accept="application/pdf" onchange="onPdfChosen(event)" style="display:none">
+      <button type="button" class="btn btn-ghost" onclick="document.getElementById('amm-pdf').click()">📎 Choose file</button>
       <div id="pdf-filename" style="font-size:12px;color:var(--muted);margin-top:6px"></div>
     </div>
     <div id="pane-paste" style="display:none">
@@ -141,6 +142,7 @@
     </div>
 
     <div class="status" id="amm-status"></div>
+    <div id="model-warning-root" class="status show err" style="display:none;margin-top:8px"></div>
   </div>
 
   <div class="card" id="already-done-card" style="display:none">
@@ -235,6 +237,26 @@ let ammPdfB64 = null;
 let rootResult = null;
 let knownCards = []; // [{ref, title, addedAt}]
 
+const expectedModel = new URLSearchParams(location.search).get('model') || '';
+
+function normalizeModelStr(s) {
+  return (s || '').toString().toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+function modelsRoughlyMatch(a, b) {
+  const na = normalizeModelStr(a), nb = normalizeModelStr(b);
+  if (!na || !nb) return true; // impossible de comparer -> pas de faux warning
+  return na.includes(nb) || nb.includes(na);
+}
+function renderModelWarning(containerId, actual, against, againstLabel) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  if (!actual || modelsRoughlyMatch(actual, against)) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = 'block';
+  el.innerHTML = `⚠️ <b>Aircraft type mismatch:</b> this card is for <b>${escapeHtml(actual)}</b>, but ${escapeHtml(againstLabel)} is <b>${escapeHtml(against)}</b>. Double-check you scanned the right card.`;
+}
+
+
+
 /* ============================================================
    UI: top-level input mode toggle
    ============================================================ */
@@ -320,12 +342,15 @@ Extract five things:
 The technician has already scanned these AMM references earlier in this session: ${JSON.stringify(alreadyKnownRefs)}
 If any related task you find matches one of these refs, still include it but set "already_known": true. Otherwise set "already_known": false.
 
+6. AIRCRAFT MODEL/TYPE: read the card header/applicability and extract the aircraft type this AMM task card applies to (e.g. "G650", "GVI", "G450", "Gulfstream G280"). If genuinely not stated anywhere on the card, use "".
+
 Do not invent quantities, part numbers, task numbers, or step references. If a step_reference is genuinely not determinable, use "".
 
 Reply ONLY with valid JSON, no markdown, in this exact shape:
 {
   "card_ref": "",
   "card_title": "",
+  "aircraft_model": "",
   "tools": [{"name":"","pn":"","qty":"","step_reference":""}],
   "consumables": [{"name":"","pn":"","qty":"","note_ipc":false,"ipc_note_text":"","step_reference":""}],
   "implicit_materials": [{"name":"","step_reference":"","source_quote":""}],
@@ -352,12 +377,15 @@ For EACH item in tools, consumables, implicit_materials, access_panels, and rela
   - Confirm the "when" classification matches the source. Confirm step_reference points to the exact section/step.
 - Flag ("needs_review": true) any item you are not fully confident about, with a specific, actionable "review_note".
 
+- Confirm "aircraft_model" matches what's stated in the card header/title block. Fix it if the first pass got it wrong or missed it.
+
 Return a CORRECTED version of the full JSON (same shape as input, each item additionally carrying "needs_review": boolean and "review_note": string, empty if none, and keeping/fixing "step_reference" on every item), plus a top-level "verification_summary" array of strings describing what you actually checked/changed/removed in THIS pass. Only list actions genuinely reflected in the returned JSON.
 
 Reply ONLY with valid JSON, no markdown, in this exact shape:
 {
   "card_ref": "",
   "card_title": "",
+  "aircraft_model": "",
   "tools": [{"name":"","pn":"","qty":"","step_reference":"","needs_review":false,"review_note":""}],
   "consumables": [{"name":"","pn":"","qty":"","note_ipc":false,"ipc_note_text":"","step_reference":"","needs_review":false,"review_note":""}],
   "implicit_materials": [{"name":"","step_reference":"","source_quote":"","needs_review":false,"review_note":""}],
@@ -498,6 +526,7 @@ async function analyzeAmm() {
 
     rootResult = verified;
     registerKnownCard(verified.card_ref, verified.card_title);
+    renderModelWarning('model-warning-root', verified.aircraft_model, expectedModel, 'the project aircraft');
     renderAll();
     setStatus('done', `✓ Analysis complete${verified.card_ref ? ' — card ' + escapeHtml(verified.card_ref) : ''}. Review items flagged "needs review" before sending.`);
   } catch (e) {
@@ -750,9 +779,12 @@ function renderScanWidget(path, nodeId, scan) {
 function renderScannedChildren(data, path, nodeId) {
   const pathAttr = JSON.stringify(path).replace(/"/g,'&quot;');
   const summary = data.verification_summary || [];
+  const rootModel = rootResult?.aircraft_model || '';
+  const mismatch = data.aircraft_model && !modelsRoughlyMatch(data.aircraft_model, rootModel);
   return `
     <div class="task-children">
       <div class="task-children-inner">
+        ${mismatch ? `<div class="status show err" style="margin-bottom:10px">⚠️ <b>Aircraft type mismatch:</b> this sub-task card is for <b>${escapeHtml(data.aircraft_model)}</b>, but the main card is <b>${escapeHtml(rootModel)}</b>. Check you scanned the right sub-task PDF.</div>` : ''}
         ${sectionBlock('🧰 Tools', data.tools, (it,i) => renderToolItem(it, i, 'tools'), path, 'tools')}
         ${sectionBlock('📦 Consumables', data.consumables, (it,i) => renderConsumableItem(it, i, 'consumables'), path, 'consumables')}
         ${sectionBlock('🧴 Implicit materials', data.implicit_materials, (it,i) => renderImplicitItem(it, i, 'implicit_materials'), path, 'implicit_materials')}
