@@ -1199,6 +1199,12 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <h3>🔧 Parts & tools list</h3>
     </div>
     <div class="ko-card-body" style="padding-top:.75rem;overflow-x:auto">
+    <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:var(--r);padding:8px 12px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:12px;color:#1d4ed8;font-weight:600;flex:1">🔧 AMM Task Reader — read an AMM card and suggest consumables / tools / related tasks</span>
+          <button class="btn" onclick="koOpenAmmReader()" style="font-size:11px;padding:4px 9px">📖 Read an AMM card</button>
+        </div>
+      </div>  
 	<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:var(--r);padding:8px 12px;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
           <span style="font-size:12px;color:#166534;font-weight:600;flex:1">📋 Order templates — full kits (wheels, brakes…)</span>
@@ -1690,6 +1696,17 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
+<!-- AMM TASK READER MODAL -->
+<div class="modal-bg" id="modal-amm-reader">
+  <div class="modal" style="max-width:960px;width:95vw;height:90vh;display:flex;flex-direction:column;padding:0">
+    <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--g200);flex-shrink:0">
+      <h3 style="margin:0;flex:1">🔧 AMM Task Reader</h3>
+      <button class="btn" onclick="closeModal('modal-amm-reader')" style="font-size:12px;padding:5px 10px">✕ Close</button>
+    </div>
+    <iframe id="amm-reader-iframe" src="amm-task-reader.html" style="flex:1;width:100%;border:none;background:#f7f8fa"></iframe>
+  </div>
+</div>
+
 <!-- SHIPPING ADDRESSES MANAGE MODAL -->
 <div class="modal-bg" id="modal-shipaddr">
   <div class="modal" style="max-width:560px">
@@ -1731,6 +1748,10 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
         <span style="font-size:12px;font-weight:700;color:var(--g600)">New template</span>
         <button class="btn" onclick="koManageGsModels()" style="font-size:11px;padding:4px 9px">✈️ Edit models list</button>
+      </div>
+      <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:var(--r);padding:8px 10px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:12px;color:#1d4ed8;font-weight:600;flex:1">🔧 Pre-fill these lines from an AMM card (tools, consumables, implicit materials)</span>
+        <button class="btn" onclick="koOpenAmmReader('template')" style="font-size:11px;padding:4px 9px">📖 Read an AMM card</button>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
         <select id="pt-new-model" style="flex:0 0 170px;font-size:12px;padding:5px 8px">
@@ -7021,6 +7042,129 @@ function koAutoGrow(el) {
   el.style.height = el.scrollHeight + 'px';
 }
 G.koAutoGrow = koAutoGrow;
+
+// ══════════════════════════════════════
+//  AMM TASK READER — bridge to standalone module (iframe + postMessage)
+// ══════════════════════════════════════
+// _koAmmReaderTarget: 'project'  -> import goes into the current Kickoff's
+//                                   parts table (koAddPartRow), for a live job.
+//                     'template' -> import goes into the "New template" builder
+//                                   rows (_ptNewLines), for creating/extending
+//                                   a reusable order template.
+let _koAmmReaderTarget = 'project';
+
+G.koOpenAmmReader = function(target) {
+  _koAmmReaderTarget = target === 'template' ? 'template' : 'project';
+  openModal('modal-amm-reader');
+};
+window.koOpenAmmReader = G.koOpenAmmReader;
+
+// Listen for the export payload sent by amm-task-reader.html via
+// window.parent.postMessage({type:'amm-task-reader:export', payload}, '*')
+window.addEventListener('message', function(ev) {
+  const data = ev.data;
+  if (!data || data.type !== 'amm-task-reader:export') return;
+  koImportFromAmmReader(data.payload, _koAmmReaderTarget);
+});
+
+// Maps the AMM reader's category to the parts table's category dropdown value.
+function koAmmReaderCatFor(kind) {
+  if (kind === 'tools') return 'Tool';
+  return 'Consumable'; // consumables + implicit_materials both land as Consumable
+}
+
+// Receives the validated/selected payload from the AMM Task Reader.
+// mode='project'  -> pushes rows straight into the live Kickoff parts table
+//                     via koAddPartRow (mandatory-only; no "if required" concept
+//                     on a live job — the tech already decided it's needed).
+// mode='template'  -> pushes rows into the "New template" builder (_ptNewLines)
+//                     instead, so the result can be reviewed, marked "if
+//                     required" (optional) per line, and saved as a reusable
+//                     template via the existing koAddPartTpl() flow — nothing
+//                     is auto-saved to config/partTemplates here.
+G.koImportFromAmmReader = function(payload, mode) {
+  if (!payload) return;
+  mode = mode === 'template' ? 'template' : 'project';
+  let added = 0;
+
+  if (mode === 'template') {
+    (payload.tools || []).forEach(t => {
+      let note = t.step_reference ? '📍 ' + t.step_reference : ('AMM ' + (payload.card_ref || ''));
+      if (!t.pn) note = (note ? note + ' — ' : '') + 'no P/N stated in card, verify before use.';
+      _ptNewLines.push({ _id: ++_ptLineSeq, pn: t.pn || '', desc: t.name || '', sn: '', qty: t.qty || '1', cat: 'Tool', note, smallQty: false, optional: false });
+      added++;
+    });
+    (payload.consumables || []).forEach(c => {
+      let note = c.step_reference ? '📍 ' + c.step_reference : ('AMM ' + (payload.card_ref || ''));
+      if (c.note_ipc) note = '⚠ Refer to IPC (' + (c.step_reference || 'Material Required table') + ') — ' + (c.ipc_note_text || 'no P/N given in AMM, check IPC');
+      _ptNewLines.push({ _id: ++_ptLineSeq, pn: c.pn || '', desc: c.name || '', sn: '', qty: c.qty || '1', cat: 'Consumable', note, smallQty: false, optional: false });
+      added++;
+    });
+    (payload.implicit_materials || []).forEach(m => {
+      const note = '⚠ Implied by procedure (' + (m.step_reference || payload.card_ref || '') + ') — not in Material Required table, verify before ordering: ' + (m.source_quote || '');
+      // Implicit materials default to "if required" (optional) since they're
+      // an inference, not a documented mandatory line — the template author
+      // should confirm and un-tick this if it should always be included.
+      _ptNewLines.push({ _id: ++_ptLineSeq, pn: '', desc: m.name || '', sn: '', qty: '', cat: 'Consumable', note, smallQty: false, optional: true });
+      added++;
+    });
+
+    koSortByCat(_ptNewLines);
+    renderPartTplNewLines();
+    closeModal('modal-amm-reader');
+
+    const relatedIncluded = (payload.related_tasks || []);
+    let msg = '✓ ' + added + ' line(s) added to the new template from ' + (payload.card_ref || 'the AMM card') + '.\n\nVerify each line, adjust "if required" if needed, choose the aircraft model + name, then click "💾 Save template".';
+    if (relatedIncluded.length) {
+      const lines = relatedIncluded.map(t =>
+        '• [' + (t.when || 'during').toUpperCase() + '] ' + (t.ref ? t.ref + ' — ' : '') + (t.title || '') + (t.step_reference ? ' [📍 ' + t.step_reference + ']' : '') + (t.reason ? ' (' + t.reason + ')' : '')
+      ).join('\n');
+      msg += '\n\nRelated tasks not to forget:\n' + lines;
+    }
+    alert(msg);
+    return;
+  }
+
+  // mode === 'project' — live Kickoff parts table
+  (payload.tools || []).forEach(t => {
+    let note = t.step_reference ? '📍 ' + t.step_reference : ('AMM ' + (payload.card_ref || ''));
+    if (!t.pn) note = (note ? note + ' — ' : '') + 'no P/N stated in card, verify before use.';
+    koAddPartRow(t.pn || '', t.name || '', '', t.qty || '', 'Tool', note);
+    added++;
+  });
+
+  (payload.consumables || []).forEach(c => {
+    let note = c.step_reference ? '📍 ' + c.step_reference : ('AMM ' + (payload.card_ref || ''));
+    if (c.note_ipc) note = '⚠ Refer to IPC (' + (c.step_reference || 'Material Required table') + ') — ' + (c.ipc_note_text || 'no P/N given in AMM, check IPC');
+    koAddPartRow(c.pn || '', c.name || '', '', c.qty || '', 'Consumable', note);
+    added++;
+  });
+
+  (payload.implicit_materials || []).forEach(m => {
+    const note = '⚠ Implied by procedure (' + (m.step_reference || payload.card_ref || '') + ') — not in Material Required table, verify before ordering: ' + (m.source_quote || '');
+    koAddPartRow('', m.name || '', '', '', 'Consumable', note);
+    added++;
+  });
+
+  koRenderRecips('parts');
+  koUpdatePreview();
+  koSyncPartsToMainTable();
+  closeModal('modal-amm-reader');
+
+  // Related tasks aren't parts — surface them as a plain summary so nothing
+  // silently disappears; the user still has to act on them manually
+  // (e.g. open the referenced AMM task, or note it in the action plan).
+  const relatedIncluded = (payload.related_tasks || []);
+  if (relatedIncluded.length) {
+    const lines = relatedIncluded.map(t =>
+      '• [' + (t.when || 'during').toUpperCase() + '] ' + (t.ref ? t.ref + ' — ' : '') + (t.title || '') + (t.step_reference ? ' [📍 ' + t.step_reference + ']' : '') + (t.reason ? ' (' + t.reason + ')' : '')
+    ).join('\n');
+    alert('✓ ' + added + ' line(s) added from ' + (payload.card_ref || 'the AMM card') + '.\n\nRelated tasks not to forget:\n' + lines);
+  } else if (added) {
+    koSetStatus && koSetStatus('done', '✓ ' + added + ' line(s) imported from ' + (payload.card_ref || 'the AMM card') + '.');
+  }
+};
+window.koImportFromAmmReader = G.koImportFromAmmReader;
 
 G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='', note='', sqLabel='', uid='') {
   KO.partRows++;
