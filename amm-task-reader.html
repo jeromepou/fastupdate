@@ -60,6 +60,7 @@
   .badge-opt{background:#f3f4f6;color:var(--muted)}
   .badge-verified{background:var(--ok-bg);color:var(--ok)}
   .badge-review{background:var(--warn-bg);color:var(--warn)}
+  .badge-access{background:#e0e7ff;color:#3730a3}
   .note-ipc{font-size:12px;background:#fef3c7;color:#92400e;border-radius:6px;padding:5px 9px;margin-top:6px;display:flex;gap:6px;align-items:flex-start}
   .note-flag{font-size:12px;background:var(--warn-bg);color:#92400e;border:1px dashed #f0b429;border-radius:6px;padding:5px 9px;margin-top:6px}
   .step-ref{font-size:12px;font-weight:600;color:var(--accent-dark);background:#eff6ff;border-radius:6px;padding:4px 9px;margin-top:6px;display:inline-block}
@@ -96,44 +97,44 @@
 <body>
 <div class="wrap">
   <h1>🔧 AMM Task Reader</h1>
-  <div class="sub">Colle un texte d'AMM (ou un PDF) — l'IA extrait les consommables, outils et tâches liées, puis se recontrôle avant affichage.</div>
+  <div class="sub">Paste AMM text (or upload a PDF) — the AI extracts consumables, tools, and related tasks, then self-checks before displaying results.</div>
 
   <div class="card">
     <div class="tabs">
-      <div class="tab active" data-mode="paste" onclick="setInputMode('paste')">📋 Coller le texte</div>
+      <div class="tab active" data-mode="paste" onclick="setInputMode('paste')">📋 Paste text</div>
       <div class="tab" data-mode="pdf" onclick="setInputMode('pdf')">📄 PDF</div>
     </div>
 
     <div id="pane-paste">
-      <label>Texte de la carte AMM</label>
-      <textarea id="amm-text" placeholder="Colle ici le texte complet de la tâche AMM (Support Equipment, Material Required, Procedure, Requirements After Job Completion…)"></textarea>
+      <label>AMM task card text</label>
+      <textarea id="amm-text" placeholder="Paste the full AMM task text here (Support Equipment, Material Required, Procedure, Requirements After Job Completion…)"></textarea>
     </div>
     <div id="pane-pdf" style="display:none">
-      <label>Fichier PDF de la carte AMM</label>
+      <label>AMM task card PDF file</label>
       <input type="file" id="amm-pdf" accept="application/pdf" onchange="onPdfChosen(event)">
       <div id="pdf-filename" style="font-size:12px;color:var(--muted);margin-top:6px"></div>
     </div>
 
     <div class="row" style="margin-top:12px">
-      <label style="margin:0">Référence de la carte (optionnel, pour la mémoire de session)</label>
+      <label style="margin:0">Card reference (optional, for session memory)</label>
     </div>
     <div class="row">
-      <input type="text" id="amm-ref" placeholder="ex: 32-42-01" style="max-width:220px">
-      <button class="btn btn-primary" id="btn-analyze" onclick="analyzeAmm()">🔍 Analyser cette carte</button>
+      <input type="text" id="amm-ref" placeholder="e.g. 32-42-01" style="max-width:220px">
+      <button class="btn btn-primary" id="btn-analyze" onclick="analyzeAmm()">🔍 Analyze this card</button>
     </div>
 
     <div id="check-progress" style="display:none;margin-top:10px;padding:10px 12px;background:#f8fafc;border-radius:8px;border:1px solid var(--border)">
-      <div class="checkstep" id="step-extract"><div class="dot"></div><div>Extraction des consommables, outils et tâches liées</div></div>
-      <div class="checkstep" id="step-verify"><div class="dot"></div><div>Auto-contrôle : chaque élément revérifié contre le texte source</div></div>
-      <div class="checkstep" id="step-done"><div class="dot"></div><div>Résultats prêts</div></div>
+      <div class="checkstep" id="step-extract"><div class="dot"></div><div>Extracting consumables, tools, access steps and related tasks</div></div>
+      <div class="checkstep" id="step-verify"><div class="dot"></div><div>Self-check: every item re-verified against the source text</div></div>
+      <div class="checkstep" id="step-done"><div class="dot"></div><div>Results ready</div></div>
     </div>
 
     <div class="status" id="amm-status"></div>
   </div>
 
   <div class="card" id="already-done-card" style="display:none">
-    <div class="section-title">✅ Cartes déjà traitées dans cette session <span class="count-pill" id="known-count">0</span></div>
-    <div style="font-size:12.5px;color:var(--muted)">Ces cartes ne seront pas redemandées automatiquement — si tu les recolles, l'IA te préviendra qu'elles ont déjà été vues.</div>
+    <div class="section-title">✅ Cards already processed this session <span class="count-pill" id="known-count">0</span></div>
+    <div style="font-size:12.5px;color:var(--muted)">These cards won't be re-asked about automatically — if you paste them again, the AI will flag that they've already been seen.</div>
     <div class="known-tags" id="known-tags"></div>
   </div>
 
@@ -141,54 +142,54 @@
 
     <div class="card">
       <div class="toolbar">
-        <div class="section-title">🧰 Outils / Support Equipment <span class="count-pill" id="tools-count">0</span></div>
+        <div class="section-title">🧰 Tools / Support Equipment <span class="count-pill" id="tools-count">0</span></div>
       </div>
       <div id="tools-list"></div>
     </div>
 
     <div class="card">
       <div class="toolbar">
-        <div class="section-title">📦 Consommables / Material Required <span class="count-pill" id="consumables-count">0</span></div>
+        <div class="section-title">📦 Consumables / Material Required <span class="count-pill" id="consumables-count">0</span></div>
       </div>
       <div id="consumables-list"></div>
     </div>
 
     <div class="card">
       <div class="toolbar">
-        <div class="section-title">🧴 Matériel implicite détecté dans la procédure <span class="count-pill" id="implicit-count">0</span></div>
+        <div class="section-title">🧴 Implicit materials found in the procedure <span class="count-pill" id="implicit-count">0</span></div>
       </div>
-      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Éléments mentionnés dans le texte des étapes (nettoyage, protection, fixation…) mais absents du tableau "Material Required" — souvent implicites dans le vocabulaire AMM (chiffon, ruban, tyrap, protection…).</div>
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Items mentioned in the step text (cleaning, protection, securing…) but absent from the "Material Required" table — often implicit in AMM wording (cloth, tape, tie wraps, protective caps…).</div>
       <div id="implicit-list"></div>
     </div>
 
     <div class="card">
       <div class="toolbar">
-        <div class="section-title">🔗 Tâches liées nécessaires <span class="count-pill" id="tasks-count">0</span></div>
+        <div class="section-title">🔗 Related tasks required <span class="count-pill" id="tasks-count">0</span></div>
       </div>
-      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Décoche "Ignorer" les tâches dont tu sais qu'elles ne s'appliquent pas à ce job (ex: connecteurs non utilisés sur ta config).</div>
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Uncheck "Include" for any task you know doesn't apply to this job (e.g. connectors not used on your configuration). Boilerplate references (Safe Ground Maintenance, Electrical Power Application, SSPC General Maintenance) and the current card's own sub-sections are intentionally excluded from this list.</div>
       <div id="tasks-list"></div>
     </div>
 
     <div class="card" id="verify-summary-card" style="display:none">
-      <div class="section-title">🛡️ Résumé de l'auto-contrôle</div>
+      <div class="section-title">🛡️ Self-check summary</div>
       <div id="verify-summary"></div>
       <details class="raw">
-        <summary>Voir la réponse brute de l'IA (debug)</summary>
+        <summary>View raw AI response (debug)</summary>
         <pre id="raw-debug"></pre>
       </details>
     </div>
 
     <div class="footer-actions">
-      <button class="btn btn-ghost" onclick="resetResults()">↺ Nouvelle carte</button>
-      <button class="btn btn-primary" onclick="exportSelection()">✅ Envoyer la sélection vers Start Job</button>
+      <button class="btn btn-ghost" onclick="resetResults()">↺ New card</button>
+      <button class="btn btn-primary" onclick="exportSelection()">✅ Send selection to Start Job</button>
     </div>
   </div>
 </div>
 
 <script>
 /* ============================================================
-   CONFIG — adapte KO_WORKER si besoin. Réutilise le même Cloudflare
-   Worker que le reste de l'app (endpoints /ocr et /chat, Mistral).
+   CONFIG — adjust KO_WORKER if needed. Reuses the same Cloudflare
+   Worker as the rest of the app (/ocr and /chat endpoints, Mistral).
    ============================================================ */
 const KO_WORKER = 'https://orange-snow-95f7.jeromepoupinel.workers.dev';
 
@@ -197,13 +198,13 @@ const KO_WORKER = 'https://orange-snow-95f7.jeromepoupinel.workers.dev';
    ============================================================ */
 let inputMode = 'paste';
 let ammPdfB64 = null;
-let lastResult = null;      // { tools, consumables, tasks } after verify pass
+let lastResult = null;      // { tools, consumables, implicit_materials, related_tasks } after verify pass
 let lastRawExtract = null;  // raw extraction JSON, for debug
 let lastVerifyReport = null;
 
 // Session memory of AMM refs already processed, so we don't re-ask for the same card twice.
-// Persisted in-memory only for this session (per your app's constraint: no browser storage in artifacts;
-// in the real app, back this with the same Firebase path you already use for KO state).
+// In-memory only for this session (per this app's constraint: no browser storage in artifacts;
+// in the real app, back this with the same Firebase path already used for KO state).
 let knownCards = []; // [{ref, title, addedAt}]
 
 /* ============================================================
@@ -244,7 +245,7 @@ function setStep(id, state) {
 function buildExtractPrompt(alreadyKnownRefs) {
   return `You are an aviation maintenance assistant reading one AMM (Aircraft Maintenance Manual) task card, verbatim as provided below. Your job is ONLY extraction — do not add, infer, or guess anything that is not explicitly written in the text.
 
-Extract three things:
+Extract four things:
 
 1. TOOLS (from any "Support Equipment" / "Special Tools" table): nomenclature, part number, quantity if given.
    - Give a "step_reference" for every tool: normally this will be something like "Support Equipment table" since tools are listed in that table, not in the numbered procedure. If the same tool is also explicitly referenced again inside a specific numbered step (e.g. "Use the axle nut socket... Step 3"), mention that step too in the same field (e.g. "Support Equipment table (used in Step 3)").
@@ -254,18 +255,34 @@ Extract three things:
    - If a part number IS given, set "note_ipc": false and "ipc_note_text": "".
    - Give a "step_reference" for every consumable: normally "Material Required table", but if the numbered procedure also tells the tech exactly when/where to use it (e.g. "Step 2: Lubricate... with grease"), give that step number too (e.g. "Material Required table (used in Step 2)").
 
-3. IMPLICIT MATERIALS mentioned in the procedure steps but NOT listed in the "Material Required" / "Support Equipment" tables. Read every numbered step, warning, caution, and note in the procedure body and flag any consumable, shop supply, or physical material implied by the action described, even if never named explicitly as a nomenclature with a part number. Typical signal words/actions to watch for (this list is illustrative, not exhaustive — apply the same reasoning to any similar action): cleaning (cloth, lint-free wipe, solvent), lubricating/greasing, sealing or bonding (sealant, tape, RTV), protecting threads or surfaces (thread protector, masking, covers), securing wires/hoses/cables (tie wraps / cable ties, lockwire, clamps), labeling/tagging (labels, tags), marking (paint pen, marker), temporary caps/plugs on open lines or ports.
-   - For each one, give: "name" (generic description, e.g. "Lint-free cloth", "Tie wraps / cable ties", "Lockwire"), "step_reference" (the EXACT step number or section where it's implied, as precisely as the card allows — e.g. "Step 4.2", "Step 8, Warning box", "Requirements After Job Completion" — never leave this vague when a specific step number is available), and "source_quote" (a short paraphrase — NOT a verbatim quote — of what that step says that implies this need).
+3. IMPLICIT MATERIALS mentioned in the procedure steps but NOT listed in the "Material Required" / "Support Equipment" tables. Read every numbered step, warning, caution, and note in the procedure body and flag any consumable, shop supply, or physical material implied by the action described, even if never named explicitly as a nomenclature with a part number. Typical signal words/actions to watch for (this list is illustrative, not exhaustive — apply the same reasoning to any similar action): cleaning (cloth, lint-free wipe, solvent), lubricating/greasing, sealing or bonding (sealant, tape, RTV), protecting threads or surfaces (thread protector, masking, covers), securing wires/hoses/cables (tie wraps / cable ties, lockwire, clamps), labeling/tagging (labels, tags), marking (paint pen, marker), temporary caps/plugs on open lines or ports, catching fluid (drain container/pan).
+   - For each one, give: "name" (generic description, e.g. "Lint-free cloth", "Tie wraps / cable ties", "Container to catch hydraulic fluid"), "step_reference" (the EXACT step number or section where it's implied, as precisely as the card allows — e.g. "Step 4.2", "Step 1 (Removal)", "Requirements After Job Completion" — never leave this vague when a specific step number is available), and "source_quote" (a short paraphrase — NOT a verbatim quote — of what that step says that implies this need).
    - Do NOT duplicate an item that is already captured in the CONSUMABLES table above (e.g. if "lint free cloth" already has its own row with a P/N in Material Required, do not repeat it here). Only list items that are implied by the procedure text but absent from the tables.
    - Do not invent a need that isn't reasonably implied by an actual instruction in the text.
 
-4. RELATED TASKS: any OTHER maintenance task (with its own task-number reference, e.g. "32-42-02" or a named procedure like "Main Wheel Assembly – Preparation") that this card explicitly tells the technician to do:
-   - "when": "before" if it's a Preliminary Requirement / must be done first (e.g. "Do X" under Preliminary Requirements, or a numbered step referring to another task before/during the procedure).
-   - "when": "after" if it's a Requirements After Job Completion step, a follow-on task, or a functional/operational check done once the main task is finished (e.g. "Do Tire Pressure Monitor System - Functional Check").
-   - "when": "during" if it's referenced mid-procedure as a required sub-step (e.g. "Refer to Main Rotating Pressure Sensing Assembly - Removal/Installation" cited inside a numbered step).
-   - Give a short "reason" quoting/paraphrasing (in your own words) why it's needed, and the "ref" (task number if present, else the task title as written) and "title".
-   - Give "step_reference": exactly where in THIS card that instruction appears — e.g. "Preliminary Requirements", "Step 9", "Requirements After Job Completion". This must point to a specific place in the source card, not a generic phrase.
+4. RELATED TASKS: any OTHER maintenance task (with its own task-number reference, e.g. "32-42-02" or a named procedure like "Main Wheel Assembly – Preparation") that this card explicitly tells the technician to do, OR an access panel/door removal-installation instruction described inline in the procedure.
+
+   STRICT EXCLUSION LIST — never include any of the following as a related task, no matter how many times or where they are cited in the card:
+   - "Safe Ground Maintenance - General Maintenance, 20-00-00"
+   - "Electrical Power Application - General Maintenance, 20-20-01"
+   - "SSPC - General Maintenance, 20-20-02"
+   These are boilerplate preliminary/reference items present on nearly every AMM card and carry no engineering value for the technician. Read them for context if needed, but never output them in "related_tasks".
+
+   Also NEVER include the current card itself (same task number as "card_ref") even when one of its own internal sub-sections (e.g. "Preparation", "Removal", "Installation", "Follow-on Maintenance") lists another sub-section of the SAME card as a Preliminary Requirement. That is internal structure of this same card, not a related task, and must be completely excluded from the list.
+
+   ALWAYS include, when present in the text:
+   - Any other AMM reference cited as a Preliminary Requirement, Reference Material, or inline "Do X" / "Refer to X" instruction (e.g. Landing Gear Door - Normal Operation, Hydraulic System - Bleed, Main Wheel Brakes - Function Test, Open/Close Checks - Visual Examination).
+   - Access panel or door removal/installation steps described inline in the numbered procedure (e.g. "Remove the panel as follows (see Figure X, WTBFs, Access Doors and Panels): 193AL" or "Install the panel..."). These are real, necessary preparatory/closing work — just as important as the main removal/installation task — and must always be captured as a related task. Use the panel/door identifier (e.g. "193AL") as "ref", a title like "Access Panel Removal — 193AL" or "Access Panel Installation — 193AL", "when":"before" if it's a removal step done to gain access, "when":"after" if it's an installation step done to close up afterward, and the exact step_reference (e.g. "Step 4 (Preparation)", "Step 6 (Follow-on Maintenance)").
+
+   For every included item, classify:
+   - "when": "before" if it's a Preliminary Requirement / must be done first (e.g. under Preliminary Requirements, or a numbered step referring to another task before/during the procedure, including opening access panels).
+   - "when": "after" if it's a Requirements After Job Completion step, a follow-on task, a functional/operational check done once the main task is finished, or closing an access panel that was opened earlier.
+   - "when": "during" if it's referenced mid-procedure as a required sub-step.
+   - Give a short "reason" quoting/paraphrasing (in your own words) why it's needed, the "ref" (task number or panel/door identifier if present, else the task title as written) and "title".
+   - Give "step_reference": exactly where in THIS card that instruction appears — e.g. "Preliminary Requirements", "Step 4", "Requirements After Job Completion". This must point to a specific place in the source card, not a generic phrase.
    - Do NOT include purely informational cross-references that are not instructions to perform another task (e.g. a "Reference Materials" list at the top is NOT automatically a related task unless the procedure body also tells the tech to actually go do it).
+
+   DEDUPLICATION — MANDATORY: before finalizing the list, deduplicate by "ref". If the same ref is cited in multiple sub-sections of this card (e.g. cited in the Preliminary Requirements of both "Removal" and "Installation"), output it ONCE only, using the step_reference of its clearest/first relevant occurrence. Never output the same ref twice in the final array.
 
 The technician has already processed these AMM references earlier in this session: ${JSON.stringify(alreadyKnownRefs)}
 If any related task you find matches one of these refs, still include it in the list but set "already_known": true. Otherwise set "already_known": false.
@@ -289,13 +306,18 @@ function buildVerifyPrompt(extractedJson) {
 For EACH item in tools, consumables, implicit_materials, and related_tasks, go back to the source text and verify:
 - Does this item actually appear in the source text? If you cannot find clear textual support for an item, mark it for removal (do not include it in your corrected output) and explain why in the report.
 - Is the part number / quantity / reference EXACTLY as written in the source (no transposed digits, no invented values)? Fix it if wrong.
-- Is "step_reference" correct and specific? It must point to where the item ACTUALLY appears — a table name ("Support Equipment table", "Material Required table") and/or an exact step number ("Step 4.2", "Requirements After Job Completion"). If the first pass left it empty, vague, or wrong, fill in or correct it yourself by locating the item in the source. Never leave a "needs_review" item without also giving the most specific step_reference you can find — the whole point of flagging something is so the technician knows exactly where to go re-check it.
+- Is "step_reference" correct and specific? It must point to where the item ACTUALLY appears — a table name ("Support Equipment table", "Material Required table") and/or an exact step number ("Step 4", "Requirements After Job Completion"). If the first pass left it empty, vague, or wrong, fill in or correct it yourself by locating the item in the source. Never leave a "needs_review" item without also giving the most specific step_reference you can find.
 - For consumables: if the source says to refer to the IPC instead of giving a P/N, confirm "note_ipc" is true and "ipc_note_text" captures the actual phrase. If the extraction missed an IPC reference, add "note_ipc":true and fill it in.
-- For implicit_materials: this category is the highest-risk for hallucination — be strict. Only keep an item if you can point to a specific step/warning/note in the source that genuinely implies that material is needed for THIS task (not a generic assumption about aviation maintenance in general). Remove any implicit_materials item that isn't clearly tied to actual text. Also scan the source yourself for any implied consumable the first pass missed (cleaning, lubricating, sealing, securing/tie-wrapping, protecting, labeling, capping/plugging) and add it if genuinely present, with its own precise step_reference. Do not duplicate anything already in the consumables table.
-- For related_tasks: confirm the "when" classification (before/during/after) actually matches how the source describes it (Preliminary Requirements = before, Requirements After Job Completion or a follow-on functional check = after, a step referenced mid-procedure = during). Reclassify if wrong. Confirm step_reference points to the exact section/step of THIS card where that instruction is given.
+- For implicit_materials: this category is the highest-risk for hallucination — be strict. Only keep an item if you can point to a specific step/warning/note in the source that genuinely implies that material is needed for THIS task (not a generic assumption about aviation maintenance in general). Remove any implicit_materials item that isn't clearly tied to actual text. Also scan the source yourself for any implied consumable the first pass missed (cleaning, lubricating, sealing, securing/tie-wrapping, protecting, labeling, capping/plugging, catching fluid) and add it if genuinely present, with its own precise step_reference. Do not duplicate anything already in the consumables table.
+- For related_tasks — apply the SAME strict exclusion rules as the extraction pass:
+  - Remove any entry referencing "Safe Ground Maintenance - General Maintenance, 20-00-00", "Electrical Power Application - General Maintenance, 20-20-01", or "SSPC - General Maintenance, 20-20-02" — these must never appear in the final list, even if the first pass included them.
+  - Remove any entry that is actually the current card itself referencing its own sub-sections (same task number as "card_ref") as a Preliminary Requirement — that is internal structure, not a related task.
+  - Confirm every access panel/door removal-installation step described inline in the procedure (e.g. "Remove the panel... 193AL", "Install the panel...") IS present in related_tasks. If the first pass missed one, add it with the correct "ref" (panel/door identifier), "when" (before if opening for access, after if closing), and exact step_reference.
+  - DEDUPLICATE by "ref": if the same ref appears more than once in the extracted JSON (e.g. because it was cited in several sub-sections), keep only ONE entry for that ref in your corrected output, merging into the clearest step_reference. The final related_tasks array must never contain two entries with the same "ref".
+  - Confirm the "when" classification (before/during/after) actually matches how the source describes it (Preliminary Requirements = before, Requirements After Job Completion or a follow-on functional check = after, a step referenced mid-procedure = during). Reclassify if wrong. Confirm step_reference points to the exact section/step of THIS card where that instruction is given.
 - Flag ("needs_review": true) any item you are not fully confident about, with a short reason in "review_note" that tells the technician specifically what to double check (not just that something is uncertain) — rather than silently guessing.
 
-Return a CORRECTED version of the full JSON (same shape as input, each item additionally carrying "needs_review": boolean and "review_note": string, empty string if none, and keeping/fixing "step_reference" on every item), plus a short top-level "verification_summary" array of strings describing what you checked/changed/removed (e.g. "Removed 'GPU connection' — not actually an instructed task in this card", "Confirmed IPC note on O-RING line (Material Required table)", "Fixed related task ref from 32-420-2 to 32-42-02, step_reference corrected to 'Requirements After Job Completion'").
+Return a CORRECTED version of the full JSON (same shape as input, each item additionally carrying "needs_review": boolean and "review_note": string, empty string if none, and keeping/fixing "step_reference" on every item), plus a short top-level "verification_summary" array of strings describing what you actually checked/changed/removed in THIS pass (e.g. "Removed duplicate '32-00-04' entry, merged into one before-task", "Removed boilerplate refs 20-00-00 and 20-20-01 per exclusion rule", "Added missing access panel task 193AL (Step 4, before)", "Confirmed IPC note on O-RING line (Material Required table)"). Only list actions you genuinely performed on the final output — do not claim a cleanup step that isn't reflected in the returned JSON.
 
 Reply ONLY with valid JSON, no markdown, in this exact shape:
 {
@@ -318,15 +340,15 @@ ${extractedJson}`;
 async function analyzeAmm() {
   const pastedText = document.getElementById('amm-text').value.trim();
   const isPdf = inputMode === 'pdf';
-  if (isPdf && !ammPdfB64) { setStatus('err', 'Charge un PDF d\'abord.'); return; }
-  if (!isPdf && !pastedText) { setStatus('err', 'Colle le texte de la carte AMM d\'abord.'); return; }
+  if (isPdf && !ammPdfB64) { setStatus('err', 'Please load a PDF first.'); return; }
+  if (!isPdf && !pastedText) { setStatus('err', 'Please paste the AMM card text first.'); return; }
 
   const btn = document.getElementById('btn-analyze');
   btn.disabled = true;
   document.getElementById('results').style.display = 'none';
   document.getElementById('check-progress').style.display = 'block';
   setStep('step-extract', 'active'); setStep('step-verify', null); setStep('step-done', null);
-  setStatus('load', '<span class="spin spin-dark" style="border-color:#cbd5e1;border-top-color:var(--accent)"></span> Lecture de la carte AMM…');
+  setStatus('load', '<span class="spin spin-dark" style="border-color:#cbd5e1;border-top-color:var(--accent)"></span> Reading the AMM card…');
 
   try {
     let ammText = pastedText;
@@ -363,7 +385,7 @@ async function analyzeAmm() {
     lastRawExtract = extractRaw;
 
     setStep('step-extract', 'done'); setStep('step-verify', 'active');
-    setStatus('load', '<span class="spin spin-dark"></span> Auto-contrôle en cours — l\'IA revérifie chaque élément contre le texte source…');
+    setStatus('load', '<span class="spin spin-dark"></span> Self-checking — the AI is re-verifying every item against the source text…');
 
     // ---------- PASS 2: self-check / verify ----------
     const verifyRes = await fetch(KO_WORKER + '/chat', {
@@ -381,6 +403,10 @@ async function analyzeAmm() {
     const verifyRaw = verifyData.choices[0].message.content.replace(/```json|```/g, '').trim();
     const verified = JSON.parse(verifyRaw);
 
+    // Belt-and-braces client-side cleanup, in case the model still slips up:
+    // strip boilerplate refs and hard-dedupe related_tasks by ref.
+    verified.related_tasks = dedupeAndFilterRelatedTasks(verified.related_tasks || [], verified.card_ref || '');
+
     setStep('step-verify', 'done'); setStep('step-done', 'done');
 
     lastResult = verified;
@@ -391,13 +417,43 @@ async function analyzeAmm() {
     if (manualRef) verified.card_ref = manualRef;
 
     renderResults(verified);
-    setStatus('done', `✓ Analyse terminée${verified.card_ref ? ' — carte ' + escapeHtml(verified.card_ref) : ''}. Vérifie les éléments marqués "à revoir" avant d'envoyer.`);
+    setStatus('done', `✓ Analysis complete${verified.card_ref ? ' — card ' + escapeHtml(verified.card_ref) : ''}. Review items flagged "needs review" before sending.`);
   } catch (e) {
     setStep('step-extract', null); setStep('step-verify', null);
-    setStatus('err', 'Erreur : ' + e.message);
+    setStatus('err', 'Error: ' + e.message);
   } finally {
     btn.disabled = false;
   }
+}
+
+/* ============================================================
+   CLIENT-SIDE SAFETY NET
+   The prompts already instruct the model to exclude boilerplate refs
+   and dedupe by ref, but LLMs occasionally miss an instruction — this
+   is a deterministic backstop so the UI never shows the known issues
+   (20-00-00 / 20-20-01 / 20-20-02 spam, the card citing itself, or the
+   same ref listed twice) regardless of what the model returns.
+   ============================================================ */
+const RELATED_TASK_EXCLUDE_REFS = ['20-00-00', '20-20-01', '20-20-02'];
+
+function normalizeRef(ref) {
+  return (ref || '').toString().trim().toUpperCase();
+}
+
+function dedupeAndFilterRelatedTasks(tasks, cardRef) {
+  const cardRefNorm = normalizeRef(cardRef);
+  const seen = new Set();
+  const out = [];
+  for (const t of tasks) {
+    const refNorm = normalizeRef(t.ref);
+    if (!refNorm) continue;
+    if (RELATED_TASK_EXCLUDE_REFS.includes(refNorm)) continue;
+    if (cardRefNorm && refNorm === cardRefNorm) continue;
+    if (seen.has(refNorm)) continue;
+    seen.add(refNorm);
+    out.push(t);
+  }
+  return out;
 }
 
 /* ============================================================
@@ -424,14 +480,14 @@ function renderResults(data) {
           </div>
           <div class="row" style="gap:6px">
             ${t.qty ? `<span class="badge badge-opt">Qty: ${escapeHtml(t.qty)}</span>` : ''}
-            <span class="badge ${t.needs_review ? 'badge-review' : 'badge-verified'}">${t.needs_review ? '⚠ à revoir' : '✓ vérifié'}</span>
+            <span class="badge ${t.needs_review ? 'badge-review' : 'badge-verified'}">${t.needs_review ? '⚠ needs review' : '✓ verified'}</span>
           </div>
         </div>
         ${t.step_reference ? `<div class="step-ref">📍 ${escapeHtml(t.step_reference)}</div>` : ''}
-        ${t.needs_review && t.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(t.review_note)}${!t.step_reference ? ' <i>(référence exacte non trouvée — vérifie l\'ensemble de la carte)</i>' : ''}</div>` : ''}
+        ${t.needs_review && t.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(t.review_note)}${!t.step_reference ? ' <i>(exact reference not found — re-check the whole card)</i>' : ''}</div>` : ''}
       </div>
     </div>
-  `).join('') : '<div class="empty">Aucun outil identifié dans cette carte.</div>';
+  `).join('') : '<div class="empty">No tools identified in this card.</div>';
 
   // Consumables
   const cons = data.consumables || [];
@@ -447,16 +503,16 @@ function renderResults(data) {
           </div>
           <div class="row" style="gap:6px">
             ${c.qty ? `<span class="badge badge-opt">Qty: ${escapeHtml(c.qty)}</span>` : ''}
-            ${c.note_ipc ? `<span class="badge badge-ipc">📘 Voir IPC</span>` : ''}
-            <span class="badge ${c.needs_review ? 'badge-review' : 'badge-verified'}">${c.needs_review ? '⚠ à revoir' : '✓ vérifié'}</span>
+            ${c.note_ipc ? `<span class="badge badge-ipc">📘 See IPC</span>` : ''}
+            <span class="badge ${c.needs_review ? 'badge-review' : 'badge-verified'}">${c.needs_review ? '⚠ needs review' : '✓ verified'}</span>
           </div>
         </div>
         ${c.step_reference ? `<div class="step-ref">📍 ${escapeHtml(c.step_reference)}</div>` : ''}
-        ${c.note_ipc ? `<div class="note-ipc">📘 <span><b>Consulter l'IPC</b> — ${escapeHtml(c.ipc_note_text || 'aucun P/N donné dans cette carte, se référer à l\'IPC.')}</span></div>` : ''}
-        ${c.needs_review && c.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(c.review_note)}${!c.step_reference ? ' <i>(référence exacte non trouvée — vérifie l\'ensemble de la carte)</i>' : ''}</div>` : ''}
+        ${c.note_ipc ? `<div class="note-ipc">📘 <span><b>Refer to the IPC</b> — ${escapeHtml(c.ipc_note_text || 'no P/N given in this card, refer to the IPC.')}</span></div>` : ''}
+        ${c.needs_review && c.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(c.review_note)}${!c.step_reference ? ' <i>(exact reference not found — re-check the whole card)</i>' : ''}</div>` : ''}
       </div>
     </div>
-  `).join('') : '<div class="empty">Aucun consommable identifié dans cette carte.</div>';
+  `).join('') : '<div class="empty">No consumables identified in this card.</div>';
 
   // Implicit materials
   const implicit = data.implicit_materials || [];
@@ -469,14 +525,14 @@ function renderResults(data) {
           <div>
             <span class="item-name">${escapeHtml(m.name)}</span>
           </div>
-          <span class="badge ${m.needs_review ? 'badge-review' : 'badge-verified'}">${m.needs_review ? '⚠ à revoir' : '✓ vérifié'}</span>
+          <span class="badge ${m.needs_review ? 'badge-review' : 'badge-verified'}">${m.needs_review ? '⚠ needs review' : '✓ verified'}</span>
         </div>
-        ${m.step_reference ? `<div class="step-ref">📍 ${escapeHtml(m.step_reference)}</div>` : '<div class="step-ref step-ref-missing">📍 Référence de step non précisée — relis la carte en entier pour localiser</div>'}
+        ${m.step_reference ? `<div class="step-ref">📍 ${escapeHtml(m.step_reference)}</div>` : '<div class="step-ref step-ref-missing">📍 Step reference not given — re-read the full card to locate it</div>'}
         ${m.source_quote ? `<div class="item-meta" style="margin-top:4px">💡 ${escapeHtml(m.source_quote)}</div>` : ''}
         ${m.needs_review && m.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(m.review_note)}</div>` : ''}
       </div>
     </div>
-  `).join('') : '<div class="empty">Aucun matériel implicite détecté hors des tableaux.</div>';
+  `).join('') : '<div class="empty">No implicit materials detected outside the tables.</div>';
 
   // Related tasks
   const tasks = data.related_tasks || [];
@@ -488,18 +544,18 @@ function renderResults(data) {
           <span class="task-ref">${escapeHtml(t.ref || '—')}</span>
           <span style="font-weight:600;font-size:13px">${escapeHtml(t.title)}</span>
           <span class="task-when when-${t.when || 'during'}">${(t.when||'during').toUpperCase()}</span>
-          ${t.already_known ? '<span class="badge badge-opt">déjà vu cette session</span>' : ''}
-          ${t.needs_review ? '<span class="badge badge-review">⚠ à revoir</span>' : '<span class="badge badge-verified">✓ vérifié</span>'}
+          ${t.already_known ? '<span class="badge badge-opt">already seen this session</span>' : ''}
+          ${t.needs_review ? '<span class="badge badge-review">⚠ needs review</span>' : '<span class="badge badge-verified">✓ verified</span>'}
         </div>
         <label class="task-done-toggle">
-          <input type="checkbox" checked onchange="toggleItem('tasks', ${i}, this.checked)"> Inclure
+          <input type="checkbox" checked onchange="toggleItem('tasks', ${i}, this.checked)"> Include
         </label>
       </div>
       ${t.step_reference ? `<div class="step-ref">📍 ${escapeHtml(t.step_reference)}</div>` : ''}
       ${t.reason ? `<div class="task-reason">${escapeHtml(t.reason)}</div>` : ''}
       ${t.needs_review && t.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(t.review_note)}</div>` : ''}
     </div>
-  `).join('') : '<div class="empty">Aucune tâche liée détectée.</div>';
+  `).join('') : '<div class="empty">No related tasks detected.</div>';
 
   // Verify summary
   const summary = data.verification_summary || [];
@@ -537,7 +593,7 @@ function renderKnownCards() {
   list.innerHTML = knownCards.map((c, i) => `
     <div class="known-tag">
       <span>${escapeHtml(c.ref)}${c.title ? ' — ' + escapeHtml(c.title) : ''}</span>
-      <button onclick="removeKnownCard(${i})" title="Retirer de la mémoire de session">×</button>
+      <button onclick="removeKnownCard(${i})" title="Remove from session memory">×</button>
     </div>
   `).join('');
 }
@@ -585,7 +641,7 @@ function exportSelection() {
   } else {
     // Standalone (not in an iframe) — nothing to send to, just log for debug.
     console.log('AMM reader export payload:', payload);
-    alert('Sélection prête (' + payload.tools.length + ' outil(s), ' + payload.consumables.length + ' consommable(s), ' + payload.implicit_materials.length + ' matériel(s) implicite(s), ' + payload.related_tasks.length + ' tâche(s)).\n\nOuvert en standalone : voir la console pour le payload JSON.');
+    alert('Selection ready (' + payload.tools.length + ' tool(s), ' + payload.consumables.length + ' consumable(s), ' + payload.implicit_materials.length + ' implicit material(s), ' + payload.related_tasks.length + ' task(s)).\n\nOpened standalone: see the console for the JSON payload.');
   }
 }
 </script>
