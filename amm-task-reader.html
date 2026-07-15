@@ -111,7 +111,7 @@
   <div class="sub">Upload the AMM task card PDF (or paste text) — the AI extracts consumables, tools, access panels, and related tasks, then self-checks before displaying results. Related tasks can be scanned individually too, so you can drill into a sub-task's own parts and access requirements.</div>
 
   <div class="card">
-    <div class="tabs">
+    <div class="tabs" id="input-mode-tabs">
       <div class="tab active" data-mode="pdf" onclick="setInputMode('pdf')">📄 PDF</div>
       <div class="tab" data-mode="paste" onclick="setInputMode('paste')">📋 Paste text</div>
     </div>
@@ -262,7 +262,7 @@ function renderModelWarning(containerId, actual, against, againstLabel) {
    ============================================================ */
 function setInputMode(mode) {
   inputMode = mode;
-  document.querySelectorAll('.wrap > .card:first-child .tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+  document.querySelectorAll('#input-mode-tabs .tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
   document.getElementById('pane-pdf').style.display = mode === 'pdf' ? 'block' : 'none';
   document.getElementById('pane-paste').style.display = mode === 'paste' ? 'block' : 'none';
 }
