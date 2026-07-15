@@ -225,7 +225,6 @@
 
     <div class="footer-actions">
       <button class="btn btn-ghost" onclick="clearSession()">🗑 Clear session</button>
-      <button class="btn btn-ghost" onclick="resetResults()">➕ Scan another component's card</button>
       <button class="btn btn-primary" onclick="exportSelection()">✅ Send selection to Start Job</button>
     </div>
   </div>
@@ -265,6 +264,11 @@ let inputMode = 'pdf';
 let ammPdfB64 = null;
 let rootResult = null;
 let knownCards = []; // [{ref, title, addedAt}]
+// Scans of related tasks are stored independently of any card's tree,
+// keyed by normalized task ref, so a related task can be scanned no
+// matter which card is currently rootResult (or none at all).
+// taskScans[refNorm] = { status, inputMode, pdfB64, pdfFileName, pastedText, data, errorMsg }
+let taskScans = {};
 let sessionCards = []; // [{card_ref, card_title, aircraft_model, tools, consumables, implicit_materials, access_panels, safety_notices, related_tasks}] — one snapshot per card scanned this session (root cards only; related-task scans stay nested under rootResult and are merged in separately at render time)
 
 const expectedModel = new URLSearchParams(location.search).get('model') || '';
@@ -355,7 +359,7 @@ Extract five things:
 
 3. IMPLICIT MATERIALS mentioned in the procedure steps but NOT listed in EITHER the "Material Required" table OR the "Support Equipment" table. Read every numbered step, warning, caution, and note in the procedure body and flag any consumable, shop supply, or physical material implied by the action described, even if never named explicitly with a part number. Typical signal actions (illustrative, not exhaustive): cleaning (cloth, solvent), lubricating/greasing, sealing or bonding (sealant, tape, RTV), protecting threads or surfaces, securing wires/hoses/cables (tie wraps, lockwire, clamps), labeling/tagging, marking, temporary caps/plugs on open lines or ports, catching fluid (drain container/pan).
    - For each: "name", "step_reference" (as precise as the card allows), "source_quote" (a short paraphrase, NOT verbatim, of what implies the need).
-   - MANDATORY CHECK BEFORE ADDING ANY ITEM HERE: re-read the full list of TOOLS and CONSUMABLES you already produced in categories 1 and 2. If the action you're about to flag is really just USING an item already listed there under a different wording (e.g. the procedure says "use a container to collect the hydraulic fluid" and "Container, hydraulic fluid resistant" is already a TOOL; or "install the protective caps and plugs" and "Protective caps and plugs" is already a TOOL) — do NOT add it here. This is the single most common mistake: only add an implicit material when it is a genuinely SEPARATE physical item with no existing tool or consumable entry that already covers it, even loosely.
+   - MANDATORY CHECK BEFORE ADDING ANY ITEM HERE: re-read the full list of TOOLS and CONSUMABLES you already produced in categories 1 and 2. Only skip adding an implicit material if an entry with a CLEARLY MATCHING nomenclature already exists there (e.g. skip "protective caps and plugs" here if "Protective caps and plugs" is already listed as a tool with that same name). If NO tool or consumable entry names this specific item, you MUST add it here, even if a different, related tool or consumable also happens to be used in the same step. When genuinely unsure whether something is a duplicate, prefer to INCLUDE it as an implicit material rather than silently dropping it — an extra flagged item is far less costly than a missed one.
    - STRICT EXCLUSION: an item only qualifies if it names an actual physical consumable/material. Generic inspection or housekeeping steps that imply NO physical item — such as "Inspect the work area for foreign objects", "Record all maintenance...", "Do a general visual inspection" — are NEVER implicit materials, no matter how many cards repeat them.
    - STRICT EXCLUSION 2: never invent a separate implicit material for an action that is really just USING a tool already listed in TOOLS (category 1). For example, "pull, TAG and install the safety clips" describes using the "circuit breaker safety clips" tool (the tag is physically part of that safety clip / an integral step of using it) — do NOT also output "circuit breaker tags" as a separate implicit material.
 
@@ -427,7 +431,7 @@ For EACH item in tools, consumables, implicit_materials, access_panels, and rela
 - Is "step_reference" correct and specific? Fill in or correct it by locating the item in the source. Never leave a "needs_review" item without also giving the most specific step_reference you can find.
 - CROSS-CHECK TOOLS vs CONSUMABLES BY TABLE OF ORIGIN, NOT BY NAME SEMANTICS: go back to the source text and find the actual "Support Equipment" table and the actual "Material Required" / "Consumable Materials" table (if one exists separately). Every row that physically appears under "Support Equipment" in the source MUST end up in "tools", full stop — regardless of whether the row's nomenclature sounds like a consumable (e.g. "Container, hydraulic fluid resistant", "Protective caps and plugs" are TOOLS if that is the table they came from). If the extraction pass put such a row under "consumables" instead, MOVE it to "tools" and remove it from "consumables". If a card has no separate "Material Required" table at all, "consumables" must end up empty.
 - For consumables: confirm/fix "note_ipc" and "ipc_note_text" per the extraction rules.
-- For implicit_materials: be strict — only keep items clearly tied to actual text (not generic aviation assumptions). Remove unsupported ones, including any "implicit material" that is actually just an inspection/housekeeping step (e.g. "Inspect the work area for foreign objects") with no real physical item behind it, or that duplicates an item already listed in tools OR consumables under a different wording (e.g. "hydraulic fluid drain container" when "Container, hydraulic fluid resistant" is already a tool covering exactly that use; or "circuit breaker tags" when "circuit breaker safety clips" is already a tool covering the same tag-and-install action). Scan yourself for anything the first pass missed, but cross-check every candidate against tools AND consumables before keeping it.
+- For implicit_materials: be strict — only keep items clearly tied to actual text (not generic aviation assumptions). Remove unsupported ones, including any "implicit material" that is actually just an inspection/housekeeping step (e.g. "Inspect the work area for foreign objects") with no real physical item behind it. Only remove an implicit material for DUPLICATING a tool/consumable if the existing tool/consumable's nomenclature genuinely names the SAME object (e.g. remove "hydraulic fluid drain container" only if "Container, hydraulic fluid resistant" or an equally explicit container entry already exists as a tool; remove "circuit breaker tags" only if "circuit breaker safety clips" is already listed and clearly covers the tagging). Do NOT remove an implicit material just because it serves a related or overlapping purpose to some other tool — the names must genuinely refer to the same physical item. Also actively ADD any implicit material the first pass missed — re-read every step, warning, caution and note yourself looking for physical items (e.g. a NOTE saying "use a container to catch the hydraulic fluid" is a real implicit material and must be present unless already covered by an explicitly named container tool/consumable).
 - For access_panels: confirm every panel removal/installation instruction in the procedure is captured (do not miss any). Merge a remove+install pair of the SAME panel into one "remove_and_install" entry if the first pass split it into two. Confirm "conditional" is only true when the text itself signals situational/depends-on-part wording — do not mark a panel conditional just because you're unsure; if it's clearly always required for this procedure, conditional must be false.
 - For related_tasks — apply the SAME strict exclusion rules as the extraction pass:
   - Remove any entry referencing "Safe Ground Maintenance - General Maintenance, 20-00-00", "Electrical Power Application - General Maintenance, 20-20-01", "SSPC - General Maintenance, 20-20-02", or "ESD - General Maintenance" (any task number) — that belongs in "esd_warning", not related_tasks.
@@ -496,7 +500,7 @@ function namesOverlapSignificantly(a, b) {
   ta.forEach(w => { if (tb.has(w)) shared++; });
   const smaller = Math.min(ta.size, tb.size);
   // require most of the shorter name's meaningful words to be present in the other
-  return shared / smaller >= 0.6;
+  return shared / smaller >= 0.75;
 }
 
 function dedupeAndFilterRelatedTasks(tasks, cardRef) {
@@ -602,6 +606,7 @@ function clearSession() {
   if ((sessionCards.length || rootResult) && !confirm('Clear the whole session (' + sessionCards.length + ' card(s))? This cannot be undone.')) return;
   sessionCards = [];
   knownCards = [];
+  taskScans = {};
   rootResult = null;
   renderKnownCards();
   resetResults();
@@ -763,9 +768,10 @@ function resetResults() {
    truth for the UI; there is no separate "session summary" block.
    ============================================================ */
 function collectAllScannedData() {
-  // Flattens sessionCards + any nested related_task scans (recursively)
-  // into a flat list of {cardRef, cardTitle, data} entries, one per
-   // distinct card that has actually been scanned (root or nested).
+  // Flattens sessionCards + every completed entry in the global
+  // taskScans map into a flat list of {cardRef, cardTitle, data}
+  // entries, one per distinct card that has actually been scanned
+  // (root card or related-task scan, from any session card's tree).
   const out = [];
   const seen = new Set();
   function addEntry(data, fallbackRef, fallbackTitle) {
@@ -774,22 +780,11 @@ function collectAllScannedData() {
     seen.add(ref);
     out.push({ cardRef: data.card_ref || fallbackRef, cardTitle: data.card_title || fallbackTitle, data });
   }
-  function walkRelatedTasks(tasks) {
-    (tasks || []).forEach(t => {
-      if (t.scan && t.scan.status === 'done' && t.scan.data) {
-        addEntry(t.scan.data, t.ref, t.title);
-        walkRelatedTasks(t.scan.data.related_tasks);
-      }
-    });
-  }
   sessionCards.forEach(c => addEntry(c, c.card_ref, c.card_title));
-  // rootResult may have nested scans that are ahead of the last
-  // sessionCards snapshot (snapshots are taken at scan time), so also
-  // walk rootResult's own tree live.
-  if (rootResult) {
-    addEntry(rootResult, rootResult.card_ref, rootResult.card_title);
-    walkRelatedTasks(rootResult.related_tasks);
-  }
+  if (rootResult) addEntry(rootResult, rootResult.card_ref, rootResult.card_title);
+  Object.values(taskScans).forEach(scan => {
+    if (scan && scan.status === 'done' && scan.data) addEntry(scan.data, scan.data.card_ref, scan.data.card_title);
+  });
   return out;
 }
 
@@ -947,50 +942,28 @@ function renderMergedTasksList(tasksM) {
 }
 
 /* ============================================================
-   TASK NODE (related tasks) — merged view, still individually
-   scannable. Scanning is driven off the rootResult tree (via path),
-   so we look up the live task object by ref to know its scan state
-   and to resolve the path needed for openScanWidget/etc.
+   TASK NODE (related tasks) — merged view, individually scannable
+   AT ANY TIME regardless of which card is currently rootResult.
+   Scan state lives in the global `taskScans` map, keyed by the
+   task's normalized ref, completely independent of any card tree.
    ============================================================ */
-function findLiveTaskByRef(ref) {
-  // Search rootResult's related_tasks tree (recursively) for a task
-  // whose ref matches, returning {task, path}.
-  if (!rootResult) return null;
-  const refNorm = normalizeRef(ref);
-  function walk(tasks, path) {
-    for (let i = 0; i < (tasks || []).length; i++) {
-      const t = tasks[i];
-      const p = [...path, i];
-      if (normalizeRef(t.ref) === refNorm) return { task: t, path: p };
-      if (t.scan && t.scan.status === 'done' && t.scan.data) {
-        const found = walk(t.scan.data.related_tasks, p);
-        if (found) return found;
-      }
-    }
-    return null;
-  }
-  return walk(rootResult.related_tasks, []);
-}
-
 function renderTaskNode(t, cardRefs) {
-  const live = findLiveTaskByRef(t.ref);
-  const scan = live ? (live.task.scan || { status: 'idle' }) : { status: 'idle' };
-  const pathAttr = live ? JSON.stringify(live.path).replace(/"/g,'&quot;') : 'null';
+  const key = normalizeRef(t.ref);
+  const scan = taskScans[key] || { status: 'idle' };
+  const keyAttr = JSON.stringify(key).replace(/"/g,'&quot;');
   const isKnown = knownCards.some(c => normalizeRef(c.ref) === normalizeRef(t.ref));
 
   let scanZoneHtml = '';
-  if (!live) {
-    scanZoneHtml = `<div class="task-scan-zone"><span style="font-size:12px;color:var(--muted)">Re-run the main card scan to enable scanning this task.</span></div>`;
-  } else if (scan.status === 'idle') {
+  if (scan.status === 'idle') {
     scanZoneHtml = `
       <div class="task-scan-zone">
         <div class="scan-toggle-row">
           <span style="font-size:12px;color:var(--muted)">Want this task's own tools, parts and access panels too?</span>
-          <button class="btn btn-purple btn-sm" onclick="openScanWidget(${pathAttr})">📄 Scan this task</button>
+          <button class="btn btn-purple btn-sm" onclick="openScanWidget(${keyAttr})">📄 Scan this task</button>
         </div>
       </div>`;
   } else if (scan.status === 'widget_open') {
-    scanZoneHtml = `<div class="task-scan-zone">${renderScanWidget(live.path, 'tasknode_' + live.path.join('_'), scan)}</div>`;
+    scanZoneHtml = `<div class="task-scan-zone">${renderScanWidget(key, 'tasknode_' + key, scan)}</div>`;
   } else if (scan.status === 'loading') {
     scanZoneHtml = `
       <div class="task-scan-zone">
@@ -1000,10 +973,10 @@ function renderTaskNode(t, cardRefs) {
     scanZoneHtml = `
       <div class="task-scan-zone">
         <div class="status show err">❌ ${escapeHtml(scan.errorMsg || 'Scan failed.')}</div>
-        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="openScanWidget(${pathAttr})">↺ Try again</button>
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="openScanWidget(${keyAttr})">↺ Try again</button>
       </div>`;
   } else if (scan.status === 'done' && scan.data) {
-    scanZoneHtml = `<div class="task-scan-zone"><span style="font-size:12px;color:var(--ok)">✓ Scanned — its items are merged into the lists above.</span> <button class="btn btn-ghost btn-sm" onclick="rescanTask(${pathAttr})">↺ Re-scan</button></div>`;
+    scanZoneHtml = `<div class="task-scan-zone"><span style="font-size:12px;color:var(--ok)">✓ Scanned — its items are merged into the lists above.</span> <button class="btn btn-ghost btn-sm" onclick="rescanTask(${keyAttr})">↺ Re-scan</button></div>`;
   }
 
   return `
@@ -1027,116 +1000,88 @@ function renderTaskNode(t, cardRefs) {
     </div>`;
 }
 
-function renderScanWidget(path, nodeId, scan) {
-  const pathAttr = JSON.stringify(path).replace(/"/g,'&quot;');
+function renderScanWidget(key, nodeId, scan) {
+  const keyAttr = JSON.stringify(key).replace(/"/g,'&quot;');
   const mode = scan.inputMode || 'pdf';
   return `
     <div class="mini-tabs">
-      <div class="mini-tab ${mode==='pdf'?'active':''}" onclick="setSubScanMode(${pathAttr}, 'pdf')">📄 PDF</div>
-      <div class="mini-tab ${mode==='paste'?'active':''}" onclick="setSubScanMode(${pathAttr}, 'paste')">📋 Paste text</div>
+      <div class="mini-tab ${mode==='pdf'?'active':''}" onclick="setSubScanMode(${keyAttr}, 'pdf')">📄 PDF</div>
+      <div class="mini-tab ${mode==='paste'?'active':''}" onclick="setSubScanMode(${keyAttr}, 'paste')">📋 Paste text</div>
     </div>
     ${mode === 'pdf' ? `
-      <input type="file" accept="application/pdf" id="subpdf_${nodeId}" onchange="onSubPdfChosen(${pathAttr}, event)">
+      <input type="file" accept="application/pdf" id="subpdf_${nodeId}" onchange="onSubPdfChosen(${keyAttr}, event)">
       <div style="font-size:12px;color:var(--muted);margin-top:6px">${scan.pdfFileName ? '📎 ' + escapeHtml(scan.pdfFileName) : ''}</div>
     ` : `
-      <textarea id="subtext_${nodeId}" placeholder="Paste this sub-task's AMM text here…" oninput="onSubTextInput(${pathAttr}, this.value)" style="min-height:100px">${escapeHtml(scan.pastedText || '')}</textarea>
+      <textarea id="subtext_${nodeId}" placeholder="Paste this sub-task's AMM text here…" oninput="onSubTextInput(${keyAttr}, this.value)" style="min-height:100px">${escapeHtml(scan.pastedText || '')}</textarea>
     `}
     <div class="row" style="margin-top:8px">
-      <button class="btn btn-purple btn-sm" onclick="runSubScan(${pathAttr})">🔍 Scan</button>
-      <button class="btn btn-ghost btn-sm" onclick="cancelScanWidget(${pathAttr})">Cancel</button>
+      <button class="btn btn-purple btn-sm" onclick="runSubScan(${keyAttr})">🔍 Scan</button>
+      <button class="btn btn-ghost btn-sm" onclick="cancelScanWidget(${keyAttr})">Cancel</button>
     </div>`;
 }
 
 /* ============================================================
-   TREE HELPERS — get/set a task node by path (rootResult tree only;
-   the merged view above is derived, not authoritative for scanning)
+   SUB-TASK SCAN WIDGET — open/cancel/mode/inputs, all keyed on the
+   task's normalized ref in the global `taskScans` map. Works no
+   matter which card (if any) is currently rootResult.
    ============================================================ */
-function getTaskContainer(path) {
-  let container = rootResult;
-  for (let d = 0; d < path.length - 1; d++) {
-    const idx = path[d];
-    const task = container.related_tasks[idx];
-    container = task.scan && task.scan.data;
-    if (!container) return null;
-  }
-  return container;
-}
-function getTaskNode(path) {
-  const container = getTaskContainer(path);
-  if (!container) return null;
-  const idx = path[path.length - 1];
-  return container.related_tasks[idx];
-}
-
-/* ============================================================
-   SUB-TASK SCAN WIDGET — open/cancel/mode/inputs
-   ============================================================ */
-function openScanWidget(path) {
-  const t = getTaskNode(path);
-  if (!t) return;
-  t.scan = { status: 'widget_open', inputMode: 'pdf', pdfB64: null, pdfFileName: '', pastedText: '', data: null, errorMsg: '' };
+function openScanWidget(key) {
+  taskScans[key] = { status: 'widget_open', inputMode: 'pdf', pdfB64: null, pdfFileName: '', pastedText: '', data: null, errorMsg: '' };
   renderAll();
 }
 
-function cancelScanWidget(path) {
-  const t = getTaskNode(path);
-  if (!t) return;
-  t.scan = { status: 'idle' };
+function cancelScanWidget(key) {
+  taskScans[key] = { status: 'idle' };
   renderAll();
 }
 
-function setSubScanMode(path, mode) {
-  const t = getTaskNode(path);
-  if (!t || !t.scan) return;
-  t.scan.inputMode = mode;
+function setSubScanMode(key, mode) {
+  if (!taskScans[key]) return;
+  taskScans[key].inputMode = mode;
   renderAll();
 }
 
-function onSubPdfChosen(path, ev) {
-  const t = getTaskNode(path);
-  if (!t || !t.scan) return;
+function onSubPdfChosen(key, ev) {
+  if (!taskScans[key]) return;
   const f = ev.target.files[0];
   if (!f) return;
-  t.scan.pdfFileName = f.name;
+  taskScans[key].pdfFileName = f.name;
   const r = new FileReader();
-  r.onload = () => { t.scan.pdfB64 = r.result.split(',')[1]; };
+  r.onload = () => { taskScans[key].pdfB64 = r.result.split(',')[1]; };
   r.readAsDataURL(f);
 }
 
-function onSubTextInput(path, val) {
-  const t = getTaskNode(path);
-  if (!t || !t.scan) return;
-  t.scan.pastedText = val;
+function onSubTextInput(key, val) {
+  if (!taskScans[key]) return;
+  taskScans[key].pastedText = val;
 }
 
-async function runSubScan(path) {
-  const t = getTaskNode(path);
-  if (!t || !t.scan) return;
-  const isPdf = t.scan.inputMode === 'pdf';
-  if (isPdf && !t.scan.pdfB64) { alert('Please choose a PDF first.'); return; }
-  if (!isPdf && !t.scan.pastedText.trim()) { alert('Please paste the sub-task text first.'); return; }
+async function runSubScan(key) {
+  const scan = taskScans[key];
+  if (!scan) return;
+  const isPdf = scan.inputMode === 'pdf';
+  if (isPdf && !scan.pdfB64) { alert('Please choose a PDF first.'); return; }
+  if (!isPdf && !scan.pastedText.trim()) { alert('Please paste the sub-task text first.'); return; }
 
-  t.scan.status = 'loading';
+  scan.status = 'loading';
   renderAll();
 
   try {
-    const text = isPdf ? await pdfToText(t.scan.pdfB64) : t.scan.pastedText.trim();
+    const text = isPdf ? await pdfToText(scan.pdfB64) : scan.pastedText.trim();
     const knownRefs = knownCards.map(c => c.ref);
     const verified = await runScan(text, knownRefs);
-    t.scan.status = 'done';
-    t.scan.data = verified;
-    registerKnownCard(verified.card_ref || t.ref, verified.card_title || t.title);
+    scan.status = 'done';
+    scan.data = verified;
+    registerKnownCard(verified.card_ref || key, verified.card_title || '');
   } catch (e) {
-    t.scan.status = 'error';
-    t.scan.errorMsg = e.message;
+    scan.status = 'error';
+    scan.errorMsg = e.message;
   }
   renderAll();
 }
 
-function rescanTask(path) {
-  const t = getTaskNode(path);
-  if (!t) return;
-  t.scan = { status: 'widget_open', inputMode: 'pdf', pdfB64: null, pdfFileName: '', pastedText: '', data: null, errorMsg: '' };
+function rescanTask(key) {
+  taskScans[key] = { status: 'widget_open', inputMode: 'pdf', pdfB64: null, pdfFileName: '', pastedText: '', data: null, errorMsg: '' };
   renderAll();
 }
 
