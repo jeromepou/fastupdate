@@ -63,6 +63,7 @@
   .badge-verified{background:var(--ok-bg);color:var(--ok)}
   .badge-review{background:var(--warn-bg);color:var(--warn)}
   .badge-cond{background:#fef3c7;color:#92400e}
+  .badge-card{background:var(--purple-bg);color:var(--purple)}
   .note-ipc{font-size:12px;background:#fef3c7;color:#92400e;border-radius:6px;padding:5px 9px;margin-top:6px;display:flex;gap:6px;align-items:flex-start}
   .note-flag{font-size:12px;background:var(--warn-bg);color:#92400e;border:1px dashed #f0b429;border-radius:6px;padding:5px 9px;margin-top:6px}
   .note-cond{font-size:12px;background:#fef3c7;color:#92400e;border-radius:6px;padding:5px 9px;margin-top:6px}
@@ -157,30 +158,9 @@
     <div id="esd-warning-root" class="status show warn" style="display:none;margin-top:8px"></div>
   </div>
 
-  <div class="card" id="session-summary-card" style="display:none">
-    <div class="section-title">🧩 Multi-card session summary <span class="count-pill" id="session-card-count">0</span></div>
-    <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Every card analyzed this session, merged and deduplicated — items required by more than one card (function tests, common reference tasks, shared access panels…) are shown once, with the list of cards that need them. Perfect for AOG cases where several suspected components share the same troubleshooting steps.</div>
-    <div id="session-card-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px"></div>
-
-    <div class="sub-section-title">🧰 Tools <span class="count-pill" id="session-tools-count">0</span></div>
-    <div id="session-tools-list"></div>
-    <div class="sub-section-title">📦 Consumables <span class="count-pill" id="session-cons-count">0</span></div>
-    <div id="session-cons-list"></div>
-    <div class="sub-section-title">🔓 Access panels <span class="count-pill" id="session-access-count">0</span></div>
-    <div id="session-access-list"></div>
-    <div class="sub-section-title">⚠️ Warnings &amp; Cautions <span class="count-pill" id="session-safety-count">0</span></div>
-    <div id="session-safety-list"></div>
-    <div class="sub-section-title">🔗 Shared related tasks <span class="count-pill" id="session-tasks-count">0</span></div>
-    <div id="session-tasks-list"></div>
-
-    <div class="footer-actions">
-      <button class="btn btn-ghost" onclick="clearSession()">🗑 Clear session</button>
-    </div>
-  </div>
-
   <div class="card" id="already-done-card" style="display:none">
     <div class="section-title">✅ Cards already scanned this session <span class="count-pill" id="known-count">0</span></div>
-    <div style="font-size:12.5px;color:var(--muted)">These cards won't need to be re-scanned — if a related task points to one of them, it's flagged as already known instead of asking you to scan it again.</div>
+    <div style="font-size:12.5px;color:var(--muted)">These cards won't need to be re-scanned — if a related task points to one of them, it's flagged as already known instead of asking you to scan it again. Every item below (Tools, Consumables, Access, Warnings, Related tasks) is the cumulative, deduplicated result across ALL cards scanned this session.</div>
     <div class="known-tags" id="known-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
   </div>
 
@@ -220,7 +200,7 @@
       <div class="toolbar">
         <div class="section-title">⚠️ Warnings &amp; Cautions <span class="count-pill" id="safety-count">0</span></div>
       </div>
-      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Every WARNING, CAUTION and NOTE box on this card, gathered in one place so none get missed while scrolling through the procedure. Repeated boxes across sub-sections (Preparation, Removal, Installation, Follow-on) are each kept, since they matter at that specific point in the job.</div>
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Every WARNING, CAUTION and NOTE box across every card scanned this session, gathered in one place so none get missed. Repeated boxes across sub-sections (Preparation, Removal, Installation, Follow-on) — and across different cards — are merged into one entry, tagged with every card that needs it.</div>
       <div id="safety-list"></div>
     </div>
 
@@ -229,7 +209,7 @@
         <div class="section-title">🔗 Related tasks <span class="count-pill" id="tasks-count">0</span></div>
       </div>
       <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">
-        These are separate AMM procedures this card tells you to perform. Check the box to include a task's own reason/reference in your export. Click <b>"📄 Scan this task"</b> to upload that sub-task's own PDF and pull its tools, consumables, access panels and further related tasks — recursively, as deep as needed. Boilerplate references (Safe Ground Maintenance, Electrical Power Application, SSPC General Maintenance) and the current card's own sub-sections are intentionally excluded from this list.
+        These are separate AMM procedures this card tells you to perform. Check the box to include a task's own reason/reference in your export. Click <b>"📄 Scan this task"</b> to upload that sub-task's own PDF and pull its tools, consumables, access panels and further related tasks — recursively, as deep as needed. Boilerplate references (Safe Ground Maintenance, Electrical Power Application, SSPC General Maintenance) and the current card's own sub-sections are intentionally excluded from this list. Related tasks that are actually one of the cards already scanned as a main card this session are hidden here (they're already covered above).
       </div>
       <div id="tasks-list"></div>
     </div>
@@ -244,6 +224,7 @@
     </div>
 
     <div class="footer-actions">
+      <button class="btn btn-ghost" onclick="clearSession()">🗑 Clear session</button>
       <button class="btn btn-ghost" onclick="resetResults()">➕ Scan another component's card</button>
       <button class="btn btn-primary" onclick="exportSelection()">✅ Send selection to Start Job</button>
     </div>
@@ -259,8 +240,15 @@ const KO_WORKER = 'https://orange-snow-95f7.jeromepoupinel.workers.dev';
 /* ============================================================
    STATE
    ============================================================
-   The root scan result is stored in `rootResult`. Every related_task
-   item can itself carry a `scan` property once the user scans it:
+   The root scan result of the CURRENT card is stored in `rootResult`.
+   Every card scanned this session (root cards, one snapshot each) is
+   also kept in `sessionCards`, and this is what the final display
+   (#results) is actually built from — merged and deduplicated across
+   every card, so the UI only ever shows ONE cumulative view instead
+   of a separate "current card" view plus a separate "session summary".
+
+   Every related_task item can itself carry a `scan` property once the
+   user scans it:
      task.scan = {
        status: 'idle' | 'loading' | 'done' | 'error',
        inputMode: 'pdf' | 'paste',
@@ -277,7 +265,7 @@ let inputMode = 'pdf';
 let ammPdfB64 = null;
 let rootResult = null;
 let knownCards = []; // [{ref, title, addedAt}]
-let sessionCards = []; // [{card_ref, card_title, aircraft_model, tools, consumables, implicit_materials, access_panels, safety_notices, related_tasks}] — un snapshot par carte scannée cette session, pour la vue fusionnée multi-composants
+let sessionCards = []; // [{card_ref, card_title, aircraft_model, tools, consumables, implicit_materials, access_panels, safety_notices, related_tasks}] — one snapshot per card scanned this session (root cards only; related-task scans stay nested under rootResult and are merged in separately at render time)
 
 const expectedModel = new URLSearchParams(location.search).get('model') || '';
 
@@ -286,7 +274,7 @@ function normalizeModelStr(s) {
 }
 function modelsRoughlyMatch(a, b) {
   const na = normalizeModelStr(a), nb = normalizeModelStr(b);
-  if (!na || !nb) return true; // impossible de comparer -> pas de faux warning
+  if (!na || !nb) return true; // can't compare -> no false warning
   return na.includes(nb) || nb.includes(na);
 }
 function renderModelWarning(containerId, actual, against, againstLabel) {
@@ -319,7 +307,7 @@ function setInputMode(mode) {
   document.getElementById('pane-pdf').style.display = mode === 'pdf' ? 'block' : 'none';
   document.getElementById('pane-paste').style.display = mode === 'paste' ? 'block' : 'none';
 }
-setInputMode('pdf'); // resynchronise l'affichage au chargement, indépendamment du HTML statique
+setInputMode('pdf');
 
 function onPdfChosen(ev) {
   const f = ev.target.files[0];
@@ -356,19 +344,20 @@ Extract five things:
 
 1. TOOLS (from any "Support Equipment" / "Special Tools" table): nomenclature, part number, quantity if given.
    - Give a "step_reference" for every tool: normally "Support Equipment table". If the same tool is also explicitly referenced again inside a specific numbered step, mention that step too (e.g. "Support Equipment table (used in Step 3)").
-   - CRITICAL: an item listed in the Support Equipment table belongs to TOOLS ONLY. Never also list the same item (same or similar name) under CONSUMABLES just because the procedure text mentions using it in a step — that step reference belongs on the SAME tool entry, not a duplicate consumable entry.
+   - CRITICAL — READ THE TABLE ROW BY ROW: every single row that appears in the "Support Equipment" table is a TOOL, with NO exceptions, regardless of what its nomenclature sounds like. A row named "Container, hydraulic fluid resistant" or "Container, phosphate ester hydraulic fluid resistant" or "Protective caps and plugs" is a TOOL if and only if it is a row of the Support Equipment table — the word "container" or "caps" does NOT make it a consumable. Classification is decided ENTIRELY by which table the row appears in, never by what the item's name sounds like.
+   - Never also list an item from this table under CONSUMABLES just because the procedure text later mentions using it in a step — that step reference belongs on the SAME tool entry, not a duplicate consumable entry.
 
-2. CONSUMABLES (from any "Material Required" / "Consumable Materials" table): nomenclature, part number, quantity if given.
+2. CONSUMABLES (from any "Material Required" / "Consumable Materials" table — a table DIFFERENT from Support Equipment): nomenclature, part number, quantity if given.
    - IMPORTANT: if a line does NOT give a specific part number and instead says something like "Refer to IPC", "See IPC", "Consult IPC", or similar — you MUST still include this item, set "note_ipc": true, and copy the exact phrase used into "ipc_note_text". Never silently drop these lines and never invent a part number for them.
    - If a part number IS given, set "note_ipc": false and "ipc_note_text": "".
    - Give a "step_reference" for every consumable: normally "Material Required table", plus the exact step number if the procedure also specifies when/where it's used.
-   - NEVER list an item here if it already appears in the Support Equipment table (that's a TOOL, category 1 above). Consumables come exclusively from the "Material Required" / "Consumable Materials" table, not from Support Equipment.
+   - NEVER list an item here if it already appears in the Support Equipment table (that's a TOOL, category 1 above). Consumables come exclusively from the "Material Required" / "Consumable Materials" table, not from Support Equipment. If the card only has ONE combined table titled "Support Equipment", every row of it is a TOOL and CONSUMABLES must be empty.
 
-3. IMPLICIT MATERIALS mentioned in the procedure steps but NOT listed in the "Material Required" / "Support Equipment" tables. Read every numbered step, warning, caution, and note in the procedure body and flag any consumable, shop supply, or physical material implied by the action described, even if never named explicitly with a part number. Typical signal actions (illustrative, not exhaustive): cleaning (cloth, solvent), lubricating/greasing, sealing or bonding (sealant, tape, RTV), protecting threads or surfaces, securing wires/hoses/cables (tie wraps, lockwire, clamps), labeling/tagging, marking, temporary caps/plugs on open lines or ports, catching fluid (drain container/pan).
+3. IMPLICIT MATERIALS mentioned in the procedure steps but NOT listed in EITHER the "Material Required" table OR the "Support Equipment" table. Read every numbered step, warning, caution, and note in the procedure body and flag any consumable, shop supply, or physical material implied by the action described, even if never named explicitly with a part number. Typical signal actions (illustrative, not exhaustive): cleaning (cloth, solvent), lubricating/greasing, sealing or bonding (sealant, tape, RTV), protecting threads or surfaces, securing wires/hoses/cables (tie wraps, lockwire, clamps), labeling/tagging, marking, temporary caps/plugs on open lines or ports, catching fluid (drain container/pan).
    - For each: "name", "step_reference" (as precise as the card allows), "source_quote" (a short paraphrase, NOT verbatim, of what implies the need).
-   - Do NOT duplicate anything already captured in CONSUMABLES. Do not invent needs not reasonably implied by an actual instruction.
-   - STRICT EXCLUSION: an item only qualifies if it names an actual physical consumable/material. Generic inspection or housekeeping steps that imply NO physical item — such as "Inspect the work area for foreign objects", "Record all maintenance...", "Do a general visual inspection" — are NEVER implicit materials, no matter how many cards repeat them. Never output an "implicit material" that is really just an inspection/administrative action with no material behind it.
-   - STRICT EXCLUSION 2: never invent a separate implicit material for an action that is really just USING a tool already listed in TOOLS (category 1). For example, "pull, TAG and install the safety clips" describes using the "circuit breaker safety clips" tool (the tag is physically part of that safety clip / a integral step of using it) — do NOT also output "circuit breaker tags" as a separate implicit material. Only flag an implicit material when it is a genuinely SEPARATE physical item not already covered by an existing tool or consumable entry.
+   - MANDATORY CHECK BEFORE ADDING ANY ITEM HERE: re-read the full list of TOOLS and CONSUMABLES you already produced in categories 1 and 2. If the action you're about to flag is really just USING an item already listed there under a different wording (e.g. the procedure says "use a container to collect the hydraulic fluid" and "Container, hydraulic fluid resistant" is already a TOOL; or "install the protective caps and plugs" and "Protective caps and plugs" is already a TOOL) — do NOT add it here. This is the single most common mistake: only add an implicit material when it is a genuinely SEPARATE physical item with no existing tool or consumable entry that already covers it, even loosely.
+   - STRICT EXCLUSION: an item only qualifies if it names an actual physical consumable/material. Generic inspection or housekeeping steps that imply NO physical item — such as "Inspect the work area for foreign objects", "Record all maintenance...", "Do a general visual inspection" — are NEVER implicit materials, no matter how many cards repeat them.
+   - STRICT EXCLUSION 2: never invent a separate implicit material for an action that is really just USING a tool already listed in TOOLS (category 1). For example, "pull, TAG and install the safety clips" describes using the "circuit breaker safety clips" tool (the tag is physically part of that safety clip / an integral step of using it) — do NOT also output "circuit breaker tags" as a separate implicit material.
 
 4. ACCESS PANELS — every access panel, access door, or cover removal/installation instruction described inline in the procedure (e.g. "Remove the panel as follows (see Figure X, WTBFs, Access Doors and Panels): 193AL" or "Install the panel..."). This is a DEDICATED category, separate from related_tasks.
    - For each panel/door: "panel_id" (e.g. "193AL"), "action" ("remove" or "install"), "step_reference" (exact step, e.g. "Step 4 (Preparation)"), "figure_reference" if given (e.g. "Figure 1, WTBFs, Access Doors and Panels").
@@ -401,7 +390,7 @@ Extract five things:
 The technician has already scanned these AMM references earlier in this session: ${JSON.stringify(alreadyKnownRefs)}
 If any related task you find matches one of these refs, still include it but set "already_known": true. Otherwise set "already_known": false.
 
-6. AIRCRAFT MODEL/TYPE: read the card header/applicability and extract the aircraft type this AMM task card applies to (e.g. "G650", "GVI", "G450", "Gulfstream G280"). If genuinely not stated anywhere on the card, use "".
+6. AIRCRAFT MODEL/TYPE: read the card header/applicability and extract the aircraft type this AMM task card applies to (e.g. "G650", "GVI", "G450", "Gulfstream G280", "GVIII-G700"). If genuinely not stated anywhere on the card, use "".
 
 7. ESD WARNING: if the card's Preliminary Requirements or Reference Materials cite an ESD (electrostatic discharge) precaution task (e.g. "ESD - General Maintenance, 20-23-01"), or if the procedure text itself mentions the component/part is electrostatic sensitive, set "esd_warning": true and give a short "esd_note" reminding the technician to follow ESD precautions (wrist strap, grounding) — do not list it as a related task. If no ESD mention exists anywhere on the card, set "esd_warning": false and "esd_note": "".
 
@@ -436,8 +425,9 @@ For EACH item in tools, consumables, implicit_materials, access_panels, and rela
 - Does this item actually appear in the source text? If not, mark for removal and explain why in the report.
 - Is the part number / quantity / reference EXACTLY as written in the source? Fix if wrong.
 - Is "step_reference" correct and specific? Fill in or correct it by locating the item in the source. Never leave a "needs_review" item without also giving the most specific step_reference you can find.
-- For consumables: confirm/fix "note_ipc" and "ipc_note_text" per the extraction rules. Cross-check against tools: if an item appears in BOTH tools and consumables (same or near-identical name), it came from the Support Equipment table and must be REMOVED from consumables entirely — keep it only as a tool.
-- For implicit_materials: be strict — only keep items clearly tied to actual text (not generic aviation assumptions). Remove unsupported ones, including any "implicit material" that is actually just an inspection/housekeeping step (e.g. "Inspect the work area for foreign objects") with no real physical item behind it, or that duplicates the use of a tool/consumable already listed elsewhere (e.g. "circuit breaker tags" when "circuit breaker safety clips" is already a tool covering the same tag-and-install action). Scan yourself for anything the first pass missed. Do not duplicate anything already in consumables.
+- CROSS-CHECK TOOLS vs CONSUMABLES BY TABLE OF ORIGIN, NOT BY NAME SEMANTICS: go back to the source text and find the actual "Support Equipment" table and the actual "Material Required" / "Consumable Materials" table (if one exists separately). Every row that physically appears under "Support Equipment" in the source MUST end up in "tools", full stop — regardless of whether the row's nomenclature sounds like a consumable (e.g. "Container, hydraulic fluid resistant", "Protective caps and plugs" are TOOLS if that is the table they came from). If the extraction pass put such a row under "consumables" instead, MOVE it to "tools" and remove it from "consumables". If a card has no separate "Material Required" table at all, "consumables" must end up empty.
+- For consumables: confirm/fix "note_ipc" and "ipc_note_text" per the extraction rules.
+- For implicit_materials: be strict — only keep items clearly tied to actual text (not generic aviation assumptions). Remove unsupported ones, including any "implicit material" that is actually just an inspection/housekeeping step (e.g. "Inspect the work area for foreign objects") with no real physical item behind it, or that duplicates an item already listed in tools OR consumables under a different wording (e.g. "hydraulic fluid drain container" when "Container, hydraulic fluid resistant" is already a tool covering exactly that use; or "circuit breaker tags" when "circuit breaker safety clips" is already a tool covering the same tag-and-install action). Scan yourself for anything the first pass missed, but cross-check every candidate against tools AND consumables before keeping it.
 - For access_panels: confirm every panel removal/installation instruction in the procedure is captured (do not miss any). Merge a remove+install pair of the SAME panel into one "remove_and_install" entry if the first pass split it into two. Confirm "conditional" is only true when the text itself signals situational/depends-on-part wording — do not mark a panel conditional just because you're unsure; if it's clearly always required for this procedure, conditional must be false.
 - For related_tasks — apply the SAME strict exclusion rules as the extraction pass:
   - Remove any entry referencing "Safe Ground Maintenance - General Maintenance, 20-00-00", "Electrical Power Application - General Maintenance, 20-20-01", "SSPC - General Maintenance, 20-20-02", or "ESD - General Maintenance" (any task number) — that belongs in "esd_warning", not related_tasks.
@@ -484,6 +474,31 @@ function normalizeRef(ref) {
   return (ref || '').toString().trim().toUpperCase();
 }
 
+// Loose name normalizer for cross-matching tool/consumable/implicit names
+// that may be phrased slightly differently (e.g. "Container, hydraulic
+// fluid resistant" vs "Hydraulic fluid drain container" vs "Container,
+// phosphate ester hydraulic fluid resistant"). We strip punctuation,
+// lowercase, sort significant words, and compare on meaningful overlap
+// rather than requiring an exact string match.
+const STOPWORDS = new Set(['a','an','the','and','or','of','for','to','on','in','with','as','necessary','standard','equivalent','or equivalent']);
+function nameTokens(name) {
+  return (name || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w && !STOPWORDS.has(w));
+}
+function namesOverlapSignificantly(a, b) {
+  const ta = new Set(nameTokens(a));
+  const tb = new Set(nameTokens(b));
+  if (!ta.size || !tb.size) return false;
+  let shared = 0;
+  ta.forEach(w => { if (tb.has(w)) shared++; });
+  const smaller = Math.min(ta.size, tb.size);
+  // require most of the shorter name's meaningful words to be present in the other
+  return shared / smaller >= 0.6;
+}
+
 function dedupeAndFilterRelatedTasks(tasks, cardRef) {
   const cardRefNorm = normalizeRef(cardRef);
   const seen = new Set();
@@ -507,7 +522,6 @@ function dedupeAccessPanels(panels) {
     const key = normalizeRef(p.panel_id);
     if (!key) continue;
     if (!seen.has(key)) { seen.set(key, p); continue; }
-    // merge remove+install duplicates of the same panel into one entry
     const existing = seen.get(key);
     if (existing.action !== p.action) {
       existing.action = 'remove_and_install';
@@ -531,27 +545,41 @@ function dedupeSafetyNotices(notices) {
   return Array.from(seen.values());
 }
 
-function stripToolConsumableOverlap(tools, consumables) {
-  const toolNames = new Set((tools || []).map(t => normalizeRef(t.name)));
-  return (consumables || []).filter(c => !toolNames.has(normalizeRef(c.name)));
+// Strict client-side backstop: move (not just filter) any "consumable"
+// that actually matches a tool by loose name overlap. This catches cases
+// where the model still mis-files a Support Equipment row despite the
+// prompt rules (e.g. "Container, hydraulic fluid resistant").
+function reconcileToolsAndConsumables(tools, consumables) {
+  tools = tools || [];
+  consumables = consumables || [];
+  const keptConsumables = [];
+  for (const c of consumables) {
+    const matchesTool = tools.some(t => namesOverlapSignificantly(t.name, c.name));
+    if (matchesTool) continue; // drop — it's already covered by a tool entry
+    keptConsumables.push(c);
+  }
+  return keptConsumables;
+}
+
+// Strip implicit materials that loosely duplicate an existing tool or
+// consumable (e.g. "Hydraulic fluid drain container" vs the tool
+// "Container, hydraulic fluid resistant").
+function reconcileImplicitMaterials(implicitMaterials, tools, consumables) {
+  const existing = [...(tools || []), ...(consumables || [])];
+  return (implicitMaterials || []).filter(m => !existing.some(e => namesOverlapSignificantly(e.name, m.name)));
 }
 
 /* ============================================================
-   MULTI-CARD SESSION — for AOG-style troubleshooting where several
-   suspected components each have their own AMM card, but share many
-   of the same reference-material tasks (function tests, Safe Ground
-   Maintenance, ESD, etc.). Every card the technician analyzes this
-   session is kept in `sessionCards`; the summary below merges and
-   deduplicates so a shared item (e.g. "Main Wheel Brakes - Function
-   Test, 32-44-01" required by 3 different cards) is shown ONCE, with
-   the list of cards that need it.
+   SESSION CARDS — every root card analyzed this session, kept as a
+   snapshot so the final display can merge + deduplicate everything
+   into ONE cumulative set of lists, instead of showing a separate
+   "current card" view and a separate "session summary" view.
    ============================================================ */
 function addToSessionCards(data) {
   const refNorm = normalizeRef(data.card_ref);
   const entry = JSON.parse(JSON.stringify(data)); // snapshot, decoupled from live editing of rootResult
   const idx = sessionCards.findIndex(c => normalizeRef(c.card_ref) === refNorm);
   if (idx >= 0) sessionCards[idx] = entry; else sessionCards.push(entry);
-  renderSessionSummary();
 }
 
 function sessKey(...parts) {
@@ -559,7 +587,7 @@ function sessKey(...parts) {
 }
 
 function mergeSessionLeaf(items, keyFn) {
-  // items: [{cardRef, item}] -> Map key -> {item, cardRefs:Set}
+  // items: [{cardRef, item}] -> [{item, cardRefs:Set}]
   const map = new Map();
   for (const { cardRef, item } of items) {
     const key = keyFn(item);
@@ -570,96 +598,13 @@ function mergeSessionLeaf(items, keyFn) {
   return Array.from(map.values());
 }
 
-function renderSessionSummary() {
-  const card = document.getElementById('session-summary-card');
-  if (!card) return;
-  if (sessionCards.length < 2) { card.style.display = 'none'; return; }
-  card.style.display = 'block';
-
-  document.getElementById('session-card-count').textContent = sessionCards.length;
-  document.getElementById('session-card-list').innerHTML = sessionCards.map(c =>
-    `<span class="badge badge-mand">${escapeHtml(c.card_ref || '?')}${c.card_title ? ' — ' + escapeHtml(c.card_title) : ''}</span>`
-  ).join(' ');
-
-  const flat = (kind) => sessionCards.flatMap(c => (c[kind] || []).map(item => ({ cardRef: c.card_ref, item })));
-
-  const toolsM = mergeSessionLeaf(flat('tools'), i => sessKey(i.name, i.pn));
-  const consM  = mergeSessionLeaf(flat('consumables'), i => sessKey(i.name, i.pn));
-  const accM   = mergeSessionLeaf(flat('access_panels'), i => sessKey(i.panel_id));
-  const safM   = mergeSessionLeaf(flat('safety_notices'), i => sessKey(i.kind, (i.text||'').slice(0,120)));
-  // related tasks: drop any that are actually one of the cards already scanned as a main card this session
-  const ownRefs = new Set(sessionCards.map(c => normalizeRef(c.card_ref)));
-  const tasksM = mergeSessionLeaf(
-    flat('related_tasks').filter(({item}) => !ownRefs.has(normalizeRef(item.ref))),
-    i => sessKey(i.ref || i.title)
-  );
-
-  const cardTagsHtml = (cardRefs) => Array.from(cardRefs).map(r => `<span class="badge badge-opt">${escapeHtml(r)}</span>`).join(' ');
-
-  document.getElementById('session-tools-count').textContent = toolsM.length;
-  document.getElementById('session-tools-list').innerHTML = toolsM.length ? toolsM.map(({item:t, cardRefs}) => `
-    <div class="item flag-checked">
-      <div class="item-body">
-        <div class="item-main">
-          <div><span class="item-name">${escapeHtml(t.name)}</span>${t.pn ? `<span class="item-pn">&nbsp;· ${escapeHtml(t.pn)}</span>` : ''}</div>
-        </div>
-        <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
-      </div>
-    </div>`).join('') : '<div class="empty">None.</div>';
-
-  document.getElementById('session-cons-count').textContent = consM.length;
-  document.getElementById('session-cons-list').innerHTML = consM.length ? consM.map(({item:c, cardRefs}) => `
-    <div class="item flag-checked">
-      <div class="item-body">
-        <div class="item-main">
-          <div><span class="item-name">${escapeHtml(c.name)}</span>${c.pn ? `<span class="item-pn">&nbsp;· ${escapeHtml(c.pn)}</span>` : ''}</div>
-          ${c.note_ipc ? `<span class="badge badge-ipc">📘 See IPC</span>` : ''}
-        </div>
-        <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
-      </div>
-    </div>`).join('') : '<div class="empty">None.</div>';
-
-  document.getElementById('session-access-count').textContent = accM.length;
-  document.getElementById('session-access-list').innerHTML = accM.length ? accM.map(({item:p, cardRefs}) => `
-    <div class="item flag-checked">
-      <div class="item-body">
-        <div class="item-main">
-          <span class="item-name">Access Panel ${escapeHtml(p.panel_id)} — ${escapeHtml(ACCESS_ACTION_LABEL[p.action] || p.action || '')}</span>
-        </div>
-        <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
-      </div>
-    </div>`).join('') : '<div class="empty">None.</div>';
-
-  document.getElementById('session-safety-count').textContent = safM.length;
-  document.getElementById('session-safety-list').innerHTML = safM.length ? safM.map(({item:s, cardRefs}) => {
-    const refs = Array.isArray(s.step_references) ? s.step_references : (s.step_reference ? [s.step_reference] : []);
-    return `
-    <div class="safety-item kind-${SAFETY_KIND_LABEL[s.kind] ? s.kind : 'note'}">
-      <div class="item-body">
-        <span class="safety-kind-badge kind-${SAFETY_KIND_LABEL[s.kind] ? s.kind : 'note'}">${SAFETY_KIND_LABEL[s.kind] || 'NOTE'}</span>
-        <div class="safety-text" style="margin-top:6px">${escapeHtml(s.text)}</div>
-        ${refs.length ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px">${refs.map(r => `<span class="step-ref">📍 ${escapeHtml(r)}</span>`).join('')}</div>` : ''}
-        <div class="item-meta" style="margin-top:6px">Applies to: ${cardTagsHtml(cardRefs)}</div>
-      </div>
-    </div>`;
-  }).join('') : '<div class="empty">None.</div>';
-
-  document.getElementById('session-tasks-count').textContent = tasksM.length;
-  document.getElementById('session-tasks-list').innerHTML = tasksM.length ? tasksM.map(({item:t, cardRefs}) => `
-    <div class="task-node" style="padding:10px 12px">
-      <div class="row" style="gap:8px">
-        <span class="task-ref">${escapeHtml(t.ref || '—')}</span>
-        <span style="font-weight:600;font-size:13px">${escapeHtml(t.title)}</span>
-        <span class="task-when when-${t.when || 'during'}">${(t.when||'during').toUpperCase()}</span>
-      </div>
-      <div class="item-meta" style="margin-top:6px">Required by: ${cardTagsHtml(cardRefs)}</div>
-    </div>`).join('') : '<div class="empty">None — every reference was specific to a single card.</div>';
-}
-
 function clearSession() {
-  if (sessionCards.length && !confirm('Clear the whole multi-card session (' + sessionCards.length + ' card(s))? This cannot be undone.')) return;
+  if ((sessionCards.length || rootResult) && !confirm('Clear the whole session (' + sessionCards.length + ' card(s))? This cannot be undone.')) return;
   sessionCards = [];
-  renderSessionSummary();
+  knownCards = [];
+  rootResult = null;
+  renderKnownCards();
+  resetResults();
 }
 
 /* ============================================================
@@ -700,7 +645,11 @@ async function runScan(text, knownRefs) {
   verified.related_tasks = dedupeAndFilterRelatedTasks(verified.related_tasks || [], verified.card_ref || '');
   verified.access_panels = dedupeAccessPanels(verified.access_panels || []);
   verified.safety_notices = dedupeSafetyNotices(verified.safety_notices || []);
-  verified.consumables = stripToolConsumableOverlap(verified.tools, verified.consumables);
+  // Order matters: reconcile tools/consumables first (move mis-filed rows
+  // back to tools), THEN reconcile implicit materials against the
+  // corrected tools+consumables lists.
+  verified.consumables = reconcileToolsAndConsumables(verified.tools, verified.consumables);
+  verified.implicit_materials = reconcileImplicitMaterials(verified.implicit_materials, verified.tools, verified.consumables);
   return verified;
 }
 
@@ -729,7 +678,6 @@ async function analyzeAmm() {
 
   const btn = document.getElementById('btn-analyze');
   btn.disabled = true;
-  document.getElementById('results').style.display = 'none';
   document.getElementById('check-progress').style.display = 'block';
   setStep('step-extract', 'active'); setStep('step-verify', null); setStep('step-done', null);
   setStatus('load', '<span class="spin spin-dark"></span> Reading the AMM card…');
@@ -784,116 +732,178 @@ function renderKnownCards() {
     </div>
   `).join('');
 }
-function removeKnownCard(i) { knownCards.splice(i, 1); renderKnownCards(); }
+function removeKnownCard(i) {
+  const removed = knownCards.splice(i, 1)[0];
+  if (removed) {
+    sessionCards = sessionCards.filter(c => normalizeRef(c.card_ref) !== normalizeRef(removed.ref));
+    if (rootResult && normalizeRef(rootResult.card_ref) === normalizeRef(removed.ref)) rootResult = null;
+  }
+  renderKnownCards();
+  renderAll();
+}
 
 function resetResults() {
   document.getElementById('amm-text').value = '';
   document.getElementById('amm-ref').value = '';
   ammPdfB64 = null;
   document.getElementById('pdf-filename').textContent = '';
-  document.getElementById('results').style.display = 'none';
   document.getElementById('check-progress').style.display = 'none';
   document.getElementById('amm-status').className = 'status';
   rootResult = null;
+  renderAll();
 }
 
 /* ============================================================
-   RENDERING — root-level lists (tools / consumables / implicit / access)
+   RENDERING — cumulative, session-wide lists
+   ============================================================
+   Instead of rendering only `rootResult`, the final #results view now
+   merges EVERY card scanned this session (sessionCards) — including
+   any nested related-task scans hanging off each card's tree — into
+   one deduplicated set per category. This is the single source of
+   truth for the UI; there is no separate "session summary" block.
    ============================================================ */
-function renderAll() {
-  if (!rootResult) return;
-  document.getElementById('results').style.display = 'block';
-  renderLeafList('tools-list', 'tools-count', rootResult.tools, renderToolItem, 'tools');
-  renderLeafList('consumables-list', 'consumables-count', rootResult.consumables, renderConsumableItem, 'consumables');
-  renderLeafList('implicit-list', 'implicit-count', rootResult.implicit_materials, renderImplicitItem, 'implicit_materials');
-  renderLeafList('access-list', 'access-count', rootResult.access_panels, renderAccessItem, 'access_panels');
-  renderLeafList('safety-list', 'safety-count', rootResult.safety_notices, renderSafetyItem, 'safety_notices');
-  renderTasksList('tasks-list', 'tasks-count', rootResult.related_tasks, rootResult, []);
+function collectAllScannedData() {
+  // Flattens sessionCards + any nested related_task scans (recursively)
+  // into a flat list of {cardRef, cardTitle, data} entries, one per
+   // distinct card that has actually been scanned (root or nested).
+  const out = [];
+  const seen = new Set();
+  function addEntry(data, fallbackRef, fallbackTitle) {
+    const ref = normalizeRef(data.card_ref || fallbackRef);
+    if (!ref || seen.has(ref)) return;
+    seen.add(ref);
+    out.push({ cardRef: data.card_ref || fallbackRef, cardTitle: data.card_title || fallbackTitle, data });
+  }
+  function walkRelatedTasks(tasks) {
+    (tasks || []).forEach(t => {
+      if (t.scan && t.scan.status === 'done' && t.scan.data) {
+        addEntry(t.scan.data, t.ref, t.title);
+        walkRelatedTasks(t.scan.data.related_tasks);
+      }
+    });
+  }
+  sessionCards.forEach(c => addEntry(c, c.card_ref, c.card_title));
+  // rootResult may have nested scans that are ahead of the last
+  // sessionCards snapshot (snapshots are taken at scan time), so also
+  // walk rootResult's own tree live.
+  if (rootResult) {
+    addEntry(rootResult, rootResult.card_ref, rootResult.card_title);
+    walkRelatedTasks(rootResult.related_tasks);
+  }
+  return out;
+}
 
-  const summary = rootResult.verification_summary || [];
+function renderAll() {
+  const entries = collectAllScannedData();
+  const hasAnything = entries.length > 0;
+  document.getElementById('results').style.display = hasAnything ? 'block' : 'none';
+  if (!hasAnything) return;
+
+  const flat = (kind) => entries.flatMap(e => (e.data[kind] || []).map(item => ({ cardRef: e.cardRef, item })));
+
+  const toolsM = mergeSessionLeaf(flat('tools'), i => sessKey(i.name, i.pn));
+  const consM  = mergeSessionLeaf(flat('consumables'), i => sessKey(i.name, i.pn));
+  const implM  = mergeSessionLeaf(flat('implicit_materials'), i => sessKey(i.name));
+  const accM   = mergeSessionLeaf(flat('access_panels'), i => sessKey(i.panel_id));
+  const safM   = mergeSessionLeaf(flat('safety_notices'), i => sessKey(i.kind, (i.text||'').slice(0,120)));
+
+  // Related tasks: drop anything that IS one of the cards already
+  // scanned this session (root or nested) — it's already covered above.
+  const ownRefs = new Set(entries.map(e => normalizeRef(e.cardRef)));
+  const tasksM = mergeSessionLeaf(
+    flat('related_tasks').filter(({item}) => !ownRefs.has(normalizeRef(item.ref))),
+    i => sessKey(i.ref || i.title)
+  );
+
+  renderMergedList('tools-list', 'tools-count', toolsM, renderMergedTool);
+  renderMergedList('consumables-list', 'consumables-count', consM, renderMergedConsumable);
+  renderMergedList('implicit-list', 'implicit-count', implM, renderMergedImplicit);
+  renderMergedList('access-list', 'access-count', accM, renderMergedAccess);
+  renderMergedList('safety-list', 'safety-count', safM, renderMergedSafety);
+  renderMergedTasksList(tasksM);
+
+  // Self-check summaries from every scanned card, concatenated with a
+  // card-ref prefix so it's clear which card each note belongs to.
+  const summaryLines = [];
+  entries.forEach(e => {
+    (e.data.verification_summary || []).forEach(s => summaryLines.push({ cardRef: e.cardRef, text: s }));
+  });
   const summaryCard = document.getElementById('verify-summary-card');
-  if (summary.length) {
+  if (summaryLines.length) {
     summaryCard.style.display = 'block';
-    document.getElementById('verify-summary').innerHTML = summary.map(s => `<div style="font-size:12.5px;padding:4px 0;color:var(--muted)">• ${escapeHtml(s)}</div>`).join('');
+    document.getElementById('verify-summary').innerHTML = summaryLines.map(s =>
+      `<div style="font-size:12.5px;padding:4px 0;color:var(--muted)"><span class="badge badge-card" style="margin-right:6px">${escapeHtml(s.cardRef || '?')}</span>${escapeHtml(s.text)}</div>`
+    ).join('');
   } else {
     summaryCard.style.display = 'none';
   }
-  document.getElementById('raw-debug').textContent = JSON.stringify(rootResult, null, 2);
+  document.getElementById('raw-debug').textContent = JSON.stringify(entries.map(e => e.data), null, 2);
 }
 
-function renderLeafList(listId, countId, items, itemRenderer, kind) {
-  items = items || [];
-  document.getElementById(countId).textContent = items.length;
+function cardTagsHtml(cardRefs) {
+  return Array.from(cardRefs).map(r => `<span class="badge badge-card">${escapeHtml(r)}</span>`).join(' ');
+}
+
+function renderMergedList(listId, countId, merged, renderer) {
+  document.getElementById(countId).textContent = merged.length;
   const el = document.getElementById(listId);
-  if (!items.length) { el.innerHTML = `<div class="empty">None identified in this card.</div>`; return; }
-  el.innerHTML = items.map((it, i) => itemRenderer(it, i, kind)).join('');
+  if (!merged.length) { el.innerHTML = `<div class="empty">None identified.</div>`; return; }
+  el.innerHTML = merged.map(m => renderer(m.item, m.cardRefs)).join('');
 }
 
-function leafCheckbox(kind, path, checked) {
-  const pathAttr = JSON.stringify(path).replace(/"/g,'&quot;');
-  return `<input type="checkbox" ${checked !== false ? 'checked' : ''} onchange="toggleLeaf('${kind}', ${pathAttr}, this.checked)">`;
-}
-
-function renderToolItem(t, i, kind) {
+function renderMergedTool(t, cardRefs) {
   return `
-    <div class="item ${t.needs_review ? 'flag-warn' : 'flag-checked'}">
-      ${leafCheckbox(kind, [i], t._include)}
+    <div class="item flag-checked">
       <div class="item-body">
         <div class="item-main">
           <div><span class="item-name">${escapeHtml(t.name)}</span>${t.pn ? `<span class="item-pn">&nbsp;· ${escapeHtml(t.pn)}</span>` : ''}</div>
           <div class="row" style="gap:6px">
             ${t.qty ? `<span class="badge badge-opt">Qty: ${escapeHtml(t.qty)}</span>` : ''}
-            <span class="badge ${t.needs_review ? 'badge-review' : 'badge-verified'}">${t.needs_review ? '⚠ needs review' : '✓ verified'}</span>
           </div>
         </div>
         ${t.step_reference ? `<div class="step-ref">📍 ${escapeHtml(t.step_reference)}</div>` : ''}
-        ${t.needs_review && t.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(t.review_note)}</div>` : ''}
+        <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
       </div>
     </div>`;
 }
 
-function renderConsumableItem(c, i, kind) {
+function renderMergedConsumable(c, cardRefs) {
   return `
-    <div class="item ${c.needs_review ? 'flag-warn' : 'flag-checked'}">
-      ${leafCheckbox(kind, [i], c._include)}
+    <div class="item flag-checked">
       <div class="item-body">
         <div class="item-main">
           <div><span class="item-name">${escapeHtml(c.name)}</span>${c.pn ? `<span class="item-pn">&nbsp;· ${escapeHtml(c.pn)}</span>` : ''}</div>
           <div class="row" style="gap:6px">
             ${c.qty ? `<span class="badge badge-opt">Qty: ${escapeHtml(c.qty)}</span>` : ''}
             ${c.note_ipc ? `<span class="badge badge-ipc">📘 See IPC</span>` : ''}
-            <span class="badge ${c.needs_review ? 'badge-review' : 'badge-verified'}">${c.needs_review ? '⚠ needs review' : '✓ verified'}</span>
           </div>
         </div>
         ${c.step_reference ? `<div class="step-ref">📍 ${escapeHtml(c.step_reference)}</div>` : ''}
         ${c.note_ipc ? `<div class="note-ipc">📘 <span><b>Refer to the IPC</b> — ${escapeHtml(c.ipc_note_text || 'no P/N given in this card, refer to the IPC.')}</span></div>` : ''}
-        ${c.needs_review && c.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(c.review_note)}</div>` : ''}
+        <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
       </div>
     </div>`;
 }
 
-function renderImplicitItem(m, i, kind) {
+function renderMergedImplicit(m, cardRefs) {
   return `
-    <div class="item ${m.needs_review ? 'flag-warn' : 'flag-checked'}">
-      ${leafCheckbox(kind, [i], m._include)}
+    <div class="item flag-checked">
       <div class="item-body">
         <div class="item-main">
           <div><span class="item-name">${escapeHtml(m.name)}</span></div>
-          <span class="badge ${m.needs_review ? 'badge-review' : 'badge-verified'}">${m.needs_review ? '⚠ needs review' : '✓ verified'}</span>
         </div>
         ${m.step_reference ? `<div class="step-ref">📍 ${escapeHtml(m.step_reference)}</div>` : '<div class="step-ref step-ref-missing">📍 Step reference not given</div>'}
         ${m.source_quote ? `<div class="item-meta" style="margin-top:4px">💡 ${escapeHtml(m.source_quote)}</div>` : ''}
-        ${m.needs_review && m.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(m.review_note)}</div>` : ''}
+        <div class="item-meta" style="margin-top:6px">Found in: ${cardTagsHtml(cardRefs)}</div>
       </div>
     </div>`;
 }
 
 const ACCESS_ACTION_LABEL = { remove: 'Removal', install: 'Installation', remove_and_install: 'Removal & Installation' };
 
-function renderAccessItem(p, i, kind) {
+function renderMergedAccess(p, cardRefs) {
   return `
-    <div class="item ${p.needs_review ? 'flag-warn' : 'flag-checked'}">
-      ${leafCheckbox(kind, [i], p._include)}
+    <div class="item flag-checked">
       <div class="item-body">
         <div class="item-main">
           <div>
@@ -901,72 +911,86 @@ function renderAccessItem(p, i, kind) {
           </div>
           <div class="row" style="gap:6px">
             ${p.conditional ? `<span class="badge badge-cond">if required</span>` : ''}
-            <span class="badge ${p.needs_review ? 'badge-review' : 'badge-verified'}">${p.needs_review ? '⚠ needs review' : '✓ verified'}</span>
           </div>
         </div>
         ${p.step_reference ? `<div class="step-ref">📍 ${escapeHtml(p.step_reference)}</div>` : ''}
         ${p.figure_reference ? `<div class="item-meta" style="margin-top:4px">🖼️ ${escapeHtml(p.figure_reference)}</div>` : ''}
         ${p.conditional && p.conditional_note ? `<div class="note-cond">🔀 <b>Depends on the part:</b> ${escapeHtml(p.conditional_note)}</div>` : ''}
-        ${p.needs_review && p.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(p.review_note)}</div>` : ''}
+        <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
       </div>
     </div>`;
 }
 
 const SAFETY_KIND_LABEL = { warning: 'WARNING', caution: 'CAUTION', note: 'NOTE' };
 
-function renderSafetyItem(s, i, kind) {
+function renderMergedSafety(s, cardRefs) {
   const k = SAFETY_KIND_LABEL[s.kind] ? s.kind : 'note';
   const refs = Array.isArray(s.step_references) ? s.step_references : (s.step_reference ? [s.step_reference] : []);
   return `
     <div class="safety-item kind-${k}">
-      ${leafCheckbox(kind, [i], s._include)}
       <div class="item-body">
         <div class="item-main">
           <span class="safety-kind-badge kind-${k}">${SAFETY_KIND_LABEL[k]}</span>
-          <span class="badge ${s.needs_review ? 'badge-review' : 'badge-verified'}">${s.needs_review ? '⚠ needs review' : '✓ verified'}</span>
         </div>
         <div class="safety-text" style="margin-top:6px">${escapeHtml(s.text)}</div>
         ${refs.length ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px">${refs.map(r => `<span class="step-ref">📍 ${escapeHtml(r)}</span>`).join('')}</div>` : ''}
-        ${s.needs_review && s.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(s.review_note)}</div>` : ''}
+        <div class="item-meta" style="margin-top:6px">Applies to: ${cardTagsHtml(cardRefs)}</div>
       </div>
     </div>`;
 }
 
-/* ============================================================
-   RECURSIVE TASK TREE — related tasks, each individually scannable
-   ============================================================ */
-let taskScanSeq = 0; // unique DOM ids for scan widgets at any depth
-
-function renderTasksList(listId, countId, tasks, ownerData, path) {
-  tasks = tasks || [];
-  document.getElementById(countId).textContent = tasks.length;
-  const el = document.getElementById(listId);
-  if (!tasks.length) { el.innerHTML = `<div class="empty">No related tasks detected.</div>`; return; }
-  el.innerHTML = tasks.map((t, i) => renderTaskNode(t, i, path)).join('');
+function renderMergedTasksList(tasksM) {
+  document.getElementById('tasks-count').textContent = tasksM.length;
+  const el = document.getElementById('tasks-list');
+  if (!tasksM.length) { el.innerHTML = `<div class="empty">No related tasks detected.</div>`; return; }
+  el.innerHTML = tasksM.map(({item:t, cardRefs}) => renderTaskNode(t, cardRefs)).join('');
 }
 
-function renderTaskNode(t, i, parentPath) {
-  const path = [...parentPath, i];
-  const pathAttr = JSON.stringify(path).replace(/"/g,'&quot;');
-  const scan = t.scan || { status: 'idle' };
-  const nodeId = 'tasknode_' + path.join('_');
-  const depth = parentPath.length;
-  // On ignore le already_known renvoyé par l'IA (peu fiable) et on le
-  // recalcule nous-mêmes contre la vraie liste des cartes déjà scannées.
+/* ============================================================
+   TASK NODE (related tasks) — merged view, still individually
+   scannable. Scanning is driven off the rootResult tree (via path),
+   so we look up the live task object by ref to know its scan state
+   and to resolve the path needed for openScanWidget/etc.
+   ============================================================ */
+function findLiveTaskByRef(ref) {
+  // Search rootResult's related_tasks tree (recursively) for a task
+  // whose ref matches, returning {task, path}.
+  if (!rootResult) return null;
+  const refNorm = normalizeRef(ref);
+  function walk(tasks, path) {
+    for (let i = 0; i < (tasks || []).length; i++) {
+      const t = tasks[i];
+      const p = [...path, i];
+      if (normalizeRef(t.ref) === refNorm) return { task: t, path: p };
+      if (t.scan && t.scan.status === 'done' && t.scan.data) {
+        const found = walk(t.scan.data.related_tasks, p);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+  return walk(rootResult.related_tasks, []);
+}
+
+function renderTaskNode(t, cardRefs) {
+  const live = findLiveTaskByRef(t.ref);
+  const scan = live ? (live.task.scan || { status: 'idle' }) : { status: 'idle' };
+  const pathAttr = live ? JSON.stringify(live.path).replace(/"/g,'&quot;') : 'null';
   const isKnown = knownCards.some(c => normalizeRef(c.ref) === normalizeRef(t.ref));
 
   let scanZoneHtml = '';
-  if (scan.status === 'idle') {
+  if (!live) {
+    scanZoneHtml = `<div class="task-scan-zone"><span style="font-size:12px;color:var(--muted)">Re-run the main card scan to enable scanning this task.</span></div>`;
+  } else if (scan.status === 'idle') {
     scanZoneHtml = `
       <div class="task-scan-zone">
         <div class="scan-toggle-row">
           <span style="font-size:12px;color:var(--muted)">Want this task's own tools, parts and access panels too?</span>
           <button class="btn btn-purple btn-sm" onclick="openScanWidget(${pathAttr})">📄 Scan this task</button>
         </div>
-        <div id="scanwidget_${nodeId}"></div>
       </div>`;
   } else if (scan.status === 'widget_open') {
-    scanZoneHtml = `<div class="task-scan-zone">${renderScanWidget(path, nodeId, scan)}</div>`;
+    scanZoneHtml = `<div class="task-scan-zone">${renderScanWidget(live.path, 'tasknode_' + live.path.join('_'), scan)}</div>`;
   } else if (scan.status === 'loading') {
     scanZoneHtml = `
       <div class="task-scan-zone">
@@ -979,27 +1003,24 @@ function renderTaskNode(t, i, parentPath) {
         <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="openScanWidget(${pathAttr})">↺ Try again</button>
       </div>`;
   } else if (scan.status === 'done' && scan.data) {
-    scanZoneHtml = renderScannedChildren(scan.data, path, nodeId);
+    scanZoneHtml = `<div class="task-scan-zone"><span style="font-size:12px;color:var(--ok)">✓ Scanned — its items are merged into the lists above.</span> <button class="btn btn-ghost btn-sm" onclick="rescanTask(${pathAttr})">↺ Re-scan</button></div>`;
   }
 
   return `
     <div class="task-node">
       <div class="task-node-head">
-        <input type="checkbox" ${t._include !== false ? 'checked' : ''} onchange="toggleLeaf('related_tasks', ${pathAttr}, this.checked)">
         <div class="task-node-body">
           <div class="task-node-main">
             <div class="row" style="gap:8px">
               <span class="task-ref">${escapeHtml(t.ref || '—')}</span>
               <span style="font-weight:600;font-size:13px">${escapeHtml(t.title)}</span>
               <span class="task-when when-${t.when || 'during'}">${(t.when||'during').toUpperCase()}</span>
-              ${depth > 0 ? `<span class="depth-badge">nested ${depth} level${depth>1?'s':''} deep</span>` : ''}
               ${isKnown ? '<span class="badge badge-opt">already scanned this session</span>' : ''}
-              ${t.needs_review ? '<span class="badge badge-review">⚠ needs review</span>' : '<span class="badge badge-verified">✓ verified</span>'}
             </div>
           </div>
           ${t.step_reference ? `<div class="step-ref">📍 ${escapeHtml(t.step_reference)}</div>` : ''}
           ${t.reason ? `<div class="task-reason">${escapeHtml(t.reason)}</div>` : ''}
-          ${t.needs_review && t.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(t.review_note)}</div>` : ''}
+          <div class="item-meta" style="margin-top:6px">Required by: ${cardTagsHtml(cardRefs)}</div>
         </div>
       </div>
       ${scanZoneHtml}
@@ -1026,47 +1047,11 @@ function renderScanWidget(path, nodeId, scan) {
     </div>`;
 }
 
-function renderScannedChildren(data, path, nodeId) {
-  const pathAttr = JSON.stringify(path).replace(/"/g,'&quot;');
-  const summary = data.verification_summary || [];
-  const rootModel = rootResult?.aircraft_model || '';
-  const mismatch = data.aircraft_model && !modelsRoughlyMatch(data.aircraft_model, rootModel);
-  return `
-    <div class="task-children">
-      <div class="task-children-inner">
-        ${mismatch ? `<div class="status show err" style="margin-bottom:10px">⚠️ <b>Aircraft type mismatch:</b> this sub-task card is for <b>${escapeHtml(data.aircraft_model)}</b>, but the main card is <b>${escapeHtml(rootModel)}</b>. Check you scanned the right sub-task PDF.</div>` : ''}
-        ${data.esd_warning ? `<div class="status show warn" style="margin-bottom:10px">⚡ <b>ESD precautions apply.</b> ${escapeHtml(data.esd_note || 'Follow ESD - General Maintenance procedures (wrist strap, grounding) before handling this component.')}</div>` : ''}
-        ${sectionBlock('🧰 Tools', data.tools, (it,i) => renderToolItem(it, i, 'tools'), path, 'tools')}
-        ${sectionBlock('📦 Consumables', data.consumables, (it,i) => renderConsumableItem(it, i, 'consumables'), path, 'consumables')}
-        ${sectionBlock('🧴 Implicit materials', data.implicit_materials, (it,i) => renderImplicitItem(it, i, 'implicit_materials'), path, 'implicit_materials')}
-        ${sectionBlock('🔓 Access required', data.access_panels, (it,i) => renderAccessItem(it, i, 'access_panels'), path, 'access_panels')}
-        ${sectionBlock('⚠️ Warnings & Cautions', data.safety_notices, (it,i) => renderSafetyItem(it, i, 'safety_notices'), path, 'safety_notices')}
-        <div class="sub-section-title">🔗 Related tasks <span class="count-pill">${(data.related_tasks||[]).length}</span></div>
-        ${(data.related_tasks && data.related_tasks.length) ? data.related_tasks.map((t,i) => renderTaskNode(t, i, path)).join('') : '<div class="empty">No further related tasks.</div>'}
-        ${summary.length ? `<div class="sub-section-title">🛡️ Self-check notes for this sub-task</div>` + summary.map(s => `<div style="font-size:12px;padding:3px 0;color:var(--muted)">• ${escapeHtml(s)}</div>`).join('') : ''}
-        <div class="row" style="margin-top:10px">
-          <button class="btn btn-ghost btn-sm" onclick="rescanTask(${pathAttr})">↺ Re-scan this task</button>
-        </div>
-      </div>
-    </div>`;
-}
-
-function sectionBlock(title, items, renderer, path, kind) {
-  items = items || [];
-  return `
-    <div class="sub-section-title">${title} <span class="count-pill">${items.length}</span></div>
-    ${items.length ? items.map((it, i) => renderer(it, i)).join('') : '<div class="empty">None.</div>'}`;
-}
-
 /* ============================================================
-   TREE HELPERS — get/set a task node or leaf item by path
+   TREE HELPERS — get/set a task node by path (rootResult tree only;
+   the merged view above is derived, not authoritative for scanning)
    ============================================================ */
-// path is an array of indices into nested related_tasks arrays, e.g.
-// [] -> root, [2] -> rootResult.related_tasks[2],
-// [2, 0] -> rootResult.related_tasks[2].scan.data.related_tasks[0]
 function getTaskContainer(path) {
-  // returns the object that HAS a `.related_tasks` array matching `path`
-  // (i.e. either rootResult, or some ancestor task's scan.data)
   let container = rootResult;
   for (let d = 0; d < path.length - 1; d++) {
     const idx = path[d];
@@ -1081,41 +1066,6 @@ function getTaskNode(path) {
   if (!container) return null;
   const idx = path[path.length - 1];
   return container.related_tasks[idx];
-}
-function getDataContainerAtPath(path) {
-  // returns the `data` object (rootResult, or a sub-task's scan.data)
-  // whose OWN leaf arrays (tools/consumables/...) are being addressed —
-  // used by toggleLeaf when path targets a leaf list nested under a task.
-  let container = rootResult;
-  for (const idx of path) {
-    const task = container.related_tasks[idx];
-    if (!task.scan || !task.scan.data) return null;
-    container = task.scan.data;
-  }
-  return container;
-}
-
-/* ============================================================
-   LEAF CHECKBOX TOGGLE
-   For root-level leaves, path = [itemIndex].
-   For leaves nested under a scanned task, callers pass a compound path
-   via toggleNestedLeaf (built in renderScannedChildren callbacks) —
-   to keep this simple we resolve nested leaves through a wrapper that
-   knows the owning task path separately (see toggleLeafNested below).
-   ============================================================ */
-function toggleLeaf(kind, path, checked) {
-  if (!rootResult[kind]) return;
-  const idx = path[0];
-  if (!rootResult[kind][idx]) return;
-  rootResult[kind][idx]._include = checked;
-}
-
-// Nested leaves (inside a scanned sub-task) use this instead — called
-// with the task path + leaf kind + leaf index.
-function toggleLeafNested(taskPath, kind, idx, checked) {
-  const container = getDataContainerAtPath(taskPath);
-  if (!container || !container[kind] || !container[kind][idx]) return;
-  container[kind][idx]._include = checked;
 }
 
 /* ============================================================
@@ -1156,9 +1106,6 @@ function onSubPdfChosen(path, ev) {
 function onSubTextInput(path, val) {
   const t = getTaskNode(path);
   if (!t || !t.scan) return;
-  // Store the value without re-rendering — re-rendering the whole tree on
-  // every keystroke would destroy this very textarea (losing focus/cursor).
-  // The value is only read back when the user clicks "Scan".
   t.scan.pastedText = val;
 }
 
@@ -1194,42 +1141,36 @@ function rescanTask(path) {
 }
 
 /* ============================================================
-   EXPORT — recursively walks the whole tree and collects every
-   included leaf item, regardless of depth.
+   EXPORT — uses the same merged, cumulative session view as the
+   on-screen lists, so what you see is exactly what gets exported.
    ============================================================ */
-function collectIncluded(data, out) {
-  ['tools','consumables','implicit_materials','access_panels','safety_notices'].forEach(kind => {
-    (data[kind] || []).forEach(it => { if (it._include !== false) out[kind].push(it); });
-  });
-  (data.related_tasks || []).forEach(t => {
-    if (t._include !== false) out.related_tasks.push(t);
-    if (t.scan && t.scan.status === 'done' && t.scan.data) {
-      collectIncluded(t.scan.data, out);
-    }
-  });
-}
-
 function exportSelection() {
-  if (!rootResult) return;
-  const out = { tools: [], consumables: [], implicit_materials: [], access_panels: [], safety_notices: [], related_tasks: [] };
-  collectIncluded(rootResult, out);
+  const entries = collectAllScannedData();
+  if (!entries.length) return;
 
+  const flat = (kind) => entries.flatMap(e => (e.data[kind] || []));
+  const dedupeBy = (items, keyFn) => {
+    const seen = new Set(); const out = [];
+    for (const it of items) { const k = keyFn(it); if (!k || seen.has(k)) continue; seen.add(k); out.push(it); }
+    return out;
+  };
+
+  const ownRefs = new Set(entries.map(e => normalizeRef(e.cardRef)));
   const payload = {
-    card_ref: rootResult.card_ref,
-    card_title: rootResult.card_title,
-    tools: out.tools,
-    consumables: out.consumables,
-    implicit_materials: out.implicit_materials,
-    access_panels: out.access_panels,
-    safety_notices: out.safety_notices,
-    related_tasks: out.related_tasks
+    cards: entries.map(e => ({ card_ref: e.cardRef, card_title: e.cardTitle })),
+    tools: dedupeBy(flat('tools'), i => sessKey(i.name, i.pn)),
+    consumables: dedupeBy(flat('consumables'), i => sessKey(i.name, i.pn)),
+    implicit_materials: dedupeBy(flat('implicit_materials'), i => sessKey(i.name)),
+    access_panels: dedupeBy(flat('access_panels'), i => sessKey(i.panel_id)),
+    safety_notices: dedupeBy(flat('safety_notices'), i => sessKey(i.kind, (i.text||'').slice(0,120))),
+    related_tasks: dedupeBy(flat('related_tasks').filter(t => !ownRefs.has(normalizeRef(t.ref))), i => sessKey(i.ref || i.title))
   };
 
   if (window.parent && window.parent !== window) {
     window.parent.postMessage({ type: 'amm-task-reader:export', payload }, '*');
   } else {
     console.log('AMM reader export payload:', payload);
-    alert('Selection ready (' + payload.tools.length + ' tool(s), ' + payload.consumables.length + ' consumable(s), ' + payload.implicit_materials.length + ' implicit material(s), ' + payload.access_panels.length + ' access panel(s), ' + payload.related_tasks.length + ' related task(s) across the whole tree).\n\nOpened standalone: see the console for the JSON payload.');
+    alert('Selection ready (' + payload.tools.length + ' tool(s), ' + payload.consumables.length + ' consumable(s), ' + payload.implicit_materials.length + ' implicit material(s), ' + payload.access_panels.length + ' access panel(s), ' + payload.related_tasks.length + ' related task(s) across ' + payload.cards.length + ' card(s)).\n\nOpened standalone: see the console for the JSON payload.');
   }
 }
 </script>
