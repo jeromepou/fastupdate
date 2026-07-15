@@ -103,6 +103,17 @@
   .mini-tab.active{color:var(--accent);border-color:var(--accent)}
   .sub-section-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.02em;margin:10px 0 6px;display:flex;align-items:center;gap:6px}
   .depth-badge{font-size:10px;font-weight:700;background:var(--purple-bg);color:var(--purple);padding:1px 7px;border-radius:20px}
+
+  .safety-item{border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start}
+  .safety-item.kind-warning{background:var(--err-bg);border:1px solid #f3b8b8}
+  .safety-item.kind-caution{background:var(--warn-bg);border:1px solid #f0d089}
+  .safety-item.kind-note{background:#eff6ff;border:1px solid #bfdbfe}
+  .safety-kind-badge{font-size:10px;font-weight:800;letter-spacing:.04em;padding:2px 8px;border-radius:20px;text-transform:uppercase;flex-shrink:0}
+  .safety-kind-badge.kind-warning{background:var(--err);color:#fff}
+  .safety-kind-badge.kind-caution{background:var(--warn);color:#fff}
+  .safety-kind-badge.kind-note{background:var(--accent);color:#fff}
+  .safety-text{font-size:13px;line-height:1.5}
+
 </style>
 </head>
 <body>
@@ -182,6 +193,14 @@
       </div>
       <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">All panels / access doors needed across this task, grouped in one place. Some access points are marked <span class="badge badge-cond">if required</span> — they only apply depending on which specific part you're working on, since not all parts sit behind the same panel.</div>
       <div id="access-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <div class="section-title">⚠️ Warnings &amp; Cautions <span class="count-pill" id="safety-count">0</span></div>
+      </div>
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Every WARNING, CAUTION and NOTE box on this card, gathered in one place so none get missed while scrolling through the procedure. Repeated boxes across sub-sections (Preparation, Removal, Installation, Follow-on) are each kept, since they matter at that specific point in the job.</div>
+      <div id="safety-list"></div>
     </div>
 
     <div class="card">
@@ -361,6 +380,12 @@ If any related task you find matches one of these refs, still include it but set
 
 7. ESD WARNING: if the card's Preliminary Requirements or Reference Materials cite an ESD (electrostatic discharge) precaution task (e.g. "ESD - General Maintenance, 20-23-01"), or if the procedure text itself mentions the component/part is electrostatic sensitive, set "esd_warning": true and give a short "esd_note" reminding the technician to follow ESD precautions (wrist strap, grounding) — do not list it as a related task. If no ESD mention exists anywhere on the card, set "esd_warning": false and "esd_note": "".
 
+8. SAFETY NOTICES: every single WARNING, CAUTION, and NOTE box printed anywhere on this card (Preparation, Removal, Installation, Follow-on Maintenance — all sub-sections), collected together in one flat list so none is missed.
+   - "kind": "warning", "caution", or "note" (match exactly what the box is labeled as on the card).
+   - "text": the full text of the box, copied faithfully (not paraphrased — safety text must stay exact).
+   - "step_reference": where it appears (e.g. "Preparation, before Step 2", "Removal, Step 1", "Installation, before Step 4").
+   - Include EVERY occurrence even if the same warning text is repeated verbatim in multiple sub-sections (e.g. the same flight-control-surfaces WARNING appearing in both Preparation and Follow-on Maintenance) — each occurrence is its own entry with its own step_reference, since the technician needs the reminder at that specific point in the job, not just once.
+
 Do not invent quantities, part numbers, task numbers, or step references. If a step_reference is genuinely not determinable, use "".
 
 Reply ONLY with valid JSON, no markdown, in this exact shape:
@@ -370,6 +395,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
   "aircraft_model": "",
   "esd_warning": false,
   "esd_note": "",
+  "safety_notices": [{"kind":"warning|caution|note","text":"","step_reference":""}],
   "tools": [{"name":"","pn":"","qty":"","step_reference":""}],
   "consumables": [{"name":"","pn":"","qty":"","note_ipc":false,"ipc_note_text":"","step_reference":""}],
   "implicit_materials": [{"name":"","step_reference":"","source_quote":""}],
@@ -398,7 +424,7 @@ For EACH item in tools, consumables, implicit_materials, access_panels, and rela
 
 - Confirm "aircraft_model" matches what's stated in the card header/title block. Fix it if the first pass got it wrong or missed it.
 
-- Confirm "esd_warning"/"esd_note": true only if the card text actually cites ESD precautions or an electrostatic-sensitive component. Fix if the first pass missed it or got it wrong.
+- For safety_notices: verify every WARNING/CAUTION/NOTE box on the card is captured, including repeated ones in different sub-sections (each occurrence kept separately with its own step_reference). Fix "kind" if mislabeled. Confirm "text" is copied faithfully, not paraphrased or shortened. Add any missed box; remove any that isn't an actual WARNING/CAUTION/NOTE box.
 
 Return a CORRECTED version of the full JSON (same shape as input, each item additionally carrying "needs_review": boolean and "review_note": string, empty if none, and keeping/fixing "step_reference" on every item), plus a top-level "verification_summary" array of strings describing what you actually checked/changed/removed in THIS pass. Only list actions genuinely reflected in the returned JSON.
 
@@ -409,6 +435,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
   "aircraft_model": "",
   "esd_warning": false,
   "esd_note": "",
+  "safety_notices": [{"kind":"warning|caution|note","text":"","step_reference":"","needs_review":false,"review_note":""}],
   "tools": [{"name":"","pn":"","qty":"","step_reference":"","needs_review":false,"review_note":""}],
   "consumables": [{"name":"","pn":"","qty":"","note_ipc":false,"ipc_note_text":"","step_reference":"","needs_review":false,"review_note":""}],
   "implicit_materials": [{"name":"","step_reference":"","source_quote":"","needs_review":false,"review_note":""}],
@@ -607,6 +634,7 @@ function renderAll() {
   renderLeafList('consumables-list', 'consumables-count', rootResult.consumables, renderConsumableItem, 'consumables');
   renderLeafList('implicit-list', 'implicit-count', rootResult.implicit_materials, renderImplicitItem, 'implicit_materials');
   renderLeafList('access-list', 'access-count', rootResult.access_panels, renderAccessItem, 'access_panels');
+  renderLeafList('safety-list', 'safety-count', rootResult.safety_notices, renderSafetyItem, 'safety_notices');
   renderTasksList('tasks-list', 'tasks-count', rootResult.related_tasks, rootResult, []);
 
   const summary = rootResult.verification_summary || [];
@@ -711,6 +739,25 @@ function renderAccessItem(p, i, kind) {
     </div>`;
 }
 
+const SAFETY_KIND_LABEL = { warning: 'WARNING', caution: 'CAUTION', note: 'NOTE' };
+
+function renderSafetyItem(s, i, kind) {
+  const k = SAFETY_KIND_LABEL[s.kind] ? s.kind : 'note';
+  return `
+    <div class="safety-item kind-${k}">
+      ${leafCheckbox(kind, [i], s._include)}
+      <div class="item-body">
+        <div class="item-main">
+          <span class="safety-kind-badge kind-${k}">${SAFETY_KIND_LABEL[k]}</span>
+          <span class="badge ${s.needs_review ? 'badge-review' : 'badge-verified'}">${s.needs_review ? '⚠ needs review' : '✓ verified'}</span>
+        </div>
+        <div class="safety-text" style="margin-top:6px">${escapeHtml(s.text)}</div>
+        ${s.step_reference ? `<div class="step-ref" style="margin-top:6px">📍 ${escapeHtml(s.step_reference)}</div>` : ''}
+        ${s.needs_review && s.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(s.review_note)}</div>` : ''}
+      </div>
+    </div>`;
+}
+
 /* ============================================================
    RECURSIVE TASK TREE — related tasks, each individually scannable
    ============================================================ */
@@ -730,6 +777,9 @@ function renderTaskNode(t, i, parentPath) {
   const scan = t.scan || { status: 'idle' };
   const nodeId = 'tasknode_' + path.join('_');
   const depth = parentPath.length;
+  // On ignore le already_known renvoyé par l'IA (peu fiable) et on le
+  // recalcule nous-mêmes contre la vraie liste des cartes déjà scannées.
+  const isKnown = knownCards.some(c => normalizeRef(c.ref) === normalizeRef(t.ref));
 
   let scanZoneHtml = '';
   if (scan.status === 'idle') {
@@ -769,7 +819,7 @@ function renderTaskNode(t, i, parentPath) {
               <span style="font-weight:600;font-size:13px">${escapeHtml(t.title)}</span>
               <span class="task-when when-${t.when || 'during'}">${(t.when||'during').toUpperCase()}</span>
               ${depth > 0 ? `<span class="depth-badge">nested ${depth} level${depth>1?'s':''} deep</span>` : ''}
-              ${t.already_known ? '<span class="badge badge-opt">already scanned this session</span>' : ''}
+              ${isKnown ? '<span class="badge badge-opt">already scanned this session</span>' : ''}
               ${t.needs_review ? '<span class="badge badge-review">⚠ needs review</span>' : '<span class="badge badge-verified">✓ verified</span>'}
             </div>
           </div>
@@ -816,6 +866,7 @@ function renderScannedChildren(data, path, nodeId) {
         ${sectionBlock('📦 Consumables', data.consumables, (it,i) => renderConsumableItem(it, i, 'consumables'), path, 'consumables')}
         ${sectionBlock('🧴 Implicit materials', data.implicit_materials, (it,i) => renderImplicitItem(it, i, 'implicit_materials'), path, 'implicit_materials')}
         ${sectionBlock('🔓 Access required', data.access_panels, (it,i) => renderAccessItem(it, i, 'access_panels'), path, 'access_panels')}
+        ${sectionBlock('⚠️ Warnings & Cautions', data.safety_notices, (it,i) => renderSafetyItem(it, i, 'safety_notices'), path, 'safety_notices')}
         <div class="sub-section-title">🔗 Related tasks <span class="count-pill">${(data.related_tasks||[]).length}</span></div>
         ${(data.related_tasks && data.related_tasks.length) ? data.related_tasks.map((t,i) => renderTaskNode(t, i, path)).join('') : '<div class="empty">No further related tasks.</div>'}
         ${summary.length ? `<div class="sub-section-title">🛡️ Self-check notes for this sub-task</div>` + summary.map(s => `<div style="font-size:12px;padding:3px 0;color:var(--muted)">• ${escapeHtml(s)}</div>`).join('') : ''}
@@ -973,7 +1024,7 @@ function rescanTask(path) {
    included leaf item, regardless of depth.
    ============================================================ */
 function collectIncluded(data, out) {
-  ['tools','consumables','implicit_materials','access_panels'].forEach(kind => {
+  ['tools','consumables','implicit_materials','access_panels','safety_notices'].forEach(kind => {
     (data[kind] || []).forEach(it => { if (it._include !== false) out[kind].push(it); });
   });
   (data.related_tasks || []).forEach(t => {
@@ -986,7 +1037,7 @@ function collectIncluded(data, out) {
 
 function exportSelection() {
   if (!rootResult) return;
-  const out = { tools: [], consumables: [], implicit_materials: [], access_panels: [], related_tasks: [] };
+  const out = { tools: [], consumables: [], implicit_materials: [], access_panels: [], safety_notices: [], related_tasks: [] };
   collectIncluded(rootResult, out);
 
   const payload = {
@@ -996,6 +1047,7 @@ function exportSelection() {
     consumables: out.consumables,
     implicit_materials: out.implicit_materials,
     access_panels: out.access_panels,
+    safety_notices: out.safety_notices,
     related_tasks: out.related_tasks
   };
 
