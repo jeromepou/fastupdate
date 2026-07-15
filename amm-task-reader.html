@@ -157,6 +157,27 @@
     <div id="esd-warning-root" class="status show warn" style="display:none;margin-top:8px"></div>
   </div>
 
+  <div class="card" id="session-summary-card" style="display:none">
+    <div class="section-title">🧩 Multi-card session summary <span class="count-pill" id="session-card-count">0</span></div>
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Every card analyzed this session, merged and deduplicated — items required by more than one card (function tests, common reference tasks, shared access panels…) are shown once, with the list of cards that need them. Perfect for AOG cases where several suspected components share the same troubleshooting steps.</div>
+    <div id="session-card-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px"></div>
+
+    <div class="sub-section-title">🧰 Tools <span class="count-pill" id="session-tools-count">0</span></div>
+    <div id="session-tools-list"></div>
+    <div class="sub-section-title">📦 Consumables <span class="count-pill" id="session-cons-count">0</span></div>
+    <div id="session-cons-list"></div>
+    <div class="sub-section-title">🔓 Access panels <span class="count-pill" id="session-access-count">0</span></div>
+    <div id="session-access-list"></div>
+    <div class="sub-section-title">⚠️ Warnings &amp; Cautions <span class="count-pill" id="session-safety-count">0</span></div>
+    <div id="session-safety-list"></div>
+    <div class="sub-section-title">🔗 Shared related tasks <span class="count-pill" id="session-tasks-count">0</span></div>
+    <div id="session-tasks-list"></div>
+
+    <div class="footer-actions">
+      <button class="btn btn-ghost" onclick="clearSession()">🗑 Clear session</button>
+    </div>
+  </div>
+
   <div class="card" id="already-done-card" style="display:none">
     <div class="section-title">✅ Cards already scanned this session <span class="count-pill" id="known-count">0</span></div>
     <div style="font-size:12.5px;color:var(--muted)">These cards won't need to be re-scanned — if a related task points to one of them, it's flagged as already known instead of asking you to scan it again.</div>
@@ -223,7 +244,7 @@
     </div>
 
     <div class="footer-actions">
-      <button class="btn btn-ghost" onclick="resetResults()">↺ New card</button>
+      <button class="btn btn-ghost" onclick="resetResults()">➕ Scan another component's card</button>
       <button class="btn btn-primary" onclick="exportSelection()">✅ Send selection to Start Job</button>
     </div>
   </div>
@@ -256,6 +277,7 @@ let inputMode = 'pdf';
 let ammPdfB64 = null;
 let rootResult = null;
 let knownCards = []; // [{ref, title, addedAt}]
+let sessionCards = []; // [{card_ref, card_title, aircraft_model, tools, consumables, implicit_materials, access_panels, safety_notices, related_tasks}] — un snapshot par carte scannée cette session, pour la vue fusionnée multi-composants
 
 const expectedModel = new URLSearchParams(location.search).get('model') || '';
 
@@ -493,6 +515,128 @@ function dedupeAccessPanels(panels) {
 }
 
 /* ============================================================
+   MULTI-CARD SESSION — for AOG-style troubleshooting where several
+   suspected components each have their own AMM card, but share many
+   of the same reference-material tasks (function tests, Safe Ground
+   Maintenance, ESD, etc.). Every card the technician analyzes this
+   session is kept in `sessionCards`; the summary below merges and
+   deduplicates so a shared item (e.g. "Main Wheel Brakes - Function
+   Test, 32-44-01" required by 3 different cards) is shown ONCE, with
+   the list of cards that need it.
+   ============================================================ */
+function addToSessionCards(data) {
+  const refNorm = normalizeRef(data.card_ref);
+  const entry = JSON.parse(JSON.stringify(data)); // snapshot, decoupled from live editing of rootResult
+  const idx = sessionCards.findIndex(c => normalizeRef(c.card_ref) === refNorm);
+  if (idx >= 0) sessionCards[idx] = entry; else sessionCards.push(entry);
+  renderSessionSummary();
+}
+
+function sessKey(...parts) {
+  return parts.map(p => normalizeRef(p || '')).join('|');
+}
+
+function mergeSessionLeaf(items, keyFn) {
+  // items: [{cardRef, item}] -> Map key -> {item, cardRefs:Set}
+  const map = new Map();
+  for (const { cardRef, item } of items) {
+    const key = keyFn(item);
+    if (!key) continue;
+    if (!map.has(key)) map.set(key, { item, cardRefs: new Set() });
+    map.get(key).cardRefs.add(cardRef);
+  }
+  return Array.from(map.values());
+}
+
+function renderSessionSummary() {
+  const card = document.getElementById('session-summary-card');
+  if (!card) return;
+  if (sessionCards.length < 2) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  document.getElementById('session-card-count').textContent = sessionCards.length;
+  document.getElementById('session-card-list').innerHTML = sessionCards.map(c =>
+    `<span class="badge badge-mand">${escapeHtml(c.card_ref || '?')}${c.card_title ? ' — ' + escapeHtml(c.card_title) : ''}</span>`
+  ).join(' ');
+
+  const flat = (kind) => sessionCards.flatMap(c => (c[kind] || []).map(item => ({ cardRef: c.card_ref, item })));
+
+  const toolsM = mergeSessionLeaf(flat('tools'), i => sessKey(i.name, i.pn));
+  const consM  = mergeSessionLeaf(flat('consumables'), i => sessKey(i.name, i.pn));
+  const accM   = mergeSessionLeaf(flat('access_panels'), i => sessKey(i.panel_id));
+  const safM   = mergeSessionLeaf(flat('safety_notices'), i => sessKey(i.kind, (i.text||'').slice(0,120)));
+  // related tasks: drop any that are actually one of the cards already scanned as a main card this session
+  const ownRefs = new Set(sessionCards.map(c => normalizeRef(c.card_ref)));
+  const tasksM = mergeSessionLeaf(
+    flat('related_tasks').filter(({item}) => !ownRefs.has(normalizeRef(item.ref))),
+    i => sessKey(i.ref || i.title)
+  );
+
+  const cardTagsHtml = (cardRefs) => Array.from(cardRefs).map(r => `<span class="badge badge-opt">${escapeHtml(r)}</span>`).join(' ');
+
+  document.getElementById('session-tools-count').textContent = toolsM.length;
+  document.getElementById('session-tools-list').innerHTML = toolsM.length ? toolsM.map(({item:t, cardRefs}) => `
+    <div class="item flag-checked">
+      <div class="item-body">
+        <div class="item-main">
+          <div><span class="item-name">${escapeHtml(t.name)}</span>${t.pn ? `<span class="item-pn">&nbsp;· ${escapeHtml(t.pn)}</span>` : ''}</div>
+        </div>
+        <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
+      </div>
+    </div>`).join('') : '<div class="empty">None.</div>';
+
+  document.getElementById('session-cons-count').textContent = consM.length;
+  document.getElementById('session-cons-list').innerHTML = consM.length ? consM.map(({item:c, cardRefs}) => `
+    <div class="item flag-checked">
+      <div class="item-body">
+        <div class="item-main">
+          <div><span class="item-name">${escapeHtml(c.name)}</span>${c.pn ? `<span class="item-pn">&nbsp;· ${escapeHtml(c.pn)}</span>` : ''}</div>
+          ${c.note_ipc ? `<span class="badge badge-ipc">📘 See IPC</span>` : ''}
+        </div>
+        <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
+      </div>
+    </div>`).join('') : '<div class="empty">None.</div>';
+
+  document.getElementById('session-access-count').textContent = accM.length;
+  document.getElementById('session-access-list').innerHTML = accM.length ? accM.map(({item:p, cardRefs}) => `
+    <div class="item flag-checked">
+      <div class="item-body">
+        <div class="item-main">
+          <span class="item-name">Access Panel ${escapeHtml(p.panel_id)} — ${escapeHtml(ACCESS_ACTION_LABEL[p.action] || p.action || '')}</span>
+        </div>
+        <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
+      </div>
+    </div>`).join('') : '<div class="empty">None.</div>';
+
+  document.getElementById('session-safety-count').textContent = safM.length;
+  document.getElementById('session-safety-list').innerHTML = safM.length ? safM.map(({item:s, cardRefs}) => `
+    <div class="safety-item kind-${SAFETY_KIND_LABEL[s.kind] ? s.kind : 'note'}">
+      <div class="item-body">
+        <span class="safety-kind-badge kind-${SAFETY_KIND_LABEL[s.kind] ? s.kind : 'note'}">${SAFETY_KIND_LABEL[s.kind] || 'NOTE'}</span>
+        <div class="safety-text" style="margin-top:6px">${escapeHtml(s.text)}</div>
+        <div class="item-meta" style="margin-top:6px">Applies to: ${cardTagsHtml(cardRefs)}</div>
+      </div>
+    </div>`).join('') : '<div class="empty">None.</div>';
+
+  document.getElementById('session-tasks-count').textContent = tasksM.length;
+  document.getElementById('session-tasks-list').innerHTML = tasksM.length ? tasksM.map(({item:t, cardRefs}) => `
+    <div class="task-node" style="padding:10px 12px">
+      <div class="row" style="gap:8px">
+        <span class="task-ref">${escapeHtml(t.ref || '—')}</span>
+        <span style="font-weight:600;font-size:13px">${escapeHtml(t.title)}</span>
+        <span class="task-when when-${t.when || 'during'}">${(t.when||'during').toUpperCase()}</span>
+      </div>
+      <div class="item-meta" style="margin-top:6px">Required by: ${cardTagsHtml(cardRefs)}</div>
+    </div>`).join('') : '<div class="empty">None — every reference was specific to a single card.</div>';
+}
+
+function clearSession() {
+  if (sessionCards.length && !confirm('Clear the whole multi-card session (' + sessionCards.length + ' card(s))? This cannot be undone.')) return;
+  sessionCards = [];
+  renderSessionSummary();
+}
+
+/* ============================================================
    CORE SCAN — used for both the root card and any related_task
    drill-down. Returns the verified JSON (with client-side cleanup
    applied), or throws.
@@ -579,6 +723,7 @@ async function analyzeAmm() {
     rootResult = verified;
     registerKnownCard(verified.card_ref, verified.card_title);
     renderModelWarning('model-warning-root', verified.aircraft_model, expectedModel, 'the project aircraft');
+    addToSessionCards(verified);
     renderEsdWarning('esd-warning-root', verified.esd_warning, verified.esd_note);
     renderAll();
     setStatus('done', `✓ Analysis complete${verified.card_ref ? ' — card ' + escapeHtml(verified.card_ref) : ''}. Review items flagged "needs review" before sending.`);
