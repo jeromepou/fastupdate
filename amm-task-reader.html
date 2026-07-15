@@ -356,16 +356,19 @@ Extract five things:
 
 1. TOOLS (from any "Support Equipment" / "Special Tools" table): nomenclature, part number, quantity if given.
    - Give a "step_reference" for every tool: normally "Support Equipment table". If the same tool is also explicitly referenced again inside a specific numbered step, mention that step too (e.g. "Support Equipment table (used in Step 3)").
+   - CRITICAL: an item listed in the Support Equipment table belongs to TOOLS ONLY. Never also list the same item (same or similar name) under CONSUMABLES just because the procedure text mentions using it in a step — that step reference belongs on the SAME tool entry, not a duplicate consumable entry.
 
 2. CONSUMABLES (from any "Material Required" / "Consumable Materials" table): nomenclature, part number, quantity if given.
    - IMPORTANT: if a line does NOT give a specific part number and instead says something like "Refer to IPC", "See IPC", "Consult IPC", or similar — you MUST still include this item, set "note_ipc": true, and copy the exact phrase used into "ipc_note_text". Never silently drop these lines and never invent a part number for them.
    - If a part number IS given, set "note_ipc": false and "ipc_note_text": "".
    - Give a "step_reference" for every consumable: normally "Material Required table", plus the exact step number if the procedure also specifies when/where it's used.
+   - NEVER list an item here if it already appears in the Support Equipment table (that's a TOOL, category 1 above). Consumables come exclusively from the "Material Required" / "Consumable Materials" table, not from Support Equipment.
 
 3. IMPLICIT MATERIALS mentioned in the procedure steps but NOT listed in the "Material Required" / "Support Equipment" tables. Read every numbered step, warning, caution, and note in the procedure body and flag any consumable, shop supply, or physical material implied by the action described, even if never named explicitly with a part number. Typical signal actions (illustrative, not exhaustive): cleaning (cloth, solvent), lubricating/greasing, sealing or bonding (sealant, tape, RTV), protecting threads or surfaces, securing wires/hoses/cables (tie wraps, lockwire, clamps), labeling/tagging, marking, temporary caps/plugs on open lines or ports, catching fluid (drain container/pan).
    - For each: "name", "step_reference" (as precise as the card allows), "source_quote" (a short paraphrase, NOT verbatim, of what implies the need).
    - Do NOT duplicate anything already captured in CONSUMABLES. Do not invent needs not reasonably implied by an actual instruction.
    - STRICT EXCLUSION: an item only qualifies if it names an actual physical consumable/material. Generic inspection or housekeeping steps that imply NO physical item — such as "Inspect the work area for foreign objects", "Record all maintenance...", "Do a general visual inspection" — are NEVER implicit materials, no matter how many cards repeat them. Never output an "implicit material" that is really just an inspection/administrative action with no material behind it.
+   - STRICT EXCLUSION 2: never invent a separate implicit material for an action that is really just USING a tool already listed in TOOLS (category 1). For example, "pull, TAG and install the safety clips" describes using the "circuit breaker safety clips" tool (the tag is physically part of that safety clip / a integral step of using it) — do NOT also output "circuit breaker tags" as a separate implicit material. Only flag an implicit material when it is a genuinely SEPARATE physical item not already covered by an existing tool or consumable entry.
 
 4. ACCESS PANELS — every access panel, access door, or cover removal/installation instruction described inline in the procedure (e.g. "Remove the panel as follows (see Figure X, WTBFs, Access Doors and Panels): 193AL" or "Install the panel..."). This is a DEDICATED category, separate from related_tasks.
    - For each panel/door: "panel_id" (e.g. "193AL"), "action" ("remove" or "install"), "step_reference" (exact step, e.g. "Step 4 (Preparation)"), "figure_reference" if given (e.g. "Figure 1, WTBFs, Access Doors and Panels").
@@ -402,11 +405,11 @@ If any related task you find matches one of these refs, still include it but set
 
 7. ESD WARNING: if the card's Preliminary Requirements or Reference Materials cite an ESD (electrostatic discharge) precaution task (e.g. "ESD - General Maintenance, 20-23-01"), or if the procedure text itself mentions the component/part is electrostatic sensitive, set "esd_warning": true and give a short "esd_note" reminding the technician to follow ESD precautions (wrist strap, grounding) — do not list it as a related task. If no ESD mention exists anywhere on the card, set "esd_warning": false and "esd_note": "".
 
-8. SAFETY NOTICES: every single WARNING, CAUTION, and NOTE box printed anywhere on this card (Preparation, Removal, Installation, Follow-on Maintenance — all sub-sections), collected together in one flat list so none is missed.
+8. SAFETY NOTICES: every WARNING, CAUTION, and NOTE box printed anywhere on this card (Preparation, Removal, Installation, Follow-on Maintenance — all sub-sections), collected together in one flat list so none is missed.
    - "kind": "warning", "caution", or "note" (match exactly what the box is labeled as on the card).
    - "text": the full text of the box, copied faithfully (not paraphrased — safety text must stay exact).
-   - "step_reference": where it appears (e.g. "Preparation, before Step 2", "Removal, Step 1", "Installation, before Step 4").
-   - Include EVERY occurrence even if the same warning text is repeated verbatim in multiple sub-sections (e.g. the same flight-control-surfaces WARNING appearing in both Preparation and Follow-on Maintenance) — each occurrence is its own entry with its own step_reference, since the technician needs the reminder at that specific point in the job, not just once.
+   - "step_references": an array of every location where this exact text appears (e.g. ["Preparation, before Step 1", "Follow-on Maintenance, before Step 1"]).
+   - MERGE identical text: if the SAME box text is repeated verbatim in multiple sub-sections, output it as ONE entry with all its locations listed in "step_references" — never output the same warning/caution text as two separate entries. Only text that is genuinely different (even a small wording change) gets its own entry.
 
 Do not invent quantities, part numbers, task numbers, or step references. If a step_reference is genuinely not determinable, use "".
 
@@ -417,7 +420,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
   "aircraft_model": "",
   "esd_warning": false,
   "esd_note": "",
-  "safety_notices": [{"kind":"warning|caution|note","text":"","step_reference":""}],
+  "safety_notices": [{"kind":"warning|caution|note","text":"","step_references":[]}],
   "tools": [{"name":"","pn":"","qty":"","step_reference":""}],
   "consumables": [{"name":"","pn":"","qty":"","note_ipc":false,"ipc_note_text":"","step_reference":""}],
   "implicit_materials": [{"name":"","step_reference":"","source_quote":""}],
@@ -433,8 +436,8 @@ For EACH item in tools, consumables, implicit_materials, access_panels, and rela
 - Does this item actually appear in the source text? If not, mark for removal and explain why in the report.
 - Is the part number / quantity / reference EXACTLY as written in the source? Fix if wrong.
 - Is "step_reference" correct and specific? Fill in or correct it by locating the item in the source. Never leave a "needs_review" item without also giving the most specific step_reference you can find.
-- For consumables: confirm/fix "note_ipc" and "ipc_note_text" per the extraction rules.
-- For implicit_materials: be strict — only keep items clearly tied to actual text (not generic aviation assumptions). Remove unsupported ones, including any "implicit material" that is actually just an inspection/housekeeping step (e.g. "Inspect the work area for foreign objects") with no real physical item behind it. Scan yourself for anything the first pass missed. Do not duplicate anything already in consumables.
+- For consumables: confirm/fix "note_ipc" and "ipc_note_text" per the extraction rules. Cross-check against tools: if an item appears in BOTH tools and consumables (same or near-identical name), it came from the Support Equipment table and must be REMOVED from consumables entirely — keep it only as a tool.
+- For implicit_materials: be strict — only keep items clearly tied to actual text (not generic aviation assumptions). Remove unsupported ones, including any "implicit material" that is actually just an inspection/housekeeping step (e.g. "Inspect the work area for foreign objects") with no real physical item behind it, or that duplicates the use of a tool/consumable already listed elsewhere (e.g. "circuit breaker tags" when "circuit breaker safety clips" is already a tool covering the same tag-and-install action). Scan yourself for anything the first pass missed. Do not duplicate anything already in consumables.
 - For access_panels: confirm every panel removal/installation instruction in the procedure is captured (do not miss any). Merge a remove+install pair of the SAME panel into one "remove_and_install" entry if the first pass split it into two. Confirm "conditional" is only true when the text itself signals situational/depends-on-part wording — do not mark a panel conditional just because you're unsure; if it's clearly always required for this procedure, conditional must be false.
 - For related_tasks — apply the SAME strict exclusion rules as the extraction pass:
   - Remove any entry referencing "Safe Ground Maintenance - General Maintenance, 20-00-00", "Electrical Power Application - General Maintenance, 20-20-01", "SSPC - General Maintenance, 20-20-02", or "ESD - General Maintenance" (any task number) — that belongs in "esd_warning", not related_tasks.
@@ -446,7 +449,7 @@ For EACH item in tools, consumables, implicit_materials, access_panels, and rela
 
 - Confirm "aircraft_model" matches what's stated in the card header/title block. Fix it if the first pass got it wrong or missed it.
 
-- For safety_notices: verify every WARNING/CAUTION/NOTE box on the card is captured, including repeated ones in different sub-sections (each occurrence kept separately with its own step_reference). Fix "kind" if mislabeled. Confirm "text" is copied faithfully, not paraphrased or shortened. Add any missed box; remove any that isn't an actual WARNING/CAUTION/NOTE box.
+- For safety_notices: verify every WARNING/CAUTION/NOTE box on the card is captured. STRICTLY merge duplicates: if the same text appears in multiple sub-sections, it must be ONE entry with all locations in "step_references" — if the first pass split an identical text into separate entries, merge them back into one. Fix "kind" if mislabeled. Confirm "text" is copied faithfully, not paraphrased or shortened. Add any missed box; remove any that isn't an actual WARNING/CAUTION/NOTE box.
 
 Return a CORRECTED version of the full JSON (same shape as input, each item additionally carrying "needs_review": boolean and "review_note": string, empty if none, and keeping/fixing "step_reference" on every item), plus a top-level "verification_summary" array of strings describing what you actually checked/changed/removed in THIS pass. Only list actions genuinely reflected in the returned JSON.
 
@@ -457,7 +460,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
   "aircraft_model": "",
   "esd_warning": false,
   "esd_note": "",
-  "safety_notices": [{"kind":"warning|caution|note","text":"","step_reference":"","needs_review":false,"review_note":""}],
+  "safety_notices": [{"kind":"warning|caution|note","text":"","step_references":[],"needs_review":false,"review_note":""}],
   "tools": [{"name":"","pn":"","qty":"","step_reference":"","needs_review":false,"review_note":""}],
   "consumables": [{"name":"","pn":"","qty":"","note_ipc":false,"ipc_note_text":"","step_reference":"","needs_review":false,"review_note":""}],
   "implicit_materials": [{"name":"","step_reference":"","source_quote":"","needs_review":false,"review_note":""}],
@@ -512,6 +515,25 @@ function dedupeAccessPanels(panels) {
     }
   }
   return Array.from(seen.values());
+}
+
+function dedupeSafetyNotices(notices) {
+  const seen = new Map();
+  for (const n of (notices || [])) {
+    const text = (n.text || '').trim();
+    if (!text) continue;
+    const key = normalizeRef(n.kind) + '|' + normalizeRef(text).slice(0, 200);
+    const refs = Array.isArray(n.step_references) ? n.step_references : (n.step_reference ? [n.step_reference] : []);
+    if (!seen.has(key)) { seen.set(key, { ...n, step_references: [...refs] }); continue; }
+    const existing = seen.get(key);
+    refs.forEach(r => { if (r && !existing.step_references.includes(r)) existing.step_references.push(r); });
+  }
+  return Array.from(seen.values());
+}
+
+function stripToolConsumableOverlap(tools, consumables) {
+  const toolNames = new Set((tools || []).map(t => normalizeRef(t.name)));
+  return (consumables || []).filter(c => !toolNames.has(normalizeRef(c.name)));
 }
 
 /* ============================================================
@@ -609,14 +631,18 @@ function renderSessionSummary() {
     </div>`).join('') : '<div class="empty">None.</div>';
 
   document.getElementById('session-safety-count').textContent = safM.length;
-  document.getElementById('session-safety-list').innerHTML = safM.length ? safM.map(({item:s, cardRefs}) => `
+  document.getElementById('session-safety-list').innerHTML = safM.length ? safM.map(({item:s, cardRefs}) => {
+    const refs = Array.isArray(s.step_references) ? s.step_references : (s.step_reference ? [s.step_reference] : []);
+    return `
     <div class="safety-item kind-${SAFETY_KIND_LABEL[s.kind] ? s.kind : 'note'}">
       <div class="item-body">
         <span class="safety-kind-badge kind-${SAFETY_KIND_LABEL[s.kind] ? s.kind : 'note'}">${SAFETY_KIND_LABEL[s.kind] || 'NOTE'}</span>
         <div class="safety-text" style="margin-top:6px">${escapeHtml(s.text)}</div>
+        ${refs.length ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px">${refs.map(r => `<span class="step-ref">📍 ${escapeHtml(r)}</span>`).join('')}</div>` : ''}
         <div class="item-meta" style="margin-top:6px">Applies to: ${cardTagsHtml(cardRefs)}</div>
       </div>
-    </div>`).join('') : '<div class="empty">None.</div>';
+    </div>`;
+  }).join('') : '<div class="empty">None.</div>';
 
   document.getElementById('session-tasks-count').textContent = tasksM.length;
   document.getElementById('session-tasks-list').innerHTML = tasksM.length ? tasksM.map(({item:t, cardRefs}) => `
@@ -673,6 +699,8 @@ async function runScan(text, knownRefs) {
 
   verified.related_tasks = dedupeAndFilterRelatedTasks(verified.related_tasks || [], verified.card_ref || '');
   verified.access_panels = dedupeAccessPanels(verified.access_panels || []);
+  verified.safety_notices = dedupeSafetyNotices(verified.safety_notices || []);
+  verified.consumables = stripToolConsumableOverlap(verified.tools, verified.consumables);
   return verified;
 }
 
@@ -888,6 +916,7 @@ const SAFETY_KIND_LABEL = { warning: 'WARNING', caution: 'CAUTION', note: 'NOTE'
 
 function renderSafetyItem(s, i, kind) {
   const k = SAFETY_KIND_LABEL[s.kind] ? s.kind : 'note';
+  const refs = Array.isArray(s.step_references) ? s.step_references : (s.step_reference ? [s.step_reference] : []);
   return `
     <div class="safety-item kind-${k}">
       ${leafCheckbox(kind, [i], s._include)}
@@ -897,7 +926,7 @@ function renderSafetyItem(s, i, kind) {
           <span class="badge ${s.needs_review ? 'badge-review' : 'badge-verified'}">${s.needs_review ? '⚠ needs review' : '✓ verified'}</span>
         </div>
         <div class="safety-text" style="margin-top:6px">${escapeHtml(s.text)}</div>
-        ${s.step_reference ? `<div class="step-ref" style="margin-top:6px">📍 ${escapeHtml(s.step_reference)}</div>` : ''}
+        ${refs.length ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px">${refs.map(r => `<span class="step-ref">📍 ${escapeHtml(r)}</span>`).join('')}</div>` : ''}
         ${s.needs_review && s.review_note ? `<div class="note-flag">🛡️ ${escapeHtml(s.review_note)}</div>` : ''}
       </div>
     </div>`;
