@@ -7103,12 +7103,13 @@ G.koImportFromAmmReader = function(payload, mode) {
       _ptNewLines.push({ _id: ++_ptLineSeq, pn: c.pn || '', desc: c.name || '', sn: '', qty: c.qty || '1', cat: 'Consumable', note, smallQty: false, optional: false });
       added++;
     });
-    (payload.implicit_materials || []).forEach(m => {
-      const note = '⚠ Implied by procedure (' + (m.step_reference || payload.card_ref || '') + ') — not in Material Required table, verify before ordering: ' + (m.source_quote || '');
+   (payload.suggested_items || []).forEach(s => {
+      const cat = s.type === 'tool' ? 'Tool' : 'Consumable';
+      const note = '💡 Suggested (not from AMM text) — ' + (s.reason || '');
       // Implicit materials default to "if required" (optional) since they're
       // an inference, not a documented mandatory line — the template author
       // should confirm and un-tick this if it should always be included.
-      _ptNewLines.push({ _id: ++_ptLineSeq, pn: '', desc: m.name || '', sn: '', qty: '', cat: 'Consumable', note, smallQty: false, optional: true });
+      _ptNewLines.push({ _id: ++_ptLineSeq, pn: '', desc: s.name || '', sn: '', qty: s.qty || '', cat, note, smallQty: false, optional: true });
       added++;
     });
 
@@ -7149,6 +7150,23 @@ G.koImportFromAmmReader = function(payload, mode) {
     added++;
   });
 
+  (payload.suggested_items || []).forEach(s => {
+    const cat = s.type === 'tool' ? 'Tool' : 'Consumable';
+    const note = '💡 Suggested (not from AMM text) — ' + (s.reason || '');
+    koAddPartRow('', s.name || '', '', s.qty || '', cat, note);
+    added++;
+  });
+
+  const fboIncluded = (payload.fbo_requests || []);
+  fboIncluded.forEach(r => {
+      const cbId = r.gas_type === 'oxygen' ? 'kofbo_oxygen'
+                : r.gas_type === 'nitrogen_hp' ? 'kofbo_nitrogen_hp'
+                : r.gas_type === 'nitrogen_lp' ? 'kofbo_nitrogen_lp'
+                : null;
+      const cb = cbId && document.getElementById(cbId);
+      if (cb) cb.checked = true;
+  });
+
   koRenderRecips('parts');
   koUpdatePreview();
   koSyncPartsToMainTable();
@@ -7162,9 +7180,13 @@ G.koImportFromAmmReader = function(payload, mode) {
     const lines = relatedIncluded.map(t =>
       '• [' + (t.when || 'during').toUpperCase() + '] ' + (t.ref ? t.ref + ' — ' : '') + (t.title || '') + (t.step_reference ? ' [📍 ' + t.step_reference + ']' : '') + (t.reason ? ' (' + t.reason + ')' : '')
     ).join('\n');
-    alert('✓ ' + added + ' line(s) added from ' + (payload.card_ref || 'the AMM card') + '.\n\nRelated tasks not to forget:\n' + lines);
-  } else if (added) {
-    koSetStatus && koSetStatus('done', '✓ ' + added + ' line(s) imported from ' + (payload.card_ref || 'the AMM card') + '.');
+    let msg = '✓ ' + added + ' line(s) added from ' + (payload.card_ref || 'the AMM card') + '.\n\nRelated tasks not to forget:\n' + lines;
+    if (fboIncluded.length) msg += '\n\n✓ FBO checklist updated: ' + fboIncluded.map(r => r.gas_type_label).join(', ') + '.';
+    alert(msg);
+  } else if (added || fboIncluded.length) {
+      let msg = added ? ('✓ ' + added + ' line(s) imported from ' + (payload.card_ref || 'the AMM card') + '.') : '✓ Import complete.';
+      if (fboIncluded.length) msg += ' FBO checklist updated: ' + fboIncluded.map(r => r.gas_type_label).join(', ') + '.';
+      koSetStatus && koSetStatus('done', msg);
   }
 };
 window.koImportFromAmmReader = G.koImportFromAmmReader;
