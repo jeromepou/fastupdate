@@ -289,12 +289,23 @@ let sessionCards = []; // [{card_ref, card_title, aircraft_model, tools, consuma
 // or any related task, known-ref or scanned). Never auto-included.
 let fboRequests = {};
 
+// itemSelection[key] = false -> technician explicitly excluded this item
+// from the export (key = same sessKey used to merge/dedupe it). Missing
+// = included by default.
+let itemSelection = {};
+function isItemIncluded(key) { return itemSelection[key] !== false; }
+function toggleItemInclusion(key) {
+  itemSelection[key] = !isItemIncluded(key);
+  renderAll();
+}
+
 // suggestionState — rule-based, NON-extracted recommendations (sealant->tape/
 // gloves, fluid-drain->replacement cans). Kept structurally separate from the
 // AMM-sourced lists so exported data always distinguishes "read off the card"
 // from "recommended by a rule", per traceability requirements.
 let suggestionState = {
-  sealant: { accepted: false },
+  maskingTape: { accepted: false },
+  protectiveGloves: { accepted: false },
   hydraulicCans: { accepted: false, qty: '' },
   oilCans: { accepted: false, qty: '' }
 };
@@ -762,12 +773,11 @@ function sessKey(...parts) {
 }
 
 function mergeSessionLeaf(items, keyFn) {
-  // items: [{cardRef, item}] -> [{item, cardRefs:Set}]
   const map = new Map();
   for (const { cardRef, item } of items) {
     const key = keyFn(item);
     if (!key) continue;
-    if (!map.has(key)) map.set(key, { item, cardRefs: new Set() });
+    if (!map.has(key)) map.set(key, { item, cardRefs: new Set(), key });
     map.get(key).cardRefs.add(cardRef);
   }
   return Array.from(map.values());
@@ -780,7 +790,8 @@ function clearSession() {
   taskScans = {};
   rootResult = null;
   fboRequests = {};
-  suggestionState = { sealant: { accepted: false }, hydraulicCans: { accepted: false, qty: '' }, oilCans: { accepted: false, qty: '' } };
+  itemSelection = {};
+  suggestionState = { maskingTape: { accepted: false }, protectiveGloves: { accepted: false }, hydraulicCans: { accepted: false, qty: '' }, oilCans: { accepted: false, qty: '' } };
   renderKnownCards();
   resetResults();
 }
@@ -979,11 +990,15 @@ function renderAll() {
   const SAFETY_KIND_ORDER = { warning: 0, caution: 1, note: 2 };
   safM.sort((a, b) => (SAFETY_KIND_ORDER[a.item.kind] ?? 3) - (SAFETY_KIND_ORDER[b.item.kind] ?? 3));
 
-  // Related tasks: drop anything that IS one of the cards already
-  // scanned this session (root or nested) — it's already covered above.
-  const ownRefs = new Set(entries.map(e => normalizeRef(e.cardRef)));
+  // Only drop a related task if it's a card analyzed directly as its OWN
+  // root card ("Analyze this card") — already shown in the known-cards
+  // strip above. A related task scanned in-place via its own tree node
+  // ("Scan this task") stays in this list so renderTaskNode() can show
+  // its "✓ Scanned" state instead of the node just vanishing.
+  const rootRefs = new Set(sessionCards.map(c => normalizeRef(c.card_ref)));
+  if (rootResult) rootRefs.add(normalizeRef(rootResult.card_ref));
   const tasksM = mergeSessionLeaf(
-    flat('related_tasks').filter(({item}) => !ownRefs.has(normalizeRef(item.ref))),
+    flat('related_tasks').filter(({item}) => !rootRefs.has(normalizeRef(item.ref))),
     i => sessKey(i.ref || i.title)
   );
 
@@ -1028,12 +1043,14 @@ function renderMergedList(listId, countId, merged, renderer) {
   document.getElementById(countId).textContent = merged.length;
   const el = document.getElementById(listId);
   if (!merged.length) { el.innerHTML = `<div class="empty">None identified.</div>`; return; }
-  el.innerHTML = merged.map(m => renderer(m.item, m.cardRefs)).join('');
+  el.innerHTML = merged.map(m => renderer(m.item, m.cardRefs, m.key)).join('');
 }
 
-function renderMergedTool(t, cardRefs) {
+function renderMergedTool(t, cardRefs, key) {
+  const included = isItemIncluded(key);
   return `
-    <div class="item flag-checked">
+    <div class="item ${included ? 'flag-checked' : 'ignored'}">
+      <input type="checkbox" ${included ? 'checked' : ''} onchange="toggleItemInclusion(${jsArg(key)})" title="Include in export">
       <div class="item-body">
         <div class="item-main">
           <div><span class="item-name">${escapeHtml(t.name)}</span>${t.pn ? `<span class="item-pn">&nbsp;· ${escapeHtml(t.pn)}</span>` : ''}</div>
@@ -1047,9 +1064,11 @@ function renderMergedTool(t, cardRefs) {
     </div>`;
 }
 
-function renderMergedConsumable(c, cardRefs) {
+function renderMergedConsumable(c, cardRefs, key) {
+  const included = isItemIncluded(key);
   return `
-    <div class="item flag-checked">
+    <div class="item ${included ? 'flag-checked' : 'ignored'}">
+      <input type="checkbox" ${included ? 'checked' : ''} onchange="toggleItemInclusion(${jsArg(key)})" title="Include in export">
       <div class="item-body">
         <div class="item-main">
           <div><span class="item-name">${escapeHtml(c.name)}</span>${c.pn ? `<span class="item-pn">&nbsp;· ${escapeHtml(c.pn)}</span>` : ''}</div>
@@ -1065,9 +1084,11 @@ function renderMergedConsumable(c, cardRefs) {
     </div>`;
 }
 
-function renderMergedImplicit(m, cardRefs) {
+function renderMergedImplicit(m, cardRefs, key) {
+  const included = isItemIncluded(key);
   return `
-    <div class="item flag-checked">
+    <div class="item ${included ? 'flag-checked' : 'ignored'}">
+      <input type="checkbox" ${included ? 'checked' : ''} onchange="toggleItemInclusion(${jsArg(key)})" title="Include in export">
       <div class="item-body">
         <div class="item-main">
           <div><span class="item-name">${escapeHtml(m.name)}</span></div>
@@ -1166,28 +1187,35 @@ function renderSuggestionsCard(entries) {
 
   const sealantRefs = detectSealantMention(entries);
   if (sealantRefs.length) {
-    const on = suggestionState.sealant.accepted;
+    const onTape = suggestionState.maskingTape.accepted;
     items.push(`
-      <div class="item ${on ? 'flag-checked' : ''}">
+      <div class="item ${onTape ? 'flag-checked' : 'ignored'}">
+        <input type="checkbox" ${onTape ? 'checked' : ''} onchange="toggleSuggestion('maskingTape')">
         <div class="item-body">
-          <div class="item-main">
-            <span class="item-name">🧴 Sealant detected — Masking tape + Protective gloves</span>
-            <button class="btn btn-sm ${on?'btn-primary':'btn-ghost'}" onclick="toggleSuggestion('sealant')">${on ? '✓ Added' : '+ Add'}</button>
-          </div>
-          <div class="item-meta" style="margin-top:6px">Suggested for: ${cardTagsHtml(sealantRefs)} — not extracted from the card, please confirm.</div>
+          <div class="item-main"><span class="item-name">🧴 Masking tape</span></div>
+          <div class="item-meta" style="margin-top:6px">Suggested — sealant detected on: ${cardTagsHtml(sealantRefs)}. Not extracted from the card, please confirm.</div>
+        </div>
+      </div>`);
+    const onGloves = suggestionState.protectiveGloves.accepted;
+    items.push(`
+      <div class="item ${onGloves ? 'flag-checked' : 'ignored'}">
+        <input type="checkbox" ${onGloves ? 'checked' : ''} onchange="toggleSuggestion('protectiveGloves')">
+        <div class="item-body">
+          <div class="item-main"><span class="item-name">🧤 Protective gloves</span></div>
+          <div class="item-meta" style="margin-top:6px">Suggested — sealant detected on: ${cardTagsHtml(sealantRefs)}. Not extracted from the card, please confirm.</div>
         </div>
       </div>`);
   }
 
-  const hydRefs = detectFluidDrain(entries, 'hydraulic');
+const hydRefs = detectFluidDrain(entries, 'hydraulic');
   if (hydRefs.length) {
     const on = suggestionState.hydraulicCans.accepted;
     items.push(`
-      <div class="item ${on ? 'flag-checked' : ''}">
+      <div class="item ${on ? 'flag-checked' : 'ignored'}">
+        <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleSuggestion('hydraulicCans')">
         <div class="item-body">
           <div class="item-main">
-            <span class="item-name">🛢️ Hydraulic fluid drain detected — add replacement cans?</span>
-            <button class="btn btn-sm ${on?'btn-primary':'btn-ghost'}" onclick="toggleSuggestion('hydraulicCans')">${on ? '✓ Added' : '+ Add'}</button>
+            <span class="item-name">🛢️ Hydraulic fluid (replacement cans)</span>
           </div>
           <div style="margin-top:8px"><input type="text" class="hint-input" placeholder="Quantity (e.g. 2 x 1 gal)" value="${escapeHtml(suggestionState.hydraulicCans.qty)}" oninput="setSuggestionQty('hydraulicCans', this.value)"></div>
           <div class="item-meta" style="margin-top:6px">Suggested for: ${cardTagsHtml(hydRefs)} — quantity not given by the AMM, please confirm.</div>
@@ -1199,11 +1227,11 @@ function renderSuggestionsCard(entries) {
   if (oilRefs.length) {
     const on = suggestionState.oilCans.accepted;
     items.push(`
-      <div class="item ${on ? 'flag-checked' : ''}">
+      <div class="item ${on ? 'flag-checked' : 'ignored'}">
+        <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleSuggestion('oilCans')">
         <div class="item-body">
           <div class="item-main">
-            <span class="item-name">🛢️ Oil drain detected — add replacement cans?</span>
-            <button class="btn btn-sm ${on?'btn-primary':'btn-ghost'}" onclick="toggleSuggestion('oilCans')">${on ? '✓ Added' : '+ Add'}</button>
+            <span class="item-name">🛢️ Oil (replacement cans)</span>
           </div>
           <div style="margin-top:8px"><input type="text" class="hint-input" placeholder="Quantity (e.g. 4 x 1 qt)" value="${escapeHtml(suggestionState.oilCans.qty)}" oninput="setSuggestionQty('oilCans', this.value)"></div>
           <div class="item-meta" style="margin-top:6px">Suggested for: ${cardTagsHtml(oilRefs)} — quantity not given by the AMM, please confirm.</div>
@@ -1362,7 +1390,8 @@ function renderScanWidget(key, nodeId, scan) {
       <div class="mini-tab ${mode==='paste'?'active':''}" onclick="setSubScanMode(${keyAttr}, 'paste')">📋 Paste text</div>
     </div>
     ${mode === 'pdf' ? `
-      <input type="file" accept="application/pdf" id="subpdf_${nodeId}" onchange="onSubPdfChosen(${keyAttr}, event)">
+      <input type="file" accept="application/pdf" id="subpdf_${nodeId}" onchange="onSubPdfChosen(${keyAttr}, event)" style="display:none">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('subpdf_${nodeId}').click()">📎 Choose file</button>
       <div style="font-size:12px;color:var(--muted);margin-top:6px">${scan.pdfFileName ? '📎 ' + escapeHtml(scan.pdfFileName) : ''}</div>
     ` : `
       <textarea id="subtext_${nodeId}" placeholder="Paste this sub-task's AMM text here…" oninput="onSubTextInput(${keyAttr}, this.value)" style="min-height:100px">${escapeHtml(scan.pastedText || '')}</textarea>
@@ -1477,9 +1506,9 @@ function exportSelection() {
   const ownRefs = new Set(entries.map(e => normalizeRef(e.cardRef)));
   const payload = {
     cards: entries.map(e => ({ card_ref: e.cardRef, card_title: e.cardTitle })),
-    tools: dedupeBy(flat('tools'), i => sessKey(i.name, i.pn)),
-    consumables: dedupeBy(flat('consumables'), i => sessKey(i.name, i.pn)),
-    implicit_materials: dedupeBy(flat('implicit_materials'), i => sessKey(i.name)),
+    tools: dedupeBy(flat('tools'), i => sessKey(i.name, i.pn)).filter(i => isItemIncluded(sessKey(i.name, i.pn))),
+    consumables: dedupeBy(flat('consumables'), i => sessKey(i.name, i.pn)).filter(i => isItemIncluded(sessKey(i.name, i.pn))),
+    implicit_materials: dedupeBy(flat('implicit_materials'), i => sessKey(i.name)).filter(i => isItemIncluded(sessKey(i.name))),
     access_panels: dedupeBy(flat('access_panels'), i => sessKey(i.panel_id)),
     safety_notices: dedupeBy(flat('safety_notices'), i => sessKey(i.kind, (i.text||'').slice(0,120))),
     related_tasks: dedupeBy(flat('related_tasks').filter(t => !ownRefs.has(normalizeRef(t.ref))), i => sessKey(i.ref || i.title))
@@ -1495,8 +1524,10 @@ function exportSelection() {
   // tools/consumables above so exported data still distinguishes "read off
   // the card" from "recommended by a rule".
   payload.suggested_items = [];
-  if (suggestionState.sealant.accepted) {
+  if (suggestionState.maskingTape.accepted) {
     payload.suggested_items.push({ type: 'consumable', name: 'Masking tape', suggested: true, reason: 'Sealant detected on card' });
+  }
+  if (suggestionState.protectiveGloves.accepted) {  
     payload.suggested_items.push({ type: 'tool', name: 'Protective gloves', suggested: true, reason: 'Sealant detected on card' });
   }
   if (suggestionState.hydraulicCans.accepted) {
