@@ -161,6 +161,7 @@
     <div id="model-warning-root" class="status show err" style="display:none;margin-top:8px"></div>
     <div id="esd-warning-root" class="status show warn" style="display:none;margin-top:8px"></div>
     <div id="gas-warning-root" style="display:none;margin-top:8px"></div>
+    <div id="applicability-warning-root" style="display:none;margin-top:8px"></div>
   </div>
 
   <div class="card" id="already-done-card" style="display:none">
@@ -368,7 +369,7 @@ const GAS_TYPE_LABEL = { oxygen: 'Oxygen', nitrogen_hp: 'Nitrogen High Pressure'
 // gaz pour les cas où le titre le dit déjà clairement (avant même un scan).
 const NON_GAS_ATA12_TITLE_PATTERNS = [
   /hydraulic/i, /reservoir/i, /\boil\b/i, /lubrication/i,
-  /water/i, /waste/i, /lavatory/i, /toilet/i, /tire/i, /wheel/i
+  /water/i, /waste/i, /lavatory/i, /toilet/i
 ];
 
 function detectGasTypeFromRef(ref, title) {
@@ -919,15 +920,22 @@ function canonicalizePn(pn) {
 function mergeSessionLeafFuzzy(items, nameOf, pnOf) {
   const groups = [];
   const byKey = new Map();
+  const addCitation = (g, cardRef, stepRef) => {
+    if (!stepRef) return;
+    const citKey = sessKey(cardRef, stepRef);
+    if (!g.citations.some(c => sessKey(c.cardRef, c.step_reference) === citKey)) g.citations.push({ cardRef, step_reference: stepRef });
+  };
   for (const { cardRef, item } of items) {
     const key = sessKey(canonicalizeText(nameOf(item)), pnOf ? canonicalizePn(pnOf(item)) : '');
     if (!key) continue;
     if (!byKey.has(key)) {
-      const g = { item, cardRefs: new Set(), key };
+      const g = { item, cardRefs: new Set(), citations: [], key };
       byKey.set(key, g);
       groups.push(g);
     }
-    byKey.get(key).cardRefs.add(cardRef);
+    const g = byKey.get(key);
+    g.cardRefs.add(cardRef);
+    addCitation(g, cardRef, item.step_reference);
   }
 
   const used = new Array(groups.length).fill(false);
@@ -944,20 +952,20 @@ function mergeSessionLeafFuzzy(items, nameOf, pnOf) {
       const pnCompatible = !pnA || !pnB || pnA === pnB;
       if (!pnCompatible) continue;
       if (!namesOverlapSignificantly(nameOf(base.item), nameOf(other.item))) continue;
-      // Keep whichever entry carries the most information (a PN beats no
-      // PN; between two with/without a PN, keep the more descriptive name).
       const aHasPn = !!(pnOf && pnOf(base.item));
       const bHasPn = !!(pnOf && pnOf(other.item));
       const preferOther = (bHasPn && !aHasPn) ||
         (bHasPn === aHasPn && (nameOf(other.item) || '').length > (nameOf(base.item) || '').length);
       if (preferOther) base.item = other.item;
       other.cardRefs.forEach(r => base.cardRefs.add(r));
+      other.citations.forEach(c => addCitation(base, c.cardRef, c.step_reference));
       used[j] = true;
     }
     merged.push(base);
   }
   merged.sort((a, b) => (nameOf(a.item) || '').localeCompare(nameOf(b.item) || ''));
   return merged;
+}turn merged;
 }
 
 function computeMergeKey(cat, item) {
@@ -1130,7 +1138,7 @@ function buildScopedData(fullData, reasoningResult) {
 // filtré si l'IA l'avait exclue. Fonctionne pareil sur n'importe quelle
 // carte AMM, puisque ce sont des libellés de section standards, pas des
 // numéros de step propres à une carte en particulier.
-const ALWAYS_INCLUDE_STEP_PATTERN = /preliminary requirements|safety conditions|requirements after job completion|pre-operation|post-operation/i;
+const ALWAYS_INCLUDE_STEP_PATTERN = /preliminary requirements|safety conditions|requirements after job completion|pre-operation|post-operation|support equipment|material required/i;
 
 function forceIncludeAlwaysApplicableItems(fullData, scopedResult) {
   const CATS = ['tools', 'consumables', 'implicit_materials', 'access_panels', 'safety_notices', 'related_tasks'];
@@ -1194,9 +1202,31 @@ async function analyzeAmm() {
     rootResult = verified;
     registerKnownCard(verified.card_ref, verified.card_title);
     renderModelWarning('model-warning-root', verified.aircraft_model, expectedModel, 'the project aircraft');
+
+    // Same applicability-table tracking as sub-task scans, keyed by this
+    // card's own ref, so the technician confirms the component(s) before
+    // the full unfiltered card content lands in the merged lists.
+    const rootRefNorm = normalizeRef(verified.card_ref);
+    const rootTable = verified.applicability_table || [];
+    taskScans[rootRefNorm] = {
+      status: 'done',
+      data: verified,
+      sourceText: ammText,
+      applicabilityMatch: rootTable.length ? matchApplicabilityTable(rootTable, verified.card_title) : null,
+      applicabilityPickerOpen: false,
+      applicabilityPickerSelected: new Set(),
+      applicabilityPickerSearch: '',
+      scopedData: null,
+      scopeReasoningStatus: null
+    };
+
     addToSessionCards(verified);
     renderEsdWarning('esd-warning-root', verified.esd_warning, verified.esd_note);
     renderAll();
+    if (taskScans[rootRefNorm].applicabilityMatch && !taskScans[rootRefNorm].applicabilityMatch.ambiguous) {
+      await runScopeReasoningForScan(rootRefNorm);
+      renderAll();
+    }
     setStatus('done', `✓ Analysis complete${verified.card_ref ? ' — card ' + escapeHtml(verified.card_ref) : ''}. Review items flagged "needs review" before sending.`);
   } catch (e) {
     setStep('step-extract', null); setStep('step-verify', null);
@@ -1274,8 +1304,16 @@ function collectAllScannedData() {
     seen.add(ref);
     out.push({ cardRef: data.card_ref || fallbackRef, cardTitle: data.card_title || fallbackTitle, data });
   }
-  sessionCards.forEach(c => addEntry(c, c.card_ref, c.card_title));
-  if (rootResult) addEntry(rootResult, rootResult.card_ref, rootResult.card_title);
+  sessionCards.forEach(c => {
+    const refNorm = normalizeRef(c.card_ref);
+    const rs = taskScans[refNorm];
+    if (rs && (rs.data.applicability_table || []).length) {
+      if (scanNeedsApplicabilityConfirmation(rs)) return; // attend la confirmation du composant
+      addEntry(rs.scopedData || rs.data, c.card_ref, c.card_title);
+      return;
+    }
+    addEntry(c, c.card_ref, c.card_title);
+  });
   Object.keys(taskScans).forEach(refKey => {
     if (ignoredTasks[refKey]) return; // technician explicitly excluded this task
     const scan = taskScans[refKey];
@@ -1322,9 +1360,22 @@ function renderAll() {
 
   if (rootResult) {
     renderGasWarningRoot('gas-warning-root', rootResult.card_ref, rootResult);
+    const rootRefNorm = normalizeRef(rootResult.card_ref);
+    const rootScan = taskScans[rootRefNorm];
+    const applEl = document.getElementById('applicability-warning-root');
+    if (applEl) {
+      if (rootScan && (rootScan.data.applicability_table || []).length) {
+        applEl.style.display = 'block';
+        applEl.innerHTML = renderApplicabilityZone(rootRefNorm, rootScan);
+      } else {
+        applEl.style.display = 'none'; applEl.innerHTML = '';
+      }
+    }
   } else {
     const gwEl = document.getElementById('gas-warning-root');
     if (gwEl) { gwEl.style.display = 'none'; gwEl.innerHTML = ''; }
+    const applEl = document.getElementById('applicability-warning-root');
+    if (applEl) { applEl.style.display = 'none'; applEl.innerHTML = ''; }
   }
   renderSoftwareLoadingCard(entries);
 
@@ -1361,11 +1412,13 @@ function renderMergedList(listId, countId, merged, renderer) {
   document.getElementById(countId).textContent = merged.length;
   const el = document.getElementById(listId);
   if (!merged.length) { el.innerHTML = `<div class="empty">None identified.</div>`; return; }
-  el.innerHTML = merged.map(m => renderer(m.item, m.cardRefs, m.key)).join('');
+  el.innerHTML = merged.map(m => renderer(m.item, m.cardRefs, m.key, m.citations)).join('');
 }
 
-function renderMergedTool(t, cardRefs, key) {
+function renderMergedTool(t, cardRefs, key, citations) {
   const included = isItemIncluded(key);
+  const refs = (citations && citations.length) ? citations : (t.step_reference ? [{ cardRef: '', step_reference: t.step_reference }] : []);
+  const refsHtml = refs.map(c => `<span class="step-ref">📍 ${c.cardRef ? `<b>${escapeHtml(c.cardRef)}:</b> ` : ''}${escapeHtml(c.step_reference)}</span>`).join('');
   return `
     <div class="item ${included ? 'flag-checked' : 'ignored'}">
       <input type="checkbox" ${included ? 'checked' : ''} onchange="toggleItemInclusion(${jsArg(key)})" title="Include in export">
@@ -1377,14 +1430,16 @@ function renderMergedTool(t, cardRefs, key) {
             <input type="text" class="hint-input" style="width:80px" value="${escapeHtml(t.qty||'')}" oninput="setItemQty(${jsArg(key)},'tools',this.value)">
           </div>
         </div>
-        ${t.step_reference ? `<div class="step-ref">📍 ${escapeHtml(t.step_reference)}</div>` : ''}
+        ${refsHtml ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px">${refsHtml}</div>` : ''}
         <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
       </div>
     </div>`;
 }
 
-function renderMergedConsumable(c, cardRefs, key) {
+function renderMergedConsumable(c, cardRefs, key, citations) {
   const included = isItemIncluded(key);
+  const refs = (citations && citations.length) ? citations : (c.step_reference ? [{ cardRef: '', step_reference: c.step_reference }] : []);
+  const refsHtml = refs.map(r => `<span class="step-ref">📍 ${r.cardRef ? `<b>${escapeHtml(r.cardRef)}:</b> ` : ''}${escapeHtml(r.step_reference)}</span>`).join('');
   return `
     <div class="item ${included ? 'flag-checked' : 'ignored'}">
       <input type="checkbox" ${included ? 'checked' : ''} onchange="toggleItemInclusion(${jsArg(key)})" title="Include in export">
@@ -1397,7 +1452,7 @@ function renderMergedConsumable(c, cardRefs, key) {
             ${c.note_ipc ? `<span class="badge badge-ipc">📘 See IPC</span>` : ''}
           </div>
         </div>
-        ${c.step_reference ? `<div class="step-ref">📍 ${escapeHtml(c.step_reference)}</div>` : ''}
+        ${refsHtml ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px">${refsHtml}</div>` : ''}
         ${c.note_ipc ? `<div class="note-ipc">📘 <span><b>Refer to the IPC</b> — ${escapeHtml(c.ipc_note_text || 'no P/N given in this card, refer to the IPC.')}</span></div>` : ''}
         <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
       </div>
@@ -1924,6 +1979,7 @@ function onSubPdfChosen(key, ev) {
   const r = new FileReader();
   r.onload = () => { taskScans[key].pdfB64 = r.result.split(',')[1]; };
   r.readAsDataURL(f);
+  renderAll();
 }
 
 function onSubTextInput(key, val) {
