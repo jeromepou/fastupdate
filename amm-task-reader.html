@@ -307,7 +307,8 @@ let suggestionState = {
   maskingTape: { accepted: false },
   protectiveGloves: { accepted: false },
   hydraulicCans: { accepted: false, qty: '' },
-  oilCans: { accepted: false, qty: '' }
+  oilCans: { accepted: false, qty: '' },
+  softwareLoadingPcLocation: { accepted: false }
 };
 
 const expectedModel = new URLSearchParams(location.search).get('model') || '';
@@ -536,6 +537,8 @@ If any related task you find matches one of these refs, still include it but set
 
 11. FLUID DRAIN (hydraulic/oil replenishment need): read the full procedure. Set "fluid_drain.hydraulic" to true ONLY if the procedure explicitly drains, removes, or empties a quantity of hydraulic fluid from a reservoir/system/component (not merely checking or topping off a level). Set "fluid_drain.oil" to true under the same rule for engine/system/gearbox oil. If either is true, "fluid_drain.note" briefly states which system/component (e.g. "Main hydraulic system reservoir drained per Step 6"), else "". This exists so the technician can be prompted to bring replacement fluid — it does not replace anything already captured in tools/consumables/implicit_materials.
 
+12. SOFTWARE LOADING: read the full procedure (steps, notes, Preliminary Requirements, Requirements After Job Completion, Reference Material). Set "software_loading.required" to true if the procedure explicitly requires loading, uploading, or updating aircraft system software / databases / operational program — via a Data Loader, a laptop/PC connected to the aircraft, or loadable media such as CD-ROM, DVD, or USB. This includes cases where the card simply cites another AMM task by name/reference for this purpose, such as "PlaneView System - Load Software, 20-22-01", "Modular Avionics Unit / Modular Radio Cabinet - Software Loading (Target Load), 20-22-00, Maintenance Practices", or "...Software Loading (Full Load), 20-22-00, Maintenance Practices" — these ARE software loading regardless of how tersely they are cited (even as a single line in Preliminary Requirements or Requirements After Job Completion). Do not set true just because a system happens to be electronic or the word "software" appears informationally. If true, "software_loading.note" briefly states what is loaded and how (e.g. "Cites PlaneView System - Load Software, 20-22-01 in Preliminary Requirements"), else "". This exists to remind the technician that the loading PC and its media are normally stored on board the aircraft, so the customer/crew may need to be asked where they are kept.
+
 Do not invent quantities, part numbers, task numbers, or step references. If a step_reference is genuinely not determinable, use "".
 
 Reply ONLY with valid JSON, no markdown, in this exact shape:
@@ -547,6 +550,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
   "esd_note": "",
   "gas_type": "oxygen|nitrogen_hp|nitrogen_lp|none",
   "fluid_drain": {"hydraulic": false, "oil": false, "note": ""},
+  "software_loading": {"required": false, "note": ""},
   "safety_notices": [{"kind":"warning|caution|note","text":"","step_references":[]}],
   "tools": [{"name":"","pn":"","qty":"","step_reference":""}],
   "consumables": [{"name":"","pn":"","qty":"","note_ipc":false,"ipc_note_text":"","step_reference":""}],
@@ -584,6 +588,8 @@ For EACH item in tools, consumables, implicit_materials, access_panels, related_
 
 - For "fluid_drain": confirm "hydraulic"/"oil" are true only when the source explicitly drains/removes a quantity of that fluid (not just checking or topping off a level). Fix "note" to be accurate and concise, or clear it if the flag is false.
 
+- For "software_loading": confirm "required" is true only when the source explicitly calls for loading/updating software, a database, or an operational program via a Data Loader, PC, or media (CD-ROM/DVD/USB) — including terse citations of another AMM task such as "PlaneView System - Load Software, 20-22-01" or "Modular Avionics Unit / Modular Radio Cabinet - Software Loading (Target Load / Full Load), 20-22-00". Fix "note" to be accurate and concise, or clear it if the flag is false.
+
 - For safety_notices: verify every WARNING/CAUTION/NOTE box on the card is captured. STRICTLY merge duplicates: if the same text appears in multiple sub-sections, it must be ONE entry with all locations in "step_references" — if the first pass split an identical text into separate entries, merge them back into one. Fix "kind" if mislabeled. Confirm "text" is copied faithfully, not paraphrased or shortened. Add any missed box; remove any that isn't an actual WARNING/CAUTION/NOTE box.
 
 Return a CORRECTED version of the full JSON (same shape as input, each item additionally carrying "needs_review": boolean and "review_note": string, empty if none, and keeping/fixing "step_reference" on every item), plus a top-level "verification_summary" array of strings describing what you actually checked/changed/removed in THIS pass. Only list actions genuinely reflected in the returned JSON.
@@ -597,6 +603,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
   "esd_note": "",
   "gas_type": "oxygen|nitrogen_hp|nitrogen_lp|none",
   "fluid_drain": {"hydraulic": false, "oil": false, "note": ""},
+  "software_loading": {"required": false, "note": ""},
   "safety_notices": [{"kind":"warning|caution|note","text":"","step_references":[],"needs_review":false,"review_note":""}],
   "tools": [{"name":"","pn":"","qty":"","step_reference":"","needs_review":false,"review_note":""}],
   "consumables": [{"name":"","pn":"","qty":"","note_ipc":false,"ipc_note_text":"","step_reference":"","needs_review":false,"review_note":""}],
@@ -894,7 +901,7 @@ function clearSession() {
   rootResult = null;
   fboRequests = {};
   itemSelection = {};
-  suggestionState = { maskingTape: { accepted: false }, protectiveGloves: { accepted: false }, hydraulicCans: { accepted: false, qty: '' }, oilCans: { accepted: false, qty: '' } };
+  suggestionState = { maskingTape: { accepted: false }, protectiveGloves: { accepted: false }, hydraulicCans: { accepted: false, qty: '' }, oilCans: { accepted: false, qty: '' }, softwareLoadingPcLocation: { accepted: false } };
   renderKnownCards();
   resetResults();
 }
@@ -944,6 +951,7 @@ async function runScan(text, knownRefs) {
   verified.implicit_materials = reconcileImplicitMaterials(verified.implicit_materials, verified.tools, verified.consumables);
   verified.gas_type = verified.gas_type || 'none';
   verified.fluid_drain = verified.fluid_drain || { hydraulic: false, oil: false, note: '' };
+  verified.software_loading = verified.software_loading || { required: false, note: '' };
   return verified;
 }
 
@@ -1278,6 +1286,45 @@ function detectFluidDrain(entries, kind) {
   return refs;
 }
 
+// Filet de sécurité : certaines cartes ne mentionnent le chargement logiciel
+// que comme une ligne sèche en related_tasks (ex: citée en Preliminary
+// Requirements ou Requirements After Job Completion), sans que l'IA le
+// reformule explicitement dans le texte de LA CARTE elle-même. On rescanne
+// donc aussi les related_tasks déjà extraits, par titre ET par référence
+// connus — indépendamment du jugement de l'IA sur software_loading.required.
+const SOFTWARE_LOADING_TITLE_PATTERNS = [
+  /planeview system\s*-?\s*load software/i,
+  /modular avionics unit.*software loading/i,
+  /modular radio cabinet.*software loading/i,
+  /software loading/i,
+  /load software/i
+];
+const SOFTWARE_LOADING_REF_PATTERNS = [/^20-22-00$/, /^20-22-01$/];
+function relatedTaskIsSoftwareLoading(task) {
+  const hay = ((task.title || '') + ' ' + (task.ref || '')).toLowerCase();
+  if (SOFTWARE_LOADING_TITLE_PATTERNS.some(re => re.test(hay))) return true;
+  return SOFTWARE_LOADING_REF_PATTERNS.some(re => re.test(normalizeRef(task.ref)));
+}
+
+// Same principle as detectFluidDrain: relies on "software_loading" filled by
+// the AI from the full procedure text (category 12 of the extraction prompt),
+// PLUS a client-side backstop over related_tasks (see relatedTaskIsSoftwareLoading)
+// for cases cited only as a terse AMM cross-reference.
+function detectSoftwareLoading(entries) {
+  const out = [];
+  entries.forEach(e => {
+    if (e.data.software_loading && e.data.software_loading.required) {
+      out.push({ cardRef: e.cardRef, note: e.data.software_loading.note || '' });
+    }
+    (e.data.related_tasks || []).forEach(t => {
+      if (relatedTaskIsSoftwareLoading(t)) {
+        out.push({ cardRef: e.cardRef, note: 'Cites ' + (t.ref || '') + (t.ref && t.title ? ' — ' : '') + (t.title || '') });
+      }
+    });
+  });
+  return out;
+}
+
 function toggleSuggestion(key) {
   suggestionState[key].accepted = !suggestionState[key].accepted;
   renderAll();
@@ -1342,6 +1389,22 @@ const hydRefs = detectFluidDrain(entries, 'hydraulic');
           </div>
           <div style="margin-top:8px"><input type="text" class="hint-input" placeholder="Quantity (e.g. 4 x 1 qt)" value="${escapeHtml(suggestionState.oilCans.qty)}" oninput="setSuggestionQty('oilCans', this.value)"></div>
           <div class="item-meta" style="margin-top:6px">Suggested for: ${cardTagsHtml(oilRefs)} — quantity not given by the AMM, please confirm.</div>
+        </div>
+      </div>`);
+  }
+
+  const swLoads = detectSoftwareLoading(entries);
+  if (swLoads.length) {
+    const on = suggestionState.softwareLoadingPcLocation.accepted;
+    const swRefs = new Set(swLoads.map(s => s.cardRef));
+    const swNotes = swLoads.filter(s => s.note).map(s => escapeHtml(s.note)).join(' · ');
+    items.push(`
+      <div class="item ${on ? 'flag-checked' : 'ignored'}">
+        <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleSuggestion('softwareLoadingPcLocation')">
+        <div class="item-body">
+          <div class="item-main"><span class="item-name">💾 Ask customer: Data Loader PC &amp; CD-ROM location</span></div>
+          ${swNotes ? `<div class="item-meta" style="margin-top:4px">${swNotes}</div>` : ''}
+          <div class="item-meta" style="margin-top:6px">Software loading detected on: ${cardTagsHtml(swRefs)}. Will add a note to the customer message asking where the Data Loader PC and loading media are stored on board — please confirm.</div>
         </div>
       </div>`);
   }
@@ -1699,6 +1762,15 @@ function exportSelection() {
   }
   if (suggestionState.oilCans.accepted) {
     payload.suggested_items.push({ type: 'consumable', name: 'Oil (replacement cans)', qty: suggestionState.oilCans.qty || '', suggested: true, reason: 'Oil drain detected' });
+  }
+  if (suggestionState.softwareLoadingPcLocation.accepted) {
+    payload.suggested_items.push({
+      type: 'customer_message_note',
+      name: 'Ask customer: Data Loader PC & CD-ROM storage location',
+      suggested: true,
+      reason: 'Software loading required by the procedure',
+      message_hint: 'Where is the Data Loader PC stored on board, and where are the loading CD-ROMs/media kept?'
+    });
   }
 
   if (window.parent && window.parent !== window) {
