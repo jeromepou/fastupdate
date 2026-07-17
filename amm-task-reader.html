@@ -783,6 +783,109 @@ function mergeSessionLeaf(items, keyFn) {
   return Array.from(map.values());
 }
 
+// Normalizes a name/PN string so items that are the SAME text but came
+// back from the AI with tiny formatting differences (extra space, en-dash
+// vs hyphen, double space…) still produce the same merge key — this alone
+// fixes "identical tool listed twice" cases like a torque wrench that
+// appears in two different cards' Support Equipment tables.
+function canonicalizeText(s) {
+  return (s || '')
+    .toString()
+    .replace(/[\u2010-\u2015]/g, '-')   // en/em dash variants -> hyphen
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+// Loose PN comparison: ignores a trailing "or equivalent" so the same part
+// number with slightly different trailing wording still compares equal.
+function canonicalizePn(pn) {
+  return canonicalizeText(pn).replace(/\s*or\s*equival?ent\.?\s*$/i, '').trim();
+}
+
+// Groups items first by an exact canonical key (handles pure formatting
+// noise), then makes a conservative second pass merging groups that are
+// almost certainly the SAME physical item worded slightly differently by
+// the AI (e.g. "Container, phosphate ester hydraulic fluid resistant" vs
+// "Container, hydraulic fluid resistant") — only when their part numbers
+// agree (or one/both have none) AND their names overlap heavily, using the
+// same namesOverlapSignificantly() logic already used to reconcile
+// tools/consumables/implicit materials against each other. Anything left
+// unmerged is sorted by name afterwards so near-duplicates that couldn't
+// be safely auto-merged still sit right next to each other for a quick
+// manual check, instead of being scattered through the list.
+function mergeSessionLeafFuzzy(items, nameOf, pnOf) {
+  const groups = [];
+  const byKey = new Map();
+  for (const { cardRef, item } of items) {
+    const key = sessKey(canonicalizeText(nameOf(item)), pnOf ? canonicalizePn(pnOf(item)) : '');
+    if (!key) continue;
+    if (!byKey.has(key)) {
+      const g = { item, cardRefs: new Set(), key };
+      byKey.set(key, g);
+      groups.push(g);
+    }
+    byKey.get(key).cardRefs.add(cardRef);
+  }
+
+  const used = new Array(groups.length).fill(false);
+  const merged = [];
+  for (let i = 0; i < groups.length; i++) {
+    if (used[i]) continue;
+    const base = groups[i];
+    used[i] = true;
+    for (let j = i + 1; j < groups.length; j++) {
+      if (used[j]) continue;
+      const other = groups[j];
+      const pnA = pnOf ? canonicalizePn(pnOf(base.item)) : '';
+      const pnB = pnOf ? canonicalizePn(pnOf(other.item)) : '';
+      const pnCompatible = !pnA || !pnB || pnA === pnB;
+      if (!pnCompatible) continue;
+      if (!namesOverlapSignificantly(nameOf(base.item), nameOf(other.item))) continue;
+      // Keep whichever entry carries the most information (a PN beats no
+      // PN; between two with/without a PN, keep the more descriptive name).
+      const aHasPn = !!(pnOf && pnOf(base.item));
+      const bHasPn = !!(pnOf && pnOf(other.item));
+      const preferOther = (bHasPn && !aHasPn) ||
+        (bHasPn === aHasPn && (nameOf(other.item) || '').length > (nameOf(base.item) || '').length);
+      if (preferOther) base.item = other.item;
+      other.cardRefs.forEach(r => base.cardRefs.add(r));
+      used[j] = true;
+    }
+    merged.push(base);
+  }
+  merged.sort((a, b) => (nameOf(a.item) || '').localeCompare(nameOf(b.item) || ''));
+  return merged;
+}
+
+// Builds the merged/deduplicated view used by BOTH the on-screen lists and
+// the export, so what you see is exactly what gets sent — no separate
+// merge logic that could quietly drift apart between display and export.
+function getMergedCategories(entries) {
+  const flat = (kind) => entries.flatMap(e => (e.data[kind] || []).map(item => ({ cardRef: e.cardRef, item })));
+
+  const toolsM = mergeSessionLeafFuzzy(flat('tools'), i => i.name, i => i.pn);
+  const consM  = mergeSessionLeafFuzzy(flat('consumables'), i => i.name, i => i.pn);
+  const implM  = mergeSessionLeafFuzzy(flat('implicit_materials'), i => i.name, null);
+  const accM   = mergeSessionLeaf(flat('access_panels'), i => sessKey(i.panel_id));
+  const safM   = mergeSessionLeaf(flat('safety_notices'), i => sessKey(i.kind, (i.text||'').slice(0,120)));
+  const SAFETY_KIND_ORDER = { warning: 0, caution: 1, note: 2 };
+  safM.sort((a, b) => (SAFETY_KIND_ORDER[a.item.kind] ?? 3) - (SAFETY_KIND_ORDER[b.item.kind] ?? 3));
+
+  // Only drop a related task if it's a card analyzed directly as its OWN
+  // root card ("Analyze this card") — already shown in the known-cards
+  // strip above. A related task scanned in-place via its own tree node
+  // ("Scan this task") stays in this list so renderTaskNode() can show
+  // its "✓ Scanned" state instead of the node just vanishing.
+  const rootRefs = new Set(sessionCards.map(c => normalizeRef(c.card_ref)));
+  if (rootResult) rootRefs.add(normalizeRef(rootResult.card_ref));
+  const tasksM = mergeSessionLeaf(
+    flat('related_tasks').filter(({item}) => !rootRefs.has(normalizeRef(item.ref))),
+    i => sessKey(i.ref || i.title)
+  );
+
+  return { toolsM, consM, implM, accM, safM, tasksM };
+}
+
 function clearSession() {
   if ((sessionCards.length || rootResult) && !confirm('Clear the whole session (' + sessionCards.length + ' card(s))? This cannot be undone.')) return;
   sessionCards = [];
@@ -969,9 +1072,26 @@ function collectAllScannedData() {
   sessionCards.forEach(c => addEntry(c, c.card_ref, c.card_title));
   if (rootResult) addEntry(rootResult, rootResult.card_ref, rootResult.card_title);
   Object.values(taskScans).forEach(scan => {
-    if (scan && scan.status === 'done' && scan.data) addEntry(scan.data, scan.data.card_ref, scan.data.card_title);
+    if (scan && scan.status === 'done' && scan.data && !scanNeedsApplicabilityConfirmation(scan)) {
+      addEntry(scan.data, scan.data.card_ref, scan.data.card_title);
+    }
   });
   return out;
+}
+
+// True while a scanned sub-task's own document has a component -> scope
+// table (see category 9 of the extraction prompt) but the technician
+// hasn't yet told us which component(s) they actually worked on. While
+// true, this sub-task's tools/consumables/related tasks/etc. are held
+// back from the merged session view — showing them immediately, before
+// the technician has narrowed down the part, was misleading (the full
+// procedure's tools aren't necessarily what's needed for one component).
+function scanNeedsApplicabilityConfirmation(scan) {
+  const table = (scan.data && scan.data.applicability_table) || [];
+  if (!table.length) return false;
+  const m = scan.applicabilityMatch;
+  if (!m || m.ambiguous || !m.matches || !m.matches.length) return true;
+  return false;
 }
 
 function renderAll() {
@@ -980,27 +1100,7 @@ function renderAll() {
   document.getElementById('results').style.display = hasAnything ? 'block' : 'none';
   if (!hasAnything) return;
 
-  const flat = (kind) => entries.flatMap(e => (e.data[kind] || []).map(item => ({ cardRef: e.cardRef, item })));
-
-  const toolsM = mergeSessionLeaf(flat('tools'), i => sessKey(i.name, i.pn));
-  const consM  = mergeSessionLeaf(flat('consumables'), i => sessKey(i.name, i.pn));
-  const implM  = mergeSessionLeaf(flat('implicit_materials'), i => sessKey(i.name));
-  const accM   = mergeSessionLeaf(flat('access_panels'), i => sessKey(i.panel_id));
-  const safM   = mergeSessionLeaf(flat('safety_notices'), i => sessKey(i.kind, (i.text||'').slice(0,120)));
-  const SAFETY_KIND_ORDER = { warning: 0, caution: 1, note: 2 };
-  safM.sort((a, b) => (SAFETY_KIND_ORDER[a.item.kind] ?? 3) - (SAFETY_KIND_ORDER[b.item.kind] ?? 3));
-
-  // Only drop a related task if it's a card analyzed directly as its OWN
-  // root card ("Analyze this card") — already shown in the known-cards
-  // strip above. A related task scanned in-place via its own tree node
-  // ("Scan this task") stays in this list so renderTaskNode() can show
-  // its "✓ Scanned" state instead of the node just vanishing.
-  const rootRefs = new Set(sessionCards.map(c => normalizeRef(c.card_ref)));
-  if (rootResult) rootRefs.add(normalizeRef(rootResult.card_ref));
-  const tasksM = mergeSessionLeaf(
-    flat('related_tasks').filter(({item}) => !rootRefs.has(normalizeRef(item.ref))),
-    i => sessKey(i.ref || i.title)
-  );
+  const { toolsM, consM, implM, accM, safM, tasksM } = getMergedCategories(entries);
 
   renderMergedList('tools-list', 'tools-count', toolsM, renderMergedTool);
   renderMergedList('consumables-list', 'consumables-count', consM, renderMergedConsumable);
@@ -1033,6 +1133,13 @@ function renderAll() {
     summaryCard.style.display = 'none';
   }
   document.getElementById('raw-debug').textContent = JSON.stringify(entries.map(e => e.data), null, 2);
+
+  Object.keys(taskScans).forEach(k => {
+    const scan = taskScans[k];
+    if (scan && scan.applicabilityPickerOpen && scan.applicabilityPickerSearch) {
+      filterApplicabilityOptions(k, scan.applicabilityPickerSearch);
+    }
+  });
 }
 
 function cardTagsHtml(cardRefs) {
@@ -1292,7 +1399,11 @@ function renderTaskNode(t, cardRefs) {
         <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="openScanWidget(${keyArg}, ${titleArg})">↺ Try again</button>
       </div>`;
   } else if (scan.status === 'done' && scan.data) {
-    scanZoneHtml = `<div class="task-scan-zone"><span style="font-size:12px;color:var(--ok)">✓ Scanned — its items are merged into the lists above.</span> <button class="btn btn-ghost btn-sm" onclick="rescanTask(${keyArg}, ${titleArg})">↺ Re-scan</button>${renderApplicabilityZone(key, scan)}</div>`;
+    const pending = scanNeedsApplicabilityConfirmation(scan);
+    const statusHtml = pending
+      ? `<span style="font-size:12px;color:var(--warn)">⏳ Scanned — select the applicable component(s) below before its tools/parts are added to the lists above.</span>`
+      : `<span style="font-size:12px;color:var(--ok)">✓ Scanned — its items are merged into the lists above.</span>`;
+    scanZoneHtml = `<div class="task-scan-zone">${statusHtml} <button class="btn btn-ghost btn-sm" onclick="rescanTask(${keyArg}, ${titleArg})">↺ Re-scan</button>${renderApplicabilityZone(key, scan)}</div>`;
   }
 
   return `
@@ -1330,54 +1441,107 @@ function renderApplicabilityZone(key, scan) {
   const table = (scan.data && scan.data.applicability_table) || [];
   if (!table.length) return '';
 
-  const confirmed = (scan.applicabilityMatch && !scan.applicabilityMatch.ambiguous && scan.applicabilityMatch.matches.length === 1)
-    ? scan.applicabilityMatch.matches[0] : null;
+  const confirmedRows = (scan.applicabilityMatch && !scan.applicabilityMatch.ambiguous && scan.applicabilityMatch.matches && scan.applicabilityMatch.matches.length)
+    ? scan.applicabilityMatch.matches : null;
 
-  if (confirmed && !scan.applicabilityPickerOpen) {
+  if (confirmedRows && !scan.applicabilityPickerOpen) {
     return `
       <div class="applic-match">
-        ⚡ <b>Narrowed scope found</b> for <b>${escapeHtml(confirmed.component)}</b> (${escapeHtml(confirmed.table_name || 'components table')}):<br>
-        <span style="font-family:ui-monospace,monospace">${escapeHtml(confirmed.applicable_steps)}</span><br>
-        <span style="font-size:11.5px;opacity:.85">You should not need the full procedure — only the step(s) above, for this specific part. Always confirm against the source card.</span>
-        <div style="margin-top:6px"><button class="btn btn-ghost btn-sm" onclick="openApplicabilityPicker(${jsArg(key)})">Not the right part? Choose again</button></div>
+        ⚡ <b>Narrowed scope found</b> for ${confirmedRows.length > 1 ? 'these ' + confirmedRows.length + ' components' : 'this component'}:
+        ${confirmedRows.map(r => `
+          <div style="margin-top:6px">
+            <b>${escapeHtml(r.component)}</b> <span style="opacity:.75">(${escapeHtml(r.table_name || 'components table')})</span><br>
+            <span style="font-family:ui-monospace,monospace">${escapeHtml(r.applicable_steps)}</span>
+          </div>`).join('')}
+        <div style="font-size:11.5px;opacity:.85;margin-top:6px">You should not need the full procedure — only the step(s) above, for ${confirmedRows.length > 1 ? 'these specific parts' : 'this specific part'}. Always confirm against the source card.</div>
+        <div style="margin-top:6px"><button class="btn btn-ghost btn-sm" onclick="openApplicabilityPicker(${jsArg(key)})">Not the right part(s)? Choose again</button></div>
       </div>`;
   }
 
   if (scan.applicabilityPickerOpen) {
-    const options = table.map((row, i) => `<option value="${i}">${escapeHtml(row.component)} — ${escapeHtml(row.applicable_steps)}</option>`).join('');
+    const selected = scan.applicabilityPickerSelected || new Set();
+    const rowsHtml = table.map((row, i) => `
+      <label class="applic-option-row" data-search="${escapeHtml(canonicalizeText(row.component + ' ' + row.applicable_steps))}" style="display:flex;gap:8px;align-items:flex-start;padding:7px 9px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12.5px">
+        <input type="checkbox" ${selected.has(i) ? 'checked' : ''} onchange="toggleApplicabilityRow(${jsArg(key)}, ${i})" style="margin-top:2px;flex-shrink:0">
+        <span><b>${escapeHtml(row.component)}</b><br><span style="color:var(--muted)">${escapeHtml(row.applicable_steps)}</span></span>
+      </label>`).join('');
     return `
       <div class="applic-pick">
-        ⚠️ <b>This procedure has a components table</b> — pick the exact part that was removed/replaced:
-        <select id="applicpick_${key}">
-          <option value="">— choose the component —</option>
-          ${options}
-        </select>
-        <div style="margin-top:6px"><button class="btn btn-purple btn-sm" onclick="confirmApplicabilityChoice(${jsArg(key)})">Confirm</button></div>
+        ⚠️ <b>This procedure has a components table</b> — select every part that was actually removed/replaced (you can pick more than one if several were done this visit):
+        <input type="text" class="hint-input" placeholder="🔍 Search components…" style="margin-top:6px" value="${escapeHtml(scan.applicabilityPickerSearch || '')}" oninput="onApplicabilitySearchInput(${jsArg(key)}, this.value)">
+        <div style="max-height:220px;overflow:auto;margin-top:8px;border:1px solid var(--border);border-radius:6px;background:#fff" id="applicopts_${key}">
+          ${rowsHtml}
+        </div>
+        <div style="margin-top:6px"><button class="btn btn-purple btn-sm" onclick="confirmApplicabilityChoice(${jsArg(key)})">Confirm selection (${selected.size})</button></div>
       </div>`;
   }
 
   return `
     <div class="applic-pick">
       ⚠️ <b>This procedure has a components table</b> with ${table.length} specific part(s) — the full procedure may be more than what's actually needed here.
-      <div style="margin-top:6px"><button class="btn btn-purple btn-sm" onclick="openApplicabilityPicker(${jsArg(key)})">Find my part in the table</button></div>
+      <div style="margin-top:6px"><button class="btn btn-purple btn-sm" onclick="openApplicabilityPicker(${jsArg(key)})">Find my part(s) in the table</button></div>
     </div>`;
 }
 
 function openApplicabilityPicker(key) {
-  if (!taskScans[key]) return;
-  taskScans[key].applicabilityPickerOpen = true;
+  const scan = taskScans[key];
+  if (!scan) return;
+  scan.applicabilityPickerOpen = true;
+  // Pre-check whatever was already confirmed, so "choose again" starts
+  // from the current selection instead of an empty list.
+  const table = (scan.data && scan.data.applicability_table) || [];
+  const preselect = new Set();
+  if (scan.applicabilityMatch && scan.applicabilityMatch.matches) {
+    scan.applicabilityMatch.matches.forEach(m => {
+      const idx = table.indexOf(m);
+      if (idx >= 0) preselect.add(idx);
+    });
+  }
+  scan.applicabilityPickerSelected = preselect;
+  scan.applicabilityPickerSearch = '';
   renderAll();
+}
+
+function toggleApplicabilityRow(key, idx) {
+  const scan = taskScans[key];
+  if (!scan) return;
+  if (!scan.applicabilityPickerSelected) scan.applicabilityPickerSelected = new Set();
+  const i = parseInt(idx, 10);
+  if (scan.applicabilityPickerSelected.has(i)) scan.applicabilityPickerSelected.delete(i);
+  else scan.applicabilityPickerSelected.add(i);
+  renderAll();
+}
+
+// Live-filters the already-rendered checkbox rows by editing the DOM
+// directly (no renderAll()) so the search input never loses focus while
+// the technician is typing.
+function filterApplicabilityOptions(key, query) {
+  const root = document.getElementById('applicopts_' + key);
+  if (!root) return;
+  const q = canonicalizeText(query);
+  root.querySelectorAll('.applic-option-row').forEach(row => {
+    const hay = row.getAttribute('data-search') || '';
+    row.style.display = (!q || hay.includes(q)) ? 'flex' : 'none';
+  });
+}
+
+function onApplicabilitySearchInput(key, val) {
+  const scan = taskScans[key];
+  if (scan) scan.applicabilityPickerSearch = val;
+  filterApplicabilityOptions(key, val);
 }
 
 function confirmApplicabilityChoice(key) {
   const scan = taskScans[key];
   if (!scan) return;
-  const sel = document.getElementById('applicpick_' + key);
-  const idx = sel ? parseInt(sel.value, 10) : NaN;
   const table = (scan.data && scan.data.applicability_table) || [];
-  if (isNaN(idx) || !table[idx]) { alert('Please choose a component from the list first.'); return; }
-  scan.applicabilityMatch = { matches: [table[idx]], ambiguous: false, manual: true };
+  const selected = scan.applicabilityPickerSelected;
+  if (!selected || !selected.size) { alert('Please select at least one component from the list first.'); return; }
+  const rows = Array.from(selected).sort((a, b) => a - b).map(i => table[i]).filter(Boolean);
+  scan.applicabilityMatch = { matches: rows, ambiguous: false, manual: true };
   scan.applicabilityPickerOpen = false;
+  scan.applicabilityPickerSelected = new Set();
+  scan.applicabilityPickerSearch = '';
   renderAll();
 }
 
