@@ -282,6 +282,10 @@ let knownCards = []; // [{ref, title, addedAt}]
 // matter which card is currently rootResult (or none at all).
 // taskScans[refNorm] = { status, inputMode, pdfB64, pdfFileName, pastedText, data, errorMsg }
 let taskScans = {};
+// ignoredTasks[refNorm] = true -> the technician said "don't scan/include this
+// related task". Hides the "Scan this task" button; the task stays listed for
+// context and can be reactivated any time.
+let ignoredTasks = {};
 let sessionCards = []; // [{card_ref, card_title, aircraft_model, tools, consumables, implicit_materials, access_panels, safety_notices, related_tasks}] — one snapshot per card scanned this session (root cards only; related-task scans stay nested under rootResult and are merged in separately at render time)
 
 // fboRequests[normalizedRef] = { ref, gasType, include } — technician's explicit
@@ -489,6 +493,7 @@ Extract five things:
 
 4. ACCESS PANELS — every access panel, access door, or cover removal/installation instruction described inline in the procedure (e.g. "Remove the panel as follows (see Figure X, WTBFs, Access Doors and Panels): 193AL" or "Install the panel..."). This is a DEDICATED category, separate from related_tasks.
    - For each panel/door: "panel_id" (e.g. "193AL"), "action" ("remove" or "install"), "step_reference" (exact step, e.g. "Step 4 (Preparation)"), "figure_reference" if given (e.g. "Figure 1, WTBFs, Access Doors and Panels").
+   - CRITICAL — "action" MUST exactly match the verb actually printed immediately before/with the panel IDs in THIS instruction (e.g. "Install the necessary WTBF panels as follows: 191AL..." → action "install", NOT "remove"). Never default to "remove" and never assume both actions happened unless the source explicitly documents both for that same panel_id within this card.
    - "conditional": set to true ONLY if the text itself signals the access is situational / depends on which specific part or area is being worked on (wording like "as necessary", "if applicable", "depending on the affected component", or when the card explicitly lists this panel as an alternative among several options for reaching the same system). Set to false for a panel that is always required for this specific procedure.
    - "conditional_note": if conditional is true, a short plain-English note explaining what it depends on (e.g. "Only required if the affected shuttle valve is on the side behind this panel"). Empty string if conditional is false.
    - If the same physical panel is both removed (in a "Removal"/"Preparation" section) and later re-installed (in an "Installation"/"Follow-on" section) within this same card, create ONE entry with action "remove_and_install" rather than two separate entries, and give both step references in "step_reference" (e.g. "Step 4 (Preparation) / Step 6 (Follow-on Maintenance)").
@@ -571,7 +576,7 @@ For EACH item in tools, consumables, implicit_materials, access_panels, related_
 - CROSS-CHECK TOOLS vs CONSUMABLES BY TABLE OF ORIGIN, NOT BY NAME SEMANTICS: go back to the source text and find the actual "Support Equipment" table and the actual "Material Required" / "Consumable Materials" table (if one exists separately). Every row that physically appears under "Support Equipment" in the source MUST end up in "tools", full stop — regardless of whether the row's nomenclature sounds like a consumable (e.g. "Container, hydraulic fluid resistant", "Protective caps and plugs" are TOOLS if that is the table they came from). If the extraction pass put such a row under "consumables" instead, MOVE it to "tools" and remove it from "consumables". If a card has no separate "Material Required" table at all, "consumables" must end up empty.
 - For consumables: confirm/fix "note_ipc" and "ipc_note_text" per the extraction rules.
 - For implicit_materials: be strict — only keep items clearly tied to actual text (not generic aviation assumptions). Remove unsupported ones, including any "implicit material" that is actually just an inspection/housekeeping step (e.g. "Inspect the work area for foreign objects") with no real physical item behind it. Only remove an implicit material for DUPLICATING a tool/consumable if the existing tool/consumable's nomenclature genuinely names the SAME object (e.g. remove "hydraulic fluid drain container" only if "Container, hydraulic fluid resistant" or an equally explicit container entry already exists as a tool; remove "circuit breaker tags" only if "circuit breaker safety clips" is already listed and clearly covers the tagging). Do NOT remove an implicit material just because it serves a related or overlapping purpose to some other tool — the names must genuinely refer to the same physical item. Fix any "name" that is a single bare/generic word (e.g. "container", "cloth", "tape") into a short descriptive phrase capturing its purpose (e.g. "Container to catch hydraulic fluid"), capitalized. Also actively ADD any implicit material the first pass missed — re-read every step, warning, caution and note yourself looking for physical items (e.g. a NOTE saying "use a container to catch the hydraulic fluid" is a real implicit material and must be present unless already covered by an explicitly named container tool/consumable).
-- For access_panels: confirm every panel removal/installation instruction in the procedure is captured (do not miss any). Merge a remove+install pair of the SAME panel into one "remove_and_install" entry if the first pass split it into two. Confirm "conditional" is only true when the text itself signals situational/depends-on-part wording — do not mark a panel conditional just because you're unsure; if it's clearly always required for this procedure, conditional must be false.
+- For access_panels: confirm every panel removal/installation instruction in the procedure is captured (do not miss any). Merge a remove+install pair of the SAME panel into one "remove_and_install" entry if the first pass split it into two. Confirm "conditional" is only true when the text itself signals situational/depends-on-part wording — do not mark a panel conditional just because you're unsure; if it's clearly always required for this procedure, conditional must be false. Re-verify "action" against the exact verb printed with the panel IDs in the source (Install vs Remove) — this is a common extraction error; fix any panel whose "action" does not match the source verb.
 - For related_tasks — apply the SAME strict exclusion rules as the extraction pass:
   - Remove any entry referencing "Safe Ground Maintenance - General Maintenance, 20-00-00", "Electrical Power Application - General Maintenance, 20-20-01", "SSPC - General Maintenance, 20-20-02", or "ESD - General Maintenance" (any task number) — that belongs in "esd_warning", not related_tasks.
   - Remove any entry that is actually the current card itself referencing its own sub-sections.
@@ -625,13 +630,13 @@ This card has a "components table" (see CONFIRMED COMPONENT(S) below) that maps 
 
 Your job: read the SOURCE TEXT yourself, understand the procedure the way an aircraft engineer would, and decide EXACTLY what a technician needs to complete just those confirmed step(s) for those confirmed component(s) — nothing more, nothing less. Think it through the way you actually would on the job:
 
-- ALWAYS include Preliminary Requirements (e.g. "Safe Ground Maintenance", "Hydraulic System – Pre-operation" if cited) — these are done on every job regardless of which component is involved.
-- ALWAYS include whatever general Preparation steps of THIS card are needed before the confirmed step(s) can be done at all (e.g. jacking the aircraft, applying electrical/hydraulic power, installing safety devices) — read the procedure and use your judgment on which preparation is actually a prerequisite for the confirmed step(s), not just steps that happen to be numbered low.
+- ALWAYS include Preliminary Requirements listed at the TOP of the card, before "Procedure" (e.g. "Safe Ground Maintenance", "Hydraulic System – Pre-operation") — these are done on every job regardless of which component is involved.
 - ALWAYS include Requirements After Job Completion (final inspection, paperwork, closing up) — these are done on every job.
-- For ACCESS: include only the access panels that a technician would actually need to open to physically reach the confirmed component(s) — use your understanding of the aircraft systems and the procedure text (e.g. wing panels for aileron actuators, empennage panels for rudder/elevator actuators, WTBF panels for landing gear/brake work) rather than mechanically matching on step numbers. If you are not sure an access panel is needed for the confirmed component(s), lean toward including it rather than silently dropping something a technician would need — but do not include access clearly tied to unrelated systems (e.g. don't include rudder access panels for a brake control valve job).
-- For TOOLS, CONSUMABLES, IMPLICIT MATERIALS: include the ones genuinely used in the confirmed step(s) or in the always-included preparation/preliminary/follow-on work. Exclude ones that are only used in OTHER steps unrelated to the confirmed component(s) (e.g. tools only used for aileron bleed steps when the confirmed component is a brake valve).
-- For SAFETY NOTICES (warnings/cautions/notes): include any that apply to the confirmed step(s) or to the always-included preparation/preliminary/follow-on work. When in doubt, include rather than exclude — missing a safety notice is worse than showing an extra one.
-- For RELATED TASKS: include any that are genuinely needed to complete the confirmed step(s) (e.g. a Preliminary Requirement task, or a task cited inline within the confirmed steps). Exclude related tasks that are only relevant to unrelated steps of the full procedure.
+- DO NOT automatically add other mid-procedure "Preparation" sub-steps (e.g. a numbered step like "4 Left Hydraulic System Bleed Preparation" or "11 Landing Gear Bleed") just because they appear earlier in the card or seem generally useful. The confirmed component's applicable_steps is ALREADY the complete, authoritative scope defined by the manual — trust it literally. Only pull in an extra step if it is explicitly cited BY NUMBER inside one of the confirmed applicable_steps (e.g. the confirmed text says "Do Step 9" — then Step 9 belongs), or it is itself a sub-step of the confirmed range's own numbering (e.g. confirmed range "Step 21.2 thru Step 21.3" includes every sub-step numbered 21.2.x and 21.3.x, but nothing outside that numeric range).
+- For ACCESS: include only access panels whose own removal/installation step number falls inside the confirmed applicable_steps range, or is explicitly cited by that range. Do NOT include a panel just because it belongs to the same general area (e.g. WTBF panels installed for LANDING GEAR operation are NOT needed for brake bleed/brake component work just because they're near the wheel well — brake bleed ports do not require landing gear operation). If unsure whether a panel's step number is inside the confirmed range, leave it OUT — precision matters more than completeness here, since the components table already defines the exact scope.
+- For TOOLS, CONSUMABLES, IMPLICIT MATERIALS: include only items whose own step_reference falls inside the confirmed applicable_steps range (or the card's top-level Preliminary Requirements / Requirements After Job Completion). Exclude anything whose step_reference sits outside that numeric range, even if it feels related to the same system (e.g. a torque wrench used at Step 11.19 is out of scope for a brake job whose confirmed range is Step 21.2 thru Step 21.3).
+- For SAFETY NOTICES (warnings/cautions/notes): include only notices whose "step_references" contain at least one location inside the confirmed applicable_steps range, or inside the card's top-level Safety Conditions / Preliminary Requirements / Requirements After Job Completion. A notice repeated at dozens of unrelated steps across the whole card only belongs here if one of ITS OWN locations falls inside the confirmed range — don't include it just because the topic sounds generally relevant.
+- For RELATED TASKS: include only a related task whose step_reference falls inside the confirmed applicable_steps range, or that is a top-level Preliminary Requirement / Requirements After Job Completion of the card itself.
 
 Do NOT invent new items. Only select FROM the extracted lists given below — you are filtering, not re-extracting. Every item you keep must be copied through UNCHANGED (same fields, same text) from the input.
 
@@ -940,6 +945,7 @@ function clearSession() {
   sessionCards = [];
   knownCards = [];
   taskScans = {};
+  ignoredTasks = {};
   rootResult = null;
   fboRequests = {};
   itemSelection = {};
@@ -1163,7 +1169,9 @@ function collectAllScannedData() {
   }
   sessionCards.forEach(c => addEntry(c, c.card_ref, c.card_title));
   if (rootResult) addEntry(rootResult, rootResult.card_ref, rootResult.card_title);
-  Object.values(taskScans).forEach(scan => {
+  Object.keys(taskScans).forEach(refKey => {
+    if (ignoredTasks[refKey]) return; // technician explicitly excluded this task
+    const scan = taskScans[refKey];
     if (scan && scan.status === 'done' && scan.data && !scanNeedsApplicabilityConfirmation(scan)) {
       const dataToUse = scan.scopedData || scan.data;
       addEntry(dataToUse, scan.data.card_ref, scan.data.card_title);
@@ -1518,6 +1526,7 @@ function renderTaskNode(t, cardRefs) {
   const keyArg = jsArg(key);
   const titleArg = jsArg(t.title || '');
   const isKnown = knownCards.some(c => normalizeRef(c.ref) === normalizeRef(t.ref));
+  const ignored = isTaskIgnored(key);
   // Resolved from the static ref table immediately (no scan needed for known
   // gas refs), or from the sub-task's own scan once done for unknown 12-xx-xx
   // refs — this is what makes a gas task detected as a related task "propagate"
@@ -1525,12 +1534,21 @@ function renderTaskNode(t, cardRefs) {
   const gasInfo = resolveGasInfo(t.ref, scan);
 
   let scanZoneHtml = '';
-  if (scan.status === 'idle') {
+  if (ignored) {
+    scanZoneHtml = `
+      <div class="task-scan-zone" style="opacity:.65">
+        <div class="scan-toggle-row">
+          <span style="font-size:12px;color:var(--muted)">🚫 Ignored — excluded from the lists above and from export.</span>
+          <button class="btn btn-ghost btn-sm" onclick="unignoreTask(${keyArg})">↺ Un-ignore</button>
+        </div>
+      </div>`;
+  } else if (scan.status === 'idle') {
     scanZoneHtml = `
       <div class="task-scan-zone">
         <div class="scan-toggle-row">
           <span style="font-size:12px;color:var(--muted)">Want this task's own tools, parts and access panels too?</span>
           <button class="btn btn-purple btn-sm" onclick="openScanWidget(${keyArg}, ${titleArg})">📄 Scan this task</button>
+          <button class="btn btn-ghost btn-sm" onclick="ignoreTask(${keyArg})">🚫 Ignore</button>
         </div>
       </div>`;
   } else if (scan.status === 'widget_open') {
@@ -1545,13 +1563,14 @@ function renderTaskNode(t, cardRefs) {
       <div class="task-scan-zone">
         <div class="status show err">❌ ${escapeHtml(scan.errorMsg || 'Scan failed.')}</div>
         <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="openScanWidget(${keyArg}, ${titleArg})">↺ Try again</button>
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="ignoreTask(${keyArg})">🚫 Ignore</button>
       </div>`;
   } else if (scan.status === 'done' && scan.data) {
     const pending = scanNeedsApplicabilityConfirmation(scan);
     const statusHtml = pending
       ? `<span style="font-size:12px;color:var(--warn)">⏳ Scanned — select the applicable component(s) below before its tools/parts are added to the lists above.</span>`
       : `<span style="font-size:12px;color:var(--ok)">✓ Scanned — its items are merged into the lists above.</span>`;
-    scanZoneHtml = `<div class="task-scan-zone">${statusHtml} <button class="btn btn-ghost btn-sm" onclick="rescanTask(${keyArg}, ${titleArg})">↺ Re-scan</button>${renderApplicabilityZone(key, scan)}</div>`;
+    scanZoneHtml = `<div class="task-scan-zone">${statusHtml} <button class="btn btn-ghost btn-sm" onclick="rescanTask(${keyArg}, ${titleArg})">↺ Re-scan</button> <button class="btn btn-ghost btn-sm" onclick="ignoreTask(${keyArg})">🚫 Ignore</button>${renderApplicabilityZone(key, scan)}</div>`;
   }
 
   return `
@@ -1752,6 +1771,15 @@ function renderScanWidget(key, nodeId, scan) {
       <button class="btn btn-ghost btn-sm" onclick="cancelScanWidget(${keyAttr})">Cancel</button>
     </div>`;
 }
+
+/* ============================================================
+   IGNORE / UN-IGNORE a related task — reversible. Ignoring hides the
+   "Scan this task" button and excludes any already-scanned data for
+   that task from the merged session view.
+   ============================================================ */
+function isTaskIgnored(key) { return !!ignoredTasks[normalizeRef(key)]; }
+function ignoreTask(key) { ignoredTasks[normalizeRef(key)] = true; renderAll(); }
+function unignoreTask(key) { delete ignoredTasks[normalizeRef(key)]; renderAll(); }
 
 /* ============================================================
    SUB-TASK SCAN WIDGET — open/cancel/mode/inputs, all keyed on the
