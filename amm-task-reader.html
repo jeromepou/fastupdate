@@ -148,2119 +148,20 @@
     </div>
     <div class="row">
       <input type="text" id="amm-ref" placeholder="e.g. 32-42-01" style="max-width:220px">
-      <button class="btn btn-primary" id="btn-analyze" onclick="analyzeAmm()">🔍 Analyze this card</button>
-    </div>
-
-    <div id="check-progress" style="display:none;margin-top:10px;padding:10px 12px;background:#f8fafc;border-radius:8px;border:1px solid var(--border)">
-      <div class="checkstep" id="step-extract"><div class="dot"></div><div>Extracting consumables, tools, access panels and related tasks</div></div>
-      <div class="checkstep" id="step-verify"><div class="dot"></div><div>Self-check: every item re-verified against the source text</div></div>
-      <div class="checkstep" id="step-done"><div class="dot"></div><div>Results ready</div></div>
-    </div>
-
-    <div class="status" id="amm-status"></div>
-    <div id="model-warning-root" class="status show err" style="display:none;margin-top:8px"></div>
-    <div id="esd-warning-root" class="status show warn" style="display:none;margin-top:8px"></div>
-    <div id="gas-warning-root" style="display:none;margin-top:8px"></div>
-    <div id="applicability-warning-root" style="display:none;margin-top:8px"></div>
-  </div>
-
-  <div class="card" id="already-done-card" style="display:none">
-    <div class="section-title">✅ Cards already scanned this session <span class="count-pill" id="known-count">0</span></div>
-    <div style="font-size:12.5px;color:var(--muted)">These cards won't need to be re-scanned — if a related task points to one of them, it's flagged as already known instead of asking you to scan it again. Every item below (Tools, Consumables, Access, Warnings, Related tasks) is the cumulative, deduplicated result across ALL cards scanned this session.</div>
-    <div class="known-tags" id="known-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
-  </div>
-
-  <div id="results" style="display:none">
-
-    <div class="card">
-      <div class="toolbar">
-        <div class="section-title">🧰 Tools / Support Equipment <span class="count-pill" id="tools-count">0</span></div>
-      </div>
-      <div id="tools-list"></div>
-    </div>
-
-    <div class="card">
-      <div class="toolbar">
-        <div class="section-title">📦 Consumables / Material Required <span class="count-pill" id="consumables-count">0</span></div>
-      </div>
-      <div id="consumables-list"></div>
-    </div>
-
-    <div class="card">
-      <div class="toolbar">
-        <div class="section-title">🧴 Implicit materials found in the procedure <span class="count-pill" id="implicit-count">0</span></div>
-      </div>
-      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Items mentioned in the step text (cleaning, protection, securing…) but absent from the "Material Required" table — often implicit in AMM wording (cloth, tape, tie wraps, protective caps…).</div>
-      <div id="implicit-list"></div>
-    </div>
-
-    <div class="card">
-      <div class="toolbar">
-        <div class="section-title">🔓 Access required <span class="count-pill" id="access-count">0</span></div>
-      </div>
-      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">All panels / access doors needed across this task, grouped in one place. Some access points are marked <span class="badge badge-cond">if required</span> — they only apply depending on which specific part you're working on, since not all parts sit behind the same panel.</div>
-      <div id="access-list"></div>
-    </div>
-
-    <div class="card">
-      <div class="toolbar">
-        <div class="section-title">⚠️ Warnings &amp; Cautions <span class="count-pill" id="safety-count">0</span></div>
-      </div>
-      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Every WARNING, CAUTION and NOTE box across every card scanned this session, gathered in one place so none get missed. Repeated boxes across sub-sections (Preparation, Removal, Installation, Follow-on) — and across different cards — are merged into one entry, tagged with every card that needs it.</div>
-      <div id="safety-list"></div>
-    </div>
-
-    <div class="card">
-      <div class="toolbar">
-        <div class="section-title">🔗 Related tasks <span class="count-pill" id="tasks-count">0</span></div>
-      </div>
-      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">
-        These are separate AMM procedures this card tells you to perform. Check the box to include a task's own reason/reference in your export. Click <b>"📄 Scan this task"</b> to upload that sub-task's own PDF and pull its tools, consumables, access panels and further related tasks — recursively, as deep as needed. Boilerplate references (Safe Ground Maintenance, Electrical Power Application, SSPC General Maintenance) and the current card's own sub-sections are intentionally excluded from this list. Related tasks that are actually one of the cards already scanned as a main card this session are hidden here (they're already covered above).
-      </div>
-      <div id="tasks-list"></div>
-    </div>
-
-    <div class="card" id="suggestions-card" style="display:none">
-      <div class="toolbar">
-        <div class="section-title">💡 Smart Suggestions</div>
-      </div>
-      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">Rule-based recommendations — <b>not extracted from the card text</b>, deliberately kept separate from the lists above. Must be explicitly accepted before being included in the export.</div>
-      <div id="suggestions-list"></div>
-    </div>
-
-    <div class="card" id="verify-summary-card" style="display:none">
-      <div class="section-title">🛡️ Self-check summary</div>
-      <div id="verify-summary"></div>
-      <details class="raw">
-        <summary>View raw AI response (debug)</summary>
-        <pre id="raw-debug"></pre>
-      </details>
-    </div>
-
-    <div class="footer-actions">
-      <button class="btn btn-ghost" onclick="clearSession()">🗑 Clear session</button>
-      <button class="btn btn-primary" onclick="exportSelection()">✅ Send selection to Start Job</button>
-    </div>
-  </div>
-</div>
-
-<script>
-/* ============================================================
-   CONFIG
-   ============================================================ */
-const KO_WORKER = 'https://orange-snow-95f7.jeromepoupinel.workers.dev';
-
-/* ============================================================
-   STATE
-   ============================================================
-   The root scan result of the CURRENT card is stored in `rootResult`.
-   Every card scanned this session (root cards, one snapshot each) is
-   also kept in `sessionCards`, and this is what the final display
-   (#results) is actually built from — merged and deduplicated across
-   every card, so the UI only ever shows ONE cumulative view instead
-   of a separate "current card" view plus a separate "session summary".
-
-   Every related_task item can itself carry a `scan` property once the
-   user scans it:
-     task.scan = {
-       status: 'idle' | 'loading' | 'done' | 'error',
-       inputMode: 'pdf' | 'paste',
-       pdfB64: null,
-       pastedText: '',
-       data: null,          // the verified JSON for that sub-task
-       errorMsg: ''
-     }
-   task.scan.data.related_tasks then recurses the same way, so the tree
-   can go arbitrarily deep. Every leaf item (tool/consumable/implicit/
-   access/task) carries `_include` (default true) used at export time.
-   ============================================================ */
-let inputMode = 'pdf';
-let ammPdfB64 = null;
-let rootResult = null;
-let knownCards = []; // [{ref, title, addedAt}]
-// Scans of related tasks are stored independently of any card's tree,
-// keyed by normalized task ref, so a related task can be scanned no
-// matter which card is currently rootResult (or none at all).
-// taskScans[refNorm] = { status, inputMode, pdfB64, pdfFileName, pastedText, data, errorMsg }
-let taskScans = {};
-// ignoredTasks[refNorm] = true -> the technician said "don't scan/include this
-// related task". Hides the "Scan this task" button; the task stays listed for
-// context and can be reactivated any time.
-let ignoredTasks = {};
-let sessionCards = []; // [{card_ref, card_title, aircraft_model, tools, consumables, implicit_materials, access_panels, safety_notices, related_tasks}] — one snapshot per card scanned this session (root cards only; related-task scans stay nested under rootResult and are merged in separately at render time)
-let manualCard = { card_ref: 'MANUEL', card_title: 'Ajouté manuellement', tools: [], consumables: [], implicit_materials: [], access_panels: [], safety_notices: [], related_tasks: [] };
-
-// fboRequests[normalizedRef] = { ref, gasType, include } — technician's explicit
-// choice to include an FBO request for a detected gas-servicing task (root card
-// or any related task, known-ref or scanned). Never auto-included.
-let fboRequests = {};
-
-// itemSelection[key] = false -> technician explicitly excluded this item
-// from the export (key = same sessKey used to merge/dedupe it). Missing
-// = included by default.
-let itemSelection = {};
-function isItemIncluded(key) { return itemSelection[key] !== false; }
-function toggleItemInclusion(key) {
-  itemSelection[key] = !isItemIncluded(key);
-  renderAll();
-}
-
-// suggestionState — rule-based, NON-extracted recommendations (sealant->tape/
-// gloves, fluid-drain->replacement cans). Kept structurally separate from the
-// AMM-sourced lists so exported data always distinguishes "read off the card"
-// from "recommended by a rule", per traceability requirements.
-let suggestionState = {
-  maskingTape: { accepted: false },
-  protectiveGloves: { accepted: false },
-  hydraulicCans: { accepted: false, qty: '' },
-  oilCans: { accepted: false, qty: '' },
-  softwareLoadingPcLocation: { accepted: false }
-};
-
-const expectedModel = new URLSearchParams(location.search).get('model') || '';
-
-function normalizeModelStr(s) {
-  return (s || '').toString().toUpperCase().replace(/[^A-Z0-9]/g, '');
-}
-function modelsRoughlyMatch(a, b) {
-  const na = normalizeModelStr(a), nb = normalizeModelStr(b);
-  if (!na || !nb) return true; // can't compare -> no false warning
-  return na.includes(nb) || nb.includes(na);
-}
-function renderModelWarning(containerId, actual, against, againstLabel) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-  if (!actual || modelsRoughlyMatch(actual, against)) { el.style.display = 'none'; el.innerHTML = ''; return; }
-  el.style.display = 'block';
-  el.innerHTML = `⚠️ <b>Aircraft type mismatch:</b> this card is for <b>${escapeHtml(actual)}</b>, but ${escapeHtml(againstLabel)} is <b>${escapeHtml(against)}</b>. Double-check you scanned the right card.`;
-}
-
-function renderEsdWarning(containerId, present, note) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-  if (!present) { el.style.display = 'none'; el.innerHTML = ''; return; }
-  el.style.display = 'block';
-  el.innerHTML = `⚡ <b>ESD precautions apply.</b> ${escapeHtml(note || 'Follow ESD - General Maintenance procedures (wrist strap, grounding) before handling this component.')}`;
-}
-
-/* ============================================================
-   GAS TYPE DETECTION (ATA 12-xx-xx = Servicing) — two layers:
-   1) a static, authoritative lookup for the refs the technician
-      already gave us (fast, no scan needed, works straight off a
-      related_tasks entry's ref).
-   2) for any OTHER 12-xx-xx ref, the card itself must be scanned —
-      the extraction prompt asks the AI to read the card and set
-      "gas_type" from its actual content (see buildExtractPrompt).
-   Never guessed for refs outside ATA chapter 12.
-   ============================================================ */
-const GAS_TASK_REFS = {
-  '12-19-00': 'oxygen',
-  '12-10-01': 'nitrogen_hp',
-  '12-10-02': 'nitrogen_lp',
-  '12-10-04': 'nitrogen_lp',
-  '12-16-01': 'nitrogen_hp',
-  '12-16-02': 'nitrogen_hp'
-};
-const GAS_TYPE_LABEL = { oxygen: 'Oxygen', nitrogen_hp: 'Nitrogen High Pressure', nitrogen_lp: 'Nitrogen Low Pressure' };
-
-// ATA chapter 12 "Servicing" couvre bien plus que le gaz : hydraulique,
-// huile, eau, toilettes/waste, pneus... Un ref "12-xx-xx" seul n'est PAS
-// une preuve de tâche gaz. Ce filtre par titre évite d'afficher le bandeau
-// gaz pour les cas où le titre le dit déjà clairement (avant même un scan).
-const NON_GAS_ATA12_TITLE_PATTERNS = [
-  /hydraulic/i, /reservoir/i, /\boil\b/i, /lubrication/i,
-  /water/i, /waste/i, /lavatory/i, /toilet/i
-];
-
-function detectGasTypeFromRef(ref, title) {
-  const norm = normalizeRef(ref);
-  if (GAS_TASK_REFS[norm]) return { type: GAS_TASK_REFS[norm], source: 'known_ref' };
-  if (/^12-\d{2}-\d{2}$/.test(norm)) {
-    if (title && NON_GAS_ATA12_TITLE_PATTERNS.some(re => re.test(title))) return null;
-    return { type: 'unknown', source: 'needs_scan' };
-  }
-  return null; // not an ATA chapter 12 ref at all
-}
-
-// Resolves the gas type for one task/card: the static ref table wins when it
-// applies; otherwise falls back to the AI-read "gas_type" from a completed
-// scan (scan = {status, data} — same shape as taskScans[key] or a synthetic
-// one built from rootResult).
-function resolveGasInfo(ref, title, scan) {
-  const byRef = detectGasTypeFromRef(ref, title);
-  if (!byRef) return null;
-  if (byRef.source === 'known_ref') return byRef;
-  if (scan && scan.status === 'done' && scan.data && scan.data.gas_type && scan.data.gas_type !== 'none' && GAS_TYPE_LABEL[scan.data.gas_type]) {
-    return { type: scan.data.gas_type, source: 'scanned' };
-  }
-  return byRef; // still 'unknown' — needs the card scanned
-}
-
-function toggleFboRequest(ref, gasType) {
-  const key = normalizeRef(ref);
-  if (!fboRequests[key]) fboRequests[key] = { ref, gasType, include: false };
-  fboRequests[key].include = !fboRequests[key].include;
-  renderAll();
-}
-
-// Renders the "gas servicing detected -> include an FBO request?" widget for
-// one task/card. Used both on related-task nodes and on the root card banner.
-function renderGasFboWidget(ref, gasInfo) {
-  if (!gasInfo) return '';
-  const key = normalizeRef(ref);
-  if (gasInfo.type === 'unknown') {
-    return `<div class="note-cond" style="margin-top:6px">🛢️ <b>ATA 12 Servicing task</b> — could be gas (O2/N2), hydraulic, oil, or water/waste depending on the card. Scan this card to identify what it actually services.</div>`;
-  }
-  const label = GAS_TYPE_LABEL[gasInfo.type] || gasInfo.type;
-  const included = !!(fboRequests[key] && fboRequests[key].include);
-  return `
-    <div class="note-cond" style="margin-top:6px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-      <span>⛽ <b>${escapeHtml(label)} servicing detected</b>${gasInfo.source==='scanned' ? ' (determined by reading the card)' : ''} — include an FBO request?</span>
-      <button class="btn btn-sm ${included?'btn-primary':'btn-ghost'}" onclick="toggleFboRequest(${jsArg(ref)}, ${jsArg(gasInfo.type)})">${included ? '✓ Request included' : '+ Include FBO request'}</button>
-    </div>
-    ${gasInfo.type==='oxygen' ? `<div class="note-flag" style="margin-top:6px">⚠️ Oxygen safety: no grease/oil near fittings, no open flame or spark source nearby.</div>` : ''}`;
-}
-
-function renderGasWarningRoot(containerId, ref, scannedData) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-  const gasInfo = ref ? resolveGasInfo(ref, scannedData && scannedData.card_title, { status: 'done', data: scannedData }) : null;
-  if (!gasInfo) { el.style.display = 'none'; el.innerHTML = ''; return; }
-  el.style.display = 'block';
-  el.innerHTML = renderGasFboWidget(ref, gasInfo);
-}
-
-/* ============================================================
-   UI: top-level input mode toggle
-   ============================================================ */
-function setInputMode(mode) {
-  inputMode = mode;
-  document.querySelectorAll('#input-mode-tabs .tab').forEach(t => {
-    const isActive = t.dataset.mode === mode;
-    t.classList.toggle('active', isActive);
-    t.style.color = isActive ? 'var(--accent)' : 'var(--muted)';
-    t.style.borderBottomColor = isActive ? 'var(--accent)' : 'transparent';
-  });
-  document.getElementById('pane-pdf').style.display = mode === 'pdf' ? 'block' : 'none';
-  document.getElementById('pane-paste').style.display = mode === 'paste' ? 'block' : 'none';
-}
-setInputMode('pdf');
-
-function onPdfChosen(ev) {
-  const f = ev.target.files[0];
-  if (!f) return;
-  const el = document.getElementById('pdf-filename');
-  el.style.display = 'block';
-  el.textContent = '✓ ' + f.name;
-  const r = new FileReader();
-  r.onload = () => { ammPdfB64 = r.result.split(',')[1]; };
-  r.readAsDataURL(f);
-}
-
-function setStatus(type, msg) {
-  const el = document.getElementById('amm-status');
-  el.className = 'status show ' + type;
-  el.innerHTML = msg;
-}
-
-function setStep(id, state) {
-  const el = document.getElementById(id);
-  el.classList.remove('active', 'done');
-  if (state) el.classList.add(state);
-}
-
-function escapeHtml(s) {
-  return (s || '').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// Serializes a value as a JS string literal safe to embed inside an
-// HTML attribute (e.g. onclick="fn(${jsArg(x)})") — quotes escaped as
-// &quot; so the browser decodes them back before the inline handler
-// is parsed as JS. Same trick already used ad hoc for `keyAttr`
-// elsewhere; this just makes it reusable for a second argument.
-function jsArg(v) {
-  return JSON.stringify(v == null ? '' : v).replace(/"/g,'&quot;');
-}
-
-/* ============================================================
-   PROMPTS
-   ============================================================ */
-function buildExtractPrompt(alreadyKnownRefs) {
-  return `You are an aviation maintenance assistant reading one AMM (Aircraft Maintenance Manual) task card, verbatim as provided below. Your job is ONLY extraction — do not add, infer, or guess anything that is not explicitly written in the text.
-
-Extract five things:
-
-1. TOOLS (from any "Support Equipment" / "Special Tools" table): nomenclature, part number, quantity if given.
-   - Give a "step_reference" for every tool: normally "Support Equipment table". If the same tool is also explicitly referenced again inside a specific numbered step, mention that step too (e.g. "Support Equipment table (used in Step 3)").
-   - CRITICAL — READ THE TABLE ROW BY ROW: every single row that appears in the "Support Equipment" table is a TOOL, with NO exceptions, regardless of what its nomenclature sounds like. A row named "Container, hydraulic fluid resistant" or "Container, phosphate ester hydraulic fluid resistant" or "Protective caps and plugs" is a TOOL if and only if it is a row of the Support Equipment table — the word "container" or "caps" does NOT make it a consumable. Classification is decided ENTIRELY by which table the row appears in, never by what the item's name sounds like.
-   - Never also list an item from this table under CONSUMABLES just because the procedure text later mentions using it in a step — that step reference belongs on the SAME tool entry, not a duplicate consumable entry.
-   - CRITICAL — DO NOT CREATE A NEW TOOL FROM A TARGET VALUE MENTIONED IN A STEP: when a step says something like "Torque the brake bleed ports to 70 inch-pounds", the number "70 inch-pounds" is a TARGET VALUE for an existing tool, not the name of a different tool. Before adding any "Torque wrench, X ..." entry, check whether X falls inside the RANGE of a torque wrench ALREADY listed in the Support Equipment table (e.g. a range "40 - 200 inch-pounds" covers a target value of "70 inch-pounds"). If it falls inside an existing range, do NOT create a new entry — instead add that step to the existing entry's "step_reference". Only create a separate entry if the target value falls OUTSIDE every range already listed, or flag "needs_review": true if ambiguous (several ranged tools could match).
-
-2. CONSUMABLES (from any "Material Required" / "Consumable Materials" table — a table DIFFERENT from Support Equipment): nomenclature, part number, quantity if given.
-   - IMPORTANT: if a line does NOT give a specific part number and instead says something like "Refer to IPC", "See IPC", "Consult IPC", or similar — you MUST still include this item, set "note_ipc": true, and copy the exact phrase used into "ipc_note_text". Never silently drop these lines and never invent a part number for them.
-   - If a part number IS given, set "note_ipc": false and "ipc_note_text": "".
-   - Give a "step_reference" for every consumable: normally "Material Required table", plus the exact step number if the procedure also specifies when/where it's used.
-   - NEVER list an item here if it already appears in the Support Equipment table (that's a TOOL, category 1 above). Consumables come exclusively from the "Material Required" / "Consumable Materials" table, not from Support Equipment. If the card only has ONE combined table titled "Support Equipment", every row of it is a TOOL and CONSUMABLES must be empty.
-
-3. IMPLICIT MATERIALS mentioned in the procedure steps but NOT listed in EITHER the "Material Required" table OR the "Support Equipment" table. Read every numbered step, warning, caution, and note in the procedure body and flag any consumable, shop supply, or physical material implied by the action described, even if never named explicitly with a part number. Typical signal actions (illustrative, not exhaustive): cleaning (cloth, solvent), lubricating/greasing, sealing or bonding (sealant, tape, RTV), protecting threads or surfaces, securing wires/hoses/cables (tie wraps, lockwire, clamps), labeling/tagging, marking, temporary caps/plugs on open lines or ports, catching fluid (drain container/pan).
-   - For each: "name" (a short but DESCRIPTIVE noun phrase capturing what the item is FOR, not a single bare word — e.g. "Container to catch hydraulic fluid" not just "container"; "Cloth for cleaning hydraulic fluid" not just "cloth". Always capitalize the first letter.), "step_reference" (as precise as the card allows), "source_quote" (a short paraphrase, NOT verbatim, of what implies the need).
-   - MANDATORY CHECK BEFORE ADDING ANY ITEM HERE: re-read the full list of TOOLS and CONSUMABLES you already produced in categories 1 and 2. Only skip adding an implicit material if an entry with a CLEARLY MATCHING nomenclature already exists there (e.g. skip "protective caps and plugs" here if "Protective caps and plugs" is already listed as a tool with that same name). If NO tool or consumable entry names this specific item, you MUST add it here, even if a different, related tool or consumable also happens to be used in the same step. When genuinely unsure whether something is a duplicate, prefer to INCLUDE it as an implicit material rather than silently dropping it — an extra flagged item is far less costly than a missed one.
-   - STRICT EXCLUSION: an item only qualifies if it names an actual physical consumable/material. Generic inspection or housekeeping steps that imply NO physical item — such as "Inspect the work area for foreign objects", "Record all maintenance...", "Do a general visual inspection" — are NEVER implicit materials, no matter how many cards repeat them.
-   - STRICT EXCLUSION 2: never invent a separate implicit material for an action that is really just USING a tool already listed in TOOLS (category 1). For example, "pull, TAG and install the safety clips" describes using the "circuit breaker safety clips" tool (the tag is physically part of that safety clip / an integral step of using it) — do NOT also output "circuit breaker tags" as a separate implicit material.
-
-4. ACCESS PANELS — every access panel, access door, or cover removal/installation instruction described inline in the procedure (e.g. "Remove the panel as follows (see Figure X, WTBFs, Access Doors and Panels): 193AL" or "Install the panel..."). This is a DEDICATED category, separate from related_tasks.
-   - For each panel/door: "panel_id" (e.g. "193AL"), "action" ("remove" or "install"), "step_reference" (exact step, e.g. "Step 4 (Preparation)"), "figure_reference" if given (e.g. "Figure 1, WTBFs, Access Doors and Panels").
-   - CRITICAL — "action" MUST exactly match the verb actually printed immediately before/with the panel IDs in THIS instruction (e.g. "Install the necessary WTBF panels as follows: 191AL..." → action "install", NOT "remove"). Never default to "remove" and never assume both actions happened unless the source explicitly documents both for that same panel_id within this card.
-   - "conditional": set to true ONLY if the text itself signals the access is situational / depends on which specific part or area is being worked on (wording like "as necessary", "if applicable", "depending on the affected component", or when the card explicitly lists this panel as an alternative among several options for reaching the same system). Set to false for a panel that is always required for this specific procedure.
-   - "conditional_note": if conditional is true, a short plain-English note explaining what it depends on (e.g. "Only required if the affected shuttle valve is on the side behind this panel"). Empty string if conditional is false.
-   - If the same physical panel is both removed (in a "Removal"/"Preparation" section) and later re-installed (in an "Installation"/"Follow-on" section) within this same card, create ONE entry with action "remove_and_install" rather than two separate entries, and give both step references in "step_reference" (e.g. "Step 4 (Preparation) / Step 6 (Follow-on Maintenance)").
-
-5. RELATED TASKS: any OTHER maintenance task (with its own task-number reference, e.g. "32-42-02" or a named procedure like "Main Wheel Assembly – Preparation") that this card explicitly tells the technician to do. Access panels belong in category 4 above, NOT here — do not duplicate a panel as a related task.
-
-   STRICT EXCLUSION LIST — never include any of the following as a related task, no matter how many times or where they are cited:
-   - "Safe Ground Maintenance - General Maintenance, 20-00-00"
-   - "Electrical Power Application - General Maintenance, 20-20-01"
-   - "SSPC - General Maintenance, 20-20-02"
-   - "ESD - General Maintenance" (any task number, e.g. 20-23-01) — do NOT list this as a related task; instead capture it in "esd_warning" below.
-   These are boilerplate preliminary/reference items present on nearly every AMM card and carry no engineering value. Read them for context if needed, but never output them in "related_tasks".
-
-   Also NEVER include the current card itself when one of its own PHASE HEADERS (e.g. "Preparation", "Removal", "Installation", "Follow-on Maintenance", "Safety Conditions") is referenced — that is internal structure of the SAME procedure, not a related task.
-
-   HOWEVER, if the text contains a DIFFERENTLY-TITLED procedure with its own complete "Preliminary Requirements" + "Procedure" + "Requirements After Job Completion" structure (e.g. "Hydraulic System – Pre-operation" or "Hydraulic System – Post-operation" appearing as distinct titled blocks elsewhere in the provided text, even if they share the same task number footer as the current card), that IS a genuine related task and MUST be included — classify it "when":"before" if cited in the current procedure's own Preliminary Requirements, "when":"after" if cited in Requirements After Job Completion. When such a procedure has no distinct task number of its own, set "ref" to its exact title text (e.g. "Hydraulic System – Pre-operation") — never reuse the enclosing card's own task number as "ref" for it.
-
-   ALWAYS include, when present in the text: any other AMM reference cited as a Preliminary Requirement, Reference Material, or inline "Do X" / "Refer to X" instruction (e.g. Landing Gear Door - Normal Operation, Hydraulic System - Bleed, Main Wheel Brakes - Function Test, Open/Close Checks - Visual Examination).
-
-   For every included item, classify:
-   - "when": "before" (Preliminary Requirement / must be done first), "after" (Requirements After Job Completion, follow-on task, functional/operational check done once finished), or "during" (referenced mid-procedure as a required sub-step).
-   - "reason": short paraphrase (your own words) of why it's needed.
-   - "ref": task number if present, else the task title as written. "title": the task title.
-   - "step_reference": exactly where in THIS card that instruction appears (e.g. "Preliminary Requirements", "Step 9", "Requirements After Job Completion").
-   - Do NOT include purely informational cross-references that are not instructions to perform another task.
-
-   DEDUPLICATION — MANDATORY: deduplicate by "ref" before finalizing. If the same ref is cited in multiple sub-sections of this card, output it ONCE only, using the clearest step_reference. Never output the same ref twice.
-
-The technician has already scanned these AMM references earlier in this session: ${JSON.stringify(alreadyKnownRefs)}
-If any related task you find matches one of these refs, still include it but set "already_known": true. Otherwise set "already_known": false.
-
-6. AIRCRAFT MODEL/TYPE: read the card header/applicability and extract the aircraft type this AMM task card applies to (e.g. "G650", "GVI", "G450", "Gulfstream G280", "GVIII-G700"). If genuinely not stated anywhere on the card, use "".
-
-7. ESD WARNING: if the card's Preliminary Requirements or Reference Materials cite an ESD (electrostatic discharge) precaution task (e.g. "ESD - General Maintenance, 20-23-01"), or if the procedure text itself mentions the component/part is electrostatic sensitive, set "esd_warning": true and give a short "esd_note" reminding the technician to follow ESD precautions (wrist strap, grounding) — do not list it as a related task. If no ESD mention exists anywhere on the card, set "esd_warning": false and "esd_note": "".
-
-8. SAFETY NOTICES: every WARNING, CAUTION, and NOTE box printed anywhere on this card (Preparation, Removal, Installation, Follow-on Maintenance — all sub-sections), collected together in one flat list so none is missed.
-   - "kind": "warning", "caution", or "note" (match exactly what the box is labeled as on the card).
-   - "text": the full text of the box, copied faithfully (not paraphrased — safety text must stay exact).
-   - "step_references": an array of every location where this exact text appears (e.g. ["Preparation, before Step 1", "Follow-on Maintenance, before Step 1"]).
-   - MERGE identical text: if the SAME box text is repeated verbatim in multiple sub-sections, output it as ONE entry with all its locations listed in "step_references" — never output the same warning/caution text as two separate entries. Only text that is genuinely different (even a small wording change) gets its own entry.
-
-9. APPLICABILITY TABLE (component-conditional procedure scope): some AMM "system" procedures (hydraulic bleed, functional/operational test, rigging, leak check, and similar broad procedures) contain a DEDICATED section, usually near the end, that maps a SPECIFIC removed/replaced component to the exact subset of steps required for that component only — instead of the entire procedure. It is often titled something like "Bleed Procedures For Replaced Hydraulic Components" or "Procedures For Replaced Components", with one or more tables named "Table 1. X Components", "Table 2. Y Components", etc., each with a "COMPONENT REMOVED" column and a "PROCEDURE" / "BLEED PROCEDURE" column.
-   - ONLY extract this if such an explicit table genuinely exists in the source text with a clear two-column structure. Never invent or infer one from the ordinary procedure structure. If no such table exists anywhere on the card, "applicability_table" MUST be an empty array.
-   - For each row of every such table found: "component" (the exact component name as written, e.g. "Inboard brake shut-off valve"), "applicable_steps" (the exact step reference(s) as written, copied verbatim, e.g. "Do Step 21.2 thru Step 21.4. Do Step 9."), "table_name" (the table's own title, e.g. "Table 4. Brake Components").
-   - Read EVERY row of EVERY such table — do not skip or summarize rows. This table is exactly how a technician determines the minimal correct scope for one specific replaced part, so completeness here matters as much as for Support Equipment or Material Required.
-
-10. GAS TYPE (servicing task, ATA chapter 12 "Servicing"): if this card's reference falls under ATA chapter 12 (format "12-xx-xx"), determine which gas THIS specific card services by reading its title/subject and procedure content: "oxygen" (oxygen system servicing/replenishment), "nitrogen_hp" (nitrogen high pressure servicing — e.g. landing gear struts, accumulators), "nitrogen_lp" (nitrogen low pressure servicing), or "none" if it's a chapter-12 card that isn't a gas-servicing task (e.g. potable water, lavatory/toilet servicing) or isn't chapter 12 at all. Base this only on what the card itself states — never infer from the reference number alone if the content says otherwise.
-
-11. FLUID DRAIN (hydraulic/oil replenishment need): read the full procedure. Set "fluid_drain.hydraulic" to true ONLY if the procedure explicitly drains, removes, or empties a quantity of hydraulic fluid from a reservoir/system/component (not merely checking or topping off a level). Set "fluid_drain.oil" to true under the same rule for engine/system/gearbox oil. If either is true, "fluid_drain.note" briefly states which system/component (e.g. "Main hydraulic system reservoir drained per Step 6"), else "". This exists so the technician can be prompted to bring replacement fluid — it does not replace anything already captured in tools/consumables/implicit_materials.
-
-12. SOFTWARE LOADING: read the full procedure (steps, notes, Preliminary Requirements, Requirements After Job Completion, Reference Material). Set "software_loading.required" to true if the procedure explicitly requires loading, uploading, or updating aircraft system software / databases / operational program — via a Data Loader, a laptop/PC connected to the aircraft, or loadable media such as CD-ROM, DVD, or USB. This includes cases where the card simply cites another AMM task by name/reference for this purpose, such as "PlaneView System - Load Software, 20-22-01", "Modular Avionics Unit / Modular Radio Cabinet - Software Loading (Target Load), 20-22-00, Maintenance Practices", or "...Software Loading (Full Load), 20-22-00, Maintenance Practices" — these ARE software loading regardless of how tersely they are cited (even as a single line in Preliminary Requirements or Requirements After Job Completion). Do not set true just because a system happens to be electronic or the word "software" appears informationally. If true, "software_loading.note" briefly states what is loaded and how (e.g. "Cites PlaneView System - Load Software, 20-22-01 in Preliminary Requirements"), else "". This exists to remind the technician that the loading PC and its media are normally stored on board the aircraft, so the customer/crew may need to be asked where they are kept.
-
-Do not invent quantities, part numbers, task numbers, or step references. If a step_reference is genuinely not determinable, use "".
-
-Reply ONLY with valid JSON, no markdown, in this exact shape:
-{
-  "card_ref": "",
-  "card_title": "",
-  "aircraft_model": "",
-  "esd_warning": false,
-  "esd_note": "",
-  "gas_type": "oxygen|nitrogen_hp|nitrogen_lp|none",
-  "fluid_drain": {"hydraulic": false, "oil": false, "note": ""},
-  "software_loading": {"required": false, "note": ""},
-  "safety_notices": [{"kind":"warning|caution|note","text":"","step_references":[]}],
-  "tools": [{"name":"","pn":"","qty":"","step_reference":""}],
-  "consumables": [{"name":"","pn":"","qty":"","note_ipc":false,"ipc_note_text":"","step_reference":""}],
-  "implicit_materials": [{"name":"","step_reference":"","source_quote":""}],
-  "access_panels": [{"panel_id":"","action":"remove|install|remove_and_install","step_reference":"","figure_reference":"","conditional":false,"conditional_note":""}],
-  "related_tasks": [{"ref":"","title":"","when":"before|during|after","reason":"","step_reference":"","already_known":false}],
-  "applicability_table": [{"component":"","applicable_steps":"","table_name":""}]
-}`;
-}
-
-function buildVerifyPrompt(extractedJson) {
-  return `You are performing a strict self-check (quality control) on a JSON extraction that another pass produced from an AMM task card. You will be given the ORIGINAL SOURCE TEXT and the EXTRACTED JSON. Your job is to catch and fix errors — do not trust the extraction blindly.
-
-For EACH item in tools, consumables, implicit_materials, access_panels, related_tasks, and applicability_table, go back to the source text and verify:
-- Does this item actually appear in the source text? If not, mark for removal and explain why in the report.
-- Is the part number / quantity / reference EXACTLY as written in the source? Fix if wrong.
-- Is "step_reference" correct and specific? Fill in or correct it by locating the item in the source. Never leave a "needs_review" item without also giving the most specific step_reference you can find.
-- CROSS-CHECK TOOLS vs CONSUMABLES BY TABLE OF ORIGIN, NOT BY NAME SEMANTICS: go back to the source text and find the actual "Support Equipment" table and the actual "Material Required" / "Consumable Materials" table (if one exists separately). Every row that physically appears under "Support Equipment" in the source MUST end up in "tools", full stop — regardless of whether the row's nomenclature sounds like a consumable (e.g. "Container, hydraulic fluid resistant", "Protective caps and plugs" are TOOLS if that is the table they came from). If the extraction pass put such a row under "consumables" instead, MOVE it to "tools" and remove it from "consumables". If a card has no separate "Material Required" table at all, "consumables" must end up empty.
-- CROSS-CHECK TORQUE WRENCH / GAUGE DUPLICATES BY VALUE RANGE: if "tools" contains more than one entry whose name pattern is "Torque wrench, ... inch-pounds" (or any tool with a numeric range in its own name), check whether any single-value entry could actually just be a target value cited in a step for an ALREADY-LISTED ranged tool. If so, MERGE: delete the duplicate single-value entry and add its step reference onto the existing ranged tool's "step_reference" instead.
-- For consumables: confirm/fix "note_ipc" and "ipc_note_text" per the extraction rules.
-- For implicit_materials: be strict — only keep items clearly tied to actual text (not generic aviation assumptions). Remove unsupported ones, including any "implicit material" that is actually just an inspection/housekeeping step (e.g. "Inspect the work area for foreign objects") with no real physical item behind it. Only remove an implicit material for DUPLICATING a tool/consumable if the existing tool/consumable's nomenclature genuinely names the SAME object (e.g. remove "hydraulic fluid drain container" only if "Container, hydraulic fluid resistant" or an equally explicit container entry already exists as a tool; remove "circuit breaker tags" only if "circuit breaker safety clips" is already listed and clearly covers the tagging). Do NOT remove an implicit material just because it serves a related or overlapping purpose to some other tool — the names must genuinely refer to the same physical item. Fix any "name" that is a single bare/generic word (e.g. "container", "cloth", "tape") into a short descriptive phrase capturing its purpose (e.g. "Container to catch hydraulic fluid"), capitalized. Also actively ADD any implicit material the first pass missed — re-read every step, warning, caution and note yourself looking for physical items (e.g. a NOTE saying "use a container to catch the hydraulic fluid" is a real implicit material and must be present unless already covered by an explicitly named container tool/consumable).
-- For access_panels: confirm every panel removal/installation instruction in the procedure is captured (do not miss any). Merge a remove+install pair of the SAME panel into one "remove_and_install" entry if the first pass split it into two. Confirm "conditional" is only true when the text itself signals situational/depends-on-part wording — do not mark a panel conditional just because you're unsure; if it's clearly always required for this procedure, conditional must be false. Re-verify "action" against the exact verb printed with the panel IDs in the source (Install vs Remove) — this is a common extraction error; fix any panel whose "action" does not match the source verb.
-- For related_tasks — apply the SAME strict exclusion rules as the extraction pass:
-  - Remove any entry referencing "Safe Ground Maintenance - General Maintenance, 20-00-00", "Electrical Power Application - General Maintenance, 20-20-01", "SSPC - General Maintenance, 20-20-02", or "ESD - General Maintenance" (any task number) — that belongs in "esd_warning", not related_tasks.
-  - Remove any entry that is actually the current card itself referencing its own PHASE HEADERS (Preparation/Removal/Installation/Follow-on Maintenance/Safety Conditions) — that's internal structure, not a related task.
-  - Do NOT remove a differently-titled procedure with its own complete Preliminary Requirements/Procedure/Requirements After Job Completion structure (e.g. "Hydraulic System – Pre-operation", "Hydraulic System – Post-operation") even if it shares the enclosing card's task number footer — these are genuine related tasks and must be kept (ADD them if the extraction pass missed them). If such a procedure has no distinct task number, its "ref" must be its exact title text, never the enclosing card's own task number.
-  - Remove any entry that is actually an access panel — those belong exclusively in access_panels, never duplicated in related_tasks.
-  - DEDUPLICATE by "ref": keep only ONE entry per ref, merging into the clearest step_reference.
-  - Confirm the "when" classification matches the source. Confirm step_reference points to the exact section/step.
-- Flag ("needs_review": true) any item you are not fully confident about, with a specific, actionable "review_note".
-
-- For applicability_table: this should be non-empty ONLY when the source genuinely contains a component-to-procedure-scope table (e.g. "Table 4. Brake Components"). Verify every row against the source: exact "component" wording, exact "applicable_steps" wording (copy verbatim — do not shorten "Do Step 21.2 thru Step 21.4. Do Step 9." down to just "Step 21"), and exact "table_name". Add any row the first pass missed by re-reading the card for such tables; remove any row that isn't genuinely part of one. If the card has no such table at all, applicability_table must end up as an empty array — never invent one from the ordinary procedure steps.
-
-- Confirm "aircraft_model" matches what's stated in the card header/title block. Fix it if the first pass got it wrong or missed it.
-
-- For "gas_type": confirm it matches what the card explicitly states (title/subject/procedure content), not just guessed from the reference number. Fix if wrong. Must be "none" unless this genuinely is a chapter-12 gas-servicing card.
-
-- For "fluid_drain": confirm "hydraulic"/"oil" are true only when the source explicitly drains/removes a quantity of that fluid (not just checking or topping off a level). Fix "note" to be accurate and concise, or clear it if the flag is false.
-
-- For "software_loading": confirm "required" is true only when the source explicitly calls for loading/updating software, a database, or an operational program via a Data Loader, PC, or media (CD-ROM/DVD/USB) — including terse citations of another AMM task such as "PlaneView System - Load Software, 20-22-01" or "Modular Avionics Unit / Modular Radio Cabinet - Software Loading (Target Load / Full Load), 20-22-00". Fix "note" to be accurate and concise, or clear it if the flag is false.
-
-- For safety_notices: verify every WARNING/CAUTION/NOTE box on the card is captured. STRICTLY merge duplicates: if the same text appears in multiple sub-sections, it must be ONE entry with all locations in "step_references" — if the first pass split an identical text into separate entries, merge them back into one. Fix "kind" if mislabeled. Confirm "text" is copied faithfully, not paraphrased or shortened. Add any missed box; remove any that isn't an actual WARNING/CAUTION/NOTE box.
-
-Return a CORRECTED version of the full JSON (same shape as input, each item additionally carrying "needs_review": boolean and "review_note": string, empty if none, and keeping/fixing "step_reference" on every item), plus a top-level "verification_summary" array of strings describing what you actually checked/changed/removed in THIS pass. Only list actions genuinely reflected in the returned JSON.
-
-Reply ONLY with valid JSON, no markdown, in this exact shape:
-{
-  "card_ref": "",
-  "card_title": "",
-  "aircraft_model": "",
-  "esd_warning": false,
-  "esd_note": "",
-  "gas_type": "oxygen|nitrogen_hp|nitrogen_lp|none",
-  "fluid_drain": {"hydraulic": false, "oil": false, "note": ""},
-  "software_loading": {"required": false, "note": ""},
-  "safety_notices": [{"kind":"warning|caution|note","text":"","step_references":[],"needs_review":false,"review_note":""}],
-  "tools": [{"name":"","pn":"","qty":"","step_reference":"","needs_review":false,"review_note":""}],
-  "consumables": [{"name":"","pn":"","qty":"","note_ipc":false,"ipc_note_text":"","step_reference":"","needs_review":false,"review_note":""}],
-  "implicit_materials": [{"name":"","step_reference":"","source_quote":"","needs_review":false,"review_note":""}],
-  "access_panels": [{"panel_id":"","action":"remove|install|remove_and_install","step_reference":"","figure_reference":"","conditional":false,"conditional_note":"","needs_review":false,"review_note":""}],
-  "related_tasks": [{"ref":"","title":"","when":"before|during|after","reason":"","step_reference":"","already_known":false,"needs_review":false,"review_note":""}],
-  "applicability_table": [{"component":"","applicable_steps":"","table_name":"","needs_review":false,"review_note":""}],
-  "verification_summary": [""]
-}
-
-EXTRACTED JSON TO VERIFY:
-${extractedJson}`;
-}
-
-function buildScopeReasoningPrompt(confirmedRows, extractedData) {
-  return `You are an experienced aircraft maintenance engineer. You already have the FULL text of an AMM task card (given below as SOURCE TEXT) and a JSON extraction of everything found on it (tools, consumables, implicit materials, access panels, safety notices, related tasks).
-
-This card has a "components table" (see CONFIRMED COMPONENT(S) below) that maps a specific replaced/removed component to a reduced subset of procedure steps — instead of the entire card. A technician has confirmed which component(s) they actually worked on, and which steps apply to them.
-
-Your job: read the SOURCE TEXT yourself, understand the procedure the way an aircraft engineer would, and decide EXACTLY what a technician needs to complete just those confirmed step(s) for those confirmed component(s) — nothing more, nothing less. Think it through the way you actually would on the job:
-
-- ALWAYS include Preliminary Requirements listed at the TOP of the card, before "Procedure" (e.g. "Safe Ground Maintenance - General Maintenance", "X – Pre-operation") — these are done on every job regardless of which component is involved.
-- ALWAYS include Requirements After Job Completion (final inspection, paperwork, closing up) — these are done on every job.
-- ALWAYS include Safety Conditions sections tied to the card's Preliminary Requirements (health/safety/material warnings that apply to the whole card, not one component).
-- If a Preliminary Requirement or a Requirements After Job Completion citation points to a DIFFERENTLY-TITLED procedure embedded further down in the SAME source text (e.g. a "X – Pre-operation" or "X – Post-operation" block with its own "Preliminary Requirements" / "Procedure" / "Requirements After Job Completion" structure), that entire embedded procedure is ALSO always-included in full — not just the one-line citation. Read its own steps, and include every tool, consumable, implicit material, access panel, and safety notice whose step_reference falls inside THAT embedded procedure, exactly as if it were the top-level Preliminary Requirements / Requirements After Job Completion of the main card. This applies no matter what that embedded procedure happens to be named on this particular card.
-- DO NOT automatically add other mid-procedure "Preparation" sub-steps (e.g. a numbered step like "4 Left Hydraulic System Bleed Preparation" or "11 Landing Gear Bleed") just because they appear earlier in the card or seem generally useful. The confirmed component's applicable_steps is ALREADY the complete, authoritative scope defined by the manual — trust it literally. Only pull in an extra step if it is explicitly cited BY NUMBER inside one of the confirmed applicable_steps (e.g. the confirmed text says "Do Step 9" — then Step 9 belongs), or it is itself a sub-step of the confirmed range's own numbering (e.g. confirmed range "Step 21.2 thru Step 21.3" includes every sub-step numbered 21.2.x and 21.3.x, but nothing outside that numeric range).
-- For ACCESS: include only access panels whose own removal/installation step number falls inside the confirmed applicable_steps range, or is explicitly cited by that range. Do NOT include a panel just because it belongs to the same general area (e.g. WTBF panels installed for LANDING GEAR operation are NOT needed for brake bleed/brake component work just because they're near the wheel well — brake bleed ports do not require landing gear operation). If unsure whether a panel's step number is inside the confirmed range, leave it OUT — precision matters more than completeness here, since the components table already defines the exact scope.
-- For TOOLS, CONSUMABLES, IMPLICIT MATERIALS: include only items whose own step_reference falls inside the confirmed applicable_steps range (or the card's top-level Preliminary Requirements / Requirements After Job Completion). Exclude anything whose step_reference sits outside that numeric range, even if it feels related to the same system (e.g. a torque wrench used at Step 11.19 is out of scope for a brake job whose confirmed range is Step 21.2 thru Step 21.3).
-- For SAFETY NOTICES (warnings/cautions/notes): include only notices whose "step_references" contain at least one location inside the confirmed applicable_steps range, or inside the card's top-level Safety Conditions / Preliminary Requirements / Requirements After Job Completion. A notice repeated at dozens of unrelated steps across the whole card only belongs here if one of ITS OWN locations falls inside the confirmed range — don't include it just because the topic sounds generally relevant.
-- For RELATED TASKS: include only a related task whose step_reference falls inside the confirmed applicable_steps range, or that is a top-level Preliminary Requirement / Requirements After Job Completion of the card itself.
-- SPECIAL CASE — items whose step_reference carries NO step number at all (e.g. exactly "Support Equipment table" or "Material Required table"): these cannot be matched by numeric range, so you must ACTUALLY VERIFY usage in the text rather than guess. Do this in two passes:
-  PASS A — Before deciding anything, go to the SOURCE TEXT and locate the literal step-by-step instructions for every step number named in the confirmed applicable_steps (e.g. if the range is "Do Step 21.2 thru Step 21.4. Do Step 9.", find and read Step 21.2, 21.2.x, 21.3, 21.3.x, 21.4, 21.4.x, and Step 9 verbatim in the source). Also read the card's top-level Preliminary Requirements and Requirements After Job Completion verbatim. List (for your own use) every physical action, tool, or material those specific steps actually describe.
-  PASS B — ONLY THEN check each no-step-number item's name against that literal action list from Pass A. If the item's name (or a close synonym) appears in an action within the confirmed range, KEEP it, and in "reasoning_notes" quote the specific step number and a short paraphrase of the action that justifies keeping it. If, after actually re-reading those specific steps, the item's name does not appear in any of them, EXCLUDE it and say so.
-  Do not decide based on the task title or general topic alone (e.g. do not exclude a drain-related tool just because the confirmed component is a "shut-off valve" rather than "the hydraulic system" broadly) — the test is whether the confirmed step NUMBERS literally mention it, not whether the component name sounds related.
-- If any of tools / consumables / implicit_materials / access_panels / safety_notices / related_tasks ends up completely empty, you MUST name in reasoning_notes the 2-3 most plausible candidate items from the input and state concretely why each was excluded. A blanket statement like "none are required" without naming candidates is not acceptable.
-
-Do NOT invent new items. Only select FROM the extracted lists given below — you are filtering, not re-extracting. Every item you keep must be copied through UNCHANGED (same fields, same text) from the input.
-
-CONFIRMED COMPONENT(S) AND THEIR STEPS:
-${JSON.stringify(confirmedRows)}
-
-EXTRACTED DATA TO FILTER (select a subset of each array):
-${JSON.stringify({
-  tools: extractedData.tools || [],
-  consumables: extractedData.consumables || [],
-  implicit_materials: extractedData.implicit_materials || [],
-  access_panels: extractedData.access_panels || [],
-  safety_notices: extractedData.safety_notices || [],
-  related_tasks: extractedData.related_tasks || []
-})}
-
-Reply ONLY with valid JSON, no markdown, in this exact shape (each array is a filtered subset of the corresponding input array, items copied through unchanged, plus a top-level "reasoning_notes" array of short strings explaining your key inclusion/exclusion decisions):
-{
-  "tools": [],
-  "consumables": [],
-  "implicit_materials": [],
-  "access_panels": [],
-  "safety_notices": [],
-  "related_tasks": [],
-  "reasoning_notes": [""]
-}`;
-}
-
-/* ============================================================
-   CLIENT-SIDE SAFETY NET — deterministic backstop regardless of
-   what the model returns.
-   ============================================================ */
-const RELATED_TASK_EXCLUDE_REFS = ['20-00-00', '20-20-01', '20-20-02'];
-const RELATED_TASK_EXCLUDE_TITLE_PATTERNS = [/esd\s*-?\s*general maintenance/i];
-
-function normalizeRef(ref) {
-  return (ref || '').toString().trim().toUpperCase();
-}
-
-// Loose name normalizer for cross-matching tool/consumable/implicit names
-// that may be phrased slightly differently (e.g. "Container, hydraulic
-// fluid resistant" vs "Hydraulic fluid drain container" vs "Container,
-// phosphate ester hydraulic fluid resistant"). We strip punctuation,
-// lowercase, sort significant words, and compare on meaningful overlap
-// rather than requiring an exact string match.
-const STOPWORDS = new Set(['a','an','the','and','or','of','for','to','on','in','with','as','necessary','standard','equivalent','or equivalent']);
-function nameTokens(name) {
-  return (name || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9 ]/g, ' ')
-    .split(/\s+/)
-    .filter(w => w && !STOPWORDS.has(w));
-}
-function namesOverlapSignificantly(a, b) {
-  const ta = new Set(nameTokens(a));
-  const tb = new Set(nameTokens(b));
-  if (!ta.size || !tb.size) return false;
-  let shared = 0;
-  ta.forEach(w => { if (tb.has(w)) shared++; });
-  const smaller = Math.min(ta.size, tb.size);
-  // require most of the shorter name's meaningful words to be present in the other
-  return shared / smaller >= 0.75;
-}
-
-// ------------------------------------------------------------
-// APPLICABILITY TABLE MATCHING — some referenced "system" procedures
-// (bleed, functional test, rigging…) carry an internal table mapping
-// a specific replaced component to the exact subset of steps needed,
-// instead of the whole procedure (see category 9 of the extraction
-// prompt). We match the calling card's component (its title, plus an
-// optional technician-typed hint like "Inboard"/"Left") against that
-// table.
-//
-// SAFETY RULE: we deliberately require near-total, unambiguous token
-// overlap (>=0.9, with no other row tied close behind) before ever
-// accepting an automatic match. Rows that differ only by a side word
-// (e.g. "Inboard brake shut-off valve" vs "Outboard brake shut-off
-// valve") will score identically unless the context explicitly names
-// the side — in that case we return ambiguous=true and force the
-// technician to pick manually. Never guess on an aviation procedure.
-// ------------------------------------------------------------
-function scoreComponentMatch(rowComponent, contextText) {
-  const rowTokens = new Set(nameTokens(rowComponent));
-  const ctxTokens = new Set(nameTokens(contextText));
-  if (!rowTokens.size || !ctxTokens.size) return 0;
-  let shared = 0;
-  rowTokens.forEach(w => { if (ctxTokens.has(w)) shared++; });
-  return shared / rowTokens.size;
-}
-
-function matchApplicabilityTable(table, contextText) {
-  if (!table || !table.length || !(contextText || '').trim()) return { matches: [], ambiguous: true };
-  const scored = table
-    .map(row => ({ row, score: scoreComponentMatch(row.component, contextText) }))
-    .sort((a, b) => b.score - a.score);
-  const top = scored[0];
-  if (!top || top.score < 0.9) return { matches: [], ambiguous: true };
-  const ties = scored.filter(s => s.score >= top.score - 0.001);
-  if (ties.length === 1) return { matches: [ties[0].row], ambiguous: false };
-  return { matches: ties.map(t => t.row), ambiguous: true };
-}
-
-function dedupeAndFilterRelatedTasks(tasks, cardRef, cardTitle) {
-  const cardRefNorm = normalizeRef(cardRef);
-  const cardTitleNorm = normalizeRef(cardTitle);
-  const seen = new Set();
-  const out = [];
-  for (const t of (tasks || [])) {
-    const refNorm = normalizeRef(t.ref);
-    if (!refNorm) continue;
-    if (RELATED_TASK_EXCLUDE_REFS.includes(refNorm)) continue;
-    if (RELATED_TASK_EXCLUDE_TITLE_PATTERNS.some(re => re.test(t.title || ''))) continue;
-    const titleNorm = normalizeRef(t.title || '');
-    const isTrueSelfReference = cardRefNorm && refNorm === cardRefNorm && (!titleNorm || titleNorm === cardTitleNorm);
-    if (isTrueSelfReference) continue;
-    const dedupeKey = refNorm + '|' + titleNorm;
-    if (seen.has(dedupeKey)) continue;
-    seen.add(dedupeKey);
-    out.push(t);
-  }
-  return out;
-}
-
-function dedupeAccessPanels(panels) {
-  const seen = new Map();
-  for (const p of (panels || [])) {
-    const key = normalizeRef(p.panel_id);
-    if (!key) continue;
-    if (!seen.has(key)) { seen.set(key, p); continue; }
-    const existing = seen.get(key);
-    if (existing.action !== p.action) {
-      existing.action = 'remove_and_install';
-      existing.step_reference = [existing.step_reference, p.step_reference].filter(Boolean).join(' / ');
-    }
-  }
-  return Array.from(seen.values());
-}
-
-function dedupeSafetyNotices(notices) {
-  const seen = new Map();
-  for (const n of (notices || [])) {
-    const text = (n.text || '').trim();
-    if (!text) continue;
-    const key = normalizeRef(n.kind) + '|' + normalizeRef(text).slice(0, 200);
-    const refs = Array.isArray(n.step_references) ? n.step_references : (n.step_reference ? [n.step_reference] : []);
-    if (!seen.has(key)) { seen.set(key, { ...n, step_references: [...refs] }); continue; }
-    const existing = seen.get(key);
-    refs.forEach(r => { if (r && !existing.step_references.includes(r)) existing.step_references.push(r); });
-  }
-  return Array.from(seen.values());
-}
-
-// Strict client-side backstop: move (not just filter) any "consumable"
-// that actually matches a tool by loose name overlap. This catches cases
-// where the model still mis-files a Support Equipment row despite the
-// prompt rules (e.g. "Container, hydraulic fluid resistant").
-function reconcileToolsAndConsumables(tools, consumables) {
-  tools = tools || [];
-  consumables = consumables || [];
-  const keptConsumables = [];
-  for (const c of consumables) {
-    const matchesTool = tools.some(t => namesOverlapSignificantly(t.name, c.name));
-    if (matchesTool) continue; // drop — it's already covered by a tool entry
-    keptConsumables.push(c);
-  }
-  return keptConsumables;
-}
-
-// Strip implicit materials that loosely duplicate an existing tool or
-// consumable (e.g. "Hydraulic fluid drain container" vs the tool
-// "Container, hydraulic fluid resistant").
-function reconcileImplicitMaterials(implicitMaterials, tools, consumables) {
-  const existing = [...(tools || []), ...(consumables || [])];
-  return (implicitMaterials || []).filter(m => !existing.some(e => namesOverlapSignificantly(e.name, m.name)));
-}
-
-/* ============================================================
-   SESSION CARDS — every root card analyzed this session, kept as a
-   snapshot so the final display can merge + deduplicate everything
-   into ONE cumulative set of lists, instead of showing a separate
-   "current card" view and a separate "session summary" view.
-   ============================================================ */
-function addToSessionCards(data) {
-  const refNorm = normalizeRef(data.card_ref);
-  const entry = JSON.parse(JSON.stringify(data)); // snapshot, decoupled from live editing of rootResult
-  const idx = sessionCards.findIndex(c => normalizeRef(c.card_ref) === refNorm);
-  if (idx >= 0) sessionCards[idx] = entry; else sessionCards.push(entry);
-}
-
-function sessKey(...parts) {
-  return parts.map(p => normalizeRef(p || '')).join('|');
-}
-
-function mergeSessionLeaf(items, keyFn) {
-  const map = new Map();
-  for (const { cardRef, item } of items) {
-    const key = keyFn(item);
-    if (!key) continue;
-    if (!map.has(key)) map.set(key, { item, cardRefs: new Set(), key });
-    map.get(key).cardRefs.add(cardRef);
-  }
-  return Array.from(map.values());
-}
-
-function mergeRelatedTasks(items) {
-  const map = new Map();
-  for (const { cardRef, item } of items) {
-    const key = sessKey(item.ref || item.title);
-    if (!key) continue;
-    if (!map.has(key)) map.set(key, { item, cardRefs: new Set(), citations: [], key });
-    const entry = map.get(key);
-    entry.cardRefs.add(cardRef);
-    entry.citations.push({
-      cardRef,
-      step_reference: item.step_reference || '',
-      reason: item.reason || '',
-      when: item.when || 'during'
-    });
-  }
-  return Array.from(map.values());
-}
-
-// Normalizes a name/PN string so items that are the SAME text but came
-// back from the AI with tiny formatting differences (extra space, en-dash
-// vs hyphen, double space…) still produce the same merge key — this alone
-// fixes "identical tool listed twice" cases like a torque wrench that
-// appears in two different cards' Support Equipment tables.
-function canonicalizeText(s) {
-  return (s || '')
-    .toString()
-    .replace(/[\u2010-\u2015]/g, '-')   // en/em dash variants -> hyphen
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
-}
-// Loose PN comparison: ignores a trailing "or equivalent" so the same part
-// number with slightly different trailing wording still compares equal.
-function canonicalizePn(pn) {
-  return canonicalizeText(pn).replace(/\s*or\s*equival?ent\.?\s*$/i, '').trim();
-}
-
-// Groups items first by an exact canonical key (handles pure formatting
-// noise), then makes a conservative second pass merging groups that are
-// almost certainly the SAME physical item worded slightly differently by
-// the AI (e.g. "Container, phosphate ester hydraulic fluid resistant" vs
-// "Container, hydraulic fluid resistant") — only when their part numbers
-// agree (or one/both have none) AND their names overlap heavily, using the
-// same namesOverlapSignificantly() logic already used to reconcile
-// tools/consumables/implicit materials against each other. Anything left
-// unmerged is sorted by name afterwards so near-duplicates that couldn't
-// be safely auto-merged still sit right next to each other for a quick
-// manual check, instead of being scattered through the list.
-function mergeSessionLeafFuzzy(items, nameOf, pnOf) {
-  const groups = [];
-  const byKey = new Map();
-  const addCitation = (g, cardRef, stepRef) => {
-    if (!stepRef) return;
-    const citKey = sessKey(cardRef, stepRef);
-    if (!g.citations.some(c => sessKey(c.cardRef, c.step_reference) === citKey)) g.citations.push({ cardRef, step_reference: stepRef });
-  };
-  for (const { cardRef, item } of items) {
-    const key = sessKey(canonicalizeText(nameOf(item)), pnOf ? canonicalizePn(pnOf(item)) : '');
-    if (!key) continue;
-    if (!byKey.has(key)) {
-      const g = { item, cardRefs: new Set(), citations: [], key };
-      byKey.set(key, g);
-      groups.push(g);
-    }
-    const g = byKey.get(key);
-    g.cardRefs.add(cardRef);
-    addCitation(g, cardRef, item.step_reference);
-  }
-
-  const used = new Array(groups.length).fill(false);
-  const merged = [];
-  for (let i = 0; i < groups.length; i++) {
-    if (used[i]) continue;
-    const base = groups[i];
-    used[i] = true;
-    for (let j = i + 1; j < groups.length; j++) {
-      if (used[j]) continue;
-      const other = groups[j];
-      const pnA = pnOf ? canonicalizePn(pnOf(base.item)) : '';
-      const pnB = pnOf ? canonicalizePn(pnOf(other.item)) : '';
-      const pnCompatible = !pnA || !pnB || pnA === pnB;
-      if (!pnCompatible) continue;
-      if (!namesOverlapSignificantly(nameOf(base.item), nameOf(other.item))) continue;
-      const aHasPn = !!(pnOf && pnOf(base.item));
-      const bHasPn = !!(pnOf && pnOf(other.item));
-      const preferOther = (bHasPn && !aHasPn) ||
-        (bHasPn === aHasPn && (nameOf(other.item) || '').length > (nameOf(base.item) || '').length);
-      if (preferOther) base.item = other.item;
-      other.cardRefs.forEach(r => base.cardRefs.add(r));
-      other.citations.forEach(c => addCitation(base, c.cardRef, c.step_reference));
-      used[j] = true;
-    }
-    merged.push(base);
-  }
-  merged.sort((a, b) => (nameOf(a.item) || '').localeCompare(nameOf(b.item) || ''));
-  return merged;
-}
-
-function computeMergeKey(cat, item) {
-  if (cat === 'tools' || cat === 'consumables') return sessKey(canonicalizeText(item.name), canonicalizePn(item.pn));
-  if (cat === 'implicit_materials') return sessKey(canonicalizeText(item.name));
-  if (cat === 'access_panels') return sessKey(item.panel_id);
-  if (cat === 'safety_notices') return sessKey(item.kind, (item.text || '').slice(0, 120));
-  if (cat === 'related_tasks') return sessKey(item.ref || item.title);
-  return '';
-}
-
-function moveItemCategory(itemKey, fromCat, toCat) {
-  const snapshots = [...sessionCards, ...(rootResult ? [rootResult] : []),
-    ...Object.values(taskScans).flatMap(s => [s.data, s.scopedData].filter(Boolean)), manualCard];
-  let found = null;
-  snapshots.forEach(snap => {
-    const arr = snap[fromCat] || [];
-    const idx = arr.findIndex(it => computeMergeKey(fromCat, it) === itemKey);
-    if (idx !== -1) { found = arr[idx]; arr.splice(idx, 1); }
-  });
-  if (!found) return;
-  const converted = toCat === 'implicit_materials'
-    ? { name: found.name, step_reference: found.step_reference || '', source_quote: found.source_quote || '' }
-    : { name: found.name, pn: found.pn || '', qty: found.qty || '', step_reference: found.step_reference || '',
-        note_ipc: toCat === 'consumables' ? !!found.note_ipc : undefined, ipc_note_text: toCat === 'consumables' ? (found.ipc_note_text || '') : undefined };
-  manualCard[toCat].push(converted);
-  renderAll();
-}
-
-function setItemQty(itemKey, cat, val) {
-  const snapshots = [...sessionCards, ...(rootResult ? [rootResult] : []),
-    ...Object.values(taskScans).flatMap(s => [s.data, s.scopedData].filter(Boolean)), manualCard];
-  snapshots.forEach(snap => {
-    (snap[cat] || []).forEach(it => { if (computeMergeKey(cat, it) === itemKey) it.qty = val; });
-  });
-}
-
-// Builds the merged/deduplicated view used by BOTH the on-screen lists and
-// the export, so what you see is exactly what gets sent — no separate
-// merge logic that could quietly drift apart between display and export.
-function getMergedCategories(entries) {
-  const flat = (kind) => entries.flatMap(e => (e.data[kind] || []).map(item => ({ cardRef: e.cardRef, item })));
-
-  const toolsM = mergeSessionLeafFuzzy(flat('tools'), i => i.name, i => i.pn);
-  const consM  = mergeSessionLeafFuzzy(flat('consumables'), i => i.name, i => i.pn);
-  const implM  = mergeSessionLeafFuzzy(flat('implicit_materials'), i => i.name, null);
-  const accM   = mergeSessionLeaf(flat('access_panels'), i => sessKey(i.panel_id));
-  const safM   = mergeSessionLeaf(flat('safety_notices'), i => sessKey(i.kind, (i.text||'').slice(0,120)));
-  const SAFETY_KIND_ORDER = { warning: 0, caution: 1, note: 2 };
-  safM.sort((a, b) => (SAFETY_KIND_ORDER[a.item.kind] ?? 3) - (SAFETY_KIND_ORDER[b.item.kind] ?? 3));
-
-  // Only drop a related task if it's a card analyzed directly as its OWN
-  // root card ("Analyze this card") — already shown in the known-cards
-  // strip above. A related task scanned in-place via its own tree node
-  // ("Scan this task") stays in this list so renderTaskNode() can show
-  // its "✓ Scanned" state instead of the node just vanishing.
-  const rootRefs = new Set(sessionCards.map(c => normalizeRef(c.card_ref)));
-  if (rootResult) rootRefs.add(normalizeRef(rootResult.card_ref));
-  const tasksM = mergeRelatedTasks(
-    flat('related_tasks').filter(({item}) => !rootRefs.has(normalizeRef(item.ref)))
-  );
-
-  return { toolsM, consM, implM, accM, safM, tasksM };
-}
-
-function clearSession() {
-  if ((sessionCards.length || rootResult) && !confirm('Clear the whole session (' + sessionCards.length + ' card(s))? This cannot be undone.')) return;
-  sessionCards = [];
-  knownCards = [];
-  taskScans = {};
-  ignoredTasks = {};
-  rootResult = null;
-  fboRequests = {};
-  itemSelection = {};
-  suggestionState = { maskingTape: { accepted: false }, protectiveGloves: { accepted: false }, hydraulicCans: { accepted: false, qty: '' }, oilCans: { accepted: false, qty: '' }, softwareLoadingPcLocation: { accepted: false } };
-  renderKnownCards();
-  resetResults();
-}
-
-/* ============================================================
-   CORE SCAN — used for both the root card and any related_task
-   drill-down. Returns the verified JSON (with client-side cleanup
-   applied), or throws.
-   ============================================================ */
-async function runScan(text, knownRefs) {
-  const extractRes = await fetch(KO_WORKER + '/chat', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({
-      model: 'mistral-small-latest',
-      temperature: 0,
-      messages: [{ role: 'user', content: buildExtractPrompt(knownRefs) + '\n\nAMM TASK CARD TEXT:\n' + text }],
-      response_format: { type: 'json_object' }
-    })
-  });
-  const extractData = await extractRes.json();
-  if (!extractRes.ok) throw new Error(extractData.message || ('Chat error ' + extractRes.status));
-  const extractRaw = extractData.choices[0].message.content.replace(/```json|```/g, '').trim();
-
-  const verifyRes = await fetch(KO_WORKER + '/chat', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({
-      model: 'mistral-small-latest',
-      temperature: 0,
-      messages: [{ role: 'user', content: buildVerifyPrompt(extractRaw) + '\n\nORIGINAL SOURCE TEXT:\n' + text }],
-      response_format: { type: 'json_object' }
-    })
-  });
-  const verifyData = await verifyRes.json();
-  if (!verifyRes.ok) throw new Error(verifyData.message || ('Chat error ' + verifyRes.status));
-  const verifyRaw = verifyData.choices[0].message.content.replace(/```json|```/g, '').trim();
-  const verified = JSON.parse(verifyRaw);
-
-  verified.related_tasks = dedupeAndFilterRelatedTasks(verified.related_tasks || [], verified.card_ref || '', verified.card_title || '');
-  verified.access_panels = dedupeAccessPanels(verified.access_panels || []);
-  verified.safety_notices = dedupeSafetyNotices(verified.safety_notices || []);
-  // Order matters: reconcile tools/consumables first (move mis-filed rows
-  // back to tools), THEN reconcile implicit materials against the
-  // corrected tools+consumables lists.
-  verified.consumables = reconcileToolsAndConsumables(verified.tools, verified.consumables);
-  verified.implicit_materials = reconcileImplicitMaterials(verified.implicit_materials, verified.tools, verified.consumables);
-  verified.gas_type = verified.gas_type || 'none';
-  verified.fluid_drain = verified.fluid_drain || { hydraulic: false, oil: false, note: '' };
-  verified.software_loading = verified.software_loading || { required: false, note: '' };
-  return verified;
-}
-
-// Third AI pass, triggered only once a components-table scope is confirmed
-// for a scanned sub-task. Unlike a deterministic step-number filter, this
-// re-reads the actual source text and reasons about what a technician
-// genuinely needs — always-required preliminary/preparation/follow-on
-// work, plus judgment-based access panel selection by system/location.
-async function runScopeReasoning(sourceText, confirmedRows, extractedData) {
-  const res = await fetch(KO_WORKER + '/chat', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({
-      model: 'mistral-small-latest',
-      temperature: 0,
-      messages: [{ role: 'user', content: buildScopeReasoningPrompt(confirmedRows, extractedData) + '\n\nSOURCE TEXT:\n' + sourceText }],
-      response_format: { type: 'json_object' }
-    })
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || ('Chat error ' + res.status));
-  const raw = data.choices[0].message.content.replace(/```json|```/g, '').trim();
-  return JSON.parse(raw);
-}
-
-// Merges a scope-reasoning result back over the full scan.data, replacing
-// only the filtered arrays and keeping everything else (card_ref, gas_type,
-// fluid_drain, software_loading, applicability_table, etc.) untouched.
-function buildScopedData(fullData, reasoningResult) {
-  return {
-    ...fullData,
-    tools: reasoningResult.tools || [],
-    consumables: reasoningResult.consumables || [],
-    implicit_materials: reasoningResult.implicit_materials || [],
-    access_panels: reasoningResult.access_panels || [],
-    safety_notices: reasoningResult.safety_notices || [],
-    related_tasks: reasoningResult.related_tasks || [],
-    _scope_reasoning_notes: reasoningResult.reasoning_notes || []
-  };
-}
-
-// Filet de sécurité DÉTERMINISTE — indépendant de la qualité du raisonnement
-// IA. Toute entrée dont le step_reference (texte, pas numéro) mentionne une
-// des sections "communes à tout le job" est réinjectée dans le résultat
-// filtré si l'IA l'avait exclue. Fonctionne pareil sur n'importe quelle
-// carte AMM, puisque ce sont des libellés de section standards, pas des
-// numéros de step propres à une carte en particulier.
-const ALWAYS_INCLUDE_STEP_PATTERN = /preliminary requirements|safety conditions|requirements after job completion|pre-operation|post-operation|support equipment|material required/i;
-
-function forceIncludeAlwaysApplicableItems(fullData, scopedResult) {
-  const CATS = ['tools', 'consumables', 'implicit_materials', 'access_panels', 'safety_notices', 'related_tasks'];
-  const out = { ...scopedResult };
-  CATS.forEach(cat => {
-    const already = new Set((scopedResult[cat] || []).map(it => computeMergeKey(cat, it) || JSON.stringify(it)));
-    const forced = (fullData[cat] || []).filter(it => {
-      const refs = Array.isArray(it.step_references) ? it.step_references.join(' | ') : (it.step_reference || '');
-      if (!ALWAYS_INCLUDE_STEP_PATTERN.test(refs)) return false;
-      const key = computeMergeKey(cat, it) || JSON.stringify(it);
-      return !already.has(key);
-    });
-    if (forced.length) out[cat] = [...(scopedResult[cat] || []), ...forced];
-  });
-  return out;
-}
-
-async function pdfToText(pdfB64) {
-  const ocrRes = await fetch(KO_WORKER + '/ocr', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({
-      model: 'mistral-ocr-latest',
-      document: { type: 'document_url', document_url: `data:application/pdf;base64,${pdfB64}` }
-    })
-  });
-  const ocrData = await ocrRes.json();
-  if (!ocrRes.ok) throw new Error(ocrData.message || ('OCR error ' + ocrRes.status));
-  return ocrData.pages.map(p => p.markdown).join('\n\n');
-}
-
-/* ============================================================
-   ROOT SCAN FLOW
-   ============================================================ */
-async function analyzeAmm() {
-  const pastedText = document.getElementById('amm-text').value.trim();
-  const isPdf = inputMode === 'pdf';
-  if (isPdf && !ammPdfB64) { setStatus('err', 'Please load a PDF first.'); return; }
-  if (!isPdf && !pastedText) { setStatus('err', 'Please paste the AMM card text first.'); return; }
-
-  const btn = document.getElementById('btn-analyze');
-  btn.disabled = true;
-  document.getElementById('check-progress').style.display = 'block';
-  setStep('step-extract', 'active'); setStep('step-verify', null); setStep('step-done', null);
-  setStatus('load', '<span class="spin spin-dark"></span> Reading the AMM card…');
-
-  try {
-    const ammText = isPdf ? await pdfToText(ammPdfB64) : pastedText;
-
-    setStep('step-extract', 'done'); setStep('step-verify', 'active');
-    setStatus('load', '<span class="spin spin-dark"></span> Self-checking — the AI is re-verifying every item against the source text…');
-
-    const knownRefs = knownCards.map(c => c.ref);
-    const verified = await runScan(ammText, knownRefs);
-
-    setStep('step-verify', 'done'); setStep('step-done', 'done');
-
-    const manualRef = document.getElementById('amm-ref').value.trim();
-    if (manualRef) verified.card_ref = manualRef;
-
-    rootResult = verified;
-    registerKnownCard(verified.card_ref, verified.card_title);
-    renderModelWarning('model-warning-root', verified.aircraft_model, expectedModel, 'the project aircraft');
-
-    // Same applicability-table tracking as sub-task scans, keyed by this
-    // card's own ref, so the technician confirms the component(s) before
-    // the full unfiltered card content lands in the merged lists.
-    const rootRefNorm = normalizeRef(verified.card_ref);
-    const rootTable = verified.applicability_table || [];
-    taskScans[rootRefNorm] = {
-      status: 'done',
-      data: verified,
-      sourceText: ammText,
-      applicabilityMatch: rootTable.length ? matchApplicabilityTable(rootTable, verified.card_title) : null,
-      applicabilityPickerOpen: false,
-      applicabilityPickerSelected: new Set(),
-      applicabilityPickerSearch: '',
-      scopedData: null,
-      scopeReasoningStatus: null
-    };
-
-    addToSessionCards(verified);
-    renderEsdWarning('esd-warning-root', verified.esd_warning, verified.esd_note);
-    renderAll();
-    if (taskScans[rootRefNorm].applicabilityMatch && !taskScans[rootRefNorm].applicabilityMatch.ambiguous) {
-      await runScopeReasoningForScan(rootRefNorm);
-      renderAll();
-    }
-    setStatus('done', `✓ Analysis complete${verified.card_ref ? ' — card ' + escapeHtml(verified.card_ref) : ''}. Review items flagged "needs review" before sending.`);
-  } catch (e) {
-    setStep('step-extract', null); setStep('step-verify', null);
-    setStatus('err', 'Error: ' + e.message);
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-function registerKnownCard(ref, title) {
-  if (!ref) return;
-  if (!knownCards.find(c => c.ref === ref)) {
-    knownCards.push({ ref, title: title || '', addedAt: Date.now() });
-    renderKnownCards();
-  }
-}
-
-function renderKnownCards() {
-  const card = document.getElementById('already-done-card');
-  const list = document.getElementById('known-tags');
-  document.getElementById('known-count').textContent = knownCards.length;
-  if (!knownCards.length) { card.style.display = 'none'; return; }
-  card.style.display = 'block';
-  list.innerHTML = knownCards.map((c, i) => `
-    <div style="font-size:11px;background:#eef1f5;color:var(--muted);padding:3px 9px;border-radius:20px;display:flex;align-items:center;gap:5px">
-      <span>${escapeHtml(c.ref)}${c.title ? ' — ' + escapeHtml(c.title) : ''}</span>
-      <button onclick="removeKnownCard(${i})" title="Remove from session memory" style="border:none;background:none;color:var(--err);cursor:pointer;font-size:13px;line-height:1;padding:0">×</button>
-    </div>
-  `).join('');
-}
-function removeKnownCard(i) {
-  const removed = knownCards.splice(i, 1)[0];
-  if (removed) {
-    sessionCards = sessionCards.filter(c => normalizeRef(c.card_ref) !== normalizeRef(removed.ref));
-    if (rootResult && normalizeRef(rootResult.card_ref) === normalizeRef(removed.ref)) rootResult = null;
-  }
-  renderKnownCards();
-  renderAll();
-}
-
-function resetResults() {
-  document.getElementById('amm-text').value = '';
-  document.getElementById('amm-ref').value = '';
-  ammPdfB64 = null;
-  document.getElementById('pdf-filename').textContent = '';
-  document.getElementById('check-progress').style.display = 'none';
-  document.getElementById('amm-status').className = 'status';
-  rootResult = null;
-  renderAll();
-}
-
-/* ============================================================
-   RENDERING — cumulative, session-wide lists
-   ============================================================
-   Instead of rendering only `rootResult`, the final #results view now
-   merges EVERY card scanned this session (sessionCards) — including
-   any nested related-task scans hanging off each card's tree — into
-   one deduplicated set per category. This is the single source of
-   truth for the UI; there is no separate "session summary" block.
-   ============================================================ */
-function collectAllScannedData() {
-  // Flattens sessionCards + every completed entry in the global
-  // taskScans map into a flat list of {cardRef, cardTitle, data}
-  // entries, one per distinct card that has actually been scanned
-  // (root card or related-task scan, from any session card's tree).
-  // Sub-task scans that resolved a confirmed applicability scope use
-  // scan.scopedData (produced by the AI scope-reasoning pass, see
-  // runScopeReasoningForScan) instead of the full scan.data, once that
-  // pass has completed. Until then, the full data is shown.
-  const out = [];
-  const seen = new Set();
-  function addEntry(data, fallbackRef, fallbackTitle) {
-    const ref = normalizeRef(data.card_ref || fallbackRef);
-    if (!ref || seen.has(ref)) return;
-    seen.add(ref);
-    out.push({ cardRef: data.card_ref || fallbackRef, cardTitle: data.card_title || fallbackTitle, data });
-  }
-  sessionCards.forEach(c => {
-    const refNorm = normalizeRef(c.card_ref);
-    const rs = taskScans[refNorm];
-    if (rs && (rs.data.applicability_table || []).length) {
-      if (scanNeedsApplicabilityConfirmation(rs)) return; // attend la confirmation du composant
-      addEntry(rs.scopedData || rs.data, c.card_ref, c.card_title);
-      return;
-    }
-    addEntry(c, c.card_ref, c.card_title);
-  });
-  Object.keys(taskScans).forEach(refKey => {
-    if (ignoredTasks[refKey]) return; // technician explicitly excluded this task
-    const scan = taskScans[refKey];
-    if (scan && scan.status === 'done' && scan.data && !scanNeedsApplicabilityConfirmation(scan)) {
-      const dataToUse = scan.scopedData || scan.data;
-      addEntry(dataToUse, scan.data.card_ref, scan.data.card_title);
-    }
-  });
-  if (manualCard.tools.length || manualCard.consumables.length || manualCard.implicit_materials.length) {
-    addEntry(manualCard, manualCard.card_ref, manualCard.card_title);
-  }
-  return out;
-}
-
-// True while a scanned sub-task's own document has a component -> scope
-// table (see category 9 of the extraction prompt) but the technician
-// hasn't yet told us which component(s) they actually worked on. While
-// true, this sub-task's tools/consumables/related tasks/etc. are held
-// back from the merged session view — showing them immediately, before
-// the technician has narrowed down the part, was misleading (the full
-// procedure's tools aren't necessarily what's needed for one component).
-function scanNeedsApplicabilityConfirmation(scan) {
-  const table = (scan.data && scan.data.applicability_table) || [];
-  if (!table.length) return false;
-  const m = scan.applicabilityMatch;
-  if (!m || m.ambiguous || !m.matches || !m.matches.length) return true;
-  return false;
-}
-
-function renderAll() {
-  const entries = collectAllScannedData();
-  const hasAnything = entries.length > 0;
-  document.getElementById('results').style.display = hasAnything ? 'block' : 'none';
-  if (!hasAnything) return;
-
-  const { toolsM, consM, implM, accM, safM, tasksM } = getMergedCategories(entries);
-
-  renderMergedList('tools-list', 'tools-count', toolsM, renderMergedTool);
-  renderMergedList('consumables-list', 'consumables-count', consM, renderMergedConsumable);
-  renderImplicitList(implM, entries);
-  renderMergedList('access-list', 'access-count', accM, renderMergedAccess);
-  renderMergedList('safety-list', 'safety-count', safM, renderMergedSafety);
-  renderMergedTasksList(tasksM);
-
-  if (rootResult) {
-    renderGasWarningRoot('gas-warning-root', rootResult.card_ref, rootResult);
-    const rootRefNorm = normalizeRef(rootResult.card_ref);
-    const rootScan = taskScans[rootRefNorm];
-    const applEl = document.getElementById('applicability-warning-root');
-    if (applEl) {
-      if (rootScan && (rootScan.data.applicability_table || []).length) {
-        applEl.style.display = 'block';
-        applEl.innerHTML = renderApplicabilityZone(rootRefNorm, rootScan);
-      } else {
-        applEl.style.display = 'none'; applEl.innerHTML = '';
-      }
-    }
-  } else {
-    const gwEl = document.getElementById('gas-warning-root');
-    if (gwEl) { gwEl.style.display = 'none'; gwEl.innerHTML = ''; }
-    const applEl = document.getElementById('applicability-warning-root');
-    if (applEl) { applEl.style.display = 'none'; applEl.innerHTML = ''; }
-  }
-  renderSoftwareLoadingCard(entries);
-
-  // Self-check summaries from every scanned card, concatenated with a
-  // card-ref prefix so it's clear which card each note belongs to.
-  const summaryLines = [];
-  entries.forEach(e => {
-    (e.data.verification_summary || []).forEach(s => summaryLines.push({ cardRef: e.cardRef, text: s }));
-  });
-  const summaryCard = document.getElementById('verify-summary-card');
-  if (summaryLines.length) {
-    summaryCard.style.display = 'block';
-    document.getElementById('verify-summary').innerHTML = summaryLines.map(s =>
-      `<div style="font-size:12.5px;padding:4px 0;color:var(--muted)"><span class="badge badge-card" style="margin-right:6px">${escapeHtml(s.cardRef || '?')}</span>${escapeHtml(s.text)}</div>`
-    ).join('');
-  } else {
-    summaryCard.style.display = 'none';
-  }
-  document.getElementById('raw-debug').textContent = JSON.stringify(entries.map(e => e.data), null, 2);
-
-  Object.keys(taskScans).forEach(k => {
-    const scan = taskScans[k];
-    if (scan && scan.applicabilityPickerOpen && scan.applicabilityPickerSearch) {
-      filterApplicabilityOptions(k, scan.applicabilityPickerSearch);
-    }
-  });
-}
-
-function cardTagsHtml(cardRefs) {
-  return Array.from(cardRefs).map(r => `<span class="badge badge-card">${escapeHtml(r)}</span>`).join(' ');
-}
-
-function renderMergedList(listId, countId, merged, renderer) {
-  document.getElementById(countId).textContent = merged.length;
-  const el = document.getElementById(listId);
-  if (!merged.length) { el.innerHTML = `<div class="empty">None identified.</div>`; return; }
-  el.innerHTML = merged.map(m => renderer(m.item, m.cardRefs, m.key, m.citations)).join('');
-}
-
-function renderMergedTool(t, cardRefs, key, citations) {
-  const included = isItemIncluded(key);
-  const refs = (citations && citations.length) ? citations : (t.step_reference ? [{ cardRef: '', step_reference: t.step_reference }] : []);
-  const refsHtml = refs.map(c => `<span class="step-ref">📍 ${c.cardRef ? `<b>${escapeHtml(c.cardRef)}:</b> ` : ''}${escapeHtml(c.step_reference)}</span>`).join('');
-  return `
-    <div class="item ${included ? 'flag-checked' : 'ignored'}">
-      <input type="checkbox" ${included ? 'checked' : ''} onchange="toggleItemInclusion(${jsArg(key)})" title="Include in export">
-      <div class="item-body">
-        <div class="item-main">
-          <div><span class="item-name">${escapeHtml(t.name)}</span>${t.pn ? `<span class="item-pn">&nbsp;· ${escapeHtml(t.pn)}</span>` : ''}</div>
-          <div class="row" style="gap:6px;align-items:center">
-            <label style="font-size:11px;color:var(--muted)">Qty:</label>
-            <input type="text" class="hint-input" style="width:80px" value="${escapeHtml(t.qty||'')}" oninput="setItemQty(${jsArg(key)},'tools',this.value)">
-          </div>
-        </div>
-        ${refsHtml ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px">${refsHtml}</div>` : ''}
-        <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
-      </div>
-    </div>`;
-}
-
-function renderMergedConsumable(c, cardRefs, key, citations) {
-  const included = isItemIncluded(key);
-  const refs = (citations && citations.length) ? citations : (c.step_reference ? [{ cardRef: '', step_reference: c.step_reference }] : []);
-  const refsHtml = refs.map(r => `<span class="step-ref">📍 ${r.cardRef ? `<b>${escapeHtml(r.cardRef)}:</b> ` : ''}${escapeHtml(r.step_reference)}</span>`).join('');
-  return `
-    <div class="item ${included ? 'flag-checked' : 'ignored'}">
-      <input type="checkbox" ${included ? 'checked' : ''} onchange="toggleItemInclusion(${jsArg(key)})" title="Include in export">
-      <div class="item-body">
-        <div class="item-main">
-          <div><span class="item-name">${escapeHtml(c.name)}</span>${c.pn ? `<span class="item-pn">&nbsp;· ${escapeHtml(c.pn)}</span>` : ''}</div>
-          <div class="row" style="gap:6px;align-items:center">
-            <label style="font-size:11px;color:var(--muted)">Qty:</label>
-            <input type="text" class="hint-input" style="width:80px" value="${escapeHtml(c.qty||'')}" oninput="setItemQty(${jsArg(key)},'consumables',this.value)">
-            ${c.note_ipc ? `<span class="badge badge-ipc">📘 See IPC</span>` : ''}
-          </div>
-        </div>
-        ${refsHtml ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px">${refsHtml}</div>` : ''}
-        ${c.note_ipc ? `<div class="note-ipc">📘 <span><b>Refer to the IPC</b> — ${escapeHtml(c.ipc_note_text || 'no P/N given in this card, refer to the IPC.')}</span></div>` : ''}
-        <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
-      </div>
-    </div>`;
-}
-
-function renderMergedImplicit(m, cardRefs, key) {
-  const included = isItemIncluded(key);
-  return `
-    <div class="item ${included ? 'flag-checked' : 'ignored'}">
-      <input type="checkbox" ${included ? 'checked' : ''} onchange="toggleItemInclusion(${jsArg(key)})" title="Include in export">
-      <div class="item-body">
-        <div class="item-main">
-          <div><span class="item-name">${escapeHtml(m.name)}</span></div>
-        </div>
-        ${m.step_reference ? `<div class="step-ref">📍 ${escapeHtml(m.step_reference)}</div>` : '<div class="step-ref step-ref-missing">📍 Step reference not given</div>'}
-        ${m.source_quote ? `<div class="item-meta" style="margin-top:4px">💡 ${escapeHtml(m.source_quote)}</div>` : ''}
-        <div class="scan-toggle-row" style="margin-top:6px">
-          <button class="btn btn-ghost btn-sm" onclick="moveItemCategory(${jsArg(key)},'implicit_materials','tools')">→ Tool</button>
-          <button class="btn btn-ghost btn-sm" onclick="moveItemCategory(${jsArg(key)},'implicit_materials','consumables')">→ Consumable</button>
-        </div>
-        <div class="item-meta" style="margin-top:6px">Found in: ${cardTagsHtml(cardRefs)}</div>
-      </div>
-    </div>`;
-}
-
-const ACCESS_ACTION_LABEL = { remove: 'Removal', install: 'Installation', remove_and_install: 'Removal & Installation' };
-
-function renderMergedAccess(p, cardRefs) {
-  return `
-    <div class="item flag-checked">
-      <div class="item-body">
-        <div class="item-main">
-          <div>
-            <span class="item-name">Access Panel ${escapeHtml(p.panel_id)} — ${escapeHtml(ACCESS_ACTION_LABEL[p.action] || p.action || '')}</span>
-          </div>
-          <div class="row" style="gap:6px">
-            ${p.conditional ? `<span class="badge badge-cond">if required</span>` : ''}
-          </div>
-        </div>
-        ${p.step_reference ? `<div class="step-ref">📍 ${escapeHtml(p.step_reference)}</div>` : ''}
-        ${p.figure_reference ? `<div class="item-meta" style="margin-top:4px">🖼️ ${escapeHtml(p.figure_reference)}</div>` : ''}
-        ${p.conditional && p.conditional_note ? `<div class="note-cond">🔀 <b>Depends on the part:</b> ${escapeHtml(p.conditional_note)}</div>` : ''}
-        <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
-      </div>
-    </div>`;
-}
-
-const SAFETY_KIND_LABEL = { warning: 'WARNING', caution: 'CAUTION', note: 'NOTE' };
-
-function renderMergedSafety(s, cardRefs) {
-  const k = SAFETY_KIND_LABEL[s.kind] ? s.kind : 'note';
-  const refs = Array.isArray(s.step_references) ? s.step_references : (s.step_reference ? [s.step_reference] : []);
-  return `
-    <div class="safety-item kind-${k}">
-      <div class="item-body">
-        <div class="item-main">
-          <span class="safety-kind-badge kind-${k}">${SAFETY_KIND_LABEL[k]}</span>
-        </div>
-        <div class="safety-text" style="margin-top:6px">${escapeHtml(s.text)}</div>
-        ${refs.length ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px">${refs.map(r => `<span class="step-ref">📍 ${escapeHtml(r)}</span>`).join('')}</div>` : ''}
-        <div class="item-meta" style="margin-top:6px">Applies to: ${cardTagsHtml(cardRefs)}</div>
-      </div>
-    </div>`;
-}
-
-/* ============================================================
-   SMART SUGGESTIONS — deterministic, rule-based recommendations
-   layered ON TOP of the extraction. Deliberately never merged into
-   tools/consumables/implicit_materials (those stay 100% traceable to
-   the AMM text) — shown in their own card, and only flow into the
-   export once the technician explicitly taps "Ajouter".
-   ============================================================ */
-function detectSealantMention(entries) {
-  const refs = [];
-  entries.forEach(e => {
-    const names = [
-      ...(e.data.tools || []).map(i => i.name || ''),
-      ...(e.data.consumables || []).map(i => i.name || ''),
-      ...(e.data.implicit_materials || []).map(i => i.name || '')
-    ].join(' ').toLowerCase();
-    if (/\bsealant\b/.test(names)) refs.push(e.cardRef);
-  });
-  return refs;
-}
-
-// Relies on the "fluid_drain" field the extraction/verification prompts now
-// fill (see buildExtractPrompt category 11) — more reliable than keyword
-// matching since the AI already read the full procedure to set it.
-function detectFluidDrain(entries, kind) {
-  const refs = [];
-  entries.forEach(e => {
-    if (e.data.fluid_drain && e.data.fluid_drain[kind]) refs.push(e.cardRef);
-  });
-  return refs;
-}
-
-// Filet de sécurité : certaines cartes ne mentionnent le chargement logiciel
-// que comme une ligne sèche en related_tasks (ex: citée en Preliminary
-// Requirements ou Requirements After Job Completion), sans que l'IA le
-// reformule explicitement dans le texte de LA CARTE elle-même. On rescanne
-// donc aussi les related_tasks déjà extraits, par titre ET par référence
-// connus — indépendamment du jugement de l'IA sur software_loading.required.
-const SOFTWARE_LOADING_TITLE_PATTERNS = [
-  /planeview system\s*-?\s*load software/i,
-  /modular avionics unit.*software loading/i,
-  /modular radio cabinet.*software loading/i,
-  /software loading/i,
-  /load software/i
-];
-const SOFTWARE_LOADING_REF_PATTERNS = [/^20-22-00$/, /^20-22-01$/];
-function relatedTaskIsSoftwareLoading(task) {
-  const hay = ((task.title || '') + ' ' + (task.ref || '')).toLowerCase();
-  if (SOFTWARE_LOADING_TITLE_PATTERNS.some(re => re.test(hay))) return true;
-  return SOFTWARE_LOADING_REF_PATTERNS.some(re => re.test(normalizeRef(task.ref)));
-}
-
-// Same principle as detectFluidDrain: relies on "software_loading" filled by
-// the AI from the full procedure text (category 12 of the extraction prompt),
-// PLUS a client-side backstop over related_tasks (see relatedTaskIsSoftwareLoading)
-// for cases cited only as a terse AMM cross-reference.
-function detectSoftwareLoading(entries) {
-  const out = [];
-  entries.forEach(e => {
-    if (e.data.software_loading && e.data.software_loading.required) {
-      out.push({ cardRef: e.cardRef, note: e.data.software_loading.note || '' });
-    }
-    (e.data.related_tasks || []).forEach(t => {
-      if (relatedTaskIsSoftwareLoading(t)) {
-        out.push({ cardRef: e.cardRef, note: 'Cites ' + (t.ref || '') + (t.ref && t.title ? ' — ' : '') + (t.title || '') });
-      }
-    });
-  });
-  return out;
-}
-
-function toggleSuggestion(key) {
-  suggestionState[key].accepted = !suggestionState[key].accepted;
-  renderAll();
-}
-function setSuggestionQty(key, val) {
-  suggestionState[key].qty = val;
-}
-
-function renderImplicitList(implM, entries) {
-  const el = document.getElementById('implicit-list');
-  const rows = implM.map(m => renderMergedImplicit(m.item, m.cardRefs, m.key));
-
-  const sealantRefs = detectSealantMention(entries);
-  if (sealantRefs.length) {
-    rows.push(renderSuggestionRow('maskingTape', '🧴 Masking tape', sealantRefs));
-    rows.push(renderSuggestionRow('protectiveGloves', '🧤 Protective gloves', sealantRefs));
-  }
-  const hydRefs = detectFluidDrain(entries, 'hydraulic');
-  if (hydRefs.length) rows.push(renderSuggestionRow('hydraulicCans', '🛢️ Hydraulic fluid (replacement cans)', hydRefs, true));
-  const oilRefs = detectFluidDrain(entries, 'oil');
-  if (oilRefs.length) rows.push(renderSuggestionRow('oilCans', '🛢️ Oil (replacement cans)', oilRefs, true));
-
-  document.getElementById('implicit-count').textContent = implM.length;
-  el.innerHTML = rows.length ? rows.join('') : `<div class="empty">None identified.</div>`;
-}
-
-function renderSuggestionRow(stateKey, label, cardRefs, hasQty) {
-  const st = suggestionState[stateKey];
-  const on = st.accepted;
-  return `
-    <div class="item ${on ? 'flag-checked' : 'ignored'}" style="border-left:3px solid var(--purple)">
-      <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleSuggestion('${stateKey}')" title="Accept suggestion">
-      <div class="item-body">
-        <div class="item-main">
-          <span class="item-name">${label}</span>
-          <span class="badge" style="background:var(--purple-bg);color:var(--purple)">Suggestion — not from card</span>
-        </div>
-        ${hasQty ? `<div style="margin-top:8px"><input type="text" class="hint-input" placeholder="Quantity" value="${escapeHtml(st.qty||'')}" oninput="setSuggestionQty('${stateKey}', this.value)"></div>` : ''}
-        <div class="item-meta" style="margin-top:6px">Suggested for: ${cardTagsHtml(cardRefs)} — please confirm.</div>
-        ${on ? `
-          <div class="scan-toggle-row" style="margin-top:6px">
-            <button class="btn btn-ghost btn-sm" onclick="promoteSuggestion('${stateKey}','tools')">→ Tool</button>
-            <button class="btn btn-ghost btn-sm" onclick="promoteSuggestion('${stateKey}','consumables')">→ Consumable</button>
-          </div>` : ''}
-      </div>
-    </div>`;
-}
-
-function promoteSuggestion(stateKey, toCat) {
-  const st = suggestionState[stateKey];
-  const labels = {
-    maskingTape: 'Masking tape', protectiveGloves: 'Protective gloves',
-    hydraulicCans: 'Hydraulic fluid (replacement cans)', oilCans: 'Oil (replacement cans)'
-  };
-  manualCard[toCat].push({ name: labels[stateKey], pn: '', qty: st.qty || '', step_reference: '',
-    note_ipc: toCat === 'consumables' ? false : undefined, ipc_note_text: toCat === 'consumables' ? '' : undefined });
-  st.accepted = false;
-  st.qty = '';
-  renderAll();
-}
-
-function renderSoftwareLoadingCard(entries) {
-  const wrap = document.getElementById('suggestions-card');
-  const el = document.getElementById('suggestions-list');
-  if (!wrap || !el) return;
-  const swLoads = detectSoftwareLoading(entries);
-  if (!swLoads.length) { wrap.style.display = 'none'; el.innerHTML = ''; return; }
-  const on = suggestionState.softwareLoadingPcLocation.accepted;
-  const swRefs = new Set(swLoads.map(s => s.cardRef));
-  const swNotes = swLoads.filter(s => s.note).map(s => escapeHtml(s.note)).join(' · ');
-  wrap.style.display = 'block';
-  el.innerHTML = `
-    <div class="item ${on ? 'flag-checked' : 'ignored'}">
-      <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleSuggestion('softwareLoadingPcLocation')">
-      <div class="item-body">
-        <div class="item-main"><span class="item-name">💾 Ask customer: Data Loader PC &amp; CD-ROM location</span></div>
-        ${swNotes ? `<div class="item-meta" style="margin-top:4px">${swNotes}</div>` : ''}
-        <div class="item-meta" style="margin-top:6px">Software loading detected on: ${cardTagsHtml(swRefs)}. Will add a note to the customer message.</div>
-      </div>
-    </div>`;
-}
-
-function renderMergedTasksList(tasksM) {
-  document.getElementById('tasks-count').textContent = tasksM.length;
-  const el = document.getElementById('tasks-list');
-  if (!tasksM.length) { el.innerHTML = `<div class="empty">No related tasks detected.</div>`; return; }
-  el.innerHTML = tasksM.map(({item:t, cardRefs, citations}) => renderTaskNode(t, cardRefs, citations)).join('');
-}
-
-/* ============================================================
-   TASK NODE (related tasks) — merged view, individually scannable
-   AT ANY TIME regardless of which card is currently rootResult.
-   Scan state lives in the global `taskScans` map, keyed by the
-   task's normalized ref, completely independent of any card tree.
-   ============================================================ */
-function renderTaskNode(t, cardRefs, citations) {
-  const key = normalizeRef(t.ref);
-  const scan = taskScans[key] || { status: 'idle' };
-  const keyArg = jsArg(key);
-  const titleArg = jsArg(t.title || '');
-  const isKnown = knownCards.some(c => normalizeRef(c.ref) === normalizeRef(t.ref));
-  const ignored = isTaskIgnored(key);
-  // Resolved from the static ref table immediately (no scan needed for known
-  // gas refs), or from the sub-task's own scan once done for unknown 12-xx-xx
-  // refs — this is what makes a gas task detected as a related task "propagate"
-  // as a sub-task without forcing a PDF scan first.
-  const gasInfo = resolveGasInfo(t.ref, t.title, scan);
-
-  let scanZoneHtml = '';
-  if (ignored) {
-    scanZoneHtml = `
-      <div class="task-scan-zone" style="opacity:.65">
-        <div class="scan-toggle-row">
-          <span style="font-size:12px;color:var(--muted)">🚫 Ignored — excluded from the lists above and from export.</span>
-          <button class="btn btn-ghost btn-sm" onclick="unignoreTask(${keyArg})">↺ Un-ignore</button>
-        </div>
-      </div>`;
-  } else if (scan.status === 'idle') {
-    scanZoneHtml = `
-      <div class="task-scan-zone">
-        <div class="scan-toggle-row">
-          <span style="font-size:12px;color:var(--muted)">Want this task's own tools, parts and access panels too?</span>
-          <button class="btn btn-purple btn-sm" onclick="openScanWidget(${keyArg}, ${titleArg})">📄 Scan this task</button>
-          <button class="btn btn-ghost btn-sm" onclick="ignoreTask(${keyArg})">🚫 Ignore</button>
-        </div>
-      </div>`;
-  } else if (scan.status === 'widget_open') {
-    scanZoneHtml = `<div class="task-scan-zone">${renderScanWidget(key, 'tasknode_' + key, scan)}</div>`;
-  } else if (scan.status === 'loading') {
-    scanZoneHtml = `
-      <div class="task-scan-zone">
-        <div class="checkstep active"><div class="dot"></div><div><span class="spin spin-dark" style="margin-right:6px"></span>Scanning ${escapeHtml(t.ref)} — extracting, then self-checking…</div></div>
-      </div>`;
-  } else if (scan.status === 'error') {
-    scanZoneHtml = `
-      <div class="task-scan-zone">
-        <div class="status show err">❌ ${escapeHtml(scan.errorMsg || 'Scan failed.')}</div>
-        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="openScanWidget(${keyArg}, ${titleArg})">↺ Try again</button>
-        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="ignoreTask(${keyArg})">🚫 Ignore</button>
-      </div>`;
-  } else if (scan.status === 'done' && scan.data) {
-    const pending = scanNeedsApplicabilityConfirmation(scan);
-    const statusHtml = pending
-      ? `<span style="font-size:12px;color:var(--warn)">⏳ Scanned — select the applicable component(s) below before its tools/parts are added to the lists above.</span>`
-      : `<span style="font-size:12px;color:var(--ok)">✓ Scanned — its items are merged into the lists above.</span>`;
-    scanZoneHtml = `<div class="task-scan-zone">${statusHtml} <button class="btn btn-ghost btn-sm" onclick="rescanTask(${keyArg}, ${titleArg})">↺ Re-scan</button> <button class="btn btn-ghost btn-sm" onclick="ignoreTask(${keyArg})">🚫 Ignore</button>${renderApplicabilityZone(key, scan)}</div>`;
-  }
-
-  return `
-    <div class="task-node">
-      <div class="task-node-head">
-        <div class="task-node-body">
-          <div class="task-node-main">
-            <div class="row" style="gap:8px">
-              <span class="task-ref">${escapeHtml(t.ref || '—')}</span>
-              <span style="font-weight:600;font-size:13px">${escapeHtml(t.title)}</span>
-              <span class="task-when when-${t.when || 'during'}">${(t.when||'during').toUpperCase()}</span>
-              ${isKnown ? '<span class="badge badge-opt">already scanned this session</span>' : ''}
-            </div>
-          </div>
-          ${(citations && citations.length ? citations : [{cardRef:'', step_reference:t.step_reference, reason:t.reason}]).map(c => `
-            <div style="margin-top:6px">
-              ${c.cardRef ? `<span class="badge badge-card" style="margin-right:6px">${escapeHtml(c.cardRef)}</span>` : ''}
-              ${c.step_reference ? `<span class="step-ref">📍 ${escapeHtml(c.step_reference)}</span>` : ''}
-              ${c.reason ? `<div class="task-reason">${escapeHtml(c.reason)}</div>` : ''}
-            </div>`).join('')}
-          ${renderGasFboWidget(t.ref, gasInfo)}
-        </div>
-      </div>
-      ${scanZoneHtml}
-    </div>`;
-}
-
-/* ------------------------------------------------------------
-   APPLICABILITY ZONE — shown under a completed sub-task scan ONLY
-   when that sub-task's own document contains a component -> scope
-   table (category 9 of the extraction prompt, e.g. "Table 4. Brake
-   Components" inside a Hydraulic Bleed card). Three states:
-     - table empty            -> render nothing (ordinary procedure)
-     - confident single match -> green "narrowed scope" callout
-     - ambiguous / no match   -> amber picker, technician chooses
-   ------------------------------------------------------------ */
-function renderApplicabilityZone(key, scan) {
-  const table = (scan.data && scan.data.applicability_table) || [];
-  if (!table.length) return '';
-
-  const confirmedRows = (scan.applicabilityMatch && !scan.applicabilityMatch.ambiguous && scan.applicabilityMatch.matches && scan.applicabilityMatch.matches.length)
-    ? scan.applicabilityMatch.matches : null;
-
-  if (confirmedRows && !scan.applicabilityPickerOpen) {
-    let reasoningStatusHtml = '';
-    if (scan.scopeReasoningStatus === 'loading') {
-      reasoningStatusHtml = `<div style="margin-top:8px"><span class="spin spin-dark" style="margin-right:6px"></span>Reviewing the card to work out exactly what's needed for this component…</div>`;
-    } else if (scan.scopeReasoningStatus === 'error') {
-      reasoningStatusHtml = `<div class="status show err" style="margin-top:8px">❌ Couldn't narrow the scope automatically (${escapeHtml(scan.scopeReasoningError || 'error')}) — showing the full card's items instead. <button class="btn btn-ghost btn-sm" onclick="runScopeReasoningForScan(${jsArg(key)}).then(renderAll)">↺ Retry</button></div>`;
-    } else if (scan.scopedData) {
-      const notes = scan.scopedData._scope_reasoning_notes || [];
-      reasoningStatusHtml = `
-        <div style="margin-top:8px;font-size:11.5px;opacity:.9">
-          ✓ Items above are narrowed to what's needed for ${confirmedRows.length > 1 ? 'these components' : 'this component'} (always includes Preliminary Requirements, general Preparation, and Requirements After Job Completion).
-          ${notes.length ? `<ul style="margin:4px 0 0 16px;padding:0">${notes.map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul>` : ''}
-        </div>`;
-    }
-    return `
-      <div class="applic-match">
-        ⚡ <b>Narrowed scope found</b> for ${confirmedRows.length > 1 ? 'these ' + confirmedRows.length + ' components' : 'this component'}:
-        ${confirmedRows.map(r => `
-          <div style="margin-top:6px">
-            <b>${escapeHtml(r.component)}</b> <span style="opacity:.75">(${escapeHtml(r.table_name || 'components table')})</span><br>
-            <span style="font-family:ui-monospace,monospace">${escapeHtml(r.applicable_steps)}</span>
-          </div>`).join('')}
-        ${reasoningStatusHtml}
-        <div style="margin-top:6px"><button class="btn btn-ghost btn-sm" onclick="openApplicabilityPicker(${jsArg(key)})">Not the right part(s)? Choose again</button></div>
-      </div>`;
-  }
-
-  if (scan.applicabilityPickerOpen) {
-    const selected = scan.applicabilityPickerSelected || new Set();
-    const rowsHtml = table.map((row, i) => `
-      <label class="applic-option-row" data-search="${escapeHtml(canonicalizeText(row.component + ' ' + row.applicable_steps))}" style="display:flex;gap:8px;align-items:flex-start;padding:7px 9px;border-bottom:1px solid var(--border);cursor:pointer;font-size:12.5px">
-        <input type="checkbox" ${selected.has(i) ? 'checked' : ''} onchange="toggleApplicabilityRow(${jsArg(key)}, ${i})" style="margin-top:2px;flex-shrink:0">
-        <span><b>${escapeHtml(row.component)}</b><br><span style="color:var(--muted)">${escapeHtml(row.applicable_steps)}</span></span>
-      </label>`).join('');
-    return `
-      <div class="applic-pick">
-        ⚠️ <b>This procedure has a components table</b> — select every part that was actually removed/replaced (you can pick more than one if several were done this visit):
-        <input type="text" class="hint-input" placeholder="🔍 Search components…" style="margin-top:6px" value="${escapeHtml(scan.applicabilityPickerSearch || '')}" oninput="onApplicabilitySearchInput(${jsArg(key)}, this.value)">
-        <div style="max-height:220px;overflow:auto;margin-top:8px;border:1px solid var(--border);border-radius:6px;background:#fff" id="applicopts_${key}">
-          ${rowsHtml}
-        </div>
-        <div style="margin-top:6px"><button class="btn btn-purple btn-sm" onclick="confirmApplicabilityChoice(${jsArg(key)})">Confirm selection (${selected.size})</button></div>
-      </div>`;
-  }
-
-  return `
-    <div class="applic-pick">
-      ⚠️ <b>This procedure has a components table</b> with ${table.length} specific part(s) — the full procedure may be more than what's actually needed here.
-      <div style="margin-top:6px"><button class="btn btn-purple btn-sm" onclick="openApplicabilityPicker(${jsArg(key)})">Find my part(s) in the table</button></div>
-    </div>`;
-}
-
-function openApplicabilityPicker(key) {
-  const scan = taskScans[key];
-  if (!scan) return;
-  scan.applicabilityPickerOpen = true;
-  // Pre-check whatever was already confirmed, so "choose again" starts
-  // from the current selection instead of an empty list.
-  const table = (scan.data && scan.data.applicability_table) || [];
-  const preselect = new Set();
-  if (scan.applicabilityMatch && scan.applicabilityMatch.matches) {
-    scan.applicabilityMatch.matches.forEach(m => {
-      const idx = table.indexOf(m);
-      if (idx >= 0) preselect.add(idx);
-    });
-  }
-  scan.applicabilityPickerSelected = preselect;
-  scan.applicabilityPickerSearch = '';
-  renderAll();
-}
-
-function toggleApplicabilityRow(key, idx) {
-  const scan = taskScans[key];
-  if (!scan) return;
-  if (!scan.applicabilityPickerSelected) scan.applicabilityPickerSelected = new Set();
-  const i = parseInt(idx, 10);
-  if (scan.applicabilityPickerSelected.has(i)) scan.applicabilityPickerSelected.delete(i);
-  else scan.applicabilityPickerSelected.add(i);
-  renderAll();
-}
-
-// Live-filters the already-rendered checkbox rows by editing the DOM
-// directly (no renderAll()) so the search input never loses focus while
-// the technician is typing.
-function filterApplicabilityOptions(key, query) {
-  const root = document.getElementById('applicopts_' + key);
-  if (!root) return;
-  const q = canonicalizeText(query);
-  root.querySelectorAll('.applic-option-row').forEach(row => {
-    const hay = row.getAttribute('data-search') || '';
-    row.style.display = (!q || hay.includes(q)) ? 'flex' : 'none';
-  });
-}
-
-function onApplicabilitySearchInput(key, val) {
-  const scan = taskScans[key];
-  if (scan) scan.applicabilityPickerSearch = val;
-  filterApplicabilityOptions(key, val);
-}
-
-async function confirmApplicabilityChoice(key) {
-  const scan = taskScans[key];
-  if (!scan) return;
-  const table = (scan.data && scan.data.applicability_table) || [];
-  const selected = scan.applicabilityPickerSelected;
-  if (!selected || !selected.size) { alert('Please select at least one component from the list first.'); return; }
-  const rows = Array.from(selected).sort((a, b) => a - b).map(i => table[i]).filter(Boolean);
-  scan.applicabilityMatch = { matches: rows, ambiguous: false, manual: true };
-  scan.applicabilityPickerOpen = false;
-  scan.applicabilityPickerSelected = new Set();
-  scan.applicabilityPickerSearch = '';
-  await runScopeReasoningForScan(key);
-  renderAll();
-}
-
-// Runs (or re-runs) the scope-reasoning AI pass for a scan that just got a
-// confirmed, unambiguous applicability match, and stores the result in
-// scan.scopedData. Safe to call whenever scan.applicabilityMatch is set;
-// no-ops if the source text isn't available (e.g. very old scan state).
-async function runScopeReasoningForScan(key) {
-  const scan = taskScans[key];
-  if (!scan || !scan.data || !scan.applicabilityMatch || scan.applicabilityMatch.ambiguous) return;
-  if (!scan.sourceText) return; // nothing to re-read; leave scopedData unset, full data will be used
-  scan.scopeReasoningStatus = 'loading';
-  renderAll();
-  try {
-    const reasoning = await runScopeReasoning(scan.sourceText, scan.applicabilityMatch.matches, scan.data);
-    scan.scopedData = forceIncludeAlwaysApplicableItems(scan.data, buildScopedData(scan.data, reasoning));
-    scan.scopeReasoningStatus = 'done';
-  } catch (e) {
-    scan.scopeReasoningStatus = 'error';
-    scan.scopeReasoningError = e.message;
-    scan.scopedData = null; // fall back to showing the full unfiltered data rather than nothing
-  }
-}
-
-function renderScanWidget(key, nodeId, scan) {
-  const keyAttr = JSON.stringify(key).replace(/"/g,'&quot;');
-  const mode = scan.inputMode || 'pdf';
-  return `
-    <div class="mini-tabs">
-      <div class="mini-tab ${mode==='pdf'?'active':''}" onclick="setSubScanMode(${keyAttr}, 'pdf')">📄 PDF</div>
-      <div class="mini-tab ${mode==='paste'?'active':''}" onclick="setSubScanMode(${keyAttr}, 'paste')">📋 Paste text</div>
-    </div>
-    ${mode === 'pdf' ? `
-      <input type="file" accept="application/pdf" id="subpdf_${nodeId}" onchange="onSubPdfChosen(${keyAttr}, event)" style="display:none">
-      <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('subpdf_${nodeId}').click()">📎 Choose file</button>
-      <div style="margin-top:6px">${scan.pdfFileName
-        ? `<div style="font-size:13px;font-weight:600;color:var(--ok);padding:6px 10px;background:var(--ok-bg);border-radius:6px">✓ ${escapeHtml(scan.pdfFileName)}</div>`
-        : `<div style="font-size:12px;color:var(--warn)">Aucun fichier choisi</div>`}</div>
-    ` : `
-      <textarea id="subtext_${nodeId}" placeholder="Paste this sub-task's AMM text here…" oninput="onSubTextInput(${keyAttr}, this.value)" style="min-height:100px">${escapeHtml(scan.pastedText || '')}</textarea>
-    `}
-    <div style="margin-top:8px">
-      <label style="margin-bottom:4px">Specific part / side (optional)</label>
-      <input type="text" class="hint-input" id="hint_${nodeId}" placeholder='e.g. &quot;Inboard&quot;, &quot;Left&quot; — only useful if this doc has a components table' value="${escapeHtml(scan.componentHint || '')}" oninput="onComponentHintInput(${keyAttr}, this.value)">
-    </div>
-    <div class="row" style="margin-top:8px">
-      <button class="btn btn-purple btn-sm" onclick="runSubScan(${keyAttr})">🔍 Scan</button>
-      <button class="btn btn-ghost btn-sm" onclick="cancelScanWidget(${keyAttr})">Cancel</button>
-    </div>`;
-}
-
-/* ============================================================
-   IGNORE / UN-IGNORE a related task — reversible. Ignoring hides the
-   "Scan this task" button and excludes any already-scanned data for
-   that task from the merged session view.
-   ============================================================ */
-function isTaskIgnored(key) { return !!ignoredTasks[normalizeRef(key)]; }
-function ignoreTask(key) { ignoredTasks[normalizeRef(key)] = true; renderAll(); }
-function unignoreTask(key) { delete ignoredTasks[normalizeRef(key)]; renderAll(); }
-
-/* ============================================================
-   SUB-TASK SCAN WIDGET — open/cancel/mode/inputs, all keyed on the
-   task's normalized ref in the global `taskScans` map. Works no
-   matter which card (if any) is currently rootResult.
-   ============================================================ */
-function openScanWidget(key, parentTitle) {
-  taskScans[key] = { status: 'widget_open', inputMode: 'pdf', pdfB64: null, pdfFileName: '', pastedText: '', componentHint: '', parentTitle: parentTitle || '', data: null, errorMsg: '', applicabilityMatch: null, applicabilityPickerOpen: false };
-  renderAll();
-}
-
-function cancelScanWidget(key) {
-  taskScans[key] = { status: 'idle' };
-  renderAll();
-}
-
-function setSubScanMode(key, mode) {
-  if (!taskScans[key]) return;
-  taskScans[key].inputMode = mode;
-  renderAll();
-}
-
-function onSubPdfChosen(key, ev) {
-  if (!taskScans[key]) return;
-  const f = ev.target.files[0];
-  if (!f) return;
-  taskScans[key].pdfFileName = f.name;
-  const r = new FileReader();
-  r.onload = () => { taskScans[key].pdfB64 = r.result.split(',')[1]; };
-  r.readAsDataURL(f);
-  renderAll();
-}
-
-function onSubTextInput(key, val) {
-  if (!taskScans[key]) return;
-  taskScans[key].pastedText = val;
-}
-
-function onComponentHintInput(key, val) {
-  if (!taskScans[key]) return;
-  taskScans[key].componentHint = val;
-}
-
-async function runSubScan(key) {
-  const scan = taskScans[key];
-  if (!scan) return;
-  const isPdf = scan.inputMode === 'pdf';
-  if (isPdf && !scan.pdfB64) { alert('Please choose a PDF first.'); return; }
-  if (!isPdf && !scan.pastedText.trim()) { alert('Please paste the sub-task text first.'); return; }
-
-  scan.status = 'loading';
-  renderAll();
-
-  try {
-    const text = isPdf ? await pdfToText(scan.pdfB64) : scan.pastedText.trim();
-    const knownRefs = knownCards.map(c => c.ref);
-    const verified = await runScan(text, knownRefs);
-    scan.status = 'done';
-    scan.data = verified;
-    scan.sourceText = text; // kept so a confirmed-component scope reasoning pass can re-read the full card
-    scan.scopedData = null; // reset: any previous scope reasoning result no longer applies to a fresh scan
-    registerKnownCard(verified.card_ref || key, verified.card_title || '');
-
-    // If this document carries a component -> procedure-scope table
-    // (e.g. "Table 4. Brake Components" inside a Hydraulic Bleed
-    // card), try to match it against the calling card's title plus
-    // any hint the technician typed. Only ever accept a confident,
-    // unambiguous match here — otherwise the UI shows a picker
-    // instead of silently guessing (see matchApplicabilityTable).
-    const table = verified.applicability_table || [];
-    scan.applicabilityMatch = table.length
-      ? matchApplicabilityTable(table, [scan.parentTitle, scan.componentHint].filter(Boolean).join(' '))
-      : null;
-    scan.applicabilityPickerOpen = false;
-  } catch (e) {
-    scan.status = 'error';
-    scan.errorMsg = e.message;
-  }
-  renderAll();
-  if (scan.applicabilityMatch && !scan.applicabilityMatch.ambiguous) {
-    await runScopeReasoningForScan(key);
-    renderAll();
-  }
-}
-
-function rescanTask(key, parentTitle) {
-  taskScans[key] = { status: 'widget_open', inputMode: 'pdf', pdfB64: null, pdfFileName: '', pastedText: '', componentHint: '', parentTitle: parentTitle || '', data: null, errorMsg: '', applicabilityMatch: null, applicabilityPickerOpen: false };
-  renderAll();
-}
-
-/* ============================================================
-   EXPORT — uses the same merged, cumulative session view as the
-   on-screen lists, so what you see is exactly what gets exported.
-   ============================================================ */
-function exportSelection() {
-  const entries = collectAllScannedData();
-  if (!entries.length) return;
-
-  const flat = (kind) => entries.flatMap(e => (e.data[kind] || []));
-  const dedupeBy = (items, keyFn) => {
-    const seen = new Set(); const out = [];
-    for (const it of items) { const k = keyFn(it); if (!k || seen.has(k)) continue; seen.add(k); out.push(it); }
-    return out;
-  };
-
-  const ownRefs = new Set(entries.map(e => normalizeRef(e.cardRef)));
-  const payload = {
-    cards: entries.map(e => ({ card_ref: e.cardRef, card_title: e.cardTitle })),
-    tools: dedupeBy(flat('tools'), i => sessKey(i.name, i.pn)).filter(i => isItemIncluded(sessKey(i.name, i.pn))),
-    consumables: dedupeBy(flat('consumables'), i => sessKey(i.name, i.pn)).filter(i => isItemIncluded(sessKey(i.name, i.pn))),
-    implicit_materials: dedupeBy(flat('implicit_materials'), i => sessKey(i.name)).filter(i => isItemIncluded(sessKey(i.name))),
-    access_panels: dedupeBy(flat('access_panels'), i => sessKey(i.panel_id)),
-    safety_notices: dedupeBy(flat('safety_notices'), i => sessKey(i.kind, (i.text||'').slice(0,120))),
-    related_tasks: dedupeBy(flat('related_tasks').filter(t => !ownRefs.has(normalizeRef(t.ref))), i => sessKey(i.ref || i.title))
-  };
-
-  // FBO gas requests — only ones the technician explicitly toggled on,
-  // whether resolved from the static ref table or from a scanned sub-task.
-  payload.fbo_requests = Object.values(fboRequests)
-    .filter(r => r.include)
-    .map(r => ({ ref: r.ref, gas_type: r.gasType, gas_type_label: GAS_TYPE_LABEL[r.gasType] || r.gasType }));
-
-  // Rule-based suggestions the technician explicitly accepted — kept out of
-  // tools/consumables above so exported data still distinguishes "read off
-  // the card" from "recommended by a rule".
-  payload.suggested_items = [];
-  if (suggestionState.maskingTape.accepted) {
-    payload.suggested_items.push({ type: 'consumable', name: 'Masking tape', suggested: true, reason: 'Sealant detected on card' });
-  }
-  if (suggestionState.protectiveGloves.accepted) {  
-    payload.suggested_items.push({ type: 'tool', name: 'Protective gloves', suggested: true, reason: 'Sealant detected on card' });
-  }
-  if (suggestionState.hydraulicCans.accepted) {
-    payload.suggested_items.push({ type: 'consumable', name: 'Hydraulic fluid (replacement cans)', qty: suggestionState.hydraulicCans.qty || '', suggested: true, reason: 'Hydraulic fluid drain detected' });
-  }
-  if (suggestionState.oilCans.accepted) {
-    payload.suggested_items.push({ type: 'consumable', name: 'Oil (replacement cans)', qty: suggestionState.oilCans.qty || '', suggested: true, reason: 'Oil drain detected' });
-  }
-  if (suggestionState.softwareLoadingPcLocation.accepted) {
-    payload.suggested_items.push({
-      type: 'customer_message_note',
-      name: 'Ask customer: Data Loader PC & CD-ROM storage location',
-      suggested: true,
-      reason: 'Software loading required by the procedure',
-      message_hint: 'Where is the Data Loader PC stored on board, and where are the loading CD-ROMs/media kept?'
-    });
-  }
-
-  if (window.parent && window.parent !== window) {
-    window.parent.postMessage({ type: 'amm-task-reader:export', payload }, '*');
-  } else {
-    console.log('AMM reader export payload:', payload);
-    alert('Selection ready (' + payload.tools.length + ' tool(s), ' + payload.consumables.length + ' consumable(s), ' + payload.implicit_materials.length + ' implicit material(s), ' + payload.access_panels.length + ' access panel(s), ' + payload.related_tasks.length + ' related task(s), ' + payload.fbo_requests.length + ' FBO request(s), ' + payload.suggested_items.length + ' suggested item(s) across ' + payload.cards.length + ' card(s)).\n\nOpened standalone: see the console for the JSON payload.');
-  }
-}
-</script>
-</body>
-</html><!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AMM Task Reader</title>
-<style>
-  :root{
-    --bg:#f7f8fa; --panel:#fff; --border:#e2e5ea; --border-strong:#c9cfd8;
-    --text:#1a1d23; --muted:#6b7280; --accent:#2563eb; --accent-dark:#1d4ed8;
-    --ok:#059669; --ok-bg:#ecfdf5; --warn:#d97706; --warn-bg:#fffbeb;
-    --err:#dc2626; --err-bg:#fef2f2; --purple:#7c3aed; --purple-bg:#f5f3ff; --r:10px;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
-  .wrap{max-width:920px;margin:0 auto;padding:20px}
-  h1{font-size:19px;margin:0 0 4px}
-  .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
-  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:14px}
-  label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.02em}
-  textarea,input[type=text]{width:100%;border:1px solid var(--border-strong);border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit;color:var(--text);background:#fff}
-  textarea{min-height:130px;resize:vertical}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  .btn{border:none;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
-  .btn-primary{background:var(--accent);color:#fff}
-  .btn-primary:hover{background:var(--accent-dark)}
-  .btn-primary:disabled{background:#9ca3af;cursor:not-allowed}
-  .btn-ghost{background:#fff;border:1px solid var(--border-strong);color:var(--text)}
-  .btn-ghost:hover{background:#f3f4f6}
-  .btn-sm{padding:5px 10px;font-size:12px;border-radius:6px}
-  .btn-purple{background:var(--purple);color:#fff}
-  .btn-purple:hover{background:#6d28d9}
-  .tabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid var(--border)}
-  .tab{padding:9px 14px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
-  .tab.active{color:var(--accent);border-color:var(--accent)}
-  .spin{display:inline-block;width:13px;height:13px;border:2px solid #ffffff55;border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
-  .spin-dark{border:2px solid #cbd5e155;border-top-color:var(--accent)}
-  @keyframes sp{to{transform:rotate(360deg)}}
-  .status{font-size:12.5px;padding:9px 12px;border-radius:8px;margin-top:10px;display:none}
-  .status.show{display:block}
-  .status.load{background:#eff6ff;color:var(--accent-dark)}
-  .status.done{background:var(--ok-bg);color:var(--ok)}
-  .status.err{background:var(--err-bg);color:var(--err)}
-  .status.warn{background:var(--warn-bg);color:var(--warn)}
-
-  .section-title{font-size:14px;font-weight:700;margin:0 0 10px;display:flex;align-items:center;gap:8px}
-  .count-pill{background:#eef1f5;color:var(--muted);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
-
-  .item{border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fff;display:flex;gap:10px;align-items:flex-start}
-  .item.ignored{opacity:.4}
-  .item.flag-checked{border-left:3px solid var(--ok)}
-  .item.flag-warn{border-left:3px solid var(--warn);background:var(--warn-bg)}
-  .item input[type=checkbox]{margin-top:3px;flex-shrink:0;width:16px;height:16px;cursor:pointer}
-  .item-body{flex:1;min-width:0}
-  .item-main{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
-  .item-name{font-weight:600;font-size:13.5px}
-  .item-pn{font-size:12px;color:var(--muted);font-family:ui-monospace,monospace}
-  .item-meta{font-size:12px;color:var(--muted);margin-top:2px}
-  .badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
-  .badge-ipc{background:#fef3c7;color:#92400e}
-  .badge-mand{background:#e0e7ff;color:#3730a3}
-  .badge-opt{background:#f3f4f6;color:var(--muted)}
-  .badge-verified{background:var(--ok-bg);color:var(--ok)}
-  .badge-review{background:var(--warn-bg);color:var(--warn)}
-  .badge-cond{background:#fef3c7;color:#92400e}
-  .badge-card{background:var(--purple-bg);color:var(--purple)}
-  .note-ipc{font-size:12px;background:#fef3c7;color:#92400e;border-radius:6px;padding:5px 9px;margin-top:6px;display:flex;gap:6px;align-items:flex-start}
-  .note-flag{font-size:12px;background:var(--warn-bg);color:#92400e;border:1px dashed #f0b429;border-radius:6px;padding:5px 9px;margin-top:6px}
-  .note-cond{font-size:12px;background:#fef3c7;color:#92400e;border-radius:6px;padding:5px 9px;margin-top:6px}
-  .applic-match{font-size:12.5px;background:var(--ok-bg);color:#065f46;border:1px solid #a7f3d0;border-radius:8px;padding:9px 12px;margin-top:8px;line-height:1.5}
-  .applic-pick{font-size:12.5px;background:var(--warn-bg);color:#92400e;border:1px dashed #f0b429;border-radius:8px;padding:9px 12px;margin-top:8px;line-height:1.5}
-  .applic-pick select{width:100%;margin-top:6px;padding:6px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:12.5px;background:#fff}
-  .hint-input{width:100%;border:1px solid var(--border-strong);border-radius:6px;padding:6px 9px;font-size:12.5px}
-  .step-ref{font-size:12px;font-weight:600;color:var(--accent-dark);background:#eff6ff;border-radius:6px;padding:4px 9px;margin-top:6px;display:inline-block}
-  .step-ref-missing{color:var(--warn);background:var(--warn-bg)}
-
-  .empty{color:var(--muted);font-size:13px;text-align:center;padding:20px}
-  .checkstep{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);padding:4px 0}
-  .checkstep .dot{width:7px;height:7px;border-radius:50%;background:var(--border-strong);flex-shrink:0}
-  .checkstep.done .dot{background:var(--ok)}
-  .checkstep.active .dot{background:var(--accent);animation:pulse 1s infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-
-  .toolbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px}
-  .footer-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
-  details.raw{margin-top:10px}
-  details.raw summary{font-size:12px;color:var(--muted);cursor:pointer}
-  details.raw pre{font-size:11px;background:#0f172a;color:#cbd5e1;padding:10px;border-radius:8px;overflow:auto;max-height:220px}
-
-  /* ---- Task tree (related tasks, recursively scannable) ---- */
-  .task-node{border:1px solid var(--border);border-radius:8px;background:#fff;margin-bottom:10px;overflow:hidden}
-  .task-node-head{padding:10px 12px;display:flex;gap:10px;align-items:flex-start}
-  .task-node-head input[type=checkbox]{margin-top:3px;flex-shrink:0;width:16px;height:16px;cursor:pointer}
-  .task-node-body{flex:1;min-width:0}
-  .task-node-main{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
-  .task-ref{font-family:ui-monospace,monospace;font-size:12px;background:#f3f4f6;padding:2px 7px;border-radius:5px;color:var(--muted)}
-  .task-when{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
-  .when-before{background:#e0e7ff;color:#3730a3}
-  .when-after{background:#dcfce7;color:#166534}
-  .when-during{background:#fef3c7;color:#92400e}
-  .task-reason{font-size:12.5px;color:var(--muted);margin-top:4px}
-  .task-scan-zone{border-top:1px dashed var(--border);padding:12px;background:#fafbfc}
-  .task-children{padding:0 12px 12px 32px;border-left:2px solid var(--border-strong);margin-left:20px}
-  .task-children-inner{padding-left:12px}
-  .scan-toggle-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
-  .mini-tabs{display:flex;gap:4px;margin-bottom:8px}
-  .mini-tab{padding:5px 10px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
-  .mini-tab.active{color:var(--accent);border-color:var(--accent)}
-  .sub-section-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.02em;margin:10px 0 6px;display:flex;align-items:center;gap:6px}
-  .depth-badge{font-size:10px;font-weight:700;background:var(--purple-bg);color:var(--purple);padding:1px 7px;border-radius:20px}
-
-  .safety-item{border-radius:8px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start}
-  .safety-item.kind-warning{background:var(--err-bg);border:1px solid #f3b8b8}
-  .safety-item.kind-caution{background:var(--warn-bg);border:1px solid #f0d089}
-  .safety-item.kind-note{background:#eff6ff;border:1px solid #bfdbfe}
-  .safety-kind-badge{font-size:10px;font-weight:800;letter-spacing:.04em;padding:2px 8px;border-radius:20px;text-transform:uppercase;flex-shrink:0}
-  .safety-kind-badge.kind-warning{background:var(--err);color:#fff}
-  .safety-kind-badge.kind-caution{background:var(--warn);color:#fff}
-  .safety-kind-badge.kind-note{background:var(--accent);color:#fff}
-  .safety-text{font-size:13px;line-height:1.5}
-
-</style>
-</head>
-<body>
-<div class="wrap">
-  <h1>🔧 AMM Task Reader</h1>
-  <div class="sub">Upload the AMM task card PDF (or paste text) — the AI extracts consumables, tools, access panels, and related tasks, then self-checks before displaying results. Related tasks can be scanned individually too, so you can drill into a sub-task's own parts and access requirements.</div>
-
-  <div class="card">
-    <div class="tabs" id="input-mode-tabs">
-      <div class="tab active" data-mode="pdf" onclick="setInputMode('pdf')">📄 PDF</div>
-      <div class="tab" data-mode="paste" onclick="setInputMode('paste')">📋 Paste text</div>
-    </div>
-
-    <div id="pane-pdf">
-      <label>AMM task card PDF file</label>
-      <input type="file" id="amm-pdf" accept="application/pdf" onchange="onPdfChosen(event)" style="display:none">
-      <button type="button" class="btn btn-ghost" onclick="document.getElementById('amm-pdf').click()">📎 Choose file</button>
-      <div id="pdf-filename" style="font-size:13px;font-weight:600;color:var(--ok);margin-top:8px;padding:6px 10px;background:var(--ok-bg);border-radius:6px;display:none"></div>
-    </div>
-    <div id="pane-paste" style="display:none">
-      <label>AMM task card text</label>
-      <textarea id="amm-text" placeholder="Paste the full AMM task text here (Support Equipment, Material Required, Procedure, Requirements After Job Completion…)"></textarea>
     </div>
 
     <div class="row" style="margin-top:12px">
-      <label style="margin:0">Card reference (optional, for session memory)</label>
+      <label style="margin:0">Part / component you're actually replacing (optional — triggers a final relevance check)</label>
     </div>
     <div class="row">
-      <input type="text" id="amm-ref" placeholder="e.g. 32-42-01" style="max-width:220px">
+      <input type="text" id="amm-part-replaced" placeholder="e.g. Inboard brake shut-off valve, Left main gear strut…" style="max-width:420px">
       <button class="btn btn-primary" id="btn-analyze" onclick="analyzeAmm()">🔍 Analyze this card</button>
     </div>
 
     <div id="check-progress" style="display:none;margin-top:10px;padding:10px 12px;background:#f8fafc;border-radius:8px;border:1px solid var(--border)">
       <div class="checkstep" id="step-extract"><div class="dot"></div><div>Extracting consumables, tools, access panels and related tasks</div></div>
       <div class="checkstep" id="step-verify"><div class="dot"></div><div>Self-check: every item re-verified against the source text</div></div>
+      <div class="checkstep" id="step-relevance"><div class="dot"></div><div>Final check: matching tools/consumables against the part you're replacing</div></div>
       <div class="checkstep" id="step-done"><div class="dot"></div><div>Results ready</div></div>
     </div>
 
@@ -2278,6 +179,14 @@ function exportSelection() {
   </div>
 
   <div id="results" style="display:none">
+
+    <div class="card" id="relevance-card" style="display:none">
+      <div class="toolbar">
+        <div class="section-title">🎯 Final relevance check <span class="count-pill" id="relevance-count">0</span></div>
+      </div>
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">For every card where you named the part you're replacing, the AI re-read the source text and set aside items tied to a different part/variant on the same card. Items it kept but wasn't fully sure about are marked <span class="badge badge-cond">uncertain relevance</span> in the lists below — verify those. Click "Show full list" to undo the filter for one card.</div>
+      <div id="relevance-content"></div>
+    </div>
 
     <div class="card">
       <div class="toolbar">
@@ -2800,6 +709,57 @@ Reply ONLY with valid JSON, no markdown, in this exact shape (each array is a fi
 }`;
 }
 
+// FINAL RELEVANCE CHECK — the general-purpose counterpart to
+// buildScopeReasoningPrompt above. That pass only fires when the card
+// carries an EXPLICIT "component -> steps" table. Most cards don't have
+// one, but many still list tools/consumables/access that only apply to
+// SOME variants of the part being worked on (e.g. a card covering both a
+// valve AND a filter, or "LH" and "RH" versions of the same component,
+// discussed in the running prose rather than in a dedicated table). This
+// pass asks the model to re-read the source text against the technician's
+// own plain-text statement of which part they are actually replacing, and
+// separate "genuinely needed for this part" from "written on the card but
+// tied to a different variant/component".
+function buildFinalRelevancePrompt(partReplaced, extractedData) {
+  return `You are an experienced aircraft maintenance engineer doing a FINAL relevance pass before a technician's parts/tools list is finalized. You already have the FULL text of an AMM task card (given below as SOURCE TEXT) and a verified JSON extraction of everything found on it.
+
+The technician has told you EXACTLY which part/component they are actually replacing on the aircraft right now:
+
+PART BEING REPLACED (technician's own words): "${partReplaced}"
+
+Your job: re-read the SOURCE TEXT yourself and decide, for tools, consumables, implicit_materials, access_panels, and related_tasks, which entries are GENUINELY needed to replace THIS specific part — and which ones are written on the card but only apply to a DIFFERENT part, component, variant, or configuration that the card happens to also cover (e.g. a card that documents removal/installation of several different valves, both LH and RH sides, more than one component size, or an optional/alternate configuration not relevant to what the technician stated).
+
+BE CONSERVATIVE — this is a safety-relevant list, so when in doubt, KEEP the item:
+- If the card does NOT distinguish by component/variant anywhere (i.e. it's simply one procedure for one part, worded generally), keep everything — there is nothing to filter, and you must say so plainly in reasoning_notes rather than inventing a distinction that isn't in the text.
+- Only exclude an item if the SOURCE TEXT itself ties that item's step(s) to a component/variant/side that is clearly a different one from what the technician stated (e.g. text says "on LH installations only, do Step 14" and the technician is replacing the RH part; or "for the filter-type unit only" and the technician is replacing the valve-type unit).
+- Items with no component-specific wording at all (Preliminary Requirements, Requirements After Job Completion, general Support Equipment / Material Required, safety conditions, ESD precautions) are ALWAYS needed regardless of which variant — never exclude these.
+- If you are not confident an item is genuinely tied to a different variant, keep it and mark "uncertain": true on that item instead of excluding it, with a short "note" explaining the ambiguity so the technician can double check.
+- Do not exclude an item merely because its name doesn't literally contain the words the technician used — match on what the source text actually says the item is used for, not on string similarity to "${partReplaced}".
+
+Do NOT invent new items and do NOT re-extract from scratch. Only select FROM the lists given below — you are filtering, not re-extracting. Every item you keep must be copied through UNCHANGED (same fields, same text) from the input, with "uncertain" and "note" fields added.
+
+DATA TO FILTER (select a subset of each array; every kept item keeps its original fields plus "uncertain" and "note"):
+${JSON.stringify({
+  tools: extractedData.tools || [],
+  consumables: extractedData.consumables || [],
+  implicit_materials: extractedData.implicit_materials || [],
+  access_panels: extractedData.access_panels || [],
+  related_tasks: extractedData.related_tasks || []
+})}
+
+Reply ONLY with valid JSON, no markdown, in this exact shape:
+{
+  "tools": [{"uncertain": false, "note": ""}],
+  "consumables": [{"uncertain": false, "note": ""}],
+  "implicit_materials": [{"uncertain": false, "note": ""}],
+  "access_panels": [{"uncertain": false, "note": ""}],
+  "related_tasks": [{"uncertain": false, "note": ""}],
+  "excluded": [{"category":"tools|consumables|implicit_materials|access_panels|related_tasks", "name":"", "reason":""}],
+  "reasoning_notes": [""]
+}
+Every field from the original item stays present on kept items (this shows only the ADDED fields for brevity) — return the full original object for each item you keep, merged with "uncertain"/"note". "excluded" lists every item you removed, by name, with a short reason tied to the source text.`;
+}
+
 /* ============================================================
    CLIENT-SIDE SAFETY NET — deterministic backstop regardless of
    what the model returns.
@@ -3085,7 +1045,7 @@ function computeMergeKey(cat, item) {
 
 function moveItemCategory(itemKey, fromCat, toCat) {
   const snapshots = [...sessionCards, ...(rootResult ? [rootResult] : []),
-    ...Object.values(taskScans).flatMap(s => [s.data, s.scopedData].filter(Boolean)), manualCard];
+    ...Object.values(taskScans).flatMap(s => [s.data, s.scopedData, s.relevanceData].filter(Boolean)), manualCard];
   let found = null;
   snapshots.forEach(snap => {
     const arr = snap[fromCat] || [];
@@ -3103,7 +1063,7 @@ function moveItemCategory(itemKey, fromCat, toCat) {
 
 function setItemQty(itemKey, cat, val) {
   const snapshots = [...sessionCards, ...(rootResult ? [rootResult] : []),
-    ...Object.values(taskScans).flatMap(s => [s.data, s.scopedData].filter(Boolean)), manualCard];
+    ...Object.values(taskScans).flatMap(s => [s.data, s.scopedData, s.relevanceData].filter(Boolean)), manualCard];
   snapshots.forEach(snap => {
     (snap[cat] || []).forEach(it => { if (computeMergeKey(cat, it) === itemKey) it.qty = val; });
   });
@@ -3238,6 +1198,70 @@ function buildScopedData(fullData, reasoningResult) {
   };
 }
 
+// Third pass, general-purpose version: runs whenever the technician typed
+// a "part being replaced" — regardless of whether the card has a formal
+// applicability table. Operates on top of whatever data is already on
+// screen (the table-scoped subset if one applied, otherwise the full
+// verified card), so the two mechanisms stack instead of conflicting.
+async function runFinalRelevanceCheck(sourceText, baseData, partReplaced) {
+  const res = await fetch(KO_WORKER + '/chat', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model: 'mistral-small-latest',
+      temperature: 0,
+      messages: [{ role: 'user', content: buildFinalRelevancePrompt(partReplaced, baseData) + '\n\nSOURCE TEXT:\n' + sourceText }],
+      response_format: { type: 'json_object' }
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || ('Chat error ' + res.status));
+  const raw = data.choices[0].message.content.replace(/```json|```/g, '').trim();
+  return JSON.parse(raw);
+}
+
+// Merges a relevance-check result back over baseData, keeping every other
+// field (card_ref, gas_type, applicability_table, etc.) untouched. Access
+// panels, safety notices tied only to a general area, and anything the
+// pass didn't touch (safety_notices — deliberately never filtered here,
+// warnings must never silently disappear) stay as-is.
+function buildRelevanceFilteredData(baseData, relevanceResult) {
+  return {
+    ...baseData,
+    tools: relevanceResult.tools || [],
+    consumables: relevanceResult.consumables || [],
+    implicit_materials: relevanceResult.implicit_materials || [],
+    access_panels: relevanceResult.access_panels || [],
+    related_tasks: relevanceResult.related_tasks || [],
+    _relevance_excluded: relevanceResult.excluded || [],
+    _relevance_notes: relevanceResult.reasoning_notes || []
+    // _relevance_part is deliberately NOT set here — the caller
+    // (runRelevanceCheckForScan) always stamps it afterwards with the
+    // exact string the technician typed, since baseData never carries it.
+  };
+}
+
+// Runs the final relevance check for a given taskScans[key] entry, if (and
+// only if) a part-being-replaced was provided for it. Safe to call even
+// when it wasn't — becomes a no-op. Never throws; on failure it just
+// leaves relevanceData unset so the fuller (scoped or raw) list is shown
+// instead of blocking the technician.
+async function runRelevanceCheckForScan(key, partReplaced) {
+  const scan = taskScans[key];
+  if (!scan || !scan.data || !scan.sourceText || !partReplaced || !partReplaced.trim()) return;
+  const baseData = scan.scopedData || scan.data;
+  scan.relevanceStatus = 'loading';
+  try {
+    const result = await runFinalRelevanceCheck(scan.sourceText, baseData, partReplaced.trim());
+    scan.relevanceData = { ...buildRelevanceFilteredData(baseData, result), _relevance_part: partReplaced.trim() };
+    scan.relevanceStatus = 'done';
+  } catch (e) {
+    scan.relevanceStatus = 'error';
+    scan.relevanceError = e.message;
+    scan.relevanceData = null; // fall back to the fuller list rather than block display
+  }
+}
+
 // Filet de sécurité DÉTERMINISTE — indépendant de la qualité du raisonnement
 // IA. Toute entrée dont le step_reference (texte, pas numéro) mentionne une
 // des sections "communes à tout le job" est réinjectée dans le résultat
@@ -3285,10 +1309,12 @@ async function analyzeAmm() {
   if (isPdf && !ammPdfB64) { setStatus('err', 'Please load a PDF first.'); return; }
   if (!isPdf && !pastedText) { setStatus('err', 'Please paste the AMM card text first.'); return; }
 
+  const partReplaced = document.getElementById('amm-part-replaced').value.trim();
+
   const btn = document.getElementById('btn-analyze');
   btn.disabled = true;
   document.getElementById('check-progress').style.display = 'block';
-  setStep('step-extract', 'active'); setStep('step-verify', null); setStep('step-done', null);
+  setStep('step-extract', 'active'); setStep('step-verify', null); setStep('step-relevance', null); setStep('step-done', null);
   setStatus('load', '<span class="spin spin-dark"></span> Reading the AMM card…');
 
   try {
@@ -3300,7 +1326,7 @@ async function analyzeAmm() {
     const knownRefs = knownCards.map(c => c.ref);
     const verified = await runScan(ammText, knownRefs);
 
-    setStep('step-verify', 'done'); setStep('step-done', 'done');
+    setStep('step-verify', 'done');
 
     const manualRef = document.getElementById('amm-ref').value.trim();
     if (manualRef) verified.card_ref = manualRef;
@@ -3323,7 +1349,10 @@ async function analyzeAmm() {
       applicabilityPickerSelected: new Set(),
       applicabilityPickerSearch: '',
       scopedData: null,
-      scopeReasoningStatus: null
+      scopeReasoningStatus: null,
+      partReplaced: partReplaced,
+      relevanceData: null,
+      relevanceStatus: null
     };
 
     addToSessionCards(verified);
@@ -3333,9 +1362,28 @@ async function analyzeAmm() {
       await runScopeReasoningForScan(rootRefNorm);
       renderAll();
     }
-    setStatus('done', `✓ Analysis complete${verified.card_ref ? ' — card ' + escapeHtml(verified.card_ref) : ''}. Review items flagged "needs review" before sending.`);
+
+    let relevanceNote = '';
+    if (partReplaced) {
+      setStep('step-relevance', 'active');
+      setStatus('load', `<span class="spin spin-dark"></span> Final check — matching every item against "${escapeHtml(partReplaced)}"…`);
+      await runRelevanceCheckForScan(rootRefNorm, partReplaced);
+      setStep('step-relevance', taskScans[rootRefNorm].relevanceStatus === 'error' ? null : 'done');
+      const excl = (taskScans[rootRefNorm].relevanceData && taskScans[rootRefNorm].relevanceData._relevance_excluded) || [];
+      if (taskScans[rootRefNorm].relevanceStatus === 'error') {
+        relevanceNote = ` Final relevance check failed (${escapeHtml(taskScans[rootRefNorm].relevanceError || 'error')}) — showing the full unfiltered list instead.`;
+      } else if (excl.length) {
+        relevanceNote = ` ${excl.length} item(s) set aside as not needed for "${escapeHtml(partReplaced)}" — see the relevance panel below.`;
+      }
+      renderAll();
+    } else {
+      setStep('step-relevance', null);
+    }
+    setStep('step-done', 'done');
+
+    setStatus('done', `✓ Analysis complete${verified.card_ref ? ' — card ' + escapeHtml(verified.card_ref) : ''}. Review items flagged "needs review" before sending.${relevanceNote}`);
   } catch (e) {
-    setStep('step-extract', null); setStep('step-verify', null);
+    setStep('step-extract', null); setStep('step-verify', null); setStep('step-relevance', null);
     setStatus('err', 'Error: ' + e.message);
   } finally {
     btn.disabled = false;
@@ -3376,6 +1424,7 @@ function removeKnownCard(i) {
 function resetResults() {
   document.getElementById('amm-text').value = '';
   document.getElementById('amm-ref').value = '';
+  document.getElementById('amm-part-replaced').value = '';
   ammPdfB64 = null;
   document.getElementById('pdf-filename').textContent = '';
   document.getElementById('check-progress').style.display = 'none';
@@ -3415,23 +1464,33 @@ function collectAllScannedData() {
     const rs = taskScans[refNorm];
     if (rs && (rs.data.applicability_table || []).length) {
       if (scanNeedsApplicabilityConfirmation(rs)) return; // attend la confirmation du composant
-      addEntry(rs.scopedData || rs.data, c.card_ref, c.card_title);
+      addEntry(dataToUseForScan(rs), c.card_ref, c.card_title);
       return;
     }
-    addEntry(c, c.card_ref, c.card_title);
+    // No formal table (the common case) — still prefer whatever the
+    // final relevance check produced for this root card over the frozen
+    // sessionCards snapshot, since that snapshot predates the check.
+    addEntry(rs ? dataToUseForScan(rs) : c, c.card_ref, c.card_title);
   });
   Object.keys(taskScans).forEach(refKey => {
     if (ignoredTasks[refKey]) return; // technician explicitly excluded this task
     const scan = taskScans[refKey];
     if (scan && scan.status === 'done' && scan.data && !scanNeedsApplicabilityConfirmation(scan)) {
-      const dataToUse = scan.scopedData || scan.data;
-      addEntry(dataToUse, scan.data.card_ref, scan.data.card_title);
+      addEntry(dataToUseForScan(scan), scan.data.card_ref, scan.data.card_title);
     }
   });
   if (manualCard.tools.length || manualCard.consumables.length || manualCard.implicit_materials.length) {
     addEntry(manualCard, manualCard.card_ref, manualCard.card_title);
   }
   return out;
+}
+
+// Single place that decides which of a scan's three data snapshots wins:
+// the final relevance-filtered set (most specific — matched against the
+// technician's stated part) beats the table-scoped set (matched against a
+// formal components table only), which beats the full verified card.
+function dataToUseForScan(scan) {
+  return scan.relevanceData || scan.scopedData || scan.data;
 }
 
 // True while a scanned sub-task's own document has a component -> scope
@@ -3484,6 +1543,7 @@ function renderAll() {
     if (applEl) { applEl.style.display = 'none'; applEl.innerHTML = ''; }
   }
   renderSoftwareLoadingCard(entries);
+  renderRelevancePanel();
 
   // Self-check summaries from every scanned card, concatenated with a
   // card-ref prefix so it's clear which card each note belongs to.
@@ -3514,6 +1574,15 @@ function cardTagsHtml(cardRefs) {
   return Array.from(cardRefs).map(r => `<span class="badge badge-card">${escapeHtml(r)}</span>`).join(' ');
 }
 
+// Small callout shown on an item the final relevance pass kept but wasn't
+// fully confident about (see buildFinalRelevancePrompt's "uncertain" /
+// "note" fields) — flags it for a manual double-check instead of silently
+// excluding OR silently keeping it with no signal either way.
+function uncertainNoteHtml(item) {
+  if (!item || !item.uncertain) return '';
+  return `<div class="note-cond" style="margin-top:6px">🎯 <b>Double-check for your part:</b> ${escapeHtml(item.note || 'not fully confident this applies — verify against the source.')}</div>`;
+}
+
 function renderMergedList(listId, countId, merged, renderer) {
   document.getElementById(countId).textContent = merged.length;
   const el = document.getElementById(listId);
@@ -3537,6 +1606,7 @@ function renderMergedTool(t, cardRefs, key, citations) {
           </div>
         </div>
         ${refsHtml ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px">${refsHtml}</div>` : ''}
+        ${uncertainNoteHtml(t)}
         <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
       </div>
     </div>`;
@@ -3560,6 +1630,7 @@ function renderMergedConsumable(c, cardRefs, key, citations) {
         </div>
         ${refsHtml ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px">${refsHtml}</div>` : ''}
         ${c.note_ipc ? `<div class="note-ipc">📘 <span><b>Refer to the IPC</b> — ${escapeHtml(c.ipc_note_text || 'no P/N given in this card, refer to the IPC.')}</span></div>` : ''}
+        ${uncertainNoteHtml(c)}
         <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
       </div>
     </div>`;
@@ -3576,6 +1647,7 @@ function renderMergedImplicit(m, cardRefs, key) {
         </div>
         ${m.step_reference ? `<div class="step-ref">📍 ${escapeHtml(m.step_reference)}</div>` : '<div class="step-ref step-ref-missing">📍 Step reference not given</div>'}
         ${m.source_quote ? `<div class="item-meta" style="margin-top:4px">💡 ${escapeHtml(m.source_quote)}</div>` : ''}
+        ${uncertainNoteHtml(m)}
         <div class="scan-toggle-row" style="margin-top:6px">
           <button class="btn btn-ghost btn-sm" onclick="moveItemCategory(${jsArg(key)},'implicit_materials','tools')">→ Tool</button>
           <button class="btn btn-ghost btn-sm" onclick="moveItemCategory(${jsArg(key)},'implicit_materials','consumables')">→ Consumable</button>
@@ -3602,6 +1674,7 @@ function renderMergedAccess(p, cardRefs) {
         ${p.step_reference ? `<div class="step-ref">📍 ${escapeHtml(p.step_reference)}</div>` : ''}
         ${p.figure_reference ? `<div class="item-meta" style="margin-top:4px">🖼️ ${escapeHtml(p.figure_reference)}</div>` : ''}
         ${p.conditional && p.conditional_note ? `<div class="note-cond">🔀 <b>Depends on the part:</b> ${escapeHtml(p.conditional_note)}</div>` : ''}
+        ${uncertainNoteHtml(p)}
         <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
       </div>
     </div>`;
@@ -3777,6 +1850,56 @@ function renderSoftwareLoadingCard(entries) {
     </div>`;
 }
 
+// Shows, per scanned card that had a "part being replaced" typed in, what
+// the final relevance pass set aside and why — plus a per-card undo. Reads
+// straight from taskScans rather than the (already-filtered) `entries`
+// list, since that's the only place the excluded items still exist.
+function renderRelevancePanel() {
+  const wrap = document.getElementById('relevance-card');
+  const el = document.getElementById('relevance-content');
+  if (!wrap || !el) return;
+  const rows = [];
+  Object.keys(taskScans).forEach(k => {
+    const scan = taskScans[k];
+    if (!scan || scan.status !== 'done' || !scan.data || !scan.relevanceData) return;
+    rows.push({
+      key: k,
+      ref: scan.data.card_ref || k,
+      part: scan.relevanceData._relevance_part || scan.partReplaced || scan.componentHint || '',
+      excluded: scan.relevanceData._relevance_excluded || [],
+      notes: scan.relevanceData._relevance_notes || []
+    });
+  });
+  if (!rows.length) { wrap.style.display = 'none'; el.innerHTML = ''; return; }
+  wrap.style.display = 'block';
+  document.getElementById('relevance-count').textContent = rows.reduce((n, r) => n + r.excluded.length, 0);
+  el.innerHTML = rows.map(r => `
+    <div style="padding:8px 10px;background:#f8fafc;border-radius:8px;border:1px solid var(--border);margin-bottom:8px">
+      <div class="row" style="justify-content:space-between;align-items:center;gap:8px">
+        <div style="font-size:13px"><span class="badge badge-card">${escapeHtml(r.ref)}</span> matched against <b>"${escapeHtml(r.part)}"</b></div>
+        <button class="btn btn-ghost btn-sm" onclick="clearRelevanceFilter(${jsArg(r.key)})">↺ Show full list</button>
+      </div>
+      ${r.excluded.length ? `
+        <div style="margin-top:6px;font-size:12.5px;color:var(--muted)">Set aside as not needed for this part:</div>
+        <ul style="margin:4px 0 0 18px;padding:0;font-size:12.5px">
+          ${r.excluded.map(x => `<li><b>${escapeHtml(x.name || '?')}</b>${x.category ? ` <span style="color:var(--muted)">(${escapeHtml(x.category)})</span>` : ''} — ${escapeHtml(x.reason || '')}</li>`).join('')}
+        </ul>` : `<div style="margin-top:6px;font-size:12.5px;color:var(--muted)">Nothing on this card was tied to a different part — full list kept.</div>`}
+      ${r.notes.length ? `<div style="margin-top:6px;font-size:12px;color:var(--muted);font-style:italic">${r.notes.map(n => escapeHtml(n)).join(' · ')}</div>` : ''}
+    </div>`).join('');
+}
+
+// Reverts one card's relevance filter (falls back to its scoped/full
+// data) — for when the AI excluded something the technician actually
+// needs. Does not clear scan.partReplaced/componentHint, so the field
+// stays filled in if they want to re-run it later.
+function clearRelevanceFilter(key) {
+  const scan = taskScans[key];
+  if (!scan) return;
+  scan.relevanceData = null;
+  scan.relevanceStatus = null;
+  renderAll();
+}
+
 function renderMergedTasksList(tasksM) {
   document.getElementById('tasks-count').textContent = tasksM.length;
   const el = document.getElementById('tasks-list');
@@ -3853,6 +1976,7 @@ function renderTaskNode(t, cardRefs, citations) {
               <span style="font-weight:600;font-size:13px">${escapeHtml(t.title)}</span>
               <span class="task-when when-${t.when || 'during'}">${(t.when||'during').toUpperCase()}</span>
               ${isKnown ? '<span class="badge badge-opt">already scanned this session</span>' : ''}
+              ${t.uncertain ? '<span class="badge badge-cond">uncertain relevance</span>' : ''}
             </div>
           </div>
           ${(citations && citations.length ? citations : [{cardRef:'', step_reference:t.step_reference, reason:t.reason}]).map(c => `
@@ -3861,6 +1985,7 @@ function renderTaskNode(t, cardRefs, citations) {
               ${c.step_reference ? `<span class="step-ref">📍 ${escapeHtml(c.step_reference)}</span>` : ''}
               ${c.reason ? `<div class="task-reason">${escapeHtml(c.reason)}</div>` : ''}
             </div>`).join('')}
+          ${uncertainNoteHtml(t)}
           ${renderGasFboWidget(t.ref, gasInfo)}
         </div>
       </div>
@@ -4038,8 +2163,8 @@ function renderScanWidget(key, nodeId, scan) {
       <textarea id="subtext_${nodeId}" placeholder="Paste this sub-task's AMM text here…" oninput="onSubTextInput(${keyAttr}, this.value)" style="min-height:100px">${escapeHtml(scan.pastedText || '')}</textarea>
     `}
     <div style="margin-top:8px">
-      <label style="margin-bottom:4px">Specific part / side (optional)</label>
-      <input type="text" class="hint-input" id="hint_${nodeId}" placeholder='e.g. &quot;Inboard&quot;, &quot;Left&quot; — only useful if this doc has a components table' value="${escapeHtml(scan.componentHint || '')}" oninput="onComponentHintInput(${keyAttr}, this.value)">
+      <label style="margin-bottom:4px">Specific part / component you're replacing (optional)</label>
+      <input type="text" class="hint-input" id="hint_${nodeId}" placeholder='e.g. &quot;Inboard brake shut-off valve&quot;, &quot;Left&quot; — narrows a components table if this doc has one, and triggers a final relevance check either way' value="${escapeHtml(scan.componentHint || '')}" oninput="onComponentHintInput(${keyAttr}, this.value)">
     </div>
     <div class="row" style="margin-top:8px">
       <button class="btn btn-purple btn-sm" onclick="runSubScan(${keyAttr})">🔍 Scan</button>
@@ -4116,6 +2241,8 @@ async function runSubScan(key) {
     scan.data = verified;
     scan.sourceText = text; // kept so a confirmed-component scope reasoning pass can re-read the full card
     scan.scopedData = null; // reset: any previous scope reasoning result no longer applies to a fresh scan
+    scan.relevanceData = null; // reset: same, for the final relevance pass below
+    scan.relevanceStatus = null;
     registerKnownCard(verified.card_ref || key, verified.card_title || '');
 
     // If this document carries a component -> procedure-scope table
@@ -4136,6 +2263,14 @@ async function runSubScan(key) {
   renderAll();
   if (scan.applicabilityMatch && !scan.applicabilityMatch.ambiguous) {
     await runScopeReasoningForScan(key);
+    renderAll();
+  }
+  // The same free-text hint the technician typed for table-matching also
+  // doubles as "the part I'm replacing" for the general relevance check
+  // below — it runs regardless of whether this card had a formal table,
+  // stacking on top of the scoped result when there is one.
+  if (scan.componentHint && scan.componentHint.trim()) {
+    await runRelevanceCheckForScan(key, scan.componentHint);
     renderAll();
   }
 }
