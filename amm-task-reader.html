@@ -136,7 +136,7 @@
       <label>AMM task card PDF file</label>
       <input type="file" id="amm-pdf" accept="application/pdf" onchange="onPdfChosen(event)" style="display:none">
       <button type="button" class="btn btn-ghost" onclick="document.getElementById('amm-pdf').click()">📎 Choose file</button>
-      <div id="pdf-filename" style="font-size:12px;color:var(--muted);margin-top:6px"></div>
+      <div id="pdf-filename" style="font-size:13px;font-weight:600;color:var(--ok);margin-top:8px;padding:6px 10px;background:var(--ok-bg);border-radius:6px;display:none"></div>
     </div>
     <div id="pane-paste" style="display:none">
       <label>AMM task card text</label>
@@ -287,6 +287,7 @@ let taskScans = {};
 // context and can be reactivated any time.
 let ignoredTasks = {};
 let sessionCards = []; // [{card_ref, card_title, aircraft_model, tools, consumables, implicit_materials, access_panels, safety_notices, related_tasks}] — one snapshot per card scanned this session (root cards only; related-task scans stay nested under rootResult and are merged in separately at render time)
+let manualCard = { card_ref: 'MANUEL', card_title: 'Ajouté manuellement', tools: [], consumables: [], implicit_materials: [], access_panels: [], safety_notices: [], related_tasks: [] };
 
 // fboRequests[normalizedRef] = { ref, gasType, include } — technician's explicit
 // choice to include an FBO request for a detected gas-servicing task (root card
@@ -435,7 +436,9 @@ setInputMode('pdf');
 function onPdfChosen(ev) {
   const f = ev.target.files[0];
   if (!f) return;
-  document.getElementById('pdf-filename').textContent = '📎 ' + f.name;
+  const el = document.getElementById('pdf-filename');
+  el.style.display = 'block';
+  el.textContent = '✓ ' + f.name;
   const r = new FileReader();
   r.onload = () => { ammPdfB64 = r.result.split(',')[1]; };
   r.readAsDataURL(f);
@@ -507,7 +510,9 @@ Extract five things:
    - "ESD - General Maintenance" (any task number, e.g. 20-23-01) — do NOT list this as a related task; instead capture it in "esd_warning" below.
    These are boilerplate preliminary/reference items present on nearly every AMM card and carry no engineering value. Read them for context if needed, but never output them in "related_tasks".
 
-   Also NEVER include the current card itself (same task number as "card_ref") even when one of its own internal sub-sections (e.g. "Preparation", "Removal", "Installation", "Follow-on Maintenance") lists another sub-section of the SAME card as a Preliminary Requirement. That is internal structure of this same card, not a related task.
+   Also NEVER include the current card itself when one of its own PHASE HEADERS (e.g. "Preparation", "Removal", "Installation", "Follow-on Maintenance", "Safety Conditions") is referenced — that is internal structure of the SAME procedure, not a related task.
+
+   HOWEVER, if the text contains a DIFFERENTLY-TITLED procedure with its own complete "Preliminary Requirements" + "Procedure" + "Requirements After Job Completion" structure (e.g. "Hydraulic System – Pre-operation" or "Hydraulic System – Post-operation" appearing as distinct titled blocks elsewhere in the provided text, even if they share the same task number footer as the current card), that IS a genuine related task and MUST be included — classify it "when":"before" if cited in the current procedure's own Preliminary Requirements, "when":"after" if cited in Requirements After Job Completion. When such a procedure has no distinct task number of its own, set "ref" to its exact title text (e.g. "Hydraulic System – Pre-operation") — never reuse the enclosing card's own task number as "ref" for it.
 
    ALWAYS include, when present in the text: any other AMM reference cited as a Preliminary Requirement, Reference Material, or inline "Do X" / "Refer to X" instruction (e.g. Landing Gear Door - Normal Operation, Hydraulic System - Bleed, Main Wheel Brakes - Function Test, Open/Close Checks - Visual Examination).
 
@@ -579,7 +584,8 @@ For EACH item in tools, consumables, implicit_materials, access_panels, related_
 - For access_panels: confirm every panel removal/installation instruction in the procedure is captured (do not miss any). Merge a remove+install pair of the SAME panel into one "remove_and_install" entry if the first pass split it into two. Confirm "conditional" is only true when the text itself signals situational/depends-on-part wording — do not mark a panel conditional just because you're unsure; if it's clearly always required for this procedure, conditional must be false. Re-verify "action" against the exact verb printed with the panel IDs in the source (Install vs Remove) — this is a common extraction error; fix any panel whose "action" does not match the source verb.
 - For related_tasks — apply the SAME strict exclusion rules as the extraction pass:
   - Remove any entry referencing "Safe Ground Maintenance - General Maintenance, 20-00-00", "Electrical Power Application - General Maintenance, 20-20-01", "SSPC - General Maintenance, 20-20-02", or "ESD - General Maintenance" (any task number) — that belongs in "esd_warning", not related_tasks.
-  - Remove any entry that is actually the current card itself referencing its own sub-sections.
+  - Remove any entry that is actually the current card itself referencing its own PHASE HEADERS (Preparation/Removal/Installation/Follow-on Maintenance/Safety Conditions) — that's internal structure, not a related task.
+  - Do NOT remove a differently-titled procedure with its own complete Preliminary Requirements/Procedure/Requirements After Job Completion structure (e.g. "Hydraulic System – Pre-operation", "Hydraulic System – Post-operation") even if it shares the enclosing card's task number footer — these are genuine related tasks and must be kept (ADD them if the extraction pass missed them). If such a procedure has no distinct task number, its "ref" must be its exact title text, never the enclosing card's own task number.
   - Remove any entry that is actually an access panel — those belong exclusively in access_panels, never duplicated in related_tasks.
   - DEDUPLICATE by "ref": keep only ONE entry per ref, merging into the clearest step_reference.
   - Confirm the "when" classification matches the source. Confirm step_reference points to the exact section/step.
@@ -637,6 +643,8 @@ Your job: read the SOURCE TEXT yourself, understand the procedure the way an air
 - For TOOLS, CONSUMABLES, IMPLICIT MATERIALS: include only items whose own step_reference falls inside the confirmed applicable_steps range (or the card's top-level Preliminary Requirements / Requirements After Job Completion). Exclude anything whose step_reference sits outside that numeric range, even if it feels related to the same system (e.g. a torque wrench used at Step 11.19 is out of scope for a brake job whose confirmed range is Step 21.2 thru Step 21.3).
 - For SAFETY NOTICES (warnings/cautions/notes): include only notices whose "step_references" contain at least one location inside the confirmed applicable_steps range, or inside the card's top-level Safety Conditions / Preliminary Requirements / Requirements After Job Completion. A notice repeated at dozens of unrelated steps across the whole card only belongs here if one of ITS OWN locations falls inside the confirmed range — don't include it just because the topic sounds generally relevant.
 - For RELATED TASKS: include only a related task whose step_reference falls inside the confirmed applicable_steps range, or that is a top-level Preliminary Requirement / Requirements After Job Completion of the card itself.
+- SPECIAL CASE — items whose step_reference carries NO step number at all (e.g. exactly "Support Equipment table" or "Material Required table"): these cannot be matched by numeric range, so you must reason about actual usage instead of defaulting to exclusion. Re-read the confirmed range's own step text (and the card's Preliminary Requirements / Requirements After Job Completion) and decide per item whether it is plausibly used there. Do not exclude a generic-reference item purely because it lacks a step number.
+- If any of tools / consumables / implicit_materials / access_panels / safety_notices / related_tasks ends up completely empty, you MUST name in reasoning_notes the 2-3 most plausible candidate items from the input and state concretely why each was excluded. A blanket statement like "none are required" without naming candidates is not acceptable.
 
 Do NOT invent new items. Only select FROM the extracted lists given below — you are filtering, not re-extracting. Every item you keep must be copied through UNCHANGED (same fields, same text) from the input.
 
@@ -739,8 +747,9 @@ function matchApplicabilityTable(table, contextText) {
   return { matches: ties.map(t => t.row), ambiguous: true };
 }
 
-function dedupeAndFilterRelatedTasks(tasks, cardRef) {
+function dedupeAndFilterRelatedTasks(tasks, cardRef, cardTitle) {
   const cardRefNorm = normalizeRef(cardRef);
+  const cardTitleNorm = normalizeRef(cardTitle);
   const seen = new Set();
   const out = [];
   for (const t of (tasks || [])) {
@@ -748,9 +757,12 @@ function dedupeAndFilterRelatedTasks(tasks, cardRef) {
     if (!refNorm) continue;
     if (RELATED_TASK_EXCLUDE_REFS.includes(refNorm)) continue;
     if (RELATED_TASK_EXCLUDE_TITLE_PATTERNS.some(re => re.test(t.title || ''))) continue;
-    if (cardRefNorm && refNorm === cardRefNorm) continue;
-    if (seen.has(refNorm)) continue;
-    seen.add(refNorm);
+    const titleNorm = normalizeRef(t.title || '');
+    const isTrueSelfReference = cardRefNorm && refNorm === cardRefNorm && (!titleNorm || titleNorm === cardTitleNorm);
+    if (isTrueSelfReference) continue;
+    const dedupeKey = refNorm + '|' + titleNorm;
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
     out.push(t);
   }
   return out;
@@ -911,6 +923,38 @@ function mergeSessionLeafFuzzy(items, nameOf, pnOf) {
   return merged;
 }
 
+function computeMergeKey(cat, item) {
+  if (cat === 'tools' || cat === 'consumables') return sessKey(canonicalizeText(item.name), canonicalizePn(item.pn));
+  if (cat === 'implicit_materials') return sessKey(canonicalizeText(item.name));
+  return '';
+}
+
+function moveItemCategory(itemKey, fromCat, toCat) {
+  const snapshots = [...sessionCards, ...(rootResult ? [rootResult] : []),
+    ...Object.values(taskScans).flatMap(s => [s.data, s.scopedData].filter(Boolean)), manualCard];
+  let found = null;
+  snapshots.forEach(snap => {
+    const arr = snap[fromCat] || [];
+    const idx = arr.findIndex(it => computeMergeKey(fromCat, it) === itemKey);
+    if (idx !== -1) { found = arr[idx]; arr.splice(idx, 1); }
+  });
+  if (!found) return;
+  const converted = toCat === 'implicit_materials'
+    ? { name: found.name, step_reference: found.step_reference || '', source_quote: found.source_quote || '' }
+    : { name: found.name, pn: found.pn || '', qty: found.qty || '', step_reference: found.step_reference || '',
+        note_ipc: toCat === 'consumables' ? !!found.note_ipc : undefined, ipc_note_text: toCat === 'consumables' ? (found.ipc_note_text || '') : undefined };
+  manualCard[toCat].push(converted);
+  renderAll();
+}
+
+function setItemQty(itemKey, cat, val) {
+  const snapshots = [...sessionCards, ...(rootResult ? [rootResult] : []),
+    ...Object.values(taskScans).flatMap(s => [s.data, s.scopedData].filter(Boolean)), manualCard];
+  snapshots.forEach(snap => {
+    (snap[cat] || []).forEach(it => { if (computeMergeKey(cat, it) === itemKey) it.qty = val; });
+  });
+}
+
 // Builds the merged/deduplicated view used by BOTH the on-screen lists and
 // the export, so what you see is exactly what gets sent — no separate
 // merge logic that could quietly drift apart between display and export.
@@ -989,7 +1033,7 @@ async function runScan(text, knownRefs) {
   const verifyRaw = verifyData.choices[0].message.content.replace(/```json|```/g, '').trim();
   const verified = JSON.parse(verifyRaw);
 
-  verified.related_tasks = dedupeAndFilterRelatedTasks(verified.related_tasks || [], verified.card_ref || '');
+  verified.related_tasks = dedupeAndFilterRelatedTasks(verified.related_tasks || [], verified.card_ref || '', verified.card_title || '');
   verified.access_panels = dedupeAccessPanels(verified.access_panels || []);
   verified.safety_notices = dedupeSafetyNotices(verified.safety_notices || []);
   // Order matters: reconcile tools/consumables first (move mis-filed rows
@@ -1177,6 +1221,9 @@ function collectAllScannedData() {
       addEntry(dataToUse, scan.data.card_ref, scan.data.card_title);
     }
   });
+  if (manualCard.tools.length || manualCard.consumables.length || manualCard.implicit_materials.length) {
+    addEntry(manualCard, manualCard.card_ref, manualCard.card_title);
+  }
   return out;
 }
 
@@ -1205,7 +1252,7 @@ function renderAll() {
 
   renderMergedList('tools-list', 'tools-count', toolsM, renderMergedTool);
   renderMergedList('consumables-list', 'consumables-count', consM, renderMergedConsumable);
-  renderMergedList('implicit-list', 'implicit-count', implM, renderMergedImplicit);
+  renderImplicitList(implM, entries);
   renderMergedList('access-list', 'access-count', accM, renderMergedAccess);
   renderMergedList('safety-list', 'safety-count', safM, renderMergedSafety);
   renderMergedTasksList(tasksM);
@@ -1216,7 +1263,7 @@ function renderAll() {
     const gwEl = document.getElementById('gas-warning-root');
     if (gwEl) { gwEl.style.display = 'none'; gwEl.innerHTML = ''; }
   }
-  renderSuggestionsCard(entries);
+  renderSoftwareLoadingCard(entries);
 
   // Self-check summaries from every scanned card, concatenated with a
   // card-ref prefix so it's clear which card each note belongs to.
@@ -1262,8 +1309,9 @@ function renderMergedTool(t, cardRefs, key) {
       <div class="item-body">
         <div class="item-main">
           <div><span class="item-name">${escapeHtml(t.name)}</span>${t.pn ? `<span class="item-pn">&nbsp;· ${escapeHtml(t.pn)}</span>` : ''}</div>
-          <div class="row" style="gap:6px">
-            ${t.qty ? `<span class="badge badge-opt">Qty: ${escapeHtml(t.qty)}</span>` : ''}
+          <div class="row" style="gap:6px;align-items:center">
+            <label style="font-size:11px;color:var(--muted)">Qty:</label>
+            <input type="text" class="hint-input" style="width:80px" value="${escapeHtml(t.qty||'')}" oninput="setItemQty(${jsArg(key)},'tools',this.value)">
           </div>
         </div>
         ${t.step_reference ? `<div class="step-ref">📍 ${escapeHtml(t.step_reference)}</div>` : ''}
@@ -1280,8 +1328,9 @@ function renderMergedConsumable(c, cardRefs, key) {
       <div class="item-body">
         <div class="item-main">
           <div><span class="item-name">${escapeHtml(c.name)}</span>${c.pn ? `<span class="item-pn">&nbsp;· ${escapeHtml(c.pn)}</span>` : ''}</div>
-          <div class="row" style="gap:6px">
-            ${c.qty ? `<span class="badge badge-opt">Qty: ${escapeHtml(c.qty)}</span>` : ''}
+          <div class="row" style="gap:6px;align-items:center">
+            <label style="font-size:11px;color:var(--muted)">Qty:</label>
+            <input type="text" class="hint-input" style="width:80px" value="${escapeHtml(c.qty||'')}" oninput="setItemQty(${jsArg(key)},'consumables',this.value)">
             ${c.note_ipc ? `<span class="badge badge-ipc">📘 See IPC</span>` : ''}
           </div>
         </div>
@@ -1303,6 +1352,10 @@ function renderMergedImplicit(m, cardRefs, key) {
         </div>
         ${m.step_reference ? `<div class="step-ref">📍 ${escapeHtml(m.step_reference)}</div>` : '<div class="step-ref step-ref-missing">📍 Step reference not given</div>'}
         ${m.source_quote ? `<div class="item-meta" style="margin-top:4px">💡 ${escapeHtml(m.source_quote)}</div>` : ''}
+        <div class="scan-toggle-row" style="margin-top:6px">
+          <button class="btn btn-ghost btn-sm" onclick="moveItemCategory(${jsArg(key)},'implicit_materials','tools')">→ Tool</button>
+          <button class="btn btn-ghost btn-sm" onclick="moveItemCategory(${jsArg(key)},'implicit_materials','consumables')">→ Consumable</button>
+        </div>
         <div class="item-meta" style="margin-top:6px">Found in: ${cardTagsHtml(cardRefs)}</div>
       </div>
     </div>`;
@@ -1426,85 +1479,78 @@ function setSuggestionQty(key, val) {
   suggestionState[key].qty = val;
 }
 
-function renderSuggestionsCard(entries) {
-  const wrap = document.getElementById('suggestions-card');
-  const el = document.getElementById('suggestions-list');
-  if (!wrap || !el) return;
-  const items = [];
+function renderImplicitList(implM, entries) {
+  const el = document.getElementById('implicit-list');
+  const rows = implM.map(m => renderMergedImplicit(m.item, m.cardRefs, m.key));
 
   const sealantRefs = detectSealantMention(entries);
   if (sealantRefs.length) {
-    const onTape = suggestionState.maskingTape.accepted;
-    items.push(`
-      <div class="item ${onTape ? 'flag-checked' : 'ignored'}">
-        <input type="checkbox" ${onTape ? 'checked' : ''} onchange="toggleSuggestion('maskingTape')">
-        <div class="item-body">
-          <div class="item-main"><span class="item-name">🧴 Masking tape</span></div>
-          <div class="item-meta" style="margin-top:6px">Suggested — sealant detected on: ${cardTagsHtml(sealantRefs)}. Not extracted from the card, please confirm.</div>
-        </div>
-      </div>`);
-    const onGloves = suggestionState.protectiveGloves.accepted;
-    items.push(`
-      <div class="item ${onGloves ? 'flag-checked' : 'ignored'}">
-        <input type="checkbox" ${onGloves ? 'checked' : ''} onchange="toggleSuggestion('protectiveGloves')">
-        <div class="item-body">
-          <div class="item-main"><span class="item-name">🧤 Protective gloves</span></div>
-          <div class="item-meta" style="margin-top:6px">Suggested — sealant detected on: ${cardTagsHtml(sealantRefs)}. Not extracted from the card, please confirm.</div>
-        </div>
-      </div>`);
+    rows.push(renderSuggestionRow('maskingTape', '🧴 Masking tape', sealantRefs));
+    rows.push(renderSuggestionRow('protectiveGloves', '🧤 Protective gloves', sealantRefs));
   }
-
-const hydRefs = detectFluidDrain(entries, 'hydraulic');
-  if (hydRefs.length) {
-    const on = suggestionState.hydraulicCans.accepted;
-    items.push(`
-      <div class="item ${on ? 'flag-checked' : 'ignored'}">
-        <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleSuggestion('hydraulicCans')">
-        <div class="item-body">
-          <div class="item-main">
-            <span class="item-name">🛢️ Hydraulic fluid (replacement cans)</span>
-          </div>
-          <div style="margin-top:8px"><input type="text" class="hint-input" placeholder="Quantity (e.g. 2 x 1 gal)" value="${escapeHtml(suggestionState.hydraulicCans.qty)}" oninput="setSuggestionQty('hydraulicCans', this.value)"></div>
-          <div class="item-meta" style="margin-top:6px">Suggested for: ${cardTagsHtml(hydRefs)} — quantity not given by the AMM, please confirm.</div>
-        </div>
-      </div>`);
-  }
-
+  const hydRefs = detectFluidDrain(entries, 'hydraulic');
+  if (hydRefs.length) rows.push(renderSuggestionRow('hydraulicCans', '🛢️ Hydraulic fluid (replacement cans)', hydRefs, true));
   const oilRefs = detectFluidDrain(entries, 'oil');
-  if (oilRefs.length) {
-    const on = suggestionState.oilCans.accepted;
-    items.push(`
-      <div class="item ${on ? 'flag-checked' : 'ignored'}">
-        <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleSuggestion('oilCans')">
-        <div class="item-body">
-          <div class="item-main">
-            <span class="item-name">🛢️ Oil (replacement cans)</span>
-          </div>
-          <div style="margin-top:8px"><input type="text" class="hint-input" placeholder="Quantity (e.g. 4 x 1 qt)" value="${escapeHtml(suggestionState.oilCans.qty)}" oninput="setSuggestionQty('oilCans', this.value)"></div>
-          <div class="item-meta" style="margin-top:6px">Suggested for: ${cardTagsHtml(oilRefs)} — quantity not given by the AMM, please confirm.</div>
-        </div>
-      </div>`);
-  }
+  if (oilRefs.length) rows.push(renderSuggestionRow('oilCans', '🛢️ Oil (replacement cans)', oilRefs, true));
 
+  document.getElementById('implicit-count').textContent = implM.length;
+  el.innerHTML = rows.length ? rows.join('') : `<div class="empty">None identified.</div>`;
+}
+
+function renderSuggestionRow(stateKey, label, cardRefs, hasQty) {
+  const st = suggestionState[stateKey];
+  const on = st.accepted;
+  return `
+    <div class="item ${on ? 'flag-checked' : 'ignored'}" style="border-left:3px solid var(--purple)">
+      <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleSuggestion('${stateKey}')" title="Accept suggestion">
+      <div class="item-body">
+        <div class="item-main">
+          <span class="item-name">${label}</span>
+          <span class="badge" style="background:var(--purple-bg);color:var(--purple)">Suggestion — not from card</span>
+        </div>
+        ${hasQty ? `<div style="margin-top:8px"><input type="text" class="hint-input" placeholder="Quantity" value="${escapeHtml(st.qty||'')}" oninput="setSuggestionQty('${stateKey}', this.value)"></div>` : ''}
+        <div class="item-meta" style="margin-top:6px">Suggested for: ${cardTagsHtml(cardRefs)} — please confirm.</div>
+        ${on ? `
+          <div class="scan-toggle-row" style="margin-top:6px">
+            <button class="btn btn-ghost btn-sm" onclick="promoteSuggestion('${stateKey}','tools')">→ Tool</button>
+            <button class="btn btn-ghost btn-sm" onclick="promoteSuggestion('${stateKey}','consumables')">→ Consumable</button>
+          </div>` : ''}
+      </div>
+    </div>`;
+}
+
+function promoteSuggestion(stateKey, toCat) {
+  const st = suggestionState[stateKey];
+  const labels = {
+    maskingTape: 'Masking tape', protectiveGloves: 'Protective gloves',
+    hydraulicCans: 'Hydraulic fluid (replacement cans)', oilCans: 'Oil (replacement cans)'
+  };
+  manualCard[toCat].push({ name: labels[stateKey], pn: '', qty: st.qty || '', step_reference: '',
+    note_ipc: toCat === 'consumables' ? false : undefined, ipc_note_text: toCat === 'consumables' ? '' : undefined });
+  st.accepted = false;
+  st.qty = '';
+  renderAll();
+}
+
+function renderSoftwareLoadingCard(entries) {
+  const wrap = document.getElementById('suggestions-card');
+  const el = document.getElementById('suggestions-list');
+  if (!wrap || !el) return;
   const swLoads = detectSoftwareLoading(entries);
-  if (swLoads.length) {
-    const on = suggestionState.softwareLoadingPcLocation.accepted;
-    const swRefs = new Set(swLoads.map(s => s.cardRef));
-    const swNotes = swLoads.filter(s => s.note).map(s => escapeHtml(s.note)).join(' · ');
-    items.push(`
-      <div class="item ${on ? 'flag-checked' : 'ignored'}">
-        <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleSuggestion('softwareLoadingPcLocation')">
-        <div class="item-body">
-          <div class="item-main"><span class="item-name">💾 Ask customer: Data Loader PC &amp; CD-ROM location</span></div>
-          ${swNotes ? `<div class="item-meta" style="margin-top:4px">${swNotes}</div>` : ''}
-          <div class="item-meta" style="margin-top:6px">Software loading detected on: ${cardTagsHtml(swRefs)}. Will add a note to the customer message asking where the Data Loader PC and loading media are stored on board — please confirm.</div>
-        </div>
-      </div>`);
-  }
-
-  if (!items.length) { wrap.style.display = 'none'; el.innerHTML = ''; return; }
+  if (!swLoads.length) { wrap.style.display = 'none'; el.innerHTML = ''; return; }
+  const on = suggestionState.softwareLoadingPcLocation.accepted;
+  const swRefs = new Set(swLoads.map(s => s.cardRef));
+  const swNotes = swLoads.filter(s => s.note).map(s => escapeHtml(s.note)).join(' · ');
   wrap.style.display = 'block';
-  el.innerHTML = items.join('');
+  el.innerHTML = `
+    <div class="item ${on ? 'flag-checked' : 'ignored'}">
+      <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleSuggestion('softwareLoadingPcLocation')">
+      <div class="item-body">
+        <div class="item-main"><span class="item-name">💾 Ask customer: Data Loader PC &amp; CD-ROM location</span></div>
+        ${swNotes ? `<div class="item-meta" style="margin-top:4px">${swNotes}</div>` : ''}
+        <div class="item-meta" style="margin-top:6px">Software loading detected on: ${cardTagsHtml(swRefs)}. Will add a note to the customer message.</div>
+      </div>
+    </div>`;
 }
 
 function renderMergedTasksList(tasksM) {
@@ -1758,7 +1804,9 @@ function renderScanWidget(key, nodeId, scan) {
     ${mode === 'pdf' ? `
       <input type="file" accept="application/pdf" id="subpdf_${nodeId}" onchange="onSubPdfChosen(${keyAttr}, event)" style="display:none">
       <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('subpdf_${nodeId}').click()">📎 Choose file</button>
-      <div style="font-size:12px;color:var(--muted);margin-top:6px">${scan.pdfFileName ? '📎 ' + escapeHtml(scan.pdfFileName) : ''}</div>
+      <div style="margin-top:6px">${scan.pdfFileName
+        ? `<div style="font-size:13px;font-weight:600;color:var(--ok);padding:6px 10px;background:var(--ok-bg);border-radius:6px">✓ ${escapeHtml(scan.pdfFileName)}</div>`
+        : `<div style="font-size:12px;color:var(--warn)">Aucun fichier choisi</div>`}</div>
     ` : `
       <textarea id="subtext_${nodeId}" placeholder="Paste this sub-task's AMM text here…" oninput="onSubTextInput(${keyAttr}, this.value)" style="min-height:100px">${escapeHtml(scan.pastedText || '')}</textarea>
     `}
