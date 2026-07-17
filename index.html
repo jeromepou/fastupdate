@@ -1063,6 +1063,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_fbo_name"/> Ask customer for the name of the FBO handling the aircraft</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_fbo_mail"/> Ask customer to send an authorisation email to the FBO</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_contact"/> Ask for local contact/crew details on site</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_pc_location"/> Ask customer where the Aircraft Laptop is stored on board</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_software_location"/> Ask customer where the software loading media (CD-ROMs/USB) are stored on board</label>
       </div>
 
       <div class="ko-section-lbl">Troubleshooting</div>
@@ -7103,7 +7105,7 @@ G.koImportFromAmmReader = function(payload, mode) {
       _ptNewLines.push({ _id: ++_ptLineSeq, pn: c.pn || '', desc: c.name || '', sn: '', qty: c.qty || '1', cat: 'Consumable', note, smallQty: false, optional: false });
       added++;
     });
-   (payload.suggested_items || []).forEach(s => {
+   (payload.suggested_items || []).filter(s => s.type !== 'customer_message_note').forEach(s => {
       const cat = s.type === 'tool' ? 'Tool' : 'Consumable';
       const note = '💡 Suggested (not from AMM text) — ' + (s.reason || '');
       // Implicit materials default to "if required" (optional) since they're
@@ -7150,12 +7152,25 @@ G.koImportFromAmmReader = function(payload, mode) {
     added++;
   });
 
-  (payload.suggested_items || []).forEach(s => {
+  (payload.suggested_items || []).filter(s => s.type !== 'customer_message_note').forEach(s => {
     const cat = s.type === 'tool' ? 'Tool' : 'Consumable';
     const note = '💡 Suggested (not from AMM text) — ' + (s.reason || '');
     koAddPartRow('', s.name || '', '', s.qty || '', cat, note);
     added++;
   });
+
+  // Chargement logiciel détecté sur la carte -> coche directement les deux
+  // cases dédiées (PC + supports de chargement) dans "Customer update —
+  // questions to include". Ce sont de vraies cases de la liste, donc tu
+  // peux aussi les cocher toi-même à tout moment, pour toute autre raison.
+  const messageNotes = (payload.suggested_items || []).filter(s => s.type === 'customer_message_note');
+  let messageNotesAdded = 0;
+  if (messageNotes.length) {
+    const pcCb = document.getElementById('koq_pc_location');
+    const swCb = document.getElementById('koq_software_location');
+    if (pcCb && !pcCb.checked) { pcCb.checked = true; messageNotesAdded++; }
+    if (swCb && !swCb.checked) { swCb.checked = true; messageNotesAdded++; }
+  }
 
   const fboIncluded = (payload.fbo_requests || []);
   fboIncluded.forEach(r => {
@@ -7183,9 +7198,10 @@ G.koImportFromAmmReader = function(payload, mode) {
     let msg = '✓ ' + added + ' line(s) added from ' + (payload.card_ref || 'the AMM card') + '.\n\nRelated tasks not to forget:\n' + lines;
     if (fboIncluded.length) msg += '\n\n✓ FBO checklist updated: ' + fboIncluded.map(r => r.gas_type_label).join(', ') + '.';
     alert(msg);
-  } else if (added || fboIncluded.length) {
+  } else if (added || fboIncluded.length || messageNotesAdded) {
       let msg = added ? ('✓ ' + added + ' line(s) imported from ' + (payload.card_ref || 'the AMM card') + '.') : '✓ Import complete.';
       if (fboIncluded.length) msg += ' FBO checklist updated: ' + fboIncluded.map(r => r.gas_type_label).join(', ') + '.';
+      if (messageNotesAdded) msg += ' Customer update: PC & software location questions checked.';
       koSetStatus && koSetStatus('done', msg);
   }
 };
@@ -7554,6 +7570,8 @@ function koBuildCustomerBody() {
   if (q('koq_fbo_name')) questions.push(`- Could you please provide the name of the FBO handling the aircraft at ${icao || '[ICAO]'}?`);
   if (q('koq_fbo_mail')) questions.push(`- Could you please send an authorisation email to the FBO at ${icao || '[ICAO]'} confirming our upcoming maintenance intervention?`);
   if (q('koq_contact'))  questions.push(`- Could you please provide the name and phone number of the crew member who will meet ${colleagueMode ? (notDecided ? 'our engineer' : colleagueName) : 'me'} at the aircraft?`);
+  if (q('koq_pc_location'))       questions.push('- Could you please advise where Aircraft Laptop is stored on board?');
+  if (q('koq_software_location')) questions.push('- Could you please advise where the software loading media (CD-ROMs / USB) are stored on board?');
   function sqQuestionsFor(qid, genericText, perSqText) {
     const cb = document.getElementById('koq_' + qid);
     if (!cb?.checked) return;
@@ -9865,7 +9883,7 @@ G.koNewJob = async function() {
     'kofbo_steps','kofbo_steps_engine','kofbo_hangar','kofbo_lavatory','kofbo_hpbay',
     'kofbo_q_days','kofbo_q_confirm','kofbo_q_shipping','kofbo_q_parts_delivery','kofbo_q_importer','kofbo_q_transport','kofbo_q_access_docs','kofbo_q_toolbox_docs',
     'koq_broker','koq_hours','koq_po','koq_next_flight','koq_keys','koq_fbo_name','koq_fbo_mail',
-    'koq_contact','koq_login','koq_troubleshoot','koq_cas','koq_fhdb',
+    'koq_contact','koq_pc_location','koq_software_location','koq_login','koq_troubleshoot','koq_cas','koq_fhdb',
     'koq_techops','koq_self_parts','koq_handcarry','koq_order_before_tshoot',
     'kofbo_doc_passport','kofbo_doc_photo','kofbo_doc_ibac',
     'kofbo_doc_license','kofbo_doc_authorization','kofbo_doc_toolbox','kofbo_doc_visa',
