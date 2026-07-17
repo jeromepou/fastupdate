@@ -362,10 +362,22 @@ const GAS_TASK_REFS = {
 };
 const GAS_TYPE_LABEL = { oxygen: 'Oxygen', nitrogen_hp: 'Nitrogen High Pressure', nitrogen_lp: 'Nitrogen Low Pressure' };
 
-function detectGasTypeFromRef(ref) {
+// ATA chapter 12 "Servicing" couvre bien plus que le gaz : hydraulique,
+// huile, eau, toilettes/waste, pneus... Un ref "12-xx-xx" seul n'est PAS
+// une preuve de tâche gaz. Ce filtre par titre évite d'afficher le bandeau
+// gaz pour les cas où le titre le dit déjà clairement (avant même un scan).
+const NON_GAS_ATA12_TITLE_PATTERNS = [
+  /hydraulic/i, /reservoir/i, /\boil\b/i, /lubrication/i,
+  /water/i, /waste/i, /lavatory/i, /toilet/i, /tire/i, /wheel/i
+];
+
+function detectGasTypeFromRef(ref, title) {
   const norm = normalizeRef(ref);
   if (GAS_TASK_REFS[norm]) return { type: GAS_TASK_REFS[norm], source: 'known_ref' };
-  if (/^12-\d{2}-\d{2}$/.test(norm)) return { type: 'unknown', source: 'needs_scan' };
+  if (/^12-\d{2}-\d{2}$/.test(norm)) {
+    if (title && NON_GAS_ATA12_TITLE_PATTERNS.some(re => re.test(title))) return null;
+    return { type: 'unknown', source: 'needs_scan' };
+  }
   return null; // not an ATA chapter 12 ref at all
 }
 
@@ -373,8 +385,8 @@ function detectGasTypeFromRef(ref) {
 // applies; otherwise falls back to the AI-read "gas_type" from a completed
 // scan (scan = {status, data} — same shape as taskScans[key] or a synthetic
 // one built from rootResult).
-function resolveGasInfo(ref, scan) {
-  const byRef = detectGasTypeFromRef(ref);
+function resolveGasInfo(ref, title, scan) {
+  const byRef = detectGasTypeFromRef(ref, title);
   if (!byRef) return null;
   if (byRef.source === 'known_ref') return byRef;
   if (scan && scan.status === 'done' && scan.data && scan.data.gas_type && scan.data.gas_type !== 'none' && GAS_TYPE_LABEL[scan.data.gas_type]) {
@@ -396,7 +408,7 @@ function renderGasFboWidget(ref, gasInfo) {
   if (!gasInfo) return '';
   const key = normalizeRef(ref);
   if (gasInfo.type === 'unknown') {
-    return `<div class="note-cond" style="margin-top:6px">⛽ <b>Gas servicing task (ATA 12-xx)</b> — gas type can't be determined from the reference alone. Scan this card to identify it.</div>`;
+    return `<div class="note-cond" style="margin-top:6px">🛢️ <b>ATA 12 Servicing task</b> — could be gas (O2/N2), hydraulic, oil, or water/waste depending on the card. Scan this card to identify what it actually services.</div>`;
   }
   const label = GAS_TYPE_LABEL[gasInfo.type] || gasInfo.type;
   const included = !!(fboRequests[key] && fboRequests[key].include);
@@ -411,7 +423,7 @@ function renderGasFboWidget(ref, gasInfo) {
 function renderGasWarningRoot(containerId, ref, scannedData) {
   const el = document.getElementById(containerId);
   if (!el) return;
-  const gasInfo = ref ? resolveGasInfo(ref, { status: 'done', data: scannedData }) : null;
+  const gasInfo = ref ? resolveGasInfo(ref, scannedData && scannedData.card_title, { status: 'done', data: scannedData }) : null;
   if (!gasInfo) { el.style.display = 'none'; el.innerHTML = ''; return; }
   el.style.display = 'block';
   el.innerHTML = renderGasFboWidget(ref, gasInfo);
@@ -481,6 +493,7 @@ Extract five things:
    - Give a "step_reference" for every tool: normally "Support Equipment table". If the same tool is also explicitly referenced again inside a specific numbered step, mention that step too (e.g. "Support Equipment table (used in Step 3)").
    - CRITICAL — READ THE TABLE ROW BY ROW: every single row that appears in the "Support Equipment" table is a TOOL, with NO exceptions, regardless of what its nomenclature sounds like. A row named "Container, hydraulic fluid resistant" or "Container, phosphate ester hydraulic fluid resistant" or "Protective caps and plugs" is a TOOL if and only if it is a row of the Support Equipment table — the word "container" or "caps" does NOT make it a consumable. Classification is decided ENTIRELY by which table the row appears in, never by what the item's name sounds like.
    - Never also list an item from this table under CONSUMABLES just because the procedure text later mentions using it in a step — that step reference belongs on the SAME tool entry, not a duplicate consumable entry.
+   - CRITICAL — DO NOT CREATE A NEW TOOL FROM A TARGET VALUE MENTIONED IN A STEP: when a step says something like "Torque the brake bleed ports to 70 inch-pounds", the number "70 inch-pounds" is a TARGET VALUE for an existing tool, not the name of a different tool. Before adding any "Torque wrench, X ..." entry, check whether X falls inside the RANGE of a torque wrench ALREADY listed in the Support Equipment table (e.g. a range "40 - 200 inch-pounds" covers a target value of "70 inch-pounds"). If it falls inside an existing range, do NOT create a new entry — instead add that step to the existing entry's "step_reference". Only create a separate entry if the target value falls OUTSIDE every range already listed, or flag "needs_review": true if ambiguous (several ranged tools could match).
 
 2. CONSUMABLES (from any "Material Required" / "Consumable Materials" table — a table DIFFERENT from Support Equipment): nomenclature, part number, quantity if given.
    - IMPORTANT: if a line does NOT give a specific part number and instead says something like "Refer to IPC", "See IPC", "Consult IPC", or similar — you MUST still include this item, set "note_ipc": true, and copy the exact phrase used into "ipc_note_text". Never silently drop these lines and never invent a part number for them.
@@ -579,6 +592,7 @@ For EACH item in tools, consumables, implicit_materials, access_panels, related_
 - Is the part number / quantity / reference EXACTLY as written in the source? Fix if wrong.
 - Is "step_reference" correct and specific? Fill in or correct it by locating the item in the source. Never leave a "needs_review" item without also giving the most specific step_reference you can find.
 - CROSS-CHECK TOOLS vs CONSUMABLES BY TABLE OF ORIGIN, NOT BY NAME SEMANTICS: go back to the source text and find the actual "Support Equipment" table and the actual "Material Required" / "Consumable Materials" table (if one exists separately). Every row that physically appears under "Support Equipment" in the source MUST end up in "tools", full stop — regardless of whether the row's nomenclature sounds like a consumable (e.g. "Container, hydraulic fluid resistant", "Protective caps and plugs" are TOOLS if that is the table they came from). If the extraction pass put such a row under "consumables" instead, MOVE it to "tools" and remove it from "consumables". If a card has no separate "Material Required" table at all, "consumables" must end up empty.
+- CROSS-CHECK TORQUE WRENCH / GAUGE DUPLICATES BY VALUE RANGE: if "tools" contains more than one entry whose name pattern is "Torque wrench, ... inch-pounds" (or any tool with a numeric range in its own name), check whether any single-value entry could actually just be a target value cited in a step for an ALREADY-LISTED ranged tool. If so, MERGE: delete the duplicate single-value entry and add its step reference onto the existing ranged tool's "step_reference" instead.
 - For consumables: confirm/fix "note_ipc" and "ipc_note_text" per the extraction rules.
 - For implicit_materials: be strict — only keep items clearly tied to actual text (not generic aviation assumptions). Remove unsupported ones, including any "implicit material" that is actually just an inspection/housekeeping step (e.g. "Inspect the work area for foreign objects") with no real physical item behind it. Only remove an implicit material for DUPLICATING a tool/consumable if the existing tool/consumable's nomenclature genuinely names the SAME object (e.g. remove "hydraulic fluid drain container" only if "Container, hydraulic fluid resistant" or an equally explicit container entry already exists as a tool; remove "circuit breaker tags" only if "circuit breaker safety clips" is already listed and clearly covers the tagging). Do NOT remove an implicit material just because it serves a related or overlapping purpose to some other tool — the names must genuinely refer to the same physical item. Fix any "name" that is a single bare/generic word (e.g. "container", "cloth", "tape") into a short descriptive phrase capturing its purpose (e.g. "Container to catch hydraulic fluid"), capitalized. Also actively ADD any implicit material the first pass missed — re-read every step, warning, caution and note yourself looking for physical items (e.g. a NOTE saying "use a container to catch the hydraulic fluid" is a real implicit material and must be present unless already covered by an explicitly named container tool/consumable).
 - For access_panels: confirm every panel removal/installation instruction in the procedure is captured (do not miss any). Merge a remove+install pair of the SAME panel into one "remove_and_install" entry if the first pass split it into two. Confirm "conditional" is only true when the text itself signals situational/depends-on-part wording — do not mark a panel conditional just because you're unsure; if it's clearly always required for this procedure, conditional must be false. Re-verify "action" against the exact verb printed with the panel IDs in the source (Install vs Remove) — this is a common extraction error; fix any panel whose "action" does not match the source verb.
@@ -636,14 +650,19 @@ This card has a "components table" (see CONFIRMED COMPONENT(S) below) that maps 
 
 Your job: read the SOURCE TEXT yourself, understand the procedure the way an aircraft engineer would, and decide EXACTLY what a technician needs to complete just those confirmed step(s) for those confirmed component(s) — nothing more, nothing less. Think it through the way you actually would on the job:
 
-- ALWAYS include Preliminary Requirements listed at the TOP of the card, before "Procedure" (e.g. "Safe Ground Maintenance", "Hydraulic System – Pre-operation") — these are done on every job regardless of which component is involved.
+- ALWAYS include Preliminary Requirements listed at the TOP of the card, before "Procedure" (e.g. "Safe Ground Maintenance - General Maintenance", "X – Pre-operation") — these are done on every job regardless of which component is involved.
 - ALWAYS include Requirements After Job Completion (final inspection, paperwork, closing up) — these are done on every job.
+- ALWAYS include Safety Conditions sections tied to the card's Preliminary Requirements (health/safety/material warnings that apply to the whole card, not one component).
+- If a Preliminary Requirement or a Requirements After Job Completion citation points to a DIFFERENTLY-TITLED procedure embedded further down in the SAME source text (e.g. a "X – Pre-operation" or "X – Post-operation" block with its own "Preliminary Requirements" / "Procedure" / "Requirements After Job Completion" structure), that entire embedded procedure is ALSO always-included in full — not just the one-line citation. Read its own steps, and include every tool, consumable, implicit material, access panel, and safety notice whose step_reference falls inside THAT embedded procedure, exactly as if it were the top-level Preliminary Requirements / Requirements After Job Completion of the main card. This applies no matter what that embedded procedure happens to be named on this particular card.
 - DO NOT automatically add other mid-procedure "Preparation" sub-steps (e.g. a numbered step like "4 Left Hydraulic System Bleed Preparation" or "11 Landing Gear Bleed") just because they appear earlier in the card or seem generally useful. The confirmed component's applicable_steps is ALREADY the complete, authoritative scope defined by the manual — trust it literally. Only pull in an extra step if it is explicitly cited BY NUMBER inside one of the confirmed applicable_steps (e.g. the confirmed text says "Do Step 9" — then Step 9 belongs), or it is itself a sub-step of the confirmed range's own numbering (e.g. confirmed range "Step 21.2 thru Step 21.3" includes every sub-step numbered 21.2.x and 21.3.x, but nothing outside that numeric range).
 - For ACCESS: include only access panels whose own removal/installation step number falls inside the confirmed applicable_steps range, or is explicitly cited by that range. Do NOT include a panel just because it belongs to the same general area (e.g. WTBF panels installed for LANDING GEAR operation are NOT needed for brake bleed/brake component work just because they're near the wheel well — brake bleed ports do not require landing gear operation). If unsure whether a panel's step number is inside the confirmed range, leave it OUT — precision matters more than completeness here, since the components table already defines the exact scope.
 - For TOOLS, CONSUMABLES, IMPLICIT MATERIALS: include only items whose own step_reference falls inside the confirmed applicable_steps range (or the card's top-level Preliminary Requirements / Requirements After Job Completion). Exclude anything whose step_reference sits outside that numeric range, even if it feels related to the same system (e.g. a torque wrench used at Step 11.19 is out of scope for a brake job whose confirmed range is Step 21.2 thru Step 21.3).
 - For SAFETY NOTICES (warnings/cautions/notes): include only notices whose "step_references" contain at least one location inside the confirmed applicable_steps range, or inside the card's top-level Safety Conditions / Preliminary Requirements / Requirements After Job Completion. A notice repeated at dozens of unrelated steps across the whole card only belongs here if one of ITS OWN locations falls inside the confirmed range — don't include it just because the topic sounds generally relevant.
 - For RELATED TASKS: include only a related task whose step_reference falls inside the confirmed applicable_steps range, or that is a top-level Preliminary Requirement / Requirements After Job Completion of the card itself.
-- SPECIAL CASE — items whose step_reference carries NO step number at all (e.g. exactly "Support Equipment table" or "Material Required table"): these cannot be matched by numeric range, so you must reason about actual usage instead of defaulting to exclusion. Re-read the confirmed range's own step text (and the card's Preliminary Requirements / Requirements After Job Completion) and decide per item whether it is plausibly used there. Do not exclude a generic-reference item purely because it lacks a step number.
+- SPECIAL CASE — items whose step_reference carries NO step number at all (e.g. exactly "Support Equipment table" or "Material Required table"): these cannot be matched by numeric range, so you must ACTUALLY VERIFY usage in the text rather than guess. Do this in two passes:
+  PASS A — Before deciding anything, go to the SOURCE TEXT and locate the literal step-by-step instructions for every step number named in the confirmed applicable_steps (e.g. if the range is "Do Step 21.2 thru Step 21.4. Do Step 9.", find and read Step 21.2, 21.2.x, 21.3, 21.3.x, 21.4, 21.4.x, and Step 9 verbatim in the source). Also read the card's top-level Preliminary Requirements and Requirements After Job Completion verbatim. List (for your own use) every physical action, tool, or material those specific steps actually describe.
+  PASS B — ONLY THEN check each no-step-number item's name against that literal action list from Pass A. If the item's name (or a close synonym) appears in an action within the confirmed range, KEEP it, and in "reasoning_notes" quote the specific step number and a short paraphrase of the action that justifies keeping it. If, after actually re-reading those specific steps, the item's name does not appear in any of them, EXCLUDE it and say so.
+  Do not decide based on the task title or general topic alone (e.g. do not exclude a drain-related tool just because the confirmed component is a "shut-off valve" rather than "the hydraulic system" broadly) — the test is whether the confirmed step NUMBERS literally mention it, not whether the component name sounds related.
 - If any of tools / consumables / implicit_materials / access_panels / safety_notices / related_tasks ends up completely empty, you MUST name in reasoning_notes the 2-3 most plausible candidate items from the input and state concretely why each was excluded. A blanket statement like "none are required" without naming candidates is not acceptable.
 
 Do NOT invent new items. Only select FROM the extracted lists given below — you are filtering, not re-extracting. Every item you keep must be copied through UNCHANGED (same fields, same text) from the input.
@@ -849,6 +868,24 @@ function mergeSessionLeaf(items, keyFn) {
   return Array.from(map.values());
 }
 
+function mergeRelatedTasks(items) {
+  const map = new Map();
+  for (const { cardRef, item } of items) {
+    const key = sessKey(item.ref || item.title);
+    if (!key) continue;
+    if (!map.has(key)) map.set(key, { item, cardRefs: new Set(), citations: [], key });
+    const entry = map.get(key);
+    entry.cardRefs.add(cardRef);
+    entry.citations.push({
+      cardRef,
+      step_reference: item.step_reference || '',
+      reason: item.reason || '',
+      when: item.when || 'during'
+    });
+  }
+  return Array.from(map.values());
+}
+
 // Normalizes a name/PN string so items that are the SAME text but came
 // back from the AI with tiny formatting differences (extra space, en-dash
 // vs hyphen, double space…) still produce the same merge key — this alone
@@ -926,6 +963,9 @@ function mergeSessionLeafFuzzy(items, nameOf, pnOf) {
 function computeMergeKey(cat, item) {
   if (cat === 'tools' || cat === 'consumables') return sessKey(canonicalizeText(item.name), canonicalizePn(item.pn));
   if (cat === 'implicit_materials') return sessKey(canonicalizeText(item.name));
+  if (cat === 'access_panels') return sessKey(item.panel_id);
+  if (cat === 'safety_notices') return sessKey(item.kind, (item.text || '').slice(0, 120));
+  if (cat === 'related_tasks') return sessKey(item.ref || item.title);
   return '';
 }
 
@@ -976,9 +1016,8 @@ function getMergedCategories(entries) {
   // its "✓ Scanned" state instead of the node just vanishing.
   const rootRefs = new Set(sessionCards.map(c => normalizeRef(c.card_ref)));
   if (rootResult) rootRefs.add(normalizeRef(rootResult.card_ref));
-  const tasksM = mergeSessionLeaf(
-    flat('related_tasks').filter(({item}) => !rootRefs.has(normalizeRef(item.ref))),
-    i => sessKey(i.ref || i.title)
+  const tasksM = mergeRelatedTasks(
+    flat('related_tasks').filter(({item}) => !rootRefs.has(normalizeRef(item.ref)))
   );
 
   return { toolsM, consM, implM, accM, safM, tasksM };
@@ -1083,6 +1122,30 @@ function buildScopedData(fullData, reasoningResult) {
     related_tasks: reasoningResult.related_tasks || [],
     _scope_reasoning_notes: reasoningResult.reasoning_notes || []
   };
+}
+
+// Filet de sécurité DÉTERMINISTE — indépendant de la qualité du raisonnement
+// IA. Toute entrée dont le step_reference (texte, pas numéro) mentionne une
+// des sections "communes à tout le job" est réinjectée dans le résultat
+// filtré si l'IA l'avait exclue. Fonctionne pareil sur n'importe quelle
+// carte AMM, puisque ce sont des libellés de section standards, pas des
+// numéros de step propres à une carte en particulier.
+const ALWAYS_INCLUDE_STEP_PATTERN = /preliminary requirements|safety conditions|requirements after job completion|pre-operation|post-operation/i;
+
+function forceIncludeAlwaysApplicableItems(fullData, scopedResult) {
+  const CATS = ['tools', 'consumables', 'implicit_materials', 'access_panels', 'safety_notices', 'related_tasks'];
+  const out = { ...scopedResult };
+  CATS.forEach(cat => {
+    const already = new Set((scopedResult[cat] || []).map(it => computeMergeKey(cat, it) || JSON.stringify(it)));
+    const forced = (fullData[cat] || []).filter(it => {
+      const refs = Array.isArray(it.step_references) ? it.step_references.join(' | ') : (it.step_reference || '');
+      if (!ALWAYS_INCLUDE_STEP_PATTERN.test(refs)) return false;
+      const key = computeMergeKey(cat, it) || JSON.stringify(it);
+      return !already.has(key);
+    });
+    if (forced.length) out[cat] = [...(scopedResult[cat] || []), ...forced];
+  });
+  return out;
 }
 
 async function pdfToText(pdfB64) {
@@ -1557,7 +1620,7 @@ function renderMergedTasksList(tasksM) {
   document.getElementById('tasks-count').textContent = tasksM.length;
   const el = document.getElementById('tasks-list');
   if (!tasksM.length) { el.innerHTML = `<div class="empty">No related tasks detected.</div>`; return; }
-  el.innerHTML = tasksM.map(({item:t, cardRefs}) => renderTaskNode(t, cardRefs)).join('');
+  el.innerHTML = tasksM.map(({item:t, cardRefs, citations}) => renderTaskNode(t, cardRefs, citations)).join('');
 }
 
 /* ============================================================
@@ -1566,7 +1629,7 @@ function renderMergedTasksList(tasksM) {
    Scan state lives in the global `taskScans` map, keyed by the
    task's normalized ref, completely independent of any card tree.
    ============================================================ */
-function renderTaskNode(t, cardRefs) {
+function renderTaskNode(t, cardRefs, citations) {
   const key = normalizeRef(t.ref);
   const scan = taskScans[key] || { status: 'idle' };
   const keyArg = jsArg(key);
@@ -1577,7 +1640,7 @@ function renderTaskNode(t, cardRefs) {
   // gas refs), or from the sub-task's own scan once done for unknown 12-xx-xx
   // refs — this is what makes a gas task detected as a related task "propagate"
   // as a sub-task without forcing a PDF scan first.
-  const gasInfo = resolveGasInfo(t.ref, scan);
+  const gasInfo = resolveGasInfo(t.ref, t.title, scan);
 
   let scanZoneHtml = '';
   if (ignored) {
@@ -1631,10 +1694,13 @@ function renderTaskNode(t, cardRefs) {
               ${isKnown ? '<span class="badge badge-opt">already scanned this session</span>' : ''}
             </div>
           </div>
-          ${t.step_reference ? `<div class="step-ref">📍 ${escapeHtml(t.step_reference)}</div>` : ''}
-          ${t.reason ? `<div class="task-reason">${escapeHtml(t.reason)}</div>` : ''}
+          ${(citations && citations.length ? citations : [{cardRef:'', step_reference:t.step_reference, reason:t.reason}]).map(c => `
+            <div style="margin-top:6px">
+              ${c.cardRef ? `<span class="badge badge-card" style="margin-right:6px">${escapeHtml(c.cardRef)}</span>` : ''}
+              ${c.step_reference ? `<span class="step-ref">📍 ${escapeHtml(c.step_reference)}</span>` : ''}
+              ${c.reason ? `<div class="task-reason">${escapeHtml(c.reason)}</div>` : ''}
+            </div>`).join('')}
           ${renderGasFboWidget(t.ref, gasInfo)}
-          <div class="item-meta" style="margin-top:6px">Required by: ${cardTagsHtml(cardRefs)}</div>
         </div>
       </div>
       ${scanZoneHtml}
@@ -1784,7 +1850,7 @@ async function runScopeReasoningForScan(key) {
   renderAll();
   try {
     const reasoning = await runScopeReasoning(scan.sourceText, scan.applicabilityMatch.matches, scan.data);
-    scan.scopedData = buildScopedData(scan.data, reasoning);
+    scan.scopedData = forceIncludeAlwaysApplicableItems(scan.data, buildScopedData(scan.data, reasoning));
     scan.scopeReasoningStatus = 'done';
   } catch (e) {
     scan.scopeReasoningStatus = 'error';
