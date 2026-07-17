@@ -618,6 +618,48 @@ EXTRACTED JSON TO VERIFY:
 ${extractedJson}`;
 }
 
+function buildScopeReasoningPrompt(confirmedRows, extractedData) {
+  return `You are an experienced aircraft maintenance engineer. You already have the FULL text of an AMM task card (given below as SOURCE TEXT) and a JSON extraction of everything found on it (tools, consumables, implicit materials, access panels, safety notices, related tasks).
+
+This card has a "components table" (see CONFIRMED COMPONENT(S) below) that maps a specific replaced/removed component to a reduced subset of procedure steps — instead of the entire card. A technician has confirmed which component(s) they actually worked on, and which steps apply to them.
+
+Your job: read the SOURCE TEXT yourself, understand the procedure the way an aircraft engineer would, and decide EXACTLY what a technician needs to complete just those confirmed step(s) for those confirmed component(s) — nothing more, nothing less. Think it through the way you actually would on the job:
+
+- ALWAYS include Preliminary Requirements (e.g. "Safe Ground Maintenance", "Hydraulic System – Pre-operation" if cited) — these are done on every job regardless of which component is involved.
+- ALWAYS include whatever general Preparation steps of THIS card are needed before the confirmed step(s) can be done at all (e.g. jacking the aircraft, applying electrical/hydraulic power, installing safety devices) — read the procedure and use your judgment on which preparation is actually a prerequisite for the confirmed step(s), not just steps that happen to be numbered low.
+- ALWAYS include Requirements After Job Completion (final inspection, paperwork, closing up) — these are done on every job.
+- For ACCESS: include only the access panels that a technician would actually need to open to physically reach the confirmed component(s) — use your understanding of the aircraft systems and the procedure text (e.g. wing panels for aileron actuators, empennage panels for rudder/elevator actuators, WTBF panels for landing gear/brake work) rather than mechanically matching on step numbers. If you are not sure an access panel is needed for the confirmed component(s), lean toward including it rather than silently dropping something a technician would need — but do not include access clearly tied to unrelated systems (e.g. don't include rudder access panels for a brake control valve job).
+- For TOOLS, CONSUMABLES, IMPLICIT MATERIALS: include the ones genuinely used in the confirmed step(s) or in the always-included preparation/preliminary/follow-on work. Exclude ones that are only used in OTHER steps unrelated to the confirmed component(s) (e.g. tools only used for aileron bleed steps when the confirmed component is a brake valve).
+- For SAFETY NOTICES (warnings/cautions/notes): include any that apply to the confirmed step(s) or to the always-included preparation/preliminary/follow-on work. When in doubt, include rather than exclude — missing a safety notice is worse than showing an extra one.
+- For RELATED TASKS: include any that are genuinely needed to complete the confirmed step(s) (e.g. a Preliminary Requirement task, or a task cited inline within the confirmed steps). Exclude related tasks that are only relevant to unrelated steps of the full procedure.
+
+Do NOT invent new items. Only select FROM the extracted lists given below — you are filtering, not re-extracting. Every item you keep must be copied through UNCHANGED (same fields, same text) from the input.
+
+CONFIRMED COMPONENT(S) AND THEIR STEPS:
+${JSON.stringify(confirmedRows)}
+
+EXTRACTED DATA TO FILTER (select a subset of each array):
+${JSON.stringify({
+  tools: extractedData.tools || [],
+  consumables: extractedData.consumables || [],
+  implicit_materials: extractedData.implicit_materials || [],
+  access_panels: extractedData.access_panels || [],
+  safety_notices: extractedData.safety_notices || [],
+  related_tasks: extractedData.related_tasks || []
+})}
+
+Reply ONLY with valid JSON, no markdown, in this exact shape (each array is a filtered subset of the corresponding input array, items copied through unchanged, plus a top-level "reasoning_notes" array of short strings explaining your key inclusion/exclusion decisions):
+{
+  "tools": [],
+  "consumables": [],
+  "implicit_materials": [],
+  "access_panels": [],
+  "safety_notices": [],
+  "related_tasks": [],
+  "reasoning_notes": [""]
+}`;
+}
+
 /* ============================================================
    CLIENT-SIDE SAFETY NET — deterministic backstop regardless of
    what the model returns.
@@ -955,6 +997,44 @@ async function runScan(text, knownRefs) {
   return verified;
 }
 
+// Third AI pass, triggered only once a components-table scope is confirmed
+// for a scanned sub-task. Unlike a deterministic step-number filter, this
+// re-reads the actual source text and reasons about what a technician
+// genuinely needs — always-required preliminary/preparation/follow-on
+// work, plus judgment-based access panel selection by system/location.
+async function runScopeReasoning(sourceText, confirmedRows, extractedData) {
+  const res = await fetch(KO_WORKER + '/chat', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model: 'mistral-small-latest',
+      temperature: 0,
+      messages: [{ role: 'user', content: buildScopeReasoningPrompt(confirmedRows, extractedData) + '\n\nSOURCE TEXT:\n' + sourceText }],
+      response_format: { type: 'json_object' }
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || ('Chat error ' + res.status));
+  const raw = data.choices[0].message.content.replace(/```json|```/g, '').trim();
+  return JSON.parse(raw);
+}
+
+// Merges a scope-reasoning result back over the full scan.data, replacing
+// only the filtered arrays and keeping everything else (card_ref, gas_type,
+// fluid_drain, software_loading, applicability_table, etc.) untouched.
+function buildScopedData(fullData, reasoningResult) {
+  return {
+    ...fullData,
+    tools: reasoningResult.tools || [],
+    consumables: reasoningResult.consumables || [],
+    implicit_materials: reasoningResult.implicit_materials || [],
+    access_panels: reasoningResult.access_panels || [],
+    safety_notices: reasoningResult.safety_notices || [],
+    related_tasks: reasoningResult.related_tasks || [],
+    _scope_reasoning_notes: reasoningResult.reasoning_notes || []
+  };
+}
+
 async function pdfToText(pdfB64) {
   const ocrRes = await fetch(KO_WORKER + '/ocr', {
     method: 'POST',
@@ -1069,6 +1149,10 @@ function collectAllScannedData() {
   // taskScans map into a flat list of {cardRef, cardTitle, data}
   // entries, one per distinct card that has actually been scanned
   // (root card or related-task scan, from any session card's tree).
+  // Sub-task scans that resolved a confirmed applicability scope use
+  // scan.scopedData (produced by the AI scope-reasoning pass, see
+  // runScopeReasoningForScan) instead of the full scan.data, once that
+  // pass has completed. Until then, the full data is shown.
   const out = [];
   const seen = new Set();
   function addEntry(data, fallbackRef, fallbackTitle) {
@@ -1081,7 +1165,8 @@ function collectAllScannedData() {
   if (rootResult) addEntry(rootResult, rootResult.card_ref, rootResult.card_title);
   Object.values(taskScans).forEach(scan => {
     if (scan && scan.status === 'done' && scan.data && !scanNeedsApplicabilityConfirmation(scan)) {
-      addEntry(scan.data, scan.data.card_ref, scan.data.card_title);
+      const dataToUse = scan.scopedData || scan.data;
+      addEntry(dataToUse, scan.data.card_ref, scan.data.card_title);
     }
   });
   return out;
@@ -1508,6 +1593,19 @@ function renderApplicabilityZone(key, scan) {
     ? scan.applicabilityMatch.matches : null;
 
   if (confirmedRows && !scan.applicabilityPickerOpen) {
+    let reasoningStatusHtml = '';
+    if (scan.scopeReasoningStatus === 'loading') {
+      reasoningStatusHtml = `<div style="margin-top:8px"><span class="spin spin-dark" style="margin-right:6px"></span>Reviewing the card to work out exactly what's needed for this component…</div>`;
+    } else if (scan.scopeReasoningStatus === 'error') {
+      reasoningStatusHtml = `<div class="status show err" style="margin-top:8px">❌ Couldn't narrow the scope automatically (${escapeHtml(scan.scopeReasoningError || 'error')}) — showing the full card's items instead. <button class="btn btn-ghost btn-sm" onclick="runScopeReasoningForScan(${jsArg(key)}).then(renderAll)">↺ Retry</button></div>`;
+    } else if (scan.scopedData) {
+      const notes = scan.scopedData._scope_reasoning_notes || [];
+      reasoningStatusHtml = `
+        <div style="margin-top:8px;font-size:11.5px;opacity:.9">
+          ✓ Items above are narrowed to what's needed for ${confirmedRows.length > 1 ? 'these components' : 'this component'} (always includes Preliminary Requirements, general Preparation, and Requirements After Job Completion).
+          ${notes.length ? `<ul style="margin:4px 0 0 16px;padding:0">${notes.map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul>` : ''}
+        </div>`;
+    }
     return `
       <div class="applic-match">
         ⚡ <b>Narrowed scope found</b> for ${confirmedRows.length > 1 ? 'these ' + confirmedRows.length + ' components' : 'this component'}:
@@ -1516,7 +1614,7 @@ function renderApplicabilityZone(key, scan) {
             <b>${escapeHtml(r.component)}</b> <span style="opacity:.75">(${escapeHtml(r.table_name || 'components table')})</span><br>
             <span style="font-family:ui-monospace,monospace">${escapeHtml(r.applicable_steps)}</span>
           </div>`).join('')}
-        <div style="font-size:11.5px;opacity:.85;margin-top:6px">You should not need the full procedure — only the step(s) above, for ${confirmedRows.length > 1 ? 'these specific parts' : 'this specific part'}. Always confirm against the source card.</div>
+        ${reasoningStatusHtml}
         <div style="margin-top:6px"><button class="btn btn-ghost btn-sm" onclick="openApplicabilityPicker(${jsArg(key)})">Not the right part(s)? Choose again</button></div>
       </div>`;
   }
@@ -1594,7 +1692,7 @@ function onApplicabilitySearchInput(key, val) {
   filterApplicabilityOptions(key, val);
 }
 
-function confirmApplicabilityChoice(key) {
+async function confirmApplicabilityChoice(key) {
   const scan = taskScans[key];
   if (!scan) return;
   const table = (scan.data && scan.data.applicability_table) || [];
@@ -1605,7 +1703,29 @@ function confirmApplicabilityChoice(key) {
   scan.applicabilityPickerOpen = false;
   scan.applicabilityPickerSelected = new Set();
   scan.applicabilityPickerSearch = '';
+  await runScopeReasoningForScan(key);
   renderAll();
+}
+
+// Runs (or re-runs) the scope-reasoning AI pass for a scan that just got a
+// confirmed, unambiguous applicability match, and stores the result in
+// scan.scopedData. Safe to call whenever scan.applicabilityMatch is set;
+// no-ops if the source text isn't available (e.g. very old scan state).
+async function runScopeReasoningForScan(key) {
+  const scan = taskScans[key];
+  if (!scan || !scan.data || !scan.applicabilityMatch || scan.applicabilityMatch.ambiguous) return;
+  if (!scan.sourceText) return; // nothing to re-read; leave scopedData unset, full data will be used
+  scan.scopeReasoningStatus = 'loading';
+  renderAll();
+  try {
+    const reasoning = await runScopeReasoning(scan.sourceText, scan.applicabilityMatch.matches, scan.data);
+    scan.scopedData = buildScopedData(scan.data, reasoning);
+    scan.scopeReasoningStatus = 'done';
+  } catch (e) {
+    scan.scopeReasoningStatus = 'error';
+    scan.scopeReasoningError = e.message;
+    scan.scopedData = null; // fall back to showing the full unfiltered data rather than nothing
+  }
 }
 
 function renderScanWidget(key, nodeId, scan) {
@@ -1690,6 +1810,8 @@ async function runSubScan(key) {
     const verified = await runScan(text, knownRefs);
     scan.status = 'done';
     scan.data = verified;
+    scan.sourceText = text; // kept so a confirmed-component scope reasoning pass can re-read the full card
+    scan.scopedData = null; // reset: any previous scope reasoning result no longer applies to a fresh scan
     registerKnownCard(verified.card_ref || key, verified.card_title || '');
 
     // If this document carries a component -> procedure-scope table
@@ -1708,6 +1830,10 @@ async function runSubScan(key) {
     scan.errorMsg = e.message;
   }
   renderAll();
+  if (scan.applicabilityMatch && !scan.applicabilityMatch.ambiguous) {
+    await runScopeReasoningForScan(key);
+    renderAll();
+  }
 }
 
 function rescanTask(key, parentTitle) {
