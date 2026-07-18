@@ -501,9 +501,63 @@ function jsArg(v) {
 /* ============================================================
    PROMPTS
    ============================================================ */
-function buildExtractPrompt(alreadyKnownRefs) {
+
+/* ------------------------------------------------------------
+   EMBEDDED PROCEDURE DETECTION (JS safety net) — some AMM cards bundle
+   more than one independently-numbered "Procedure" section in the same
+   source text: a main procedure plus embedded procedures such as
+   "X – Pre-operation" / "X – Post-operation", each restarting its own
+   step numbering at Step 1. A bare "Step 9" is then ambiguous between
+   them. This is a best-effort regex scan, NOT a requirement — most
+   cards have none of this, and every function below returns an
+   empty/'' result in that case. Callers must treat an empty result as
+   "nothing special, leave the prompt exactly as it already was".
+   ------------------------------------------------------------ */
+function detectEmbeddedProcedureTitles(sourceText) {
+  if (!sourceText) return [];
+  try {
+    const re = /^[ \t]{0,3}#{0,6}[ \t]*\*{0,2}[ \t]*([A-Z][A-Za-z0-9()/&, ]{2,70}?)[ \t]*[–—-][ \t]*(Pre-operation|Post-operation)[ \t]*\*{0,2}[ \t]*$/gim;
+    const found = new Set();
+    let m;
+    while ((m = re.exec(sourceText)) !== null) {
+      found.add(m[1].trim() + ' – ' + m[2]);
+      if (found.size > 20) break; // garde-fou, jamais de boucle pathologique
+    }
+    return Array.from(found);
+  } catch (e) {
+    return []; // la détection est un bonus, ne doit jamais casser le scan
+  }
+}
+
+function countPreliminaryRequirementsHeadings(sourceText) {
+  if (!sourceText) return 0;
+  try {
+    const re = /^[ \t]{0,3}#{0,6}[ \t]*\*{0,2}[ \t]*Preliminary Requirements[ \t]*\*{0,2}[ \t]*$/gim;
+    const matches = sourceText.match(re);
+    return matches ? matches.length : 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+// Renvoie un bloc à injecter dans le prompt si plusieurs procédures
+// indépendantes sont détectées, ou '' si rien de suspect n'est trouvé.
+// Toujours safe à concaténer — '' ne change rien.
+function buildEmbeddedProcedureWarning(sourceText) {
+  const titles = detectEmbeddedProcedureTitles(sourceText);
+  const prelimCount = countPreliminaryRequirementsHeadings(sourceText);
+  if (!titles.length && prelimCount < 2) return '';
+  const titleList = titles.length
+    ? titles.map(t => `"${t}"`).join(', ')
+    : '(no title matched the "X – Pre-operation / X – Post-operation" pattern, but multiple "Preliminary Requirements" headings were detected)';
+  return `\nDETECTED IN THIS SOURCE TEXT: ${prelimCount >= 2 ? prelimCount + ' separate "Preliminary Requirements" headings' : 'a possible second procedure'} were found, along with these embedded procedure title(s): ${titleList}. This card almost certainly contains MULTIPLE independently-numbered procedures, each restarting its own step numbering at Step 1. Apply the step-number disambiguation rule above with extra care for this specific card — do not write a bare "Step 9" (or any other bare step number) anywhere in your output for this card.\n`;
+}
+
+function buildExtractPrompt(alreadyKnownRefs, sourceText) {
   return `You are an aviation maintenance assistant reading one AMM (Aircraft Maintenance Manual) task card, verbatim as provided below. Your job is ONLY extraction — do not add, infer, or guess anything that is not explicitly written in the text.
 
+CRITICAL — DISAMBIGUATE STEP NUMBERS WHEN A CARD CONTAINS MULTIPLE EMBEDDED PROCEDURES: some cards contain more than one distinctly-titled procedure, each with its own "Procedure" section that restarts its own step numbering at Step 1 (e.g. a main procedure plus an embedded "X – Pre-operation" and/or "X – Post-operation" procedure). A bare reference like "Step 9" is ambiguous in that case — it could be Step 9 of ANY of them. Before writing any step_reference / step_references / applicable_steps value, scan the whole source text for every distinctly-titled "Procedure" section that restarts at Step 1. If there is more than one, you MUST prefix every step number you cite with the exact title of the procedure it belongs to — e.g. "Hydraulic System – Bleed, Step 9", never a bare "Step 9". Determine the correct procedure by checking which titled section the step number physically falls under. If the card has only one procedure/numbering sequence, no prefix is needed.
+${buildEmbeddedProcedureWarning(sourceText)}
 Extract five things:
 
 1. TOOLS (from any "Support Equipment" / "Special Tools" table): nomenclature, part number, quantity if given.
@@ -572,6 +626,7 @@ If any related task you find matches one of these refs, still include it but set
    - ONLY extract this if such an explicit table genuinely exists in the source text with a clear two-column structure. Never invent or infer one from the ordinary procedure structure. If no such table exists anywhere on the card, "applicability_table" MUST be an empty array.
    - For each row of every such table found: "component" (the exact component name as written, e.g. "Inboard brake shut-off valve"), "applicable_steps" (the exact step reference(s) as written, copied verbatim, e.g. "Do Step 21.2 thru Step 21.4. Do Step 9."), "table_name" (the table's own title, e.g. "Table 4. Brake Components").
    - Read EVERY row of EVERY such table — do not skip or summarize rows. This table is exactly how a technician determines the minimal correct scope for one specific replaced part, so completeness here matters as much as for Support Equipment or Material Required.
+   - The step numbers inside "applicable_steps" always refer to the numbering of the procedure this table is physically embedded in, never to an identically-numbered step of a different titled procedure elsewhere on the card (see the disambiguation rule above).
 
 10. GAS TYPE (servicing task, ATA chapter 12 "Servicing"): if this card's reference falls under ATA chapter 12 (format "12-xx-xx"), determine which gas THIS specific card services by reading its title/subject and procedure content: "oxygen" (oxygen system servicing/replenishment), "nitrogen_hp" (nitrogen high pressure servicing — e.g. landing gear struts, accumulators), "nitrogen_lp" (nitrogen low pressure servicing), or "none" if it's a chapter-12 card that isn't a gas-servicing task (e.g. potable water, lavatory/toilet servicing) or isn't chapter 12 at all. Base this only on what the card itself states — never infer from the reference number alone if the content says otherwise.
 
@@ -601,8 +656,9 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
 }`;
 }
 
-function buildVerifyPrompt(extractedJson) {
+function buildVerifyPrompt(extractedJson, sourceText) {
   return `You are performing a strict self-check (quality control) on a JSON extraction that another pass produced from an AMM task card. You will be given the ORIGINAL SOURCE TEXT and the EXTRACTED JSON. Your job is to catch and fix errors — do not trust the extraction blindly.
+${buildEmbeddedProcedureWarning(sourceText)}
 
 For EACH item in tools, consumables, implicit_materials, access_panels, related_tasks, and applicability_table, go back to the source text and verify:
 - Does this item actually appear in the source text? If not, mark for removal and explain why in the report.
@@ -623,6 +679,8 @@ For EACH item in tools, consumables, implicit_materials, access_panels, related_
 - Flag ("needs_review": true) any item you are not fully confident about, with a specific, actionable "review_note".
 
 - For applicability_table: this should be non-empty ONLY when the source genuinely contains a component-to-procedure-scope table (e.g. "Table 4. Brake Components"). Verify every row against the source: exact "component" wording, exact "applicable_steps" wording (copy verbatim — do not shorten "Do Step 21.2 thru Step 21.4. Do Step 9." down to just "Step 21"), and exact "table_name". Add any row the first pass missed by re-reading the card for such tables; remove any row that isn't genuinely part of one. If the card has no such table at all, applicability_table must end up as an empty array — never invent one from the ordinary procedure steps.
+
+- CROSS-CHECK STEP-NUMBER AMBIGUITY ACROSS MULTIPLE EMBEDDED PROCEDURES: if the source contains more than one independently-numbered procedure (e.g. main + embedded "X – Pre-operation" / "X – Post-operation"), verify every step_reference / step_references / applicable_steps naming a step number is prefixed with the exact procedure title it belongs to. Fix any bare step number by determining which procedure it actually falls under in the source and prefixing it.
 
 - Confirm "aircraft_model" matches what's stated in the card header/title block. Fix it if the first pass got it wrong or missed it.
 
@@ -660,8 +718,9 @@ EXTRACTED JSON TO VERIFY:
 ${extractedJson}`;
 }
 
-function buildScopeReasoningPrompt(confirmedRows, extractedData) {
+function buildScopeReasoningPrompt(confirmedRows, extractedData, sourceText) {
   return `You are an experienced aircraft maintenance engineer. You already have the FULL text of an AMM task card (given below as SOURCE TEXT) and a JSON extraction of everything found on it (tools, consumables, implicit materials, access panels, safety notices, related tasks).
+${buildEmbeddedProcedureWarning(sourceText)}
 
 This card has a "components table" (see CONFIRMED COMPONENT(S) below) that maps a specific replaced/removed component to a reduced subset of procedure steps — instead of the entire card. A technician has confirmed which component(s) they actually worked on, and which steps apply to them.
 
@@ -677,7 +736,7 @@ Your job: read the SOURCE TEXT yourself, understand the procedure the way an air
 - For SAFETY NOTICES (warnings/cautions/notes): include only notices whose "step_references" contain at least one location inside the confirmed applicable_steps range, or inside the card's top-level Safety Conditions / Preliminary Requirements / Requirements After Job Completion. A notice repeated at dozens of unrelated steps across the whole card only belongs here if one of ITS OWN locations falls inside the confirmed range — don't include it just because the topic sounds generally relevant.
 - For RELATED TASKS: include only a related task whose step_reference falls inside the confirmed applicable_steps range, or that is a top-level Preliminary Requirement / Requirements After Job Completion of the card itself.
 - SPECIAL CASE — items whose step_reference carries NO step number at all (e.g. exactly "Support Equipment table" or "Material Required table"): these cannot be matched by numeric range, so you must ACTUALLY VERIFY usage in the text rather than guess. Do this in two passes:
-  PASS A — Before deciding anything, go to the SOURCE TEXT and locate the literal step-by-step instructions for every step number named in the confirmed applicable_steps (e.g. if the range is "Do Step 21.2 thru Step 21.4. Do Step 9.", find and read Step 21.2, 21.2.x, 21.3, 21.3.x, 21.4, 21.4.x, and Step 9 verbatim in the source). Also read the card's top-level Preliminary Requirements and Requirements After Job Completion verbatim. List (for your own use) every physical action, tool, or material those specific steps actually describe.
+  PASS A — Before deciding anything, go to the SOURCE TEXT and locate the literal step-by-step instructions for every step number named in the confirmed applicable_steps (e.g. if the range is "Do Step 21.2 thru Step 21.4. Do Step 9.", find and read Step 21.2, 21.2.x, 21.3, 21.3.x, 21.4, 21.4.x, and Step 9 verbatim in the source). CRITICAL: if the card contains more than one distinctly-titled procedure with its own "Procedure" section restarting at Step 1 (e.g. an embedded "X – Pre-operation" and/or "X – Post-operation" procedure alongside the main one), the step numbers in the confirmed applicable_steps ALWAYS belong to the procedure the applicability table itself is embedded in — never read the identically-numbered step of a different titled procedure by mistake. Confirm which procedure you're in before reading "Step 9" or any other bare step number. Also read the card's top-level Preliminary Requirements and Requirements After Job Completion verbatim, plus the full text of any embedded "Pre-operation" / "Post-operation" procedure cited there — each has its OWN Step 1, Step 9, etc., distinct from the main procedure's. List (for your own use) every physical action, tool, or material those specific steps actually describe.
   PASS B — ONLY THEN check each no-step-number item's name against that literal action list from Pass A. Match on MEANING, not exact spelling: AMM procedures on this fleet often name a piece of Support Equipment by a short form instead of the full nomenclature printed in the Support Equipment table — for example "HTS" is the short form used throughout the procedure for "Hydraulic test stand(s)". A confirmed step that starts, selects, connects, or otherwise operates a piece of equipment under a short form like this IS a literal match for the Support Equipment entry of that same equipment — treat it exactly like a full-name match, never dismiss it as unrelated just because the short form doesn't textually resemble the item's nomenclature. If the item's name (or a short form/abbreviation clearly referring to the same physical equipment) appears in an action within the confirmed range, KEEP it, and in "reasoning_notes" quote the specific step number, the exact wording used (short form included), and a short paraphrase of the action that justifies keeping it. If, after actually re-reading those specific steps, neither the item's name nor any short form for it appears in any of them, EXCLUDE it and say so.
   PASS B, RANGED TOOLS — for a Support Equipment item named with its own numeric range (e.g. "Torque wrench, 40 - 200 inch-pounds"), also carry forward every numeric torque/pressure/value target you noted inside the confirmed steps during Pass A (e.g. a step that reads "Torque ... to 70 inch-pounds"). KEEP that tool if any such value from the confirmed range falls inside its range — the numeric target cited inside the confirmed steps IS the usage, even when the step text never repeats the tool's own name. Do not keep a ranged tool whose range covers no value cited inside the confirmed steps, and do not keep every tool of that family "to be safe" — select only the one(s) whose range actually matches a value that is in scope.
   Do not decide based on the task title or general topic alone (e.g. do not exclude a drain-related tool just because the confirmed component is a "shut-off valve" rather than "the hydraulic system" broadly) — the test is whether the confirmed step NUMBERS literally mention it, by full name, short form, or a matching numeric target, not whether the component name sounds related.
@@ -1124,7 +1183,7 @@ async function runScan(text, knownRefs) {
     body: JSON.stringify({
       model: 'mistral-small-latest',
       temperature: 0,
-      messages: [{ role: 'user', content: buildExtractPrompt(knownRefs) + '\n\nAMM TASK CARD TEXT:\n' + text }],
+      messages: [{ role: 'user', content: buildExtractPrompt(knownRefs, text) + '\n\nAMM TASK CARD TEXT:\n' + text }],
       response_format: { type: 'json_object' }
     })
   });
@@ -1138,7 +1197,7 @@ async function runScan(text, knownRefs) {
     body: JSON.stringify({
       model: 'mistral-small-latest',
       temperature: 0,
-      messages: [{ role: 'user', content: buildVerifyPrompt(extractRaw) + '\n\nORIGINAL SOURCE TEXT:\n' + text }],
+      messages: [{ role: 'user', content: buildVerifyPrompt(extractRaw, text) + '\n\nORIGINAL SOURCE TEXT:\n' + text }],
       response_format: { type: 'json_object' }
     })
   });
@@ -1173,7 +1232,7 @@ async function runScopeReasoning(sourceText, confirmedRows, extractedData) {
     body: JSON.stringify({
       model: 'mistral-small-latest',
       temperature: 0,
-      messages: [{ role: 'user', content: buildScopeReasoningPrompt(confirmedRows, extractedData) + '\n\nSOURCE TEXT:\n' + sourceText }],
+      messages: [{ role: 'user', content: buildScopeReasoningPrompt(confirmedRows, extractedData, sourceText) + '\n\nSOURCE TEXT:\n' + sourceText }],
       response_format: { type: 'json_object' }
     })
   });
