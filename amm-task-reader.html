@@ -1268,7 +1268,28 @@ async function runRelevanceCheckForScan(key, partReplaced) {
 // filtré si l'IA l'avait exclue. Fonctionne pareil sur n'importe quelle
 // carte AMM, puisque ce sont des libellés de section standards, pas des
 // numéros de step propres à une carte en particulier.
-const ALWAYS_INCLUDE_STEP_PATTERN = /preliminary requirements|safety conditions|requirements after job completion|pre-operation|post-operation|support equipment|material required/i;
+const ALWAYS_INCLUDE_STEP_PATTERN = /preliminary requirements|safety conditions|requirements after job completion/i;
+
+// An item only counts as "always applicable" (safe to force back in
+// regardless of the AI's step-range reasoning) if it is genuinely tied to
+// the CARD-WIDE Preliminary Requirements / Safety Conditions / Requirements
+// After Job Completion — or, for related_tasks only, if it IS ITSELF one of
+// the embedded "X – Pre-operation" / "X – Post-operation" procedures. A
+// step_reference that merely CONTAINS one of these words as part of a
+// compound, per-part citation (e.g. "Preparation, Step 5.6 / Post-operation,
+// Step 12.3" on a conditional access panel, or the generic "Support
+// Equipment table" every tool carries) is NOT enough proof of universal
+// relevance — that loose substring match was reinjecting irrelevant items
+// regardless of what the confirmed component actually needed.
+function isAlwaysApplicable(cat, item) {
+  if (cat === 'access_panels' && item.conditional) return false;
+  const refs = Array.isArray(item.step_references) ? item.step_references.join(' | ') : (item.step_reference || '');
+  if (cat === 'related_tasks') {
+    const isEmbeddedProcedure = /pre-operation|post-operation/i.test(item.ref || item.title || '');
+    return isEmbeddedProcedure || ALWAYS_INCLUDE_STEP_PATTERN.test(refs);
+  }
+  return ALWAYS_INCLUDE_STEP_PATTERN.test(refs);
+}
 
 function forceIncludeAlwaysApplicableItems(fullData, scopedResult) {
   const CATS = ['tools', 'consumables', 'implicit_materials', 'access_panels', 'safety_notices', 'related_tasks'];
@@ -1276,8 +1297,7 @@ function forceIncludeAlwaysApplicableItems(fullData, scopedResult) {
   CATS.forEach(cat => {
     const already = new Set((scopedResult[cat] || []).map(it => computeMergeKey(cat, it) || JSON.stringify(it)));
     const forced = (fullData[cat] || []).filter(it => {
-      const refs = Array.isArray(it.step_references) ? it.step_references.join(' | ') : (it.step_reference || '');
-      if (!ALWAYS_INCLUDE_STEP_PATTERN.test(refs)) return false;
+      if (!isAlwaysApplicable(cat, it)) return false;
       const key = computeMergeKey(cat, it) || JSON.stringify(it);
       return !already.has(key);
     });
