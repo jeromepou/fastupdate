@@ -7061,7 +7061,10 @@ G.koOpenAmmReader = function(target) {
   _koAmmReaderTarget = target === 'template' ? 'template' : 'project';
   const model = (document.getElementById('ko_model')?.value || document.getElementById('f_model')?.value || '').trim();
   const iframe = document.getElementById('amm-reader-iframe');
-  if (iframe) iframe.src = 'amm-task-reader.html' + (model ? ('?model=' + encodeURIComponent(model)) : '');
+  const params = new URLSearchParams();
+  if (model) params.set('model', model);
+  if (curProfile?.name) params.set('engineer', curProfile.name);
+  if (iframe) iframe.src = 'amm-task-reader.html' + (params.toString() ? ('?' + params.toString()) : '');
   openModal('modal-amm-reader');
 };
 window.koOpenAmmReader = G.koOpenAmmReader;
