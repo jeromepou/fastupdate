@@ -5871,7 +5871,9 @@ G.confirmRTS = async function() {
 G.openModal = function(id){document.getElementById(id).classList.add('open');};
 G.closeModal = function(id){document.getElementById(id).classList.remove('open');};
 document.querySelectorAll('.modal-bg').forEach(m=>{
-  if (m.id === 'modal-repair-tag') return; // GA3671 : trop de champs pour risquer une fermeture accidentelle — fermeture uniquement via Annuler / Générer
+  // GA3671 (trop de champs) et AMM Task Reader (session de scan en cours dans l'iframe) —
+  // fermeture uniquement via leur propre bouton "✕ Close" / "Annuler" / "Générer".
+  if (m.id === 'modal-repair-tag' || m.id === 'modal-amm-reader') return;
   m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
 });
 
