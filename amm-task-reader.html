@@ -739,6 +739,9 @@ Your job: read the SOURCE TEXT yourself, understand the procedure the way an air
   PASS A — Before deciding anything, go to the SOURCE TEXT and locate the literal step-by-step instructions for every step number named in the confirmed applicable_steps (e.g. if the range is "Do Step 21.2 thru Step 21.4. Do Step 9.", find and read Step 21.2, 21.2.x, 21.3, 21.3.x, 21.4, 21.4.x, and Step 9 verbatim in the source). CRITICAL: if the card contains more than one distinctly-titled procedure with its own "Procedure" section restarting at Step 1 (e.g. an embedded "X – Pre-operation" and/or "X – Post-operation" procedure alongside the main one), the step numbers in the confirmed applicable_steps ALWAYS belong to the procedure the applicability table itself is embedded in — never read the identically-numbered step of a different titled procedure by mistake. Confirm which procedure you're in before reading "Step 9" or any other bare step number. Also read the card's top-level Preliminary Requirements and Requirements After Job Completion verbatim, plus the full text of any embedded "Pre-operation" / "Post-operation" procedure cited there — each has its OWN Step 1, Step 9, etc., distinct from the main procedure's. List (for your own use) every physical action, tool, or material those specific steps actually describe.
   PASS B — ONLY THEN check each no-step-number item's name against that literal action list from Pass A. Match on MEANING, not exact spelling: AMM procedures on this fleet often name a piece of Support Equipment by a short form instead of the full nomenclature printed in the Support Equipment table — for example "HTS" is the short form used throughout the procedure for "Hydraulic test stand(s)". A confirmed step that starts, selects, connects, or otherwise operates a piece of equipment under a short form like this IS a literal match for the Support Equipment entry of that same equipment — treat it exactly like a full-name match, never dismiss it as unrelated just because the short form doesn't textually resemble the item's nomenclature. If the item's name (or a short form/abbreviation clearly referring to the same physical equipment) appears in an action within the confirmed range, KEEP it, and in "reasoning_notes" quote the specific step number, the exact wording used (short form included), and a short paraphrase of the action that justifies keeping it. If, after actually re-reading those specific steps, neither the item's name nor any short form for it appears in any of them, EXCLUDE it and say so.
   PASS B, RANGED TOOLS — for a Support Equipment item named with its own numeric range (e.g. "Torque wrench, 40 - 200 inch-pounds"), also carry forward every numeric torque/pressure/value target you noted inside the confirmed steps during Pass A (e.g. a step that reads "Torque ... to 70 inch-pounds"). KEEP that tool if any such value from the confirmed range falls inside its range — the numeric target cited inside the confirmed steps IS the usage, even when the step text never repeats the tool's own name. Do not keep a ranged tool whose range covers no value cited inside the confirmed steps, and do not keep every tool of that family "to be safe" — select only the one(s) whose range actually matches a value that is in scope.
+  PASS B, ARITHMETIC CHECK (MANDATORY): before writing a reasoning note that keeps a ranged tool, explicitly verify the cited numeric value against the tool's own stated minimum and maximum — e.g. for "Torque wrench, 100 - 1000 inch-pounds" and a cited value of "70 inch-pounds", check: is 70 >= 100? NO. Therefore 70 is NOT inside this tool's range, and this tool must NOT be kept on that basis alone. A value only counts as "inside the range" if it is greater than or equal to the range's own minimum AND less than or equal to the range's own maximum — never approximate or round in the tool's favor.
+  PASS B, NO OUT-OF-SCOPE CITATIONS: never cite a step number as justification for keeping ANY item (ranged tool, container, consumable, implicit material, access panel, related task) if that step number falls OUTSIDE the confirmed applicable_steps range you were given. For example, if the confirmed range is "Do Step 21.2 thru Step 21.4. Do Step 9.", a value or action found in Step 21.1.x or Step 21.5.x is NOT valid justification, even if it superficially matches — go back and find genuine evidence inside the confirmed range, or exclude the item. This rule applies even when the excluded step feels like an obvious real-world prerequisite (e.g. equipment set up in an earlier step) — the applicability table you were given is the authoritative, literal scope; do not silently widen it.
+  PASS B, GENERIC FLUID-HANDLING EQUIPMENT: a generic Support Equipment item with no step-specific reference (e.g. "Container, phosphate ester hydraulic fluid resistant", "Container, hydraulic fluid resistant") should be KEPT if any action within the confirmed step range involves draining, releasing, catching, or disposing of hydraulic fluid (opening a bleed port, filling/draining a reservoir, disconnecting a pressurized line), even when the step text never uses the word "container" — this is the same "usage without name repetition" principle as the short-form equipment rule above, applied to catch-fluid equipment.
   Do not decide based on the task title or general topic alone (e.g. do not exclude a drain-related tool just because the confirmed component is a "shut-off valve" rather than "the hydraulic system" broadly) — the test is whether the confirmed step NUMBERS literally mention it, by full name, short form, or a matching numeric target, not whether the component name sounds related.
 - If any of tools / consumables / implicit_materials / access_panels / safety_notices / related_tasks ends up completely empty, you MUST name in reasoning_notes the 2-3 most plausible candidate items from the input and state concretely why each was excluded. A blanket statement like "none are required" without naming candidates is not acceptable.
 
@@ -854,6 +857,29 @@ function namesOverlapSignificantly(a, b) {
   const smaller = Math.min(ta.size, tb.size);
   // require most of the shorter name's meaningful words to be present in the other
   return shared / smaller >= 0.75;
+}
+
+// Stricter-recall variant used ONLY for consolidating the on-screen
+// MERGED display (mergeSessionLeafFuzzy) — never for the extraction-time
+// functions that actually DELETE an implicit-material entry
+// (reconcileToolsAndConsumables, reconcileImplicitMaterials). Merging two
+// display rows into one loses no information (every citation/card tag is
+// preserved on the surviving row), so it's safe to be more generous here
+// than at deletion time, where a false-positive match would silently
+// make an item disappear. Catches e.g. "Container, phosphate ester
+// hydraulic fluid resistant" (terse official nomenclature) vs "Container
+// to catch hydraulic fluid during bleed operations" (purpose-descriptive
+// implicit-material name) — same head noun + enough shared descriptive
+// words, even though the plain overlap ratio falls short of 0.75.
+function namesOverlapForMerge(a, b) {
+  if (namesOverlapSignificantly(a, b)) return true;
+  const tokA = nameTokens(a), tokB = nameTokens(b);
+  const ta = new Set(tokA), tb = new Set(tokB);
+  if (!ta.size || !tb.size) return false;
+  let shared = 0;
+  ta.forEach(w => { if (tb.has(w)) shared++; });
+  const headA = tokA[0], headB = tokB[0];
+  return !!(headA && headA === headB && shared >= 3);
 }
 
 // ------------------------------------------------------------
@@ -1078,7 +1104,7 @@ function mergeSessionLeafFuzzy(items, nameOf, pnOf) {
       const pnB = pnOf ? canonicalizePn(pnOf(other.item)) : '';
       const pnCompatible = !pnA || !pnB || pnA === pnB;
       if (!pnCompatible) continue;
-      if (!namesOverlapSignificantly(nameOf(base.item), nameOf(other.item))) continue;
+      if (!namesOverlapForMerge(nameOf(base.item), nameOf(other.item))) continue;
       const aHasPn = !!(pnOf && pnOf(base.item));
       const bHasPn = !!(pnOf && pnOf(other.item));
       const preferOther = (bHasPn && !aHasPn) ||
@@ -2204,6 +2230,173 @@ async function confirmApplicabilityChoice(key) {
   renderAll();
 }
 
+/* ------------------------------------------------------------
+   DETERMINISTIC TORQUE-WRENCH RANGE RECONCILIATION — the scope-
+   reasoning AI pass is unreliable at basic arithmetic ("is 70 >= 100?")
+   and at respecting step-range boundaries when citing evidence. This is
+   a pure-JS backstop applied AFTER the AI pass: it re-derives, purely
+   by number comparison, which torque values are genuinely cited INSIDE
+   the confirmed step range, and corrects the AI's tool selection
+   accordingly (both adding back a wrongly-dropped wrench and removing
+   a wrongly-kept one). Only acts when it found actual positive
+   evidence (allTargets.length > 0) — if step-line extraction fails to
+   find anything, it leaves the AI's choice untouched rather than
+   guessing from silence.
+   ------------------------------------------------------------ */
+function parseStepRanges(applicableStepsText) {
+  if (!applicableStepsText) return [];
+  const ranges = [];
+  const re = /Step\s+([0-9]+(?:\.[0-9]+)*)(?:\s*(?:thru|through|-)\s*Step\s+([0-9]+(?:\.[0-9]+)*))?/gi;
+  let m;
+  while ((m = re.exec(applicableStepsText)) !== null) {
+    ranges.push({ start: m[1], end: m[2] || m[1] });
+  }
+  return ranges;
+}
+
+function stepToParts(step) {
+  return step.split('.').map(n => parseInt(n, 10));
+}
+
+function compareSteps(a, b) {
+  const pa = stepToParts(a), pb = stepToParts(b);
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const va = pa[i] ?? -1, vb = pb[i] ?? -1;
+    if (va !== vb) return va - vb;
+  }
+  return 0;
+}
+
+// True if `step` is ancestor's own step or one of its numbered sub-steps
+// (e.g. "9.1" is a descendant-or-self of "9"; "21.3.9.1" is a
+// descendant-or-self of "21.3"). Needed because "Do Step 9" in an AMM
+// applicability table means the WHOLE of Step 9 including 9.1...9.7,
+// not the bare literal token "9".
+function isDescendantOrSelf(step, ancestor) {
+  const sp = stepToParts(step), ap = stepToParts(ancestor);
+  if (sp.length < ap.length) return false;
+  for (let i = 0; i < ap.length; i++) if (sp[i] !== ap[i]) return false;
+  return true;
+}
+
+function stepInRange(step, range) {
+  const afterOrAtStart = compareSteps(step, range.start) >= 0;
+  const beforeOrAtEnd = compareSteps(step, range.end) <= 0 || isDescendantOrSelf(step, range.end);
+  return afterOrAtStart && beforeOrAtEnd;
+}
+
+function stepInAnyRange(step, ranges) {
+  return ranges.some(r => stepInRange(step, r));
+}
+
+// Best-effort: restricts sourceText to the section belonging to the
+// card's OWN procedure (by title), so a bare "Step 9" appearing in an
+// embedded Pre-operation/Post-operation procedure elsewhere in the same
+// document doesn't get mixed in. Falls back to the full text if the
+// heading can't be located — never blocks the caller.
+function sliceSourceToOwnProcedureSection(sourceText, cardTitle) {
+  if (!sourceText || !cardTitle) return sourceText;
+  try {
+    const norm = s => s.replace(/[\u2010-\u2015]/g, '-').replace(/\s+/g, ' ').trim();
+    const titleEsc = norm(cardTitle).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/-/g, '[-\\u2010-\\u2015]');
+    const headingRe = new RegExp('^[ \\t]{0,3}#{0,6}[ \\t]*\\*{0,2}[ \\t]*' + titleEsc + '[ \\t]*\\*{0,2}[ \\t]*$', 'im');
+    const startMatch = headingRe.exec(sourceText);
+    if (!startMatch) return sourceText;
+    const startIdx = startMatch.index;
+    const anyHeadingRe = /^[ \t]{0,3}#{0,6}[ \t]*\*{0,2}[ \t]*[A-Z][A-Za-z0-9()/&, ]{2,70}?[ \t]*[\u2010-\u2015-][ \t]*(?:Pre-operation|Post-operation)[ \t]*\*{0,2}[ \t]*$/gim;
+    anyHeadingRe.lastIndex = startIdx + startMatch[0].length;
+    const nextMatch = anyHeadingRe.exec(sourceText);
+    return nextMatch ? sourceText.slice(startIdx, nextMatch.index) : sourceText.slice(startIdx);
+  } catch (e) {
+    return sourceText;
+  }
+}
+
+function extractStepLines(sourceText) {
+  if (!sourceText) return [];
+  const lines = sourceText.split(/\r?\n/);
+  const out = [];
+  const stepLineRe = /^\s*([0-9]+(?:\.[0-9]+){0,5})\s+(.{3,})$/;
+  for (const line of lines) {
+    const m = stepLineRe.exec(line);
+    if (m) out.push({ step: m[1], text: m[2] });
+  }
+  return out;
+}
+
+function extractTorqueValues(text) {
+  const values = [];
+  const re = /(\d+(?:\.\d+)?)\s*(?:-|to)\s*(\d+(?:\.\d+)?)\s*inch[- ]pounds|(\d+(?:\.\d+)?)\s*inch[- ]pounds/gi;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    if (m[1] && m[2]) { values.push(parseFloat(m[1])); values.push(parseFloat(m[2])); }
+    else if (m[3]) values.push(parseFloat(m[3]));
+  }
+  return values;
+}
+
+function parseToolTorqueRange(toolName) {
+  const m = /(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*inch[- ]pounds/i.exec(toolName || '');
+  if (!m) return null;
+  return { min: parseFloat(m[1]), max: parseFloat(m[2]) };
+}
+
+function torqueTargetsInConfirmedScope(applicableStepsText, sourceText, cardTitle) {
+  const ranges = parseStepRanges(applicableStepsText);
+  if (!ranges.length) return null;
+  const scopedText = sliceSourceToOwnProcedureSection(sourceText, cardTitle);
+  const lines = extractStepLines(scopedText);
+  const inScope = lines.filter(l => stepInAnyRange(l.step, ranges));
+  const values = [];
+  inScope.forEach(l => values.push(...extractTorqueValues(l.text)));
+  return values;
+}
+
+function reconcileTorqueWrenchScope(fullData, scopedResult, confirmedRows, sourceText) {
+  if (!confirmedRows || !confirmedRows.length || !sourceText) return scopedResult;
+  let allTargets = [];
+  let anyParsed = false;
+  confirmedRows.forEach(row => {
+    const targets = torqueTargetsInConfirmedScope(row.applicable_steps, sourceText, fullData.card_title);
+    if (targets) { anyParsed = true; allTargets.push(...targets); }
+  });
+  if (!anyParsed || !allTargets.length) return scopedResult; // no reliable signal -> don't second-guess the AI
+
+  const allTools = fullData.tools || [];
+  const rangedTools = allTools.filter(t => parseToolTorqueRange(t.name));
+  if (!rangedTools.length) return scopedResult;
+
+  const correctToolNames = new Set(
+    rangedTools
+      .filter(t => {
+        const r = parseToolTorqueRange(t.name);
+        return allTargets.some(v => v >= r.min && v <= r.max);
+      })
+      .map(t => canonicalizeText(t.name))
+  );
+
+  const currentTools = scopedResult.tools || [];
+  const keptNonRanged = currentTools.filter(t => !parseToolTorqueRange(t.name));
+  const keptRangedCorrected = rangedTools.filter(t => correctToolNames.has(canonicalizeText(t.name)));
+
+  const droppedByAiButShouldKeep = keptRangedCorrected.filter(t =>
+    !currentTools.some(ct => canonicalizeText(ct.name) === canonicalizeText(t.name))
+  );
+  const keptByAiButShouldDrop = currentTools.filter(t =>
+    parseToolTorqueRange(t.name) && !correctToolNames.has(canonicalizeText(t.name))
+  );
+
+  if (!droppedByAiButShouldKeep.length && !keptByAiButShouldDrop.length) return scopedResult;
+
+  const finalTools = [...keptNonRanged, ...keptRangedCorrected];
+  const notes = [...(scopedResult._scope_reasoning_notes || [])];
+  droppedByAiButShouldKeep.forEach(t => notes.push(`[Deterministic correction] Re-added "${t.name}" — a value cited inside the confirmed step range falls inside its stated range, but the AI had dropped it.`));
+  keptByAiButShouldDrop.forEach(t => notes.push(`[Deterministic correction] Removed "${t.name}" — no value cited inside the confirmed step range falls inside its stated range (the AI's justification cited an out-of-scope step or an incorrect range match).`));
+
+  return { ...scopedResult, tools: finalTools, _scope_reasoning_notes: notes };
+}
+
 // Runs (or re-runs) the scope-reasoning AI pass for a scan that just got a
 // confirmed, unambiguous applicability match, and stores the result in
 // scan.scopedData. Safe to call whenever scan.applicabilityMatch is set;
@@ -2216,7 +2409,9 @@ async function runScopeReasoningForScan(key) {
   renderAll();
   try {
     const reasoning = await runScopeReasoning(scan.sourceText, scan.applicabilityMatch.matches, scan.data);
-    scan.scopedData = forceIncludeAlwaysApplicableItems(scan.data, buildScopedData(scan.data, reasoning));
+    let scoped = forceIncludeAlwaysApplicableItems(scan.data, buildScopedData(scan.data, reasoning));
+    scoped = reconcileTorqueWrenchScope(scan.data, scoped, scan.applicabilityMatch.matches, scan.sourceText);
+    scan.scopedData = scoped;
     scan.scopeReasoningStatus = 'done';
   } catch (e) {
     scan.scopeReasoningStatus = 'error';
