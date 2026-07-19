@@ -147,8 +147,9 @@
       <label style="margin:0">Card reference (optional, for session memory)</label>
     </div>
     <div class="row">
-      <input type="text" id="amm-ref" placeholder="e.g. 32-42-01" style="max-width:220px">
+      <input type="text" id="amm-ref" placeholder="e.g. 32-42-01" style="max-width:220px" onblur="checkAmmCacheForRefField(this.value)">
     </div>
+    <div id="amm-cache-banner" style="display:none;margin-top:8px"></div>
 
     <div class="row" style="margin-top:12px">
       <label style="margin:0">Part / component you're actually replacing (optional — triggers a final relevance check)</label>
@@ -260,6 +261,66 @@
   </div>
 </div>
 
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-app.js";
+import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-database.js";
+
+// Même projet Firebase que l'app principale.
+const firebaseConfig = {
+  apiKey: "AIzaSyA5PS5Dy-RJJTC71DX2wiBm83yl4D98cFI",
+  authDomain: "fast-update-46079.firebaseapp.com",
+  databaseURL: "https://fast-update-46079-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "fast-update-46079",
+  storageBucket: "fast-update-46079.firebasestorage.app",
+  messagingSenderId: "178536566816",
+  appId: "1:178536566816:web:e1c2b103fc198a94d72c45"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const AMM_CACHE_TTL_MS = 72 * 60 * 60 * 1000; // 72h — seul endroit à changer
+
+function sanitize(s) {
+  return (s || '').toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '_').replace(/_+/g, '_').slice(0, 120);
+}
+function buildKey(model, cardRef) {
+  const m = sanitize(model), r = sanitize(cardRef);
+  if (!m || !r) return null; // sans modèle connu, jamais de cache (ambiguïté inter-modèles)
+  return m + '__' + r;
+}
+
+window.ammCache = {
+  async load(model, cardRef) {
+    const key = buildKey(model, cardRef);
+    if (!key) return null;
+    try {
+      const snap = await get(ref(db, 'ammCardCache/' + key));
+      if (!snap.exists()) return null;
+      const entry = snap.val();
+      entry._age_ms = Date.now() - (entry.scannedAt || 0);
+      entry._fresh = entry._age_ms < AMM_CACHE_TTL_MS;
+      return entry;
+    } catch (e) {
+      console.warn('ammCache.load a échoué:', e);
+      return null; // le cache est un bonus, jamais bloquant
+    }
+  },
+  async save(model, cardRef, title, data, sourceText, scannedBy) {
+    const key = buildKey(model, cardRef);
+    if (!key) return;
+    try {
+      await set(ref(db, 'ammCardCache/' + key), {
+        model: model || '', ref: cardRef || '', title: title || '',
+        data, sourceText: sourceText || '',
+        scannedAt: Date.now(), scannedBy: scannedBy || ''
+      });
+    } catch (e) {
+      console.warn('ammCache.save a échoué:', e);
+    }
+  }
+};
+</script>
+
 <script>
 /* ============================================================
    CONFIG
@@ -334,6 +395,7 @@ let suggestionState = {
 };
 
 const expectedModel = new URLSearchParams(location.search).get('model') || '';
+const currentEngineerName = new URLSearchParams(location.search).get('engineer') || '';
 
 function normalizeModelStr(s) {
   return (s || '').toString().toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -1496,6 +1558,74 @@ async function analyzeAmm() {
   }
 }
 
+function ammCacheAgeLabel(ts) {
+  const mins = Math.round((Date.now() - ts) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + ' min';
+  const hrs = Math.round(mins / 60);
+  if (hrs < 48) return hrs + 'h';
+  return Math.round(hrs / 24) + ' d';
+}
+let _ammLastCheckedRef = '';
+async function checkAmmCacheForRefField(refVal) {
+  refVal = (refVal || document.getElementById('amm-ref').value || '').trim();
+  const banner = document.getElementById('amm-cache-banner');
+  if (!refVal) { banner.style.display = 'none'; banner.innerHTML = ''; return; }
+  if (refVal === _ammLastCheckedRef && banner.innerHTML) return;
+  _ammLastCheckedRef = refVal;
+  banner.style.display = 'block';
+  banner.innerHTML = `<div class="status show load"><span class="spin spin-dark"></span> Checking whether this card has already been scanned…</div>`;
+  const hit = await window.ammCache.load(expectedModel, refVal);
+  if (refVal !== _ammLastCheckedRef) return;
+  if (!hit) {
+    banner.innerHTML = `<div style="font-size:12.5px;color:var(--muted);padding:6px 2px">No previous scan found${expectedModel ? ' for ' + escapeHtml(expectedModel) : ''}.</div>`;
+    window._ammPendingCacheHit = null;
+    return;
+  }
+  window._ammPendingCacheHit = hit;
+  const ageLabel = ammCacheAgeLabel(hit.scannedAt);
+  banner.innerHTML = `
+    <div class="status show ${hit._fresh ? 'done' : 'warn'}">
+      ✅ <b>Already scanned</b>${hit.scannedBy ? ' by ' + escapeHtml(hit.scannedBy) : ''} — ${ageLabel}${hit._fresh ? '' : ' <b>(&gt;72h — verify before trusting)</b>'}.
+      <div class="row" style="margin-top:8px">
+        <button class="btn btn-primary btn-sm" onclick="loadAmmCacheIntoRoot(${jsArg(refVal)})">✅ Use this scan (0 tokens)</button>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('amm-cache-banner').style.display='none'">🔄 Scan anyway</button>
+      </div>
+    </div>`;
+}
+async function loadAmmCacheIntoRoot(refVal) {
+  const hit = window._ammPendingCacheHit;
+  if (!hit) return;
+  const verified = hit.data;
+  setStatus('done', `✓ Loaded from team cache (scanned ${ammCacheAgeLabel(hit.scannedAt)}${hit.scannedBy ? ' by ' + escapeHtml(hit.scannedBy) : ''}) — 0 tokens used.`);
+  rootResult = verified;
+  registerKnownCard(verified.card_ref || refVal, verified.card_title);
+  renderModelWarning('model-warning-root', verified.aircraft_model, expectedModel, 'the project aircraft');
+  const rootRefNorm = normalizeRef(verified.card_ref || refVal);
+  const rootTable = verified.applicability_table || [];
+  const partReplaced = document.getElementById('amm-part-replaced').value.trim();
+  taskScans[rootRefNorm] = {
+    status: 'done', data: verified, sourceText: hit.sourceText || '',
+    applicabilityMatch: rootTable.length ? matchApplicabilityTable(rootTable, verified.card_title) : null,
+    applicabilityPickerOpen: false, applicabilityPickerSelected: new Set(), applicabilityPickerSearch: '',
+    scopedData: null, scopeReasoningStatus: null,
+    partReplaced, relevanceData: null, relevanceStatus: null
+  };
+  addToSessionCards(verified);
+  window.ammCache.save(expectedModel, verified.card_ref, verified.card_title, verified, ammText, currentEngineerName);
+  renderEsdWarning('esd-warning-root', verified.esd_warning, verified.esd_note);
+  document.getElementById('amm-cache-banner').style.display = 'none';
+  renderAll();
+  if (taskScans[rootRefNorm].applicabilityMatch && !taskScans[rootRefNorm].applicabilityMatch.ambiguous) {
+    await runScopeReasoningForScan(rootRefNorm);
+    renderAll();
+  }
+  if (partReplaced && hit.sourceText) {
+    await runRelevanceCheckForScan(rootRefNorm, partReplaced);
+    renderAll();
+  }
+}
+
 function registerKnownCard(ref, title) {
   if (!ref) return;
   if (!knownCards.find(c => c.ref === ref)) {
@@ -2423,7 +2553,22 @@ async function runScopeReasoningForScan(key) {
 function renderScanWidget(key, nodeId, scan) {
   const keyAttr = JSON.stringify(key).replace(/"/g,'&quot;');
   const mode = scan.inputMode || 'pdf';
-  return `
+
+  let cacheHtml = ''; // NEW
+  if (scan.cacheHit) {
+    const ageLabel = ammCacheAgeLabel(scan.cacheHit.scannedAt);
+    cacheHtml = `
+      <div class="status show ${scan.cacheHit._fresh ? 'done' : 'warn'}" style="margin-bottom:10px">
+        ✅ Already scanned${scan.cacheHit.scannedBy ? ' by ' + escapeHtml(scan.cacheHit.scannedBy) : ''} — ${ageLabel}${scan.cacheHit._fresh ? '' : ' <b>(&gt;72h)</b>'}.
+        <div class="row" style="margin-top:8px">
+          <button class="btn btn-primary btn-sm" onclick="loadSubScanFromCache(${keyAttr})">✅ Use this scan</button>
+        </div>
+      </div>`;
+  } else if (scan.cacheChecked) {
+    cacheHtml = `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">No previous scan found for ${escapeHtml(key)}.</div>`;
+  }
+
+  return cacheHtml + `
     <div class="mini-tabs">
       <div class="mini-tab ${mode==='pdf'?'active':''}" onclick="setSubScanMode(${keyAttr}, 'pdf')">📄 PDF</div>
       <div class="mini-tab ${mode==='paste'?'active':''}" onclick="setSubScanMode(${keyAttr}, 'paste')">📋 Paste text</div>
@@ -2461,8 +2606,20 @@ function unignoreTask(key) { delete ignoredTasks[normalizeRef(key)]; renderAll()
    task's normalized ref in the global `taskScans` map. Works no
    matter which card (if any) is currently rootResult.
    ============================================================ */
-function openScanWidget(key, parentTitle) {
-  taskScans[key] = { status: 'widget_open', inputMode: 'pdf', pdfB64: null, pdfFileName: '', pastedText: '', componentHint: '', parentTitle: parentTitle || '', data: null, errorMsg: '', applicabilityMatch: null, applicabilityPickerOpen: false };
+async function openScanWidget(key, parentTitle) {
+  taskScans[key] = {
+    status: 'widget_open', inputMode: 'pdf', pdfB64: null, pdfFileName: '', pastedText: '',
+    componentHint: '', parentTitle: parentTitle || '', data: null, errorMsg: '',
+    applicabilityMatch: null, applicabilityPickerOpen: false,
+    cacheHit: null, cacheChecked: false // NEW
+  };
+  renderAll();
+
+  const hit = await window.ammCache.load(expectedModel, key); // NEW
+  const scan = taskScans[key];
+  if (!scan || scan.status !== 'widget_open') return;
+  scan.cacheHit = hit;
+  scan.cacheChecked = true;
   renderAll();
 }
 
@@ -2519,6 +2676,7 @@ async function runSubScan(key) {
     scan.relevanceData = null; // reset: same, for the final relevance pass below
     scan.relevanceStatus = null;
     registerKnownCard(verified.card_ref || key, verified.card_title || '');
+    window.ammCache.save(expectedModel, verified.card_ref || key, verified.card_title, verified, text, currentEngineerName);
 
     // If this document carries a component -> procedure-scope table
     // (e.g. "Table 4. Brake Components" inside a Hydraulic Bleed
@@ -2540,11 +2698,35 @@ async function runSubScan(key) {
     await runScopeReasoningForScan(key);
     renderAll();
   }
-  // The same free-text hint the technician typed for table-matching also
-  // doubles as "the part I'm replacing" for the general relevance check
-  // below — it runs regardless of whether this card had a formal table,
-  // stacking on top of the scoped result when there is one.
   if (scan.componentHint && scan.componentHint.trim()) {
+    await runRelevanceCheckForScan(key, scan.componentHint);
+    renderAll();
+  }
+}
+
+async function loadSubScanFromCache(key) {
+  const scan = taskScans[key];
+  const hit = scan && scan.cacheHit;
+  if (!hit) return;
+  const verified = hit.data;
+  scan.status = 'done';
+  scan.data = verified;
+  scan.sourceText = hit.sourceText || '';
+  scan.scopedData = null;
+  scan.relevanceData = null;
+  scan.relevanceStatus = null;
+  registerKnownCard(verified.card_ref || key, verified.card_title || '');
+  const table = verified.applicability_table || [];
+  scan.applicabilityMatch = table.length
+    ? matchApplicabilityTable(table, [scan.parentTitle, scan.componentHint].filter(Boolean).join(' '))
+    : null;
+  scan.applicabilityPickerOpen = false;
+  renderAll();
+  if (scan.applicabilityMatch && !scan.applicabilityMatch.ambiguous) {
+    await runScopeReasoningForScan(key);
+    renderAll();
+  }
+  if (scan.componentHint && scan.componentHint.trim() && scan.sourceText) {
     await runRelevanceCheckForScan(key, scan.componentHint);
     renderAll();
   }
