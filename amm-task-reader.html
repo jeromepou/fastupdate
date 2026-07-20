@@ -791,7 +791,8 @@ Your job: read the SOURCE TEXT yourself, understand the procedure the way an air
 - ALWAYS include Preliminary Requirements listed at the TOP of the card, before "Procedure" (e.g. "Safe Ground Maintenance - General Maintenance", "X – Pre-operation") — these are done on every job regardless of which component is involved.
 - ALWAYS include Requirements After Job Completion (final inspection, paperwork, closing up) — these are done on every job.
 - ALWAYS include Safety Conditions sections tied to the card's Preliminary Requirements (health/safety/material warnings that apply to the whole card, not one component).
-- If a Preliminary Requirement or a Requirements After Job Completion citation points to a DIFFERENTLY-TITLED procedure embedded further down in the SAME source text (e.g. a "X – Pre-operation" or "X – Post-operation" block with its own "Preliminary Requirements" / "Procedure" / "Requirements After Job Completion" structure), that entire embedded procedure is ALSO always-included in full — not just the one-line citation. Read its own steps, and include every tool, consumable, implicit material, access panel, and safety notice whose step_reference falls inside THAT embedded procedure, exactly as if it were the top-level Preliminary Requirements / Requirements After Job Completion of the main card. This applies no matter what that embedded procedure happens to be named on this particular card.
+- If a Preliminary Requirement or a Requirements After Job Completion citation points to a DIFFERENTLY-TITLED procedure embedded further down in the SAME source text (e.g. a "X – Pre-operation" or "X – Post-operation" block with its own "Preliminary Requirements" / "Procedure" / "Requirements After Job Completion" structure), that embedded procedure is ALWAYS READ AND ATTEMPTED — never skip it just because the confirmed component's applicable_steps range doesn't cite it by number.
+- "Always attempted" does NOT mean every item inside that embedded procedure is unconditionally kept. These embedded procedures often contain their OWN conditional "if necessary to get access to X (one manifold/actuator/side), remove/install the panel..." instructions — e.g. a Pre-operation procedure that lists six or eight different wing or tail panel removal steps, one per aileron/elevator/spoiler manifold or side, of which only one or two genuinely apply to the confirmed component. For any item inside the embedded procedure whose own source wording is conditional ("if necessary", "as necessary", "depending on...") — this is most often access_panels — apply the EXACT SAME test as elsewhere in this prompt: keep it only if its own wording names the confirmed component, or a manifold/actuator/side the confirmed component is physically part of; otherwise exclude it and say so in reasoning_notes. Only the embedded procedure's genuinely unconditional steps (general preparation, applying electrical/hydraulic power, installing safety devices, jacking, safety conditions, and any panel/step with no "if necessary" qualifier) are force-included regardless of which component was confirmed.
 - DO NOT automatically add other mid-procedure "Preparation" sub-steps (e.g. a numbered step like "4 Left Hydraulic System Bleed Preparation" or "11 Landing Gear Bleed") just because they appear earlier in the card or seem generally useful. The confirmed component's applicable_steps is ALREADY the complete, authoritative scope defined by the manual — trust it literally. Only pull in an extra step if it is explicitly cited BY NUMBER inside one of the confirmed applicable_steps (e.g. the confirmed text says "Do Step 9" — then Step 9 belongs), or it is itself a sub-step of the confirmed range's own numbering (e.g. confirmed range "Step 21.2 thru Step 21.3" includes every sub-step numbered 21.2.x and 21.3.x, but nothing outside that numeric range).
 - For ACCESS: include only access panels whose own removal/installation step number falls inside the confirmed applicable_steps range, or is explicitly cited by that range. Do NOT include a panel just because it belongs to the same general area (e.g. WTBF panels installed for LANDING GEAR operation are NOT needed for brake bleed/brake component work just because they're near the wheel well — brake bleed ports do not require landing gear operation). If unsure whether a panel's step number is inside the confirmed range, leave it OUT — precision matters more than completeness here, since the components table already defines the exact scope.
 - For TOOLS, CONSUMABLES, IMPLICIT MATERIALS: include only items whose own step_reference falls inside the confirmed applicable_steps range (or the card's top-level Preliminary Requirements / Requirements After Job Completion). Exclude anything whose step_reference sits outside that numeric range, even if it feels related to the same system (e.g. a torque wrench used at Step 11.19 is out of scope for a brake job whose confirmed range is Step 21.2 thru Step 21.3).
@@ -1318,7 +1319,14 @@ async function runScopeReasoning(sourceText, confirmedRows, extractedData) {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
-      model: 'mistral-small-latest',
+      // Pinned to the dated version confirmed available on the account's
+      // usage tier (see admin.mistral.ai/plateforme/limits) rather than
+      // 'mistral-large-latest', which doesn't show its own rate-limit
+      // entry there and could route unpredictably. Rate limit on this
+      // tier is modest (~0.07 req/s, 250k tokens/min) but this call fires
+      // once per confirmed applicability match, not in a tight loop, so
+      // it should stay well within it under normal single-technician use.
+      model: 'mistral-large-2512',
       temperature: 0,
       messages: [{ role: 'user', content: buildScopeReasoningPrompt(confirmedRows, extractedData, sourceText) + '\n\nSOURCE TEXT:\n' + sourceText }],
       response_format: { type: 'json_object' }
@@ -1416,7 +1424,7 @@ async function runRelevanceCheckForScan(key, partReplaced) {
 // filtré si l'IA l'avait exclue. Fonctionne pareil sur n'importe quelle
 // carte AMM, puisque ce sont des libellés de section standards, pas des
 // numéros de step propres à une carte en particulier.
-const ALWAYS_INCLUDE_STEP_PATTERN = /preliminary requirements|safety conditions|requirements after job completion/i;
+const ALWAYS_INCLUDE_STEP_PATTERN = /preliminary requirements|safety conditions|requirements after job completion|pre-operation|post-operation/i;
 
 // An item only counts as "always applicable" (safe to force back in
 // regardless of the AI's step-range reasoning) if it is genuinely tied to
@@ -1501,6 +1509,7 @@ async function analyzeAmm() {
 
     rootResult = verified;
     registerKnownCard(verified.card_ref, verified.card_title);
+    window.ammCache.save(expectedModel, verified.card_ref, verified.card_title, verified, ammText, currentEngineerName);
     renderModelWarning('model-warning-root', verified.aircraft_model, expectedModel, 'the project aircraft');
 
     // Same applicability-table tracking as sub-task scans, keyed by this
@@ -1612,7 +1621,7 @@ async function loadAmmCacheIntoRoot(refVal) {
     partReplaced, relevanceData: null, relevanceStatus: null
   };
   addToSessionCards(verified);
-  window.ammCache.save(expectedModel, verified.card_ref, verified.card_title, verified, ammText, currentEngineerName);
+  window.ammCache.save(expectedModel, verified.card_ref, verified.card_title, verified, hit.sourceText || '', currentEngineerName);
   renderEsdWarning('esd-warning-root', verified.esd_warning, verified.esd_note);
   document.getElementById('amm-cache-banner').style.display = 'none';
   renderAll();
@@ -2356,8 +2365,23 @@ async function confirmApplicabilityChoice(key) {
   scan.applicabilityPickerOpen = false;
   scan.applicabilityPickerSelected = new Set();
   scan.applicabilityPickerSearch = '';
+  // Feed the confirmed component name(s) — exactly as worded in the
+  // applicability table — into componentHint. This overwrites whatever
+  // partial hint the technician typed to find them in the picker, and
+  // triggers the general-purpose final relevance check (buildFinalRelevancePrompt)
+  // as a SECOND, independently-reasoned pass on top of the scope-reasoning
+  // result. Unlike scope reasoning, this pass isn't told to "always include
+  // the whole embedded Pre-operation/Post-operation procedure", so a
+  // conditional access panel (or tool/consumable) wrongly kept by that rule
+  // has a real chance of being caught and excluded here instead.
+  const confirmedNames = rows.map(r => r.component).filter(Boolean).join('; ');
+  if (confirmedNames) scan.componentHint = confirmedNames;
   await runScopeReasoningForScan(key);
   renderAll();
+  if (confirmedNames && scan.sourceText) {
+    await runRelevanceCheckForScan(key, confirmedNames);
+    renderAll();
+  }
 }
 
 /* ------------------------------------------------------------
