@@ -5349,6 +5349,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
     const ocrData = await ocrRes.json();
     if(!ocrRes.ok) throw new Error(ocrData.message || 'OCR error ' + ocrRes.status);
     const extractedText = ocrData.pages.map(p => p.markdown).join('\n\n');
+    console.log(extractedText);
 
     // Étape 2 : Analyse du texte extrait
     const chatRes = await fetch(KO_WORKER + '/chat', {
