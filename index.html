@@ -5331,7 +5331,7 @@ Leave far_certification and country as "" for this document type too.
 UNIVERSAL RULE FOR ALL TYPES:
 - work_order ALWAYS starts with "FA" or, less commonly, "SC" — these are the ONLY two valid prefixes Gulfstream uses, always followed by digits (e.g. "FA33036", "SC12345"). If the document text appears to show a different 2-letter prefix (e.g. "PA", "EA", "TA" — a common OCR misread of "F"), correct it to "FA" unless something else in the document clearly points to "SC". Never output a prefix other than FA or SC.
 - Any task/squawk whose text is exactly or essentially just "EIE" (meaning "Entry In Error" — a cancelled/void entry) must be COMPLETELY EXCLUDED from work_items. Do not include it at all.
-- Any line in a "WO Items" / work items section that is a system placeholder or error message rather than an actual maintenance task (e.g. "No response from RU11", "No response from ...", "N/A", "TBD", "Pending", "-", or similar) must be COMPLETELY EXCLUDED from work_items. This indicates the backend system failed to return real data, not a genuine work item.
+- Every line found in a "WO Items" / work items section must be included in work_items, UPPERCASE, exactly as written — even if it looks like a placeholder or system message (e.g. "No response from RU11"). Never omit or filter these lines.
 - work_items descriptions must be in UPPERCASE, with NO leading squawk/task numbers in the label text.
 - Never invent or infer a value that is not explicitly written in the document. If unsure, use "".
 
