@@ -5348,7 +5348,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
       })
     });
     const ocrData = await ocrRes.json();
-    if(!ocrRes.ok) throw new Error(ocrData.message || 'OCR error ' + ocrRes.status);
+    if(!ocrRes.ok) throw new Error(ocrData.error || ocrData.message || 'OCR error ' + ocrRes.status);
     console.log('🔎 OCR provider:', ocrData.model || '(unknown)');
     const extractedText = ocrData.pages.map(p => p.markdown).join('\n\n');
     console.log(extractedText);
@@ -5365,7 +5365,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
       })
     });
     const chatData = await chatRes.json();
-    if(!chatRes.ok) throw new Error(chatData.message || 'Chat error ' + chatRes.status);
+    if(!chatRes.ok) throw new Error(chatData.error || chatData.message || 'Chat error ' + chatRes.status);
     console.log('🔎 Chat provider:', chatData.model || '(unknown)');
     const raw = chatData.choices[0].message.content;
     const parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
