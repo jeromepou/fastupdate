@@ -2827,5 +2827,22 @@ function exportSelection() {
   }
 }
 </script>
+
+<script>
+/* Signale sa hauteur réelle au parent — évite le grand bloc vide */
+(function () {
+  function reportHeight() {
+    try {
+      const h = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'amm-task-reader:resize', height: h }, '*');
+      }
+    } catch (e) {}
+  }
+  if (window.ResizeObserver) new ResizeObserver(reportHeight).observe(document.body);
+  window.addEventListener('load', reportHeight);
+  setInterval(reportHeight, 800);
+})();
+</script>
 </body>
 </html>
