@@ -1700,12 +1700,12 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 
 <!-- AMM TASK READER MODAL -->
 <div class="modal-bg" id="modal-amm-reader">
-  <div class="modal" style="max-width:960px;width:95vw;height:90vh;display:flex;flex-direction:column;padding:0">
+  <div class="modal" style="max-width:960px;width:95vw;max-height:90vh;display:flex;flex-direction:column;padding:0">
     <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--g200);flex-shrink:0">
       <h3 style="margin:0;flex:1">🔧 AMM Task Reader</h3>
       <button class="btn" onclick="closeModal('modal-amm-reader')" style="font-size:12px;padding:5px 10px">✕ Close</button>
     </div>
-    <iframe id="amm-reader-iframe" src="amm-task-reader.html" style="flex:1;width:100%;border:none;background:#f7f8fa"></iframe>
+    <iframe id="amm-reader-iframe" src="amm-task-reader.html" style="width:100%;border:none;background:#fff;height:420px;min-height:160px"></iframe>
   </div>
 </div>
 
@@ -7084,6 +7084,20 @@ window.addEventListener('message', function(ev) {
   const data = ev.data;
   if (!data || data.type !== 'amm-task-reader:export') return;
   koImportFromAmmReader(data.payload, _koAmmReaderTarget);
+});
+
+// Ajuste la hauteur de l'iframe AMM Task Reader à son contenu réel,
+// plafonnée à l'espace disponible dans la modale.
+window.addEventListener('message', function(ev) {
+  const data = ev.data;
+  if (!data || data.type !== 'amm-task-reader:resize') return;
+  const iframe = document.getElementById('amm-reader-iframe');
+  if (!iframe) return;
+  const header = iframe.previousElementSibling;
+  const headerHeight = header ? header.offsetHeight : 50;
+  const available = window.innerHeight * 0.9 - headerHeight - 4;
+  const target = Math.min((data.height || 0) + 4, available);
+  iframe.style.height = Math.max(target, 160) + 'px';
 });
 
 // Maps the AMM reader's category to the parts table's category dropdown value.
