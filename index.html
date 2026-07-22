@@ -170,7 +170,16 @@ textarea{resize:vertical}
 .upd-item-chk input[type=checkbox]{width:auto;flex-shrink:0;cursor:pointer}
 .upd-item-chk label{font-size:12px;font-weight:600;color:var(--g800);text-transform:none;letter-spacing:0;cursor:pointer;line-height:1.4}
 .upd-status-sel{width:155px;flex-shrink:0;font-size:12px}
-.upd-detail{font-size:12px;min-height:44px;margin-top:5px}
+.rte-toolbar{display:flex;gap:4px;margin-bottom:4px;align-items:center;flex-wrap:wrap}
+.rte-toolbar button{font-size:12px;padding:3px 9px;border:1px solid var(--g200);border-radius:4px;background:#fff;cursor:pointer;min-width:26px;line-height:1.3}
+.rte-toolbar button:hover{background:var(--g100)}
+.rte-toolbar .rte-sep{width:1px;height:18px;background:var(--g200);margin:0 2px}
+.rte-toolbar .rte-swatch{width:20px;height:20px;padding:0;border-radius:4px;border:1px solid rgba(0,0,0,.15);flex-shrink:0}
+.rte-toolbar .rte-swatch-reset{background:#fff;color:#000;font-size:11px;font-weight:700;line-height:18px}
+.rte-editable{font-size:12px;min-height:44px;margin-top:5px;border:1px solid var(--g200);border-radius:var(--r);padding:7px 10px;font-family:inherit;background:#fff;outline:none;line-height:1.5;color:var(--g900)}
+.rte-editable:focus{outline:2px solid var(--gm);border-color:var(--gm)}
+.rte-editable:empty:before{content:attr(data-placeholder);color:var(--g400)}
+.rte-editable div,.rte-editable p{margin:0}
 .update-day-note{display:flex;gap:8px;padding-top:10px;margin-top:2px;border-top:1px solid var(--g200);align-items:flex-start}
 .update-day-note .note-icon{font-size:13px;opacity:.55;margin-top:19px;flex-shrink:0}
 .update-day-note .fg{flex:1}
@@ -200,6 +209,8 @@ textarea{resize:vertical}
 .copy-btn{display:flex;align-items:center;gap:6px;padding:7px 16px;border-radius:var(--r);background:#fff;border:1px solid var(--g200);font-size:13px;font-weight:600;cursor:pointer;color:var(--g800)}
 .copy-btn:hover{background:var(--g100)}
 .copy-btn.copied{background:var(--gl);color:var(--gd);border-color:var(--gb)}
+.copy-mobile-warn{display:none;font-size:11px;color:var(--amb);background:var(--al);border:1px solid #d4b800;border-radius:6px;padding:6px 10px;margin:-4px 0 10px}
+@media(max-width:600px){.copy-mobile-warn{display:block}}
 .tbl-wrap{background:#fff;border:1px solid var(--g200);border-radius:var(--rlg);overflow-x:scroll;overflow-y:hidden;box-shadow:var(--sh);-webkit-overflow-scrolling:touch}
 table.fast-tbl{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px;min-width:600px;font-family:Aptos,Calibri,'Segoe UI',Arial,sans-serif}
 .fast-tbl td{border:2px solid #000;padding:7px 10px;vertical-align:middle;word-wrap:break-word;overflow-wrap:break-word;color:#000}
@@ -857,6 +868,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       📧 Draft in Gmail
     </button>
   </div>
+  <div class="copy-mobile-warn">⚠️ On mobile, most mail apps (including the Gmail app) paste "Copy table" as plain text only — the table, borders and colors get lost. Use <b>"📧 Draft in Gmail"</b> instead.</div>
   <div class="tbl-wrap"><div id="tbl-out"></div></div>
 </div>
 
@@ -2719,7 +2731,7 @@ G.koShowEtaItemPicker = function(btn, description, etaText) {
   const sel = document.createElement('select');
   sel.style.cssText = 'font-size:11px;padding:3px 6px;border:1px solid #f5b8d6;border-radius:12px;background:#fff;max-width:180px';
   sel.innerHTML = '<option value="">—</option>' + items.map(it =>
-    '<option value="' + it.num + '">' + it.num + ' — ' + escHtml((it.label || '').slice(0, 40)) + '</option>'
+    '<option value="' + it.id + '">' + it.num + ' — ' + escHtml((it.label || '').slice(0, 40)) + '</option>'
   ).join('');
 
   const okBtn = document.createElement('button');
@@ -2732,14 +2744,15 @@ G.koShowEtaItemPicker = function(btn, description, etaText) {
   cancelBtn.style.cssText = 'font-size:12px;padding:2px 7px;border-radius:12px;cursor:pointer;border:none;background:none;color:#9d174d';
 
   okBtn.onclick = () => {
-    const num = parseInt(sel.value, 10);
-    if (!num) { sel.style.outline = '2px solid #f43f5e'; return; }
-    const ok = koInsertEtaNoteIntoUpdate(num, description, etaText);
+    const itemId = parseInt(sel.value, 10);
+    if (!itemId) { sel.style.outline = '2px solid #f43f5e'; return; }
+    const ok = koInsertEtaNoteIntoUpdate(itemId, description, etaText);
     if (ok) {
       sel.style.outline = '';
       const flash = document.createElement('span');
       flash.style.cssText = 'font-size:11px;color:#065f46;font-weight:700;white-space:nowrap';
-      flash.textContent = '✓ item ' + num;
+      const matchedItem = items.find(it => it.id === itemId);
+      flash.textContent = '✓ item ' + (matchedItem ? matchedItem.num : itemId);
       wrap.insertBefore(flash, okBtn);
       sel.value = '';
       setTimeout(() => flash.remove(), 2500); // le picker reste dispo pour ajouter à un 2e item
@@ -2754,7 +2767,7 @@ G.koShowEtaItemPicker = function(btn, description, etaText) {
 // Insère la note dans l'item choisi, dans le bloc "Aujourd'hui" du tableau
 // Update (le crée s'il n'existe pas encore). Coche l'item, et met le statut
 // sur "waiting_parts" SEULEMENT si aucun statut n'était déjà choisi.
-function koInsertEtaNoteIntoUpdate(itemNum, description, etaText) {
+function koInsertEtaNoteIntoUpdate(itemId, description, etaText) {
   const loadedWo = (gv('f_wo') || '').trim().toUpperCase();
   const replyWo  = (koReplyCurrentFA || '').trim().toUpperCase();
   if (loadedWo && replyWo && loadedWo !== replyWo) {
@@ -2768,12 +2781,15 @@ function koInsertEtaNoteIntoUpdate(itemNum, description, etaText) {
   }
   if (!todayBlock) { alert("Couldn't create today's update — add work items in Step 3 first."); return false; }
 
-  const itemBlock = todayBlock.querySelector('.upd-item-block[data-item-num="' + itemNum + '"]');
+  const itemBlock = todayBlock.querySelector('.upd-item-block[data-item-id="' + itemId + '"]');
   if (!itemBlock) { alert("Item not found in today's update."); return false; }
 
-  const detailEl = itemBlock.querySelector('.upd-detail');
+  const detailEl = itemBlock.querySelector('.rte-editable');
   const noteLine = (description ? description + ' — ' : '') + 'ETA: ' + etaText;
-  if (detailEl) detailEl.value = detailEl.value ? (detailEl.value + '\n' + noteLine) : noteLine;
+  if (detailEl) {
+    if (detailEl.textContent.trim()) detailEl.appendChild(document.createElement('br'));
+    detailEl.appendChild(document.createTextNode(noteLine));
+  }
 
   const chk = itemBlock.querySelector('input[type=checkbox]');
   if (chk) chk.checked = true;
@@ -2782,7 +2798,7 @@ function koInsertEtaNoteIntoUpdate(itemNum, description, etaText) {
 
   applyStatusClass(itemBlock, statusSel ? statusSel.value : '');
   updateDayProgress(todayBlock);
-  propagateItemChange(todayBlock, itemBlock.dataset.itemNum, chk ? chk.checked : true, statusSel ? statusSel.value : '');
+  propagateItemChange(todayBlock, itemBlock.dataset.itemId, chk ? chk.checked : true, statusSel ? statusSel.value : '');
   G.autosave();
 
   itemBlock.style.outline = '2px solid #10b981';
@@ -3894,12 +3910,14 @@ function handoverBuildSupportUpdates(proj) {
   return sorted.map(u => {
     const lines = [u.date + (u.isRTS ? ' — A/C RTS' : '')];
     (u.itemUpdates||[]).filter(iu => iu.checked).forEach(iu => {
-      const it = items.find(x => x.num === iu.num);
+      const it = items.find(x => iu.id != null ? x.id === iu.id : x.num === iu.num);
       const label = it ? it.label : ('Item ' + iu.num);
       const status = SL[iu.status] || '';
-      lines.push('- ' + label + (status ? ' (' + status + ')' : '') + (iu.detail ? ': ' + iu.detail : ''));
+      const plainDetail = rteToPlainText(iu.detail);
+      lines.push('- ' + label + (status ? ' (' + status + ')' : '') + (plainDetail ? ': ' + plainDetail : ''));
     });
-    if (u.freeText) lines.push('Note: ' + u.freeText);
+    const plainFreeText = rteToPlainText(u.freeText);
+    if (plainFreeText) lines.push('Note: ' + plainFreeText);
     return lines.join('\n');
   }).join('\n\n');
 }
@@ -4150,7 +4168,7 @@ function fillFromProj(proj) {
   document.getElementById('items-container').innerHTML = ''; itemCount = 0;
   // items can be array or object (Firebase)
   const items = Array.isArray(proj.items) ? proj.items : Object.values(proj.items || {});
-  items.forEach(it => addItem(it.label));
+  items.forEach(it => addItem(it.label, it.id));
 
   document.getElementById('parts-container').innerHTML = ''; partCount = 0;
   const parts = Array.isArray(proj.parts) ? proj.parts : Object.values(proj.parts || {});
@@ -4277,11 +4295,19 @@ G.removeRecipient = function(email) {
   G.autosave();
 };
 // ══════════════════════════════════════
-G.addItem = function(label = '') {
-  itemCount++;
+G.addItem = function(label = '', explicitId = null) {
+  let id;
+  if (explicitId != null && !Number.isNaN(Number(explicitId))) {
+    id = Number(explicitId);
+    if (id > itemCount) itemCount = id; // keep the counter ahead of any restored id
+  } else {
+    itemCount++;
+    id = itemCount;
+  }
   const c = document.getElementById('items-container');
-  const d = document.createElement('div'); d.className = 'item-row'; d.id = 'item-' + itemCount;
-  d.innerHTML = `<span class="item-num">${itemCount}</span>
+  const d = document.createElement('div'); d.className = 'item-row'; d.id = 'item-' + id;
+  d.dataset.itemId = id;
+  d.innerHTML = `<span class="item-num">${id}</span>
     <div class="item-fields">
       <div class="item-label-row">
         <input type="text" value="${label.replace(/"/g,'&quot;')}" placeholder="Work item description" oninput="autosave()"/>
@@ -4289,17 +4315,172 @@ G.addItem = function(label = '') {
     </div>
     <button class="btn-rm" onclick="this.parentElement.remove();autosave()">×</button>`;
   c.appendChild(d);
+  syncNewItemToExistingUpdateDays();
 };
 
 function getItems() {
   return Array.from(document.querySelectorAll('.item-row')).map((r, i) => ({
-    num: i + 1, label: r.querySelector('input').value
+    id: parseInt(r.dataset.itemId, 10) || (i + 1),
+    num: i + 1,
+    label: r.querySelector('input').value
   }));
+}
+
+// Adds a newly-created Step 3 item into every Step 4 day that already
+// exists (only if it's missing there) — never touches the checkbox,
+// status, or note already filled in for the other items on that day.
+function syncNewItemToExistingUpdateDays() {
+  const items = getItems();
+  document.querySelectorAll('.update-day').forEach(dayEl => {
+    const body = dayEl.querySelector('.update-day-body');
+    if (!body) return;
+    const placeholder = Array.from(body.children).find(el => el.tagName === 'P' && el.textContent.includes('Add work items'));
+    const noteBlock = body.querySelector('.update-day-note');
+    items.forEach((it) => {
+      if (dayEl.querySelector(`.upd-item-block[data-item-id="${it.id}"]`)) return;
+      placeholder?.remove();
+      const uid = dayEl.id + '_' + it.id;
+      const editorId = 'updetail_' + uid;
+      const div = document.createElement('div');
+      div.className = 'upd-item-block';
+      div.dataset.itemId = it.id;
+      div.innerHTML = `
+        <div class="upd-item-header">
+          <div class="upd-item-chk">
+            <input type="checkbox" id="uchk_${uid}" onchange="onUpdChk(this)" style="width:auto"/>
+            <label for="uchk_${uid}">${it.num} — ${it.label||'(no description)'}</label>
+          </div>
+          <select class="upd-status-sel" onchange="onUpdStatusChange(this)">
+            <option value="">— (no status)</option>
+            <option value="done">✅ Carried out</option>
+            <option value="waiting_parts">⏳ Waiting for part(s)</option>
+            <option value="mel">📋 Item MEL'd</option>
+            <option value="cancelled">❌ Cancelled by customer</option>
+            <option value="pending">🔧 In progress</option>
+          </select>
+        </div>
+        ${rteToolbarHtml(editorId)}
+        <div class="rte-editable" id="${editorId}" contenteditable="true"
+             data-placeholder="Describe what was done today (optional)…"
+             oninput="autosave()" onblur="rteNormalize(this)"></div>
+        <button type="button" class="ai-improve-btn" onclick="aiImproveField('${editorId}', this)">✨ Improve text</button>`;
+      noteBlock ? body.insertBefore(div, noteBlock) : body.appendChild(div);
+    });
+    updateDayProgress(dayEl);
+  });
 }
 
 // ══════════════════════════════════════
 //  DAILY UPDATES
 // ══════════════════════════════════════
+
+// ── Rich text (bold / underline / color) for Daily Update notes ──
+function rteSanitize(html) {
+  const ALLOWED_TAGS = new Set(['B','STRONG','U','I','EM','BR','DIV','P','SPAN']);
+  const STRIP_ENTIRELY = new Set(['SCRIPT','STYLE']);
+  const STYLE_DECL_RE = /^(color\s*:\s*(#[0-9a-fA-F]{3,8}|rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\))|font-weight\s*:\s*(bold|700)|text-decoration(-line)?\s*:\s*underline)$/i;
+
+  function sanitizeStyle(styleValue) {
+    return (styleValue || '')
+      .split(';').map(s => s.trim()).filter(Boolean)
+      .filter(decl => STYLE_DECL_RE.test(decl))
+      .join('; ');
+  }
+
+  function cleanNode(node) {
+    const children = Array.from(node.childNodes);
+    for (const child of children) {
+      if (child.nodeType === Node.COMMENT_NODE) { node.removeChild(child); continue; }
+      if (child.nodeType !== Node.ELEMENT_NODE) continue;
+
+      if (STRIP_ENTIRELY.has(child.tagName)) { node.removeChild(child); continue; }
+
+      if (!ALLOWED_TAGS.has(child.tagName)) {
+        cleanNode(child);
+        while (child.firstChild) node.insertBefore(child.firstChild, child);
+        node.removeChild(child);
+        continue;
+      }
+
+      if (child.tagName === 'SPAN') {
+        const kept = sanitizeStyle(child.getAttribute('style'));
+        Array.from(child.attributes).forEach(a => child.removeAttribute(a.name));
+        if (kept) {
+          child.setAttribute('style', kept);
+        } else {
+          cleanNode(child);
+          while (child.firstChild) node.insertBefore(child.firstChild, child);
+          node.removeChild(child);
+          continue;
+        }
+      } else {
+        Array.from(child.attributes).forEach(a => child.removeAttribute(a.name));
+      }
+      cleanNode(child);
+    }
+  }
+
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html || '';
+  cleanNode(tmp);
+  return tmp.innerHTML;
+}
+
+// Legacy plain text (typed in the old <textarea>, before this feature)
+// vs. already-clean new HTML: never confuse the two. Plain text never
+// contains one of our allowed tags — if none is found, escape it and
+// turn line breaks into <br> so old multi-line notes keep displaying
+// the way they used to.
+function rteInitialHtml(raw) {
+  if (!raw) return '';
+  if (/<(b|strong|u|i|em|br|div|p|span)[\s/>]/i.test(raw)) return rteSanitize(raw);
+  return escHtml(raw).replace(/\r\n|\r|\n/g, '<br>');
+}
+
+// Plain-text version of a note, for contexts that can't show HTML
+// (e.g. the Word handover document).
+function rteToPlainText(html) {
+  const tmp = document.createElement('div');
+  tmp.style.cssText = 'position:absolute;left:-9999px;top:-9999px;white-space:pre-wrap';
+  tmp.innerHTML = html || '';
+  document.body.appendChild(tmp);
+  const text = tmp.innerText || tmp.textContent || '';
+  document.body.removeChild(tmp);
+  return text.trim();
+}
+
+function rteToolbarHtml(editorId) {
+  return `<div class="rte-toolbar">
+    <button type="button" title="Bold" onmousedown="event.preventDefault()" onclick="rteExec('${editorId}','bold')"><b>B</b></button>
+    <button type="button" title="Underline" onmousedown="event.preventDefault()" onclick="rteExec('${editorId}','underline')"><u>U</u></button>
+    <span class="rte-sep"></span>
+    <button type="button" class="rte-swatch" style="background:#c00000" title="Red" onmousedown="event.preventDefault()" onclick="rteColor('${editorId}','#c00000')"></button>
+    <button type="button" class="rte-swatch" style="background:#e07800" title="Orange" onmousedown="event.preventDefault()" onclick="rteColor('${editorId}','#e07800')"></button>
+    <button type="button" class="rte-swatch" style="background:#1a4a7a" title="Blue" onmousedown="event.preventDefault()" onclick="rteColor('${editorId}','#1a4a7a')"></button>
+    <button type="button" class="rte-swatch" style="background:#2d5a2d" title="Green" onmousedown="event.preventDefault()" onclick="rteColor('${editorId}','#2d5a2d')"></button>
+    <button type="button" class="rte-swatch rte-swatch-reset" title="Normal text (reset color)" onmousedown="event.preventDefault()" onclick="rteColor('${editorId}','#000000')">A</button>
+  </div>`;
+}
+
+G.rteExec = function(editorId, cmd, value) {
+  const el = document.getElementById(editorId);
+  if (!el) return;
+  el.focus();
+  document.execCommand('styleWithCSS', false, true);
+  document.execCommand(cmd, false, value || null);
+  el.dispatchEvent(new Event('input'));
+};
+
+G.rteColor = function(editorId, color) {
+  if (!color) return;
+  G.rteExec(editorId, 'foreColor', color);
+};
+
+G.rteNormalize = function(el) {
+  if (!el) return;
+  if (!el.textContent.trim()) el.innerHTML = '';
+};
+
 function todayLabel() { return new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}); }
 
 // Normalise une date à minuit -> timestamp comparable (indépendant de l'heure de clic)
@@ -4349,14 +4530,14 @@ function createUpdateBlock(label, ts) {
   const carriedItems = lastUpdate
     ? lastUpdate.itemUpdates
         .filter(u => u.checked)
-        .map(u => ({ num: u.num, checked: true, status: u.status, detail: '' }))
+        .map(u => ({ id: u.id, num: u.num, checked: true, status: u.status, detail: '' }))
     : [];
     
   renderUpdateBlock({id:'upd_'+Date.now(), date:label, ts, isRTS:false, freeText:'', itemUpdates: carriedItems});
   G.autosave();
 }
 
-function propagateItemChange(sourceDayBlock, itemNum, isChecked, newStatus) {
+function propagateItemChange(sourceDayBlock, itemId, isChecked, newStatus) {
   const sourceTs = parseDateLabel(sourceDayBlock.dataset.date) ?? 0;
 
   // Parcourir tous les blocs dans le DOM
@@ -4365,7 +4546,7 @@ function propagateItemChange(sourceDayBlock, itemNum, isChecked, newStatus) {
     
     // Si le bloc est chronologiquement APRÈS le bloc modifié
     if (nextTs > sourceTs) {
-      const itemRow = nextBlock.querySelector(`.upd-item-block[data-item-num="${itemNum}"]`);
+      const itemRow = nextBlock.querySelector(`.upd-item-block[data-item-id="${itemId}"]`);
       if (itemRow) {
         const chk = itemRow.querySelector('input[type=checkbox]');
         const sel = itemRow.querySelector('.upd-status-sel');
@@ -4410,7 +4591,7 @@ function renderUpdateBlock(upd) {
   d.dataset.ts = String(upd.ts ?? parseDateLabel(upd.date) ?? Date.now());
 
   const itemsHtml = items.length > 0 ? items.map((it, i) => {
-    const saved = itemUpdatesArr.find(u => u.num === (i+1)) || {};
+    const saved = itemUpdatesArr.find(u => (u.id != null ? u.id === it.id : u.num === it.num)) || {};
     const checked = saved.checked ? 'checked' : '';
     const statusOpts = ['','done','waiting_parts','mel','cancelled','pending'].map(v => {
     const L = {
@@ -4424,7 +4605,7 @@ function renderUpdateBlock(upd) {
     return `<option value="${v}" ${(saved.status||'')===v?'selected':''}>${L[v]}</option>`;
   }).join('');
     const statusClass = STATUS_LABEL_CLASS[saved.status] || '';
-    return `<div class="upd-item-block ${statusClass}" data-item-num="${i+1}">
+    return `<div class="upd-item-block ${statusClass}" data-item-id="${it.id}">
       <div class="upd-item-header">
         <div class="upd-item-chk">
           <input type="checkbox" id="uchk_${upd.id}_${i}" ${checked} onchange="onUpdChk(this)" style="width:auto"/>
@@ -4432,7 +4613,10 @@ function renderUpdateBlock(upd) {
         </div>
         <select class="upd-status-sel" onchange="onUpdStatusChange(this)">${statusOpts}</select>
       </div>
-      <textarea class="upd-detail" id="updetail_${upd.id}_${i}" placeholder="Describe what was done today (optional)…" oninput="autosave()">${saved.detail||''}</textarea>
+      ${rteToolbarHtml('updetail_' + upd.id + '_' + i)}
+      <div class="rte-editable" id="updetail_${upd.id}_${i}" contenteditable="true"
+           data-placeholder="Describe what was done today (optional)…"
+           oninput="autosave()" onblur="rteNormalize(this)">${rteInitialHtml(saved.detail||'')}</div>
       <button type="button" class="ai-improve-btn" onclick="aiImproveField('updetail_${upd.id}_${i}', this)">✨ Improve text</button>
     </div>`;
   }).join('') : '<p style="font-size:12px;color:var(--g400)">Add work items in Step 3 first.</p>';
@@ -4453,7 +4637,10 @@ function renderUpdateBlock(upd) {
       <span class="note-icon">📝</span>
       <div class="fg">
         <label style="text-transform:none;font-size:11px;font-weight:600;letter-spacing:0">Global note for this day (optional)</label>
-        <textarea class="upd-free-global" id="updglobal_${upd.id}" style="min-height:44px" placeholder="e.g. Will travel tomorrow, waiting for parts…" oninput="autosave()">${upd.freeText||''}</textarea>
+        ${rteToolbarHtml('updglobal_' + upd.id)}
+        <div class="rte-editable upd-free-global" id="updglobal_${upd.id}" contenteditable="true"
+             data-placeholder="e.g. Will travel tomorrow, waiting for parts…"
+             oninput="autosave()" onblur="rteNormalize(this)">${rteInitialHtml(upd.freeText||'')}</div>
         <button type="button" class="ai-improve-btn" onclick="aiImproveField('updglobal_${upd.id}', this)">✨ Improve text</button>
       </div>
     </div>
@@ -4496,7 +4683,7 @@ G.onUpdChk = function(chk) {
   updateDayProgress(dayBlock);
   
   // Propagation en direct
-  propagateItemChange(dayBlock, block.dataset.itemNum, chk.checked, sel.value);
+  propagateItemChange(dayBlock, block.dataset.itemId, chk.checked, sel.value);
   
   G.autosave();
 };
@@ -4514,7 +4701,7 @@ G.onUpdStatusChange = function(sel) {
   updateDayProgress(dayBlock);
   
   // Propagation en direct
-  propagateItemChange(dayBlock, block.dataset.itemNum, chk.checked, sel.value);
+  propagateItemChange(dayBlock, block.dataset.itemId, chk.checked, sel.value);
   
   G.autosave();
 };
@@ -4534,15 +4721,17 @@ function getUpdatesData() {
     id: block.id, date: block.dataset.date,
     ts: block.dataset.ts ? parseInt(block.dataset.ts, 10) : (parseDateLabel(block.dataset.date) ?? 0),
     isRTS: block.querySelector('[id^="rts_"]')?.checked || false,
-    freeText: block.querySelector('.upd-free-global')?.value || '',
+    freeText: rteSanitize(block.querySelector('.upd-free-global')?.innerHTML || ''),
     itemUpdates: Array.from(block.querySelectorAll('.upd-item-block')).map((ib, i) => ({
-      num: parseInt(ib.dataset.itemNum || i+1),
+      id: parseInt(ib.dataset.itemId, 10) || null,
+      num: i + 1,
       checked: ib.querySelector('input[type=checkbox]')?.checked || false,
       status: ib.querySelector('.upd-status-sel')?.value ?? '',
-      detail: ib.querySelector('.upd-detail')?.value || ''
+      detail: rteSanitize(ib.querySelector('.rte-editable')?.innerHTML || '')
     }))
   }));
 }
+
 // ══════════════════════════════════════
 //  PARTS
 // ══════════════════════════════════════
@@ -5052,7 +5241,8 @@ let aiImproveTargetId = null;
 G.aiImproveField = async function(fieldId, btnEl) {
   const el = document.getElementById(fieldId);
   if (!el) return;
-  const original = el.value.trim();
+  const isRte = el.classList.contains('rte-editable');
+  const original = (isRte ? el.innerText : el.value).trim();
   if (!original) return;
 
   aiImproveTargetId = fieldId;
@@ -5107,7 +5297,11 @@ G.confirmAiImprove = function() {
   const el = document.getElementById(aiImproveTargetId);
   const suggestion = document.getElementById('ai-improve-suggestion').value;
   if (el) {
-    el.value = suggestion;
+    if (el.classList.contains('rte-editable')) {
+      el.innerText = suggestion; // also clears any bold/underline/color already on this field
+    } else {
+      el.value = suggestion;
+    }
     el.dispatchEvent(new Event('input')); // déclenche l'autosave déjà branché en oninput
   }
   closeModal('modal-ai-improve');
@@ -5592,14 +5786,15 @@ G.generate = async function() {
         updContent += `<span style="display:inline-block;background:#2d5a2d;color:#fff;font-size:11px;font-weight:700;padding:1px 10px;border-radius:20px;margin-bottom:3px">${rtsLabel}</span><br>`;
       }
       upd.itemUpdates.filter(u=>u.checked).forEach(iu=>{
-        const it=items.find(x=>x.num===iu.num);
+        const it=items.find(x=>iu.id!=null ? x.id===iu.id : x.num===iu.num);
+        const displayNum = it ? it.num : iu.num;
         const statusLabel = SL[iu.status];
         const statusColor = SC[iu.status]||'#555';
         const statusHtml = statusLabel ? ` — <span style="color:#fff;font-weight:700;background:${statusColor};padding:1px 7px;border-radius:10px;font-size:11px;white-space:nowrap;display:inline-block;">${statusLabel.replace(/ /g, '&nbsp;')}</span>` : '';
-        updContent += `${it?`${iu.num}-${it.label.toUpperCase()}`:`Item ${iu.num}`}${statusHtml}<br>`;
-        if(iu.detail) updContent += `<span>${nl2br(iu.detail)}</span><br>`;
+        updContent += `${it?`${displayNum}-${it.label.toUpperCase()}`:`Item ${displayNum}`}${statusHtml}<br>`;
+        if(iu.detail) updContent += `<span>${iu.detail}</span><br>`;
       });
-      if(upd.freeText) updContent += `<div style="border-top:1px dashed #666;margin-top:6px;padding-top:4px"><span style="font-style:italic">${nl2br(upd.freeText)}</span></div>`;
+      if(upd.freeText) updContent += `<div style="border-top:1px dashed #666;margin-top:6px;padding-top:4px"><span style="font-style:italic">${upd.freeText}</span></div>`;
     });
     updRows = `<tr><td class="upd-lbl lbl-ctr"><b>Update:</b></td><td colspan="4">${updContent}</td></tr>`;
   }
@@ -6568,7 +6763,7 @@ function koApplyStateToForm(state) {
     document.getElementById('ko-parts-tbody').innerHTML = '';
     KO.partRows = 0;
     state.parts.forEach(p => {
-      G.koAddPartRow(p.pn||'', p.desc||'', p.sn||'', p.qty||'', p.cat||'Part', p.note||'', p.sqLabel||'', p.uid||'');
+      G.koAddPartRow(p.pn||'', p.desc||'', p.sn||'', p.qty||'', p.cat||'Part', p.note||'', p.sqLabel||'', p.uid||'', p.sqId||'');
     });
   }
   // Restore co-engineers
@@ -7026,17 +7221,25 @@ G.koSetAddr = function(mode) {
 function koGetWorkItems() {
   const prefix = (document.getElementById('ko_item_prefix')?.value || '2').trim();
   return Array.from(document.querySelectorAll('#items-container .item-row')).map((r, i) => ({
+    id: parseInt(r.dataset.itemId, 10) || (i + 1),
     num: i + 1,
     displayNum: prefix ? prefix + '.' + (i + 1) : String(i + 1),
     label: r.querySelector('input')?.value || ''
   })).filter(it => it.label.trim());
 }
 
-function koSquawkSelectOptions(selectedLabel='') {
+function koSquawkSelectOptions(selectedId='', legacyLabel='') {
   const items = koGetWorkItems();
   if (!items.length) return '<option value="">— no work items yet —</option>';
+  const selId = (selectedId !== null && selectedId !== undefined && selectedId !== '') ? String(selectedId) : '';
+  // Legacy fallback: les lignes enregistrées avant ce correctif ne portaient
+  // que le texte du squawk (pas d'id) — on matche une fois par texte pour
+  // qu'un job déjà en cours ne perde pas son assignation à la première
+  // réouverture après cette mise à jour.
+  const fallbackItem = (!selId && legacyLabel) ? items.find(it => it.label === legacyLabel) : null;
+  const effectiveId = selId || (fallbackItem ? String(fallbackItem.id) : '');
   return '<option value="">— select squawk —</option>' +
-    items.map(it => `<option value="${it.displayNum}|${it.label.replace(/"/g,'&quot;')}" ${selectedLabel===it.label?'selected':''}>${it.displayNum} — ${it.label}</option>`).join('');
+    items.map(it => `<option value="${it.id}" ${String(it.id)===effectiveId?'selected':''}>${it.displayNum} — ${it.label}</option>`).join('');
 }
 
 G.koRefreshSquawkSelects = window.koRefreshSquawkSelects = function() {
@@ -7235,7 +7438,7 @@ G.koImportFromAmmReader = function(payload, mode) {
 };
 window.koImportFromAmmReader = G.koImportFromAmmReader;
 
-G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='', note='', sqLabel='', uid='') {
+G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='', note='', sqLabel='', uid='', sqId='') {
   KO.partRows++;
   const tbody = document.getElementById('ko-parts-tbody');
   const tr = document.createElement('tr');
@@ -7263,7 +7466,7 @@ G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='', note='', sqLabe
     </td>
     <td>
       <select class="ko-sq-sel" style="font-size:11px;padding:2px 4px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;color:var(--g900);width:100%;min-width:110px">
-        ${koSquawkSelectOptions(sqLabel)}
+        ${koSquawkSelectOptions(sqId, sqLabel)}
       </select>
     </td>
     <td><button class="ko-parts-tbl rm-btn" onclick="document.getElementById('ko-part-${KO.partRows}').remove();koRenderRecips('parts');koUpdatePreview();koSyncPartsToMainTable();">×</button></td>`;
@@ -7311,24 +7514,27 @@ window.koPartCatChange = function(sel) {
 function koSortPartsTable() {
   const tbody = document.getElementById('ko-parts-tbody');
   if (!tbody) return;
+  const workItems = koGetWorkItems();
+  const posOf = (id) => { const it = workItems.find(w => String(w.id) === String(id)); return it ? it.num : 999; };
   const rows = Array.from(tbody.querySelectorAll('tr'));
   const catOrder = { 'Part': 0, 'Consumable': 1, 'Tool': 2 };
-  // Group by squawk value
+  // Group by squawk id
   const groups = {};
   const noSqRows = [];
   rows.forEach(tr => {
     const cat = tr.querySelector('select')?.value || 'Part';
-    const sqVal = tr.querySelector('.ko-sq-sel')?.value || '';
-    if (sqVal) {
-      if (!groups[sqVal]) groups[sqVal] = { Part:[], Consumable:[], Tool:[] };
-      groups[sqVal][cat].push(tr);
+    const sqId = tr.querySelector('.ko-sq-sel')?.value || '';
+    if (sqId) {
+      if (!groups[sqId]) groups[sqId] = { Part:[], Consumable:[], Tool:[] };
+      groups[sqId][cat].push(tr);
     } else {
       noSqRows.push({ cat, tr });
     }
   });
-  // Re-append: for each squawk group, Part first then Consumable then Tool
-  Object.keys(groups).sort().forEach(sqVal => {
-    const grp = groups[sqVal];
+  // Re-append: for each squawk group, Part first then Consumable then Tool —
+  // groupes ordonnés selon la position ACTUELLE du squawk en Step 3, pas par id
+  Object.keys(groups).sort((a,b) => posOf(a) - posOf(b)).forEach(sqId => {
+    const grp = groups[sqId];
     ['Part','Consumable','Tool'].forEach(cat => {
       grp[cat].forEach(tr => tbody.appendChild(tr));
     });
@@ -7340,13 +7546,14 @@ function koSortPartsTable() {
 window.koSortPartsTable = koSortPartsTable;
 
 function koGetParts() {
+  const workItems = koGetWorkItems();
   return Array.from(document.querySelectorAll('#ko-parts-tbody tr')).map(tr => {
     const cat    = tr.querySelector('select')?.value || 'Part';
     const smallQty = cat === 'Consumable' && tr.querySelector('.ko-smallqty-cb')?.checked;
-    const sqVal  = tr.querySelector('.ko-sq-sel')?.value || '';
-    const sqParts = sqVal.split('|');
-    const sqNum  = sqParts[0] || '';
-    const sqLabel= sqParts.slice(1).join('|') || '';
+    const sqId   = tr.querySelector('.ko-sq-sel')?.value || '';
+    const matched = sqId ? workItems.find(it => String(it.id) === sqId) : null;
+    const sqNum   = matched ? matched.displayNum : '';
+    const sqLabel = matched ? matched.label : '';
     return {
       desc: tr.querySelector('.ko-f-desc')?.value || '',
       pn:   tr.querySelector('.ko-f-pn')?.value   || '',
@@ -7354,7 +7561,7 @@ function koGetParts() {
       qty:  tr.querySelector('.ko-f-qty')?.value  || '',
       cat,
       note: tr.querySelector('.ko-f-note')?.value || '',
-      smallQty, sqNum, sqLabel,
+      smallQty, sqId, sqNum, sqLabel,
       uid: tr.dataset.koUid || '' // NEW
     };
   }).filter(p => p.pn || p.desc);
@@ -9262,14 +9469,13 @@ G.koUsePartTpl = function(i) {
 
 G.koConfirmApplyPartTpl = function() {
   const t = KO_PARTTPL[_ptApplyTplIdx]; if (!t) return;
-  const sqVal = document.getElementById('pt-apply-sq-sel')?.value || '';
-  const sqLabel = sqVal ? sqVal.split('|').slice(1).join('|') : '';
+  const sqId = document.getElementById('pt-apply-sq-sel')?.value || '';
 
   document.querySelectorAll('.pt-apply-line-cb').forEach(cb => {
     if (!cb.checked) return;
     const p = t.parts[parseInt(cb.dataset.li)];
     if (!p) return;
-    G.koAddPartRow(p.pn || '', p.desc || '', p.sn || '', p.qty || '1', p.cat || 'Part', p.note || '', sqLabel);
+    G.koAddPartRow(p.pn || '', p.desc || '', p.sn || '', p.qty || '1', p.cat || 'Part', p.note || '', '', '', sqId);
     if (p.smallQty) {
       const rows = document.querySelectorAll('#ko-parts-tbody tr');
       const lastRow = rows[rows.length - 1];
