@@ -265,6 +265,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 @media(max-width:600px){
   header h1{font-size:13px}
   .part-fields{grid-template-columns:1fr 1fr}
+  .rte-toolbar button{padding:6px 11px;min-width:34px}
+  .rte-toolbar .rte-swatch{width:30px;height:30px}
 }
 
 /* Fixes horizontal overflow of the picker on mobile (a classic CSS Grid
@@ -4378,7 +4380,7 @@ function syncNewItemToExistingUpdateDays() {
 function rteSanitize(html) {
   const ALLOWED_TAGS = new Set(['B','STRONG','U','I','EM','BR','DIV','P','SPAN']);
   const STRIP_ENTIRELY = new Set(['SCRIPT','STYLE']);
-  const STYLE_DECL_RE = /^(color\s*:\s*(#[0-9a-fA-F]{3,8}|rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\))|font-weight\s*:\s*(bold|700)|text-decoration(-line)?\s*:\s*underline)$/i;
+  const STYLE_DECL_RE = /^(color\s*:\s*(#[0-9a-fA-F]{3,8}|rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\))|font-weight\s*:\s*(bold|700)|font-style\s*:\s*italic|text-decoration(-line)?\s*:\s*underline)$/i;
 
   function sanitizeStyle(styleValue) {
     return (styleValue || '')
@@ -4451,21 +4453,52 @@ function rteToPlainText(html) {
 
 function rteToolbarHtml(editorId) {
   return `<div class="rte-toolbar">
-    <button type="button" title="Bold" onmousedown="event.preventDefault()" onclick="rteExec('${editorId}','bold')"><b>B</b></button>
-    <button type="button" title="Underline" onmousedown="event.preventDefault()" onclick="rteExec('${editorId}','underline')"><u>U</u></button>
+    <button type="button" title="Bold" onmousedown="event.preventDefault()" ontouchstart="event.preventDefault()" onclick="rteExec('${editorId}','bold')"><b>B</b></button>
+    <button type="button" title="Italic" onmousedown="event.preventDefault()" ontouchstart="event.preventDefault()" onclick="rteExec('${editorId}','italic')"><i>I</i></button>
+    <button type="button" title="Underline" onmousedown="event.preventDefault()" ontouchstart="event.preventDefault()" onclick="rteExec('${editorId}','underline')"><u>U</u></button>
     <span class="rte-sep"></span>
-    <button type="button" class="rte-swatch" style="background:#c00000" title="Red" onmousedown="event.preventDefault()" onclick="rteColor('${editorId}','#c00000')"></button>
-    <button type="button" class="rte-swatch" style="background:#e07800" title="Orange" onmousedown="event.preventDefault()" onclick="rteColor('${editorId}','#e07800')"></button>
-    <button type="button" class="rte-swatch" style="background:#1a4a7a" title="Blue" onmousedown="event.preventDefault()" onclick="rteColor('${editorId}','#1a4a7a')"></button>
-    <button type="button" class="rte-swatch" style="background:#2d5a2d" title="Green" onmousedown="event.preventDefault()" onclick="rteColor('${editorId}','#2d5a2d')"></button>
-    <button type="button" class="rte-swatch rte-swatch-reset" title="Normal text (reset color)" onmousedown="event.preventDefault()" onclick="rteColor('${editorId}','#000000')">A</button>
+    <button type="button" class="rte-swatch" style="background:#c00000" title="Red" onmousedown="event.preventDefault()" ontouchstart="event.preventDefault()" onclick="rteColor('${editorId}','#c00000')"></button>
+    <button type="button" class="rte-swatch" style="background:#e07800" title="Orange" onmousedown="event.preventDefault()" ontouchstart="event.preventDefault()" onclick="rteColor('${editorId}','#e07800')"></button>
+    <button type="button" class="rte-swatch" style="background:#1a4a7a" title="Blue" onmousedown="event.preventDefault()" ontouchstart="event.preventDefault()" onclick="rteColor('${editorId}','#1a4a7a')"></button>
+    <button type="button" class="rte-swatch" style="background:#2d5a2d" title="Green" onmousedown="event.preventDefault()" ontouchstart="event.preventDefault()" onclick="rteColor('${editorId}','#2d5a2d')"></button>
+    <button type="button" class="rte-swatch rte-swatch-reset" title="Normal text (reset color)" onmousedown="event.preventDefault()" ontouchstart="event.preventDefault()" onclick="rteColor('${editorId}','#000000')">A</button>
   </div>`;
 }
+
+// On mobile, tapping a toolbar button can collapse the text selection
+// before the click is processed, so execCommand no longer knows where to
+// apply the style. We track the last known selection inside a rte-editable
+// field and restore it right before running the command.
+let _rteLastRange = null;
+let _rteLastEditorId = null;
+document.addEventListener('selectionchange', () => {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+  const node = sel.anchorNode;
+  const el = node && (node.nodeType === 1 ? node : node.parentElement)?.closest('.rte-editable');
+  if (el) {
+    _rteLastRange = sel.getRangeAt(0).cloneRange();
+    _rteLastEditorId = el.id;
+  }
+});
 
 G.rteExec = function(editorId, cmd, value) {
   const el = document.getElementById(editorId);
   if (!el) return;
   el.focus();
+  const sel = window.getSelection();
+  if (!el.contains(sel.anchorNode)) {
+    if (_rteLastEditorId === editorId && _rteLastRange) {
+      sel.removeAllRanges();
+      sel.addRange(_rteLastRange);
+    } else {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  }
   document.execCommand('styleWithCSS', false, true);
   document.execCommand(cmd, false, value || null);
   el.dispatchEvent(new Event('input'));
