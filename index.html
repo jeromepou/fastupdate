@@ -4453,15 +4453,15 @@ function rteToPlainText(html) {
 
 function rteToolbarHtml(editorId) {
   return `<div class="rte-toolbar">
-    <button type="button" title="Bold" onmousedown="event.preventDefault()" ontouchstart="event.preventDefault()" onclick="rteExec('${editorId}','bold')"><b>B</b></button>
-    <button type="button" title="Italic" onmousedown="event.preventDefault()" ontouchstart="event.preventDefault()" onclick="rteExec('${editorId}','italic')"><i>I</i></button>
-    <button type="button" title="Underline" onmousedown="event.preventDefault()" ontouchstart="event.preventDefault()" onclick="rteExec('${editorId}','underline')"><u>U</u></button>
+    <button type="button" title="Bold" onmousedown="event.preventDefault()" onclick="rteExec('${editorId}','bold')"><b>B</b></button>
+    <button type="button" title="Italic" onmousedown="event.preventDefault()" onclick="rteExec('${editorId}','italic')"><i>I</i></button>
+    <button type="button" title="Underline" onmousedown="event.preventDefault()" onclick="rteExec('${editorId}','underline')"><u>U</u></button>
     <span class="rte-sep"></span>
-    <button type="button" class="rte-swatch" style="background:#c00000" title="Red" onmousedown="event.preventDefault()" ontouchstart="event.preventDefault()" onclick="rteColor('${editorId}','#c00000')"></button>
-    <button type="button" class="rte-swatch" style="background:#e07800" title="Orange" onmousedown="event.preventDefault()" ontouchstart="event.preventDefault()" onclick="rteColor('${editorId}','#e07800')"></button>
-    <button type="button" class="rte-swatch" style="background:#1a4a7a" title="Blue" onmousedown="event.preventDefault()" ontouchstart="event.preventDefault()" onclick="rteColor('${editorId}','#1a4a7a')"></button>
-    <button type="button" class="rte-swatch" style="background:#2d5a2d" title="Green" onmousedown="event.preventDefault()" ontouchstart="event.preventDefault()" onclick="rteColor('${editorId}','#2d5a2d')"></button>
-    <button type="button" class="rte-swatch rte-swatch-reset" title="Normal text (reset color)" onmousedown="event.preventDefault()" ontouchstart="event.preventDefault()" onclick="rteColor('${editorId}','#000000')">A</button>
+    <button type="button" class="rte-swatch" style="background:#c00000" title="Red" onmousedown="event.preventDefault()" onclick="rteColor('${editorId}','#c00000')"></button>
+    <button type="button" class="rte-swatch" style="background:#e07800" title="Orange" onmousedown="event.preventDefault()" onclick="rteColor('${editorId}','#e07800')"></button>
+    <button type="button" class="rte-swatch" style="background:#1a4a7a" title="Blue" onmousedown="event.preventDefault()" onclick="rteColor('${editorId}','#1a4a7a')"></button>
+    <button type="button" class="rte-swatch" style="background:#2d5a2d" title="Green" onmousedown="event.preventDefault()" onclick="rteColor('${editorId}','#2d5a2d')"></button>
+    <button type="button" class="rte-swatch rte-swatch-reset" title="Normal text (reset color)" onmousedown="event.preventDefault()" onclick="rteColor('${editorId}','#000000')">A</button>
   </div>`;
 }
 
