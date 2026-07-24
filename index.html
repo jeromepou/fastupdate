@@ -850,7 +850,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <span class="subj-lbl">📧 Email subject</span>
     <span class="subj-txt" id="email-subject">—</span>
     <button class="btn" onclick="copySubject()">Copy</button>
-    <button class="btn" onclick="openSubjectTemplateModal()" title="Personalize the subject format">✏️ Format</button>
   </div>
   <div style="background:#f0f4ff;border:1px solid #b8d0e8;border-radius:var(--r);padding:10px 12px;margin-bottom:10px">
     <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">📬 To (recipients)</div>
@@ -1961,36 +1960,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 	
-<!-- SUBJECT FORMAT MODAL -->
-<div class="modal-bg" id="modal-subject-template">
-  <div class="modal" style="max-width:520px">
-    <h3>✏️ Personalize your email subject format</h3>
-    <p style="font-size:12px;color:var(--g600);margin-bottom:12px">
-      This only applies to <b>new</b> projects you create from now on. A project that's already started keeps its original format, so the Gmail conversation thread doesn't get split.
-    </p>
-    <div class="fg" style="margin-bottom:8px">
-      <label>Available tokens</label>
-      <div style="font-size:12px;color:var(--g800);background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:6px 10px">
-        {WO} &nbsp; {MODEL} &nbsp; {SN} &nbsp; {REG} &nbsp; {LOC} &nbsp; {DESC}
-      </div>
-    </div>
-    <div class="fg" style="margin-bottom:10px">
-      <label>Your format</label>
-      <input type="text" id="subj-tpl-input" oninput="previewSubjectTemplate()" style="font-family:monospace;font-size:13px"/>
-    </div>
-    <div class="fg" style="margin-bottom:10px">
-      <label>Preview</label>
-      <div id="subj-tpl-preview" style="font-size:13px;font-weight:600;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:8px 10px;word-break:break-all"></div>
-    </div>
-    <div class="err-msg" id="subj-tpl-error"></div>
-    <div class="modal-btns">
-      <button class="btn" onclick="resetSubjectTemplate()">↩ Reset to default</button>
-      <button class="btn" onclick="closeModal('modal-subject-template')">Cancel</button>
-      <button class="btn primary" onclick="saveSubjectTemplate()">💾 Save</button>
-    </div>
-  </div>
-</div>
-
 <!-- AI IMPROVE TEXT MODAL -->
 <div class="modal-bg" id="modal-ai-improve">
   <div class="modal" style="max-width:520px">
@@ -2250,57 +2219,6 @@ let itemCount = 0, partCount = 0, colleagueSlotCount = 0;
 let pendingUserToLogin = null;
 let saveTimer = null;
 let projTab = 'active';  // 'active' | 'archive'
-
-// ── Email subject format — personal preference, locked per project once created ──
-const DEFAULT_SUBJECT_TEMPLATE = 'UPDATE // {WO} // {MODEL} // {SN} // {REG} // {LOC} // {DESC}';
-let curProjSubjectTemplate = null; // format locked-in for the currently loaded/active project
-
-function buildEmailSubject(tpl, data) {
-  return (tpl || DEFAULT_SUBJECT_TEMPLATE)
-    .replace(/\{WO\}/g, data.wo || '')
-    .replace(/\{MODEL\}/g, data.model || '')
-    .replace(/\{SN\}/g, data.sn || '')
-    .replace(/\{REG\}/g, data.reg || '')
-    .replace(/\{LOC\}/g, data.loc || '')
-    .replace(/\{DESC\}/g, data.desc || '')
-    .trim();
-}
-
-G.previewSubjectTemplate = function() {
-  const tpl = document.getElementById('subj-tpl-input').value;
-  document.getElementById('subj-tpl-preview').textContent = buildEmailSubject(tpl, {
-    wo: gv('f_wo') || 'FA33036', model: gv('f_model') || 'GVIII-G700', sn: gv('f_sn') || '87033',
-    reg: gv('f_reg') || 'T7-MINT', loc: gv('f_loc') || 'LFMN', desc: gv('f_job_desc') || 'SAV - APU REPLACEMENT'
-  });
-};
-
-G.openSubjectTemplateModal = function() {
-  document.getElementById('subj-tpl-input').value = curProfile?.subjectTemplate || DEFAULT_SUBJECT_TEMPLATE;
-  document.getElementById('subj-tpl-error').textContent = '';
-  G.previewSubjectTemplate();
-  openModal('modal-subject-template');
-};
-
-G.resetSubjectTemplate = function() {
-  document.getElementById('subj-tpl-input').value = DEFAULT_SUBJECT_TEMPLATE;
-  G.previewSubjectTemplate();
-};
-
-G.saveSubjectTemplate = async function() {
-  const tpl = document.getElementById('subj-tpl-input').value.trim();
-  const errEl = document.getElementById('subj-tpl-error');
-  if (!tpl) { errEl.textContent = 'Format cannot be empty.'; return; }
-  if (!/\{WO\}/.test(tpl)) { errEl.textContent = '⚠️ Your format should include at least {WO}, so different jobs stay distinguishable in your inbox.'; return; }
-  try {
-    await update(ref(db, 'team/' + curProfile.id), { subjectTemplate: tpl });
-    curProfile.subjectTemplate = tpl;
-    if (!curProj) curProjSubjectTemplate = tpl; // only affects a project not yet created
-    closeModal('modal-subject-template');
-    setStatus('done', '✅ Personal subject format saved — will apply to your next new projects.');
-  } catch(e) {
-    errEl.textContent = '❌ ' + e.message;
-  }
-};
 
 // Gemini / Google OAuth
 const GCID = '624747295284-rpktnnbk5kugn7jhero0e267soidb2oj.apps.googleusercontent.com';
@@ -3660,7 +3578,6 @@ function stopIdleTimer() {
 
 async function loginAs(profile, fromBiometric) {
   curProfile = profile;
-  curProjSubjectTemplate = curProfile.subjectTemplate || DEFAULT_SUBJECT_TEMPLATE;
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = '';
   document.getElementById('kickoff-panel').style.display = 'none';
@@ -3691,7 +3608,7 @@ async function loginAs(profile, fromBiometric) {
 
 G.logout = async function() {
   stopIdleTimer();
-  curProfile = null; curProj = null; curProjSubjectTemplate = null; pendingUserToLogin = null; isAdmin = false;
+  curProfile = null; curProj = null; pendingUserToLogin = null; isAdmin = false;
   document.getElementById('poc-colleagues-container').innerHTML = ''; colleagueSlotCount = 0;
   document.getElementById('sync-badge').style.display = 'none';
   document.getElementById('btn-logout').style.display = 'none';
@@ -3801,10 +3718,7 @@ G.switchProjTab = function(tab) {
 
 async function renderProjList() {
   const list = document.getElementById('proj-list');
-  const alreadyHasContent = list.children.length > 0;
-  if (!alreadyHasContent) {
-    list.innerHTML = '<div class="proj-empty"><span class="spin" style="vertical-align:middle"></span> Loading…</div>';
-  }
+  list.innerHTML = '<div class="proj-empty"><span class="spin" style="vertical-align:middle"></span> Loading…</div>';
 
   let projsObj = {};
   if (curProfile) {
@@ -4214,15 +4128,12 @@ async function doSave() {
     createdAt: existing.createdAt || Date.now(),
     updatedAt: Date.now(),
     rts: existing.rts || false,
-    subjectTemplateUsed: existing.subjectTemplateUsed || curProjSubjectTemplate || DEFAULT_SUBJECT_TEMPLATE,
     ...d
   };
   try {
     await set(ref(db, 'team/' + curProfile.id + '/projects/' + curProj), toSave);
     setSyncBadge('ok');
-    const _scrollY = window.scrollY;
-    await renderProjList();
-    window.scrollTo(0, _scrollY);
+    renderProjList();
   } catch(e) {
     setSyncBadge('err');
     console.error('Save error:', e);
@@ -4242,7 +4153,6 @@ const gv = id => document.getElementById(id)?.value || '';
 const sv = (id, v) => { const e = document.getElementById(id); if (e && v != null) e.value = v; };
 
 function fillFromProj(proj) {
-  curProjSubjectTemplate = proj.subjectTemplateUsed || DEFAULT_SUBJECT_TEMPLATE;
   sv('f_wo', proj.wo); sv('f_model', proj.model); sv('f_sn', proj.sn); sv('f_reg', proj.reg); sv('f_loc', proj.loc);
   sv('f_rts_assist', proj.rts_assist || 'RTS');
   // Mettre à jour le bouton immédiatement
@@ -4288,7 +4198,6 @@ function fillFromProj(proj) {
 }
 
 function clearForm() {
-  curProjSubjectTemplate = curProfile?.subjectTemplate || DEFAULT_SUBJECT_TEMPLATE;
   ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_job_desc','f_cust_name','f_cust_tel','f_cust_email','f_cust_company','f_cust_code','f_ac_hours','f_ac_cycles']
     .forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
   document.getElementById('f_rts_assist').value = 'RTS';
@@ -5893,7 +5802,8 @@ G.generate = async function() {
   const items=getItems(), parts=getParts(), updates=getUpdatesData();
   const pocs=await getAllPocsData();
 
-  const subjectFull = buildEmailSubject(curProjSubjectTemplate, { wo, model, sn, reg, loc, desc: jobDesc });
+  const subjectBase = `UPDATE // ${wo} // ${model} // ${sn} // ${reg} // ${loc} //`;
+  const subjectFull = jobDesc ? `${subjectBase} ${jobDesc}` : subjectBase;
   document.getElementById('email-subject').textContent = subjectFull;
 
   let updRows='';
