@@ -634,7 +634,7 @@ Extract five things:
    - Give a "step_reference" for every consumable: normally "Material Required table", plus the exact step number if the procedure also specifies when/where it's used.
    - NEVER list an item here if it already appears in the Support Equipment table (that's a TOOL, category 1 above). Consumables come exclusively from the "Material Required" / "Consumable Materials" table, not from Support Equipment. If the card only has ONE combined table titled "Support Equipment", every row of it is a TOOL and CONSUMABLES must be empty.
 
-3. IMPLICIT MATERIALS mentioned in the procedure steps but NOT listed in EITHER the "Material Required" table OR the "Support Equipment" table. Read every numbered step, warning, caution, and note in the procedure body and flag any consumable, shop supply, or physical material implied by the action described, even if never named explicitly with a part number. Typical signal actions (illustrative, not exhaustive): cleaning (cloth, solvent), lubricating/greasing, sealing or bonding (sealant, tape, RTV), protecting threads or surfaces, securing wires/hoses/cables (tie wraps, lockwire, clamps), labeling/tagging, marking, temporary caps/plugs on open lines or ports, catching fluid (drain container/pan).
+3. IMPLICIT MATERIALS AND EQUIPMENT mentioned in the procedure steps but NOT listed in EITHER the "Material Required" table OR the "Support Equipment" table. Read every numbered step, warning, caution, and note in the procedure body and flag any consumable, shop supply, physical material, or piece of test/support equipment implied by the action described, even if never named explicitly with a part number. Typical signal actions (illustrative, not exhaustive): cleaning (cloth, solvent), lubricating/greasing, sealing or bonding (sealant, tape, RTV), protecting threads or surfaces, securing wires/hoses/cables (tie wraps, lockwire, clamps), labeling/tagging, marking, temporary caps/plugs on open lines or ports, catching fluid (drain container/pan), operating or connecting test/support equipment absent from the Support Equipment table (test stands, purifiers, gauges, hoists, adapters — e.g. a step that says "put the portable fluid purifier below the hydraulic overflow drain" implies that equipment is required even though it was never listed in the Support Equipment table).
    - For each: "name" (a short but DESCRIPTIVE noun phrase capturing what the item is FOR, not a single bare word — e.g. "Container to catch hydraulic fluid" not just "container"; "Cloth for cleaning hydraulic fluid" not just "cloth". Always capitalize the first letter.), "step_reference" (as precise as the card allows), "source_quote" (a short paraphrase, NOT verbatim, of what implies the need).
    - MANDATORY CHECK BEFORE ADDING ANY ITEM HERE: re-read the full list of TOOLS and CONSUMABLES you already produced in categories 1 and 2. Only skip adding an implicit material if an entry with a CLEARLY MATCHING nomenclature already exists there (e.g. skip "protective caps and plugs" here if "Protective caps and plugs" is already listed as a tool with that same name). If NO tool or consumable entry names this specific item, you MUST add it here, even if a different, related tool or consumable also happens to be used in the same step. When genuinely unsure whether something is a duplicate, prefer to INCLUDE it as an implicit material rather than silently dropping it — an extra flagged item is far less costly than a missed one.
    - STRICT EXCLUSION: an item only qualifies if it names an actual physical consumable/material. Generic inspection or housekeeping steps that imply NO physical item — such as "Inspect the work area for foreign objects", "Record all maintenance...", "Do a general visual inspection" — are NEVER implicit materials, no matter how many cards repeat them.
@@ -729,7 +729,7 @@ For EACH item in tools, consumables, implicit_materials, access_panels, related_
 - CROSS-CHECK TOOLS vs CONSUMABLES BY TABLE OF ORIGIN, NOT BY NAME SEMANTICS: go back to the source text and find the actual "Support Equipment" table and the actual "Material Required" / "Consumable Materials" table (if one exists separately). Every row that physically appears under "Support Equipment" in the source MUST end up in "tools", full stop — regardless of whether the row's nomenclature sounds like a consumable (e.g. "Container, hydraulic fluid resistant", "Protective caps and plugs" are TOOLS if that is the table they came from). If the extraction pass put such a row under "consumables" instead, MOVE it to "tools" and remove it from "consumables". If a card has no separate "Material Required" table at all, "consumables" must end up empty.
 - CROSS-CHECK TORQUE WRENCH / GAUGE DUPLICATES BY VALUE RANGE: if "tools" contains more than one entry whose name pattern is "Torque wrench, ... inch-pounds" (or any tool with a numeric range in its own name), check whether any single-value entry could actually just be a target value cited in a step for an ALREADY-LISTED ranged tool. If so, MERGE: delete the duplicate single-value entry and add its step reference onto the existing ranged tool's "step_reference" instead.
 - For consumables: confirm/fix "note_ipc" and "ipc_note_text" per the extraction rules.
-- For implicit_materials: be strict — only keep items clearly tied to actual text (not generic aviation assumptions). Remove unsupported ones, including any "implicit material" that is actually just an inspection/housekeeping step (e.g. "Inspect the work area for foreign objects") with no real physical item behind it. Only remove an implicit material for DUPLICATING a tool/consumable if the existing tool/consumable's nomenclature genuinely names the SAME object (e.g. remove "hydraulic fluid drain container" only if "Container, hydraulic fluid resistant" or an equally explicit container entry already exists as a tool; remove "circuit breaker tags" only if "circuit breaker safety clips" is already listed and clearly covers the tagging). Do NOT remove an implicit material just because it serves a related or overlapping purpose to some other tool — the names must genuinely refer to the same physical item. Fix any "name" that is a single bare/generic word (e.g. "container", "cloth", "tape") into a short descriptive phrase capturing its purpose (e.g. "Container to catch hydraulic fluid"), capitalized. Also actively ADD any implicit material the first pass missed — re-read every step, warning, caution and note yourself looking for physical items (e.g. a NOTE saying "use a container to catch the hydraulic fluid" is a real implicit material and must be present unless already covered by an explicitly named container tool/consumable).
+- For implicit_materials: be strict — only keep items clearly tied to actual text (not generic aviation assumptions). Remove unsupported ones, including any "implicit material" that is actually just an inspection/housekeeping step (e.g. "Inspect the work area for foreign objects") with no real physical item behind it. Only remove an implicit material for DUPLICATING a tool/consumable if the existing tool/consumable's nomenclature genuinely names the SAME object (e.g. remove "hydraulic fluid drain container" only if "Container, hydraulic fluid resistant" or an equally explicit container entry already exists as a tool; remove "circuit breaker tags" only if "circuit breaker safety clips" is already listed and clearly covers the tagging). Do NOT remove an implicit material just because it serves a related or overlapping purpose to some other tool — the names must genuinely refer to the same physical item. Fix any "name" that is a single bare/generic word (e.g. "container", "cloth", "tape") into a short descriptive phrase capturing its purpose (e.g. "Container to catch hydraulic fluid"), capitalized. Also actively ADD any implicit material the first pass missed — re-read every step, warning, caution and note yourself looking for physical items (e.g. a NOTE saying "use a container to catch the hydraulic fluid" is a real implicit material and must be present unless already covered by an explicitly named container tool/consumable). ALSO actively look for TEST/SUPPORT EQUIPMENT operated or connected mid-procedure but absent from the Support Equipment table (test stands, purifiers, gauges, hoists, adapters) — e.g. a step saying "connect the hydraulic test stand" or "put the portable fluid purifier below the drain" implies that equipment is required even if it is never listed in the Support Equipment table; add it here if the first pass missed it. For any such equipment item you add or keep here, set "needs_review": true and give a specific "review_note" telling the technician to confirm this piece of equipment against the card's own Support Equipment table before relying on it — equipment carries more consequence than a cleaning cloth if wrongly flagged.
 - For access_panels: confirm every panel removal/installation instruction in the procedure is captured (do not miss any). Merge a remove+install pair of the SAME panel into one "remove_and_install" entry if the first pass split it into two. Confirm "conditional" is only true when the text itself signals situational/depends-on-part wording — do not mark a panel conditional just because you're unsure; if it's clearly always required for this procedure, conditional must be false. Re-verify "action" against the exact verb printed with the panel IDs in the source (Install vs Remove) — this is a common extraction error; fix any panel whose "action" does not match the source verb.
 - For related_tasks — apply the SAME strict exclusion rules as the extraction pass:
   - Remove any entry referencing "Safe Ground Maintenance - General Maintenance, 20-00-00", "Electrical Power Application - General Maintenance, 20-20-01", "SSPC - General Maintenance, 20-20-02", or "ESD - General Maintenance" (any task number) — that belongs in "esd_warning", not related_tasks.
@@ -745,6 +745,8 @@ For EACH item in tools, consumables, implicit_materials, access_panels, related_
 - CROSS-CHECK STEP-NUMBER AMBIGUITY ACROSS MULTIPLE EMBEDDED PROCEDURES: if the source contains more than one independently-numbered procedure (e.g. main + embedded "X – Pre-operation" / "X – Post-operation"), verify every step_reference / step_references / applicable_steps naming a step number is prefixed with the exact procedure title it belongs to. Fix any bare step number by determining which procedure it actually falls under in the source and prefixing it.
 
 - Confirm "aircraft_model" matches what's stated in the card header/title block. Fix it if the first pass got it wrong or missed it.
+
+- OCR FIGURE GAP CHECK: this source text may come from OCR of a PDF containing exploded-view diagrams with reference labels (e.g. access panel IDs) printed directly on the image. If you find a reference to a figure (e.g. "see Figure X", "Figure 1, WTBFs, Access Doors and Panels") that is NOT accompanied by an explicit list of every label/identifier that figure should show, add a note to "verification_summary" flagging that specific figure (e.g. "Figure 1 referenced but no panel IDs listed nearby — possible OCR loss, verify against the source PDF") so the technician knows to check the original PDF directly instead of assuming nothing else was there.
 
 - For "gas_type": confirm it matches what the card explicitly states (title/subject/procedure content), not just guessed from the reference number. Fix if wrong. Must be "none" unless this genuinely is a chapter-12 gas-servicing card.
 
@@ -1255,7 +1257,7 @@ function clearSession() {
   rootResult = null;
   fboRequests = {};
   itemSelection = {};
-  suggestionState = { maskingTape: { accepted: false }, protectiveGloves: { accepted: false }, hydraulicCans: { accepted: false, qty: '' }, oilCans: { accepted: false, qty: '' }, softwareLoadingPcLocation: { accepted: false } };
+  suggestionState = { maskingTape: { accepted: false }, protectiveGloves: { accepted: false }, hydraulicCans: { accepted: false, qty: '' }, oilCans: { accepted: false, qty: '' }, softwareLoadingPcLocation: { accepted: false }, esdWristStrap: { accepted: false }, hydraulicGoggles: { accepted: false } };
   renderKnownCards();
   resetResults();
 }
@@ -1265,6 +1267,24 @@ function clearSession() {
    drill-down. Returns the verified JSON (with client-side cleanup
    applied), or throws.
    ============================================================ */
+const IMPLICIT_EQUIPMENT_KEYWORDS = [
+  'test stand', 'hydraulic test set', 'fluid purifier', 'purifier',
+  'hoist', 'sling', 'pressure gauge', 'gauge', 'adapter',
+  'ground power', 'ground cart', 'jack'
+];
+
+function flagMissedImplicitEquipment(data, sourceText) {
+  if (!sourceText) return [];
+  const haystack = [...(data.tools||[]), ...(data.implicit_materials||[])]
+    .map(i => (i.name||'').toLowerCase()).join(' | ');
+  const missed = [];
+  IMPLICIT_EQUIPMENT_KEYWORDS.forEach(kw => {
+    const re = new RegExp('\\b' + kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+    if (re.test(sourceText) && !haystack.includes(kw)) missed.push(kw);
+  });
+  return missed;
+}
+
 async function runScan(text, knownRefs) {
   const extractRes = await fetch(KO_WORKER + '/chat', {
     method: 'POST',
@@ -1306,6 +1326,13 @@ async function runScan(text, knownRefs) {
   verified.gas_type = verified.gas_type || 'none';
   verified.fluid_drain = verified.fluid_drain || { hydraulic: false, oil: false, note: '' };
   verified.software_loading = verified.software_loading || { required: false, note: '' };
+
+  const missedEquip = flagMissedImplicitEquipment(verified, text);
+  if (missedEquip.length) {
+    verified.verification_summary = verified.verification_summary || [];
+    verified.verification_summary.push(`⚠️ [Safety net] Source text mentions "${missedEquip.join('", "')}" — verify this equipment is captured under Tools or Implicit Materials.`);
+  }
+
   return verified;
 }
 
@@ -1828,6 +1855,11 @@ function uncertainNoteHtml(item) {
   return `<div class="note-cond" style="margin-top:6px">🎯 <b>Double-check for your part:</b> ${escapeHtml(item.note || 'not fully confident this applies — verify against the source.')}</div>`;
 }
 
+function needsReviewNoteHtml(item) {
+  if (!item || !item.needs_review) return '';
+  return `<div class="note-flag">🔍 <b>Auto-check flag:</b> ${escapeHtml(item.review_note || 'flagged during self-check — verify against the source.')}</div>`;
+}
+
 function renderMergedList(listId, countId, merged, renderer) {
   document.getElementById(countId).textContent = merged.length;
   const el = document.getElementById(listId);
@@ -1876,6 +1908,7 @@ function renderMergedConsumable(c, cardRefs, key, citations) {
         ${refsHtml ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px">${refsHtml}</div>` : ''}
         ${c.note_ipc ? `<div class="note-ipc">📘 <span><b>Refer to the IPC</b> — ${escapeHtml(c.ipc_note_text || 'no P/N given in this card, refer to the IPC.')}</span></div>` : ''}
         ${uncertainNoteHtml(c)}
+        ${needsReviewNoteHtml(c)}
         <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
       </div>
     </div>`;
@@ -1893,6 +1926,7 @@ function renderMergedImplicit(m, cardRefs, key) {
         ${m.step_reference ? `<div class="step-ref">📍 ${escapeHtml(m.step_reference)}</div>` : '<div class="step-ref step-ref-missing">📍 Step reference not given</div>'}
         ${m.source_quote ? `<div class="item-meta" style="margin-top:4px">💡 ${escapeHtml(m.source_quote)}</div>` : ''}
         ${uncertainNoteHtml(m)}
+        ${needsReviewNoteHtml(m)}
         <div class="scan-toggle-row" style="margin-top:6px">
           <button class="btn btn-ghost btn-sm" onclick="moveItemCategory(${jsArg(key)},'implicit_materials','tools')">→ Tool</button>
           <button class="btn btn-ghost btn-sm" onclick="moveItemCategory(${jsArg(key)},'implicit_materials','consumables')">→ Consumable</button>
@@ -1920,6 +1954,7 @@ function renderMergedAccess(p, cardRefs) {
         ${p.figure_reference ? `<div class="item-meta" style="margin-top:4px">🖼️ ${escapeHtml(p.figure_reference)}</div>` : ''}
         ${p.conditional && p.conditional_note ? `<div class="note-cond">🔀 <b>Depends on the part:</b> ${escapeHtml(p.conditional_note)}</div>` : ''}
         ${uncertainNoteHtml(p)}
+        ${needsReviewNoteHtml(p)}
         <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
       </div>
     </div>`;
@@ -1971,6 +2006,12 @@ function detectFluidDrain(entries, kind) {
   entries.forEach(e => {
     if (e.data.fluid_drain && e.data.fluid_drain[kind]) refs.push(e.cardRef);
   });
+  return refs;
+}
+
+function detectEsdWarning(entries) {
+  const refs = [];
+  entries.forEach(e => { if (e.data.esd_warning) refs.push(e.cardRef); });
   return refs;
 }
 
@@ -2031,9 +2072,14 @@ function renderImplicitList(implM, entries) {
     rows.push(renderSuggestionRow('protectiveGloves', '🧤 Protective gloves', sealantRefs));
   }
   const hydRefs = detectFluidDrain(entries, 'hydraulic');
-  if (hydRefs.length) rows.push(renderSuggestionRow('hydraulicCans', '🛢️ Hydraulic fluid (replacement cans)', hydRefs, true));
+  if (hydRefs.length) {
+    rows.push(renderSuggestionRow('hydraulicCans', '🛢️ Hydraulic fluid (replacement cans)', hydRefs, true));
+    rows.push(renderSuggestionRow('hydraulicGoggles', '🥽 Safety goggles (Skydrol splash protection)', hydRefs));
+  }
   const oilRefs = detectFluidDrain(entries, 'oil');
   if (oilRefs.length) rows.push(renderSuggestionRow('oilCans', '🛢️ Oil (replacement cans)', oilRefs, true));
+  const esdRefs = detectEsdWarning(entries);
+  if (esdRefs.length) rows.push(renderSuggestionRow('esdWristStrap', '⚡ ESD grounding wrist strap', esdRefs));
 
   document.getElementById('implicit-count').textContent = implM.length;
   el.innerHTML = rows.length ? rows.join('') : `<div class="empty">None identified.</div>`;
@@ -2065,7 +2111,8 @@ function promoteSuggestion(stateKey, toCat) {
   const st = suggestionState[stateKey];
   const labels = {
     maskingTape: 'Masking tape', protectiveGloves: 'Protective gloves',
-    hydraulicCans: 'Hydraulic fluid (replacement cans)', oilCans: 'Oil (replacement cans)'
+    hydraulicCans: 'Hydraulic fluid (replacement cans)', oilCans: 'Oil (replacement cans)',
+    esdWristStrap: 'ESD grounding wrist strap', hydraulicGoggles: 'Safety goggles (Skydrol splash protection)'
   };
   manualCard[toCat].push({ name: labels[stateKey], pn: '', qty: st.qty || '', step_reference: '',
     note_ipc: toCat === 'consumables' ? false : undefined, ipc_note_text: toCat === 'consumables' ? '' : undefined });
@@ -2231,6 +2278,7 @@ function renderTaskNode(t, cardRefs, citations) {
               ${c.reason ? `<div class="task-reason">${escapeHtml(c.reason)}</div>` : ''}
             </div>`).join('')}
           ${uncertainNoteHtml(t)}
+          ${needsReviewNoteHtml(t)}
           ${renderGasFboWidget(t.ref, gasInfo)}
         </div>
       </div>
@@ -2803,8 +2851,14 @@ function exportSelection() {
   if (suggestionState.protectiveGloves.accepted) {  
     payload.suggested_items.push({ type: 'tool', name: 'Protective gloves', suggested: true, reason: 'Sealant detected on card' });
   }
+  if (suggestionState.esdWristStrap.accepted) {
+    payload.suggested_items.push({ type: 'tool', name: 'ESD grounding wrist strap', suggested: true, reason: 'ESD warning detected on card' });
+  }
   if (suggestionState.hydraulicCans.accepted) {
     payload.suggested_items.push({ type: 'consumable', name: 'Hydraulic fluid (replacement cans)', qty: suggestionState.hydraulicCans.qty || '', suggested: true, reason: 'Hydraulic fluid drain detected' });
+  }
+  if (suggestionState.hydraulicGoggles.accepted) {
+    payload.suggested_items.push({ type: 'tool', name: 'Safety goggles (Skydrol splash protection)', suggested: true, reason: 'Hydraulic fluid drain detected' });
   }
   if (suggestionState.oilCans.accepted) {
     payload.suggested_items.push({ type: 'consumable', name: 'Oil (replacement cans)', qty: suggestionState.oilCans.qty || '', suggested: true, reason: 'Oil drain detected' });
