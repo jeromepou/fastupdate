@@ -1966,13 +1966,14 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="modal" style="max-width:520px">
     <h3>✏️ Personalize your email subject format</h3>
     <p style="font-size:12px;color:var(--g600);margin-bottom:12px">
-      This only applies to <b>new</b> projects you create from now on. A project that's already started keeps its original format, so the Gmail conversation thread doesn't get split.
+      Applies to new projects' FAST Update subject, and to the Customer Update / Part Request subjects in Start Job. A project that's already started keeps its original format, so the Gmail conversation thread doesn't get split.
     </p>
     <div class="fg" style="margin-bottom:8px">
       <label>Available tokens</label>
       <div style="font-size:12px;color:var(--g800);background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:6px 10px">
-        {WO} &nbsp; {MODEL} &nbsp; {SN} &nbsp; {REG} &nbsp; {LOC} &nbsp; {DESC}
+        {TYPE} &nbsp; {WO} &nbsp; {MODEL} &nbsp; {SN} &nbsp; {REG} &nbsp; {LOC} &nbsp; {DESC}
       </div>
+      <small style="color:var(--g600)">{TYPE} becomes UPDATE, CUSTOMER UPDATE, or your chosen Part Request prefix, depending on the email.</small>
     </div>
     <div class="fg" style="margin-bottom:10px">
       <label>Your format</label>
@@ -2256,11 +2257,12 @@ let saveTimer = null;
 let projTab = 'active';  // 'active' | 'archive'
 
 // ── Email subject format — personal preference, locked per project once created ──
-const DEFAULT_SUBJECT_TEMPLATE = 'UPDATE // {WO} // {MODEL} // {SN} // {REG} // {LOC} // {DESC}';
+const DEFAULT_SUBJECT_TEMPLATE = '{TYPE} // {WO} // {MODEL} // {SN} // {REG} // {LOC} // {DESC}';
 let curProjSubjectTemplate = null; // format locked-in for the currently loaded/active project
 
 function buildEmailSubject(tpl, data) {
   return (tpl || DEFAULT_SUBJECT_TEMPLATE)
+    .replace(/\{TYPE\}/g, data.type != null ? data.type : 'UPDATE')
     .replace(/\{WO\}/g, data.wo || '')
     .replace(/\{MODEL\}/g, data.model || '')
     .replace(/\{SN\}/g, data.sn || '')
@@ -2273,6 +2275,7 @@ function buildEmailSubject(tpl, data) {
 G.previewSubjectTemplate = function() {
   const tpl = document.getElementById('subj-tpl-input').value;
   document.getElementById('subj-tpl-preview').textContent = buildEmailSubject(tpl, {
+    type: 'UPDATE',
     wo: gv('f_wo') || 'FA33036', model: gv('f_model') || 'GVIII-G700', sn: gv('f_sn') || '87033',
     reg: gv('f_reg') || 'T7-MINT', loc: gv('f_loc') || 'LFMN', desc: gv('f_job_desc') || 'SAV - APU REPLACEMENT'
   });
@@ -5892,7 +5895,7 @@ G.generate = async function() {
   const items=getItems(), parts=getParts(), updates=getUpdatesData();
   const pocs=await getAllPocsData();
 
-  const subjectFull = buildEmailSubject(curProjSubjectTemplate, { wo, model, sn, reg, loc, desc: jobDesc });
+  const subjectFull = buildEmailSubject(curProjSubjectTemplate, { type: 'UPDATE', wo, model, sn, reg, loc, desc: jobDesc });
   document.getElementById('email-subject').textContent = subjectFull;
 
   let updRows='';
@@ -7724,6 +7727,18 @@ G.koDelAirline = function(i) {
 // ══════════════════════════════════════
 //  PREVIEW
 // ══════════════════════════════════════
+// Reuses the engineer's personal subject-format template (Step 5 "✏️
+// Format", saved as curProfile.subjectTemplate) for Customer Update and
+// Part Request, instead of a separate hardcoded order. {TYPE} carries the
+// dynamic label ("CUSTOMER UPDATE" / the chosen Part Request prefix);
+// templates saved before {TYPE} existed (literal "UPDATE" at the start)
+// still work via the fallback below.
+function koTypedSubjectTemplate(typeLabel) {
+  const tpl = curProjSubjectTemplate || DEFAULT_SUBJECT_TEMPLATE;
+  if (tpl.includes('{TYPE}')) return tpl.replace(/\{TYPE\}/g, typeLabel);
+  return tpl.replace(/^UPDATE\b/i, typeLabel);
+}
+
 function koComputeSubjects() {
   const wo    = document.getElementById('ko_wo')?.value    || '';
   const sn    = document.getElementById('ko_sn')?.value    || '';
@@ -7733,10 +7748,11 @@ function koComputeSubjects() {
   const def   = document.getElementById('ko_defect')?.value|| '';
   const from  = document.getElementById('ko_travel_from')?.value || '[FROM]';
   const to    = document.getElementById('ko_travel_to')?.value   || icao || '';
+  const tokenData = { wo, model, sn, reg, loc: icao, desc: def };
   return {
-    customer: `CUSTOMER UPDATE // ${model} // ${sn} // ${reg} // ${wo} // ${icao} // ${def}`,
+    customer: buildEmailSubject(koTypedSubjectTemplate('CUSTOMER UPDATE'), tokenData),
     travel:   `Flight from ${from} to ${to}`,
-    parts:    `${KO.prefixSel} // ${model} // ${sn} // ${reg} // ${wo} // ${icao} // ${def}`,
+    parts:    buildEmailSubject(koTypedSubjectTemplate(KO.prefixSel), tokenData),
     fbo:      `Maintenance ${reg}`,
   };
 }
