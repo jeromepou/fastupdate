@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://www.gstatic.com https://*.googleapis.com https://*.firebasedatabase.app https://orange-snow-95f7.jeromepoupinel.workers.dev https://ipapi.co; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://accounts.google.com https://*.firebasedatabase.app; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://www.gstatic.com https://*.googleapis.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://orange-snow-95f7.jeromepoupinel.workers.dev https://ipapi.co https://oauth2.googleapis.com https://gmail.googleapis.com https://api.mistral.ai; frame-src 'self' https://accounts.google.com https://*.firebasedatabase.app;"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://www.gstatic.com https://*.googleapis.com https://*.firebasedatabase.app https://orange-snow-95f7.jeromepoupinel.workers.dev https://ipapi.co; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://accounts.google.com https://*.firebasedatabase.app; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://www.gstatic.com https://*.googleapis.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://orange-snow-95f7.jeromepoupinel.workers.dev https://ipapi.co https://oauth2.googleapis.com https://gmail.googleapis.com https://api.mistral.ai; frame-src 'self' https://accounts.google.com https://*.firebasedatabase.app; object-src 'none'; base-uri 'self';"/>
 <title>FAST Update Generator</title>
 <meta name="theme-color" content="#2d5a2d"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -863,19 +863,20 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="fg" style="background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:10px 12px;margin-bottom:10px">
     <label style="color:var(--g800)">💬 Email Intro message (optional)</label>
     <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
-	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease find below the latest FAST update for the aircraft.')" style="font-size:11px;padding:4px 8px">📝 See update</button>
-	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note the aircraft is now RTS.')" style="font-size:11px;padding:4px 8px">✅ A/C is RTS</button>
-	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that the support will commence tomorrow.')" style="font-size:11px;padding:4px 8px">📅 Support starts tomorrow</button>
-	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that I will begin the support tomorrow.')" style="font-size:11px;padding:4px 8px">👨‍🔧 I start tomorrow</button>
-	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that we will start the intervention tomorrow.')" style="font-size:11px;padding:4px 8px">👷‍♂️ We start tomorrow</button>
-	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that I will be supporting this aircraft tomorrow.')" style="font-size:11px;padding:4px 8px">✈️ I will support tomorrow</button>
-	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that we will be supporting this aircraft tomorrow.')" style="font-size:11px;padding:4px 8px">✈️ We will support tomorrow</button>
-	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease be advised that the maintenance intervention is scheduled to start tomorrow morning.')" style="font-size:11px;padding:4px 8px">🌅 Scheduled tomorrow AM</button>
-	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that we will attend the aircraft tomorrow.')" style="font-size:11px;padding:4px 8px">🚶‍♂️ Attend A/C tomorrow</button>
-	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nI will be travelling today and will commence the support on the aircraft tomorrow.')" style="font-size:11px;padding:4px 8px">🧳 Travel today, support tomorrow</button>
-	  <button class="btn" onclick="setIntroMsg('')" style="font-size:11px;padding:4px 8px">✕ Clear</button>
-	</div>
-	<textarea id="f_intro_msg" style="min-height:60px;font-size:13px;padding:8px;border:1px solid var(--g200);border-radius:var(--r);font-family:inherit" placeholder="Type your intro message here..."></textarea>    <div><button type="button" class="ai-improve-btn" onclick="aiImproveField('f_intro_msg', this)">✨ Improve text</button></div>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease find below the latest FAST update for the aircraft.')" style="font-size:11px;padding:4px 8px">📝 See update</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note the aircraft is now RTS.')" style="font-size:11px;padding:4px 8px">✅ A/C is RTS</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that the support will commence tomorrow.')" style="font-size:11px;padding:4px 8px">📅 Support starts tomorrow</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that I will begin the support tomorrow.')" style="font-size:11px;padding:4px 8px">👨‍🔧 I start tomorrow</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that we will start the intervention tomorrow.')" style="font-size:11px;padding:4px 8px">👷‍♂️ We start tomorrow</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that I will be supporting this aircraft tomorrow.')" style="font-size:11px;padding:4px 8px">✈️ I will support tomorrow</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that we will be supporting this aircraft tomorrow.')" style="font-size:11px;padding:4px 8px">✈️ We will support tomorrow</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease be advised that the maintenance intervention is scheduled to start tomorrow morning.')" style="font-size:11px;padding:4px 8px">🌅 Scheduled tomorrow AM</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that we will attend the aircraft tomorrow.')" style="font-size:11px;padding:4px 8px">🚶‍♂️ Attend A/C tomorrow</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nI will be travelling today and will commence the support on the aircraft tomorrow.')" style="font-size:11px;padding:4px 8px">🧳 Travel today, support tomorrow</button>
+      <button class="btn" onclick="setIntroMsg('')" style="font-size:11px;padding:4px 8px">✕ Clear</button>
+    </div>
+    <textarea id="f_intro_msg" style="min-height:60px;font-size:13px;padding:8px;border:1px solid var(--g200);border-radius:var(--r);font-family:inherit" placeholder="Type your intro message here..."></textarea>
+    <div><button type="button" class="ai-improve-btn" onclick="aiImproveField('f_intro_msg', this)">✨ Improve text</button></div>
   </div>
   <div class="output-head">
     <h3>Generated table — ready to paste into email</h3>
@@ -2636,7 +2637,7 @@ function koRenderReplyBody(replies, cat, lastSync) {
 
     html += `<div style="border:1px solid ${borderColor};background:${bgColor};border-radius:8px;padding:12px 14px">`;
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
-    html += '<span style="font-size:13px;font-weight:600">' + icon + ' ' + label + (from ? ' — ' + from : '') + '</span>';
+    html += '<span style="font-size:13px;font-weight:600">' + icon + ' ' + label + (from ? ' — ' + escHtml(from) : '') + '</span>';
     html += '<span style="font-size:11px;color:#9ca3af">' + dateStr + '</span>';
     html += '</div>';
 
@@ -2744,7 +2745,7 @@ function koReplyActionsHtml(r, cat) {
 
   let html = '<div style="display:flex;gap:5px;flex-wrap:wrap">';
   for (const a of actions) {
-    const vEsc = koSafeStr(a.v).replace(/\\/g,'\\\\').replace(/'/g,"\\'").slice(0,300);
+    const vEsc = koSafeStr(a.v).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;').slice(0,300);
     html += `<button onclick="koApplyReply(this,'${a.k}','${vEsc}')" `;
     html += 'style="font-size:11px;padding:4px 10px;border-radius:20px;cursor:pointer;border:1px solid #d1fae5;background:#ecfdf5;color:#065f46">';
     html += escHtml(a.label) + '</button>';
@@ -2910,7 +2911,7 @@ function koInsertEtaNoteIntoUpdate(itemId, description, etaText) {
   return true;
 }	
 function escHtml(s) {
-  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 // ══════════════════════════════════════
@@ -3409,6 +3410,14 @@ G.userPinInput = async function() {
       return;
     }
 
+    if (data.rateLimited) {
+      document.getElementById('pin-error').textContent =
+        `🔒 Too many attempts. Try again in ${Math.ceil((data.retryAfterSeconds || 900) / 60)} min.`;
+      document.getElementById('pin-input').value = '';
+      document.getElementById('pin-input').disabled = true;
+      return;
+    }
+
     if (!data.valid) {
       attempts.count = (attempts.count || 0) + 1;
       if (attempts.count >= 5) {
@@ -3737,9 +3746,9 @@ async function renderTeamAdminList() {
   list.innerHTML = Object.entries(team).map(([id, p]) => `
     <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:6px">
       <div style="flex:1">
-        <div style="font-weight:700;font-size:13px">${p.name}</div>
-        <div style="font-size:11px;color:var(--g600)">${p.role === 'ops' ? '🖥️ OPS · ' : '✈️ Engineer · '}${[p.team, p.email, p.phone].filter(Boolean).join(' · ')}</div>
-        ${p.defaultRecipients ? `<div style="font-size:10px;color:var(--blue);margin-top:2px">📧 ${p.defaultRecipients}</div>` : ''}
+        <div style="font-weight:700;font-size:13px">${escHtml(p.name)}</div>
+        <div style="font-size:11px;color:var(--g600)">${p.role === 'ops' ? '🖥️ OPS · ' : '✈️ Engineer · '}${[p.team, p.email, p.phone].map(escHtml).filter(Boolean).join(' · ')}</div>
+        ${p.defaultRecipients ? `<div style="font-size:10px;color:var(--blue);margin-top:2px">📧 ${escHtml(p.defaultRecipients)}</div>` : ''}
       </div>
       <button class="btn" onclick="promptEditMember('${id}')" style="padding:4px 8px;font-size:11px">✏️ Edit</button>
       <button class="btn" onclick="promptResetPin('${id}')" style="padding:4px 8px;font-size:11px">🔑 PIN</button>
@@ -3869,7 +3878,7 @@ async function renderProjList() {
     const ds = new Date(proj.updatedAt || proj.createdAt).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'2-digit'});
 
     const tagHtml = proj.transferred
-      ? `<span class="tag-arch">🔄 Transferred to ${proj.transferredToName}${live?.rts ? ' · RTS ✓' : ''}</span>`
+      ? `<span class="tag-arch">🔄 Transferred to ${escHtml(proj.transferredToName)}${live?.rts ? ' · RTS ✓' : ''}</span>`
       : (proj.rts ? '<span class="tag-arch">RTS ✓</span>' : '<span class="tag-open">OPEN</span>');
 
     // Un projet transféré n'est plus le tien : pas de Start Job ni de
@@ -4271,7 +4280,7 @@ function fillFromProj(proj) {
   sv('f_ac_hours', proj.ac_hours || ''); sv('f_ac_cycles', proj.ac_cycles || '');
   sv('f_erts', proj.erts || ''); sv('f_nxt', proj.nxt || ''); sv('f_retdate', proj.retdate || ''); sv('f_rettime', proj.rettime || ''); sv('f_info', proj.info || '');
   sv('f_job_desc', proj.job_desc || '');
-  sv('f_intro_msg', '');	
+  sv('f_intro_msg', '');
   const savedRecipients = Array.isArray(proj.recipients) ? proj.recipients : [];
   renderRecipients(savedRecipients.length > 0 ? savedRecipients : [..._defaultRecipients]);
   sv('f_cust_name', proj.cust_name || ''); sv('f_cust_tel', proj.cust_tel || ''); sv('f_cust_email', proj.cust_email || '');
@@ -5508,7 +5517,7 @@ async function displayLeadEngInfo(id) {
   const snap = await get(ref(db, 'team/'+id));
   if (!snap.exists()) { el.innerHTML=''; return; }
   const p = snap.val();
-  el.innerHTML = `<b>${p.name}</b>${p.team?' · '+p.team:''}${p.phone?'<br>📱 '+p.phone:''}${p.email?'<br>✉️ '+p.email:''}`;
+  el.innerHTML = `<b>${escHtml(p.name)}</b>${p.team?' · '+escHtml(p.team):''}${p.phone?'<br>📱 '+escHtml(p.phone):''}${p.email?'<br>✉️ '+escHtml(p.email):''}`;
 }
 
 async function buildColleagueOptions(selectedId='') {
@@ -5551,7 +5560,7 @@ async function displayColleagueInfo(el, id) {
   const snap = await get(ref(db, 'team/'+id));
   if (!snap.exists()) { el.innerHTML = ''; return; }
   const p = snap.val();
-  el.innerHTML = `<b>${p.name}</b>${p.team?' · '+p.team:''}${p.phone?'<br>📱 '+p.phone:''}${p.email?'<br>✉️ '+p.email:''}`;
+  el.innerHTML = `<b>${escHtml(p.name)}</b>${p.team?' · '+escHtml(p.team):''}${p.phone?'<br>📱 '+escHtml(p.phone):''}${p.email?'<br>✉️ '+escHtml(p.email):''}`;
 }
 
 G.removeColleagueSlot = function(id) {
@@ -5953,7 +5962,7 @@ G.generate = async function() {
         const statusLabel = SL[iu.status];
         const statusColor = SC[iu.status]||'#555';
         const statusHtml = statusLabel ? `&nbsp;—&nbsp;<span style="color:#ffffff;font-weight:700;background-color:${statusColor};padding:2px 7px;border-radius:10px;font-size:11px;white-space:nowrap;display:inline-block;">${statusLabel.replace(/ /g, '&nbsp;')}</span>` : '';
-        updContent += `${it?`${displayNum}-${it.label.toUpperCase().trim()}`:`Item ${displayNum}`}${statusHtml}<br>`;
+          updContent += `${it?`${displayNum}-${it.label.toUpperCase().trim()}`:`Item ${displayNum}`}${statusHtml}<br>`;
         if(iu.detail) updContent += `<span>${iu.detail}</span><br>`;
       });
       if(upd.freeText) updContent += `<div style="border-top:1px dashed #666;margin-top:6px;padding-top:4px"><span style="font-style:italic">${upd.freeText}</span></div>`;
@@ -6175,11 +6184,12 @@ G.draftInGmail = async function() {
     const tblClone = buildInlinedTableClone(tbl);
 
     let htmlBody = tblClone.outerHTML;
-	const introMsg = document.getElementById('f_intro_msg')?.value.trim() || '';
+
+    const introMsg = document.getElementById('f_intro_msg')?.value.trim() || '';
     if (introMsg) {
       const introHtml = `<div style="font-family:Aptos,Calibri,'Segoe UI',Arial,sans-serif;font-size:13px;line-height:1.6;margin-bottom:12px;white-space:pre-wrap">${koFormatEmailHtml(introMsg)}</div>`;
       htmlBody = introHtml + htmlBody;
-    }  
+    }    
 
     const encoded = buildRfc2822(toAddrs, subject, htmlBody);
 
@@ -7464,6 +7474,7 @@ window.koOpenAmmReader = G.koOpenAmmReader;
 // Listen for the export payload sent by amm-task-reader.html via
 // window.parent.postMessage({type:'amm-task-reader:export', payload}, '*')
 window.addEventListener('message', function(ev) {
+  if (ev.origin !== window.location.origin) return;
   const data = ev.data;
   if (!data || data.type !== 'amm-task-reader:export') return;
   koImportFromAmmReader(data.payload, _koAmmReaderTarget);
@@ -7472,6 +7483,7 @@ window.addEventListener('message', function(ev) {
 // Ajuste la hauteur de l'iframe AMM Task Reader à son contenu réel,
 // plafonnée à l'espace disponible dans la modale.
 window.addEventListener('message', function(ev) {
+  if (ev.origin !== window.location.origin) return;
   const data = ev.data;
   if (!data || data.type !== 'amm-task-reader:resize') return;
   const iframe = document.getElementById('amm-reader-iframe');
@@ -8910,7 +8922,7 @@ function squawkShowSuggestionModal(results, curModel, searchedLabel) {
   }
 
   document.getElementById('sq-suggest-info').innerHTML =
-    `Searched: <b>"${searchedLabel}"</b> — ${results.length} match(es) found`;
+    `Searched: <b>"${escHtml(searchedLabel)}"</b> — ${results.length} match(es) found`;
 
   const colorCat={Part:'var(--gd)',Tool:'var(--blue)',Consumable:'var(--amb)'};
   const bgCat={Part:'var(--gl)',Tool:'var(--bl)',Consumable:'var(--al)'};
@@ -8926,8 +8938,8 @@ function squawkShowSuggestionModal(results, curModel, searchedLabel) {
         <input type="checkbox" checked id="${idPrefix}-item-${i}" style="flex-shrink:0"/>
         <span style="background:${bgCat[p.cat]};color:${colorCat[p.cat]};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0">${p.cat}</span>
         <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:600">${p.desc||'—'}</div>
-          <div style="font-size:11px;color:var(--g600)">${[p.pn?'P/N: '+p.pn:'',p.sn?'S/N: '+p.sn:'',p.qty?'Qty: '+p.qty:''].filter(Boolean).join(' · ')}</div>
+          <div style="font-size:12px;font-weight:600">${escHtml(p.desc)||'—'}</div>
+          <div style="font-size:11px;color:var(--g600)">${[p.pn?'P/N: '+escHtml(p.pn):'',p.sn?'S/N: '+escHtml(p.sn):'',p.qty?'Qty: '+escHtml(p.qty):''].filter(Boolean).join(' · ')}</div>
         </div>
       </div>`).join('');
   }
@@ -8949,7 +8961,7 @@ function squawkShowSuggestionModal(results, curModel, searchedLabel) {
       window._sqSuggestItems.push(...allItems.map(p=>({...p,srcKey:r.key})));
       const info=document.createElement('div');
       info.style.cssText='margin-bottom:8px;padding:8px 10px;background:#fff;border:1px solid var(--g200);border-radius:var(--r)';
-      info.innerHTML=`<div style="font-size:11px;color:var(--g600);margin-bottom:5px">${koFormatMatchLabel(r)} · used <b>${e.usageCount||1}</b>× · last ${d} · by ${e.addedBy||'?'}${e.acWO?' · <span style="font-weight:700;color:var(--gd)">WO: '+e.acWO+'</span>':''}${e.acSN?' · SN: '+e.acSN:''}</div>${renderItems(e,'same-'+ri)}`;
+      info.innerHTML=`<div style="font-size:11px;color:var(--g600);margin-bottom:5px">${koFormatMatchLabel(r)} · used <b>${e.usageCount||1}</b>× · last ${d} · by ${escHtml(e.addedBy)||'?'}${e.acWO?' · <span style="font-weight:700;color:var(--gd)">WO: '+escHtml(e.acWO)+'</span>':''}${e.acSN?' · SN: '+escHtml(e.acSN):''}</div>${renderItems(e,'same-'+ri)}`;
       sameEl.appendChild(info);
     });
   } else {
@@ -8972,7 +8984,7 @@ function squawkShowSuggestionModal(results, curModel, searchedLabel) {
       window._sqOtherItems.push(...allItems.map(p=>({...p,srcKey:r.key})));
       const warn=document.createElement('div');
       warn.style.cssText='margin-bottom:8px;padding:8px 10px;background:#fff;border:1px solid var(--g200);border-radius:var(--r);opacity:.85';
-      warn.innerHTML=`<div style="font-size:11px;margin-bottom:4px"><span style="background:var(--al);color:var(--amb);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">⚠️ ${e.acModel||'Unknown type'}</span> <span style="color:var(--g600)">· ${koFormatMatchLabel(r)} · used ${e.usageCount||1}× · last ${d}${e.acWO?' · <b>WO: '+e.acWO+'</b>':''}${e.acSN?' · SN: '+e.acSN:''}</span></div><div style="font-size:11px;color:var(--amb);margin-bottom:5px">⚠️ Different aircraft type — verify P/N applicability before use</div>${renderItems(e,'other-'+ri)}`;
+      warn.innerHTML=`<div style="font-size:11px;margin-bottom:4px"><span style="background:var(--al);color:var(--amb);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">⚠️ ${escHtml(e.acModel)||'Unknown type'}</span> <span style="color:var(--g600)">· ${koFormatMatchLabel(r)} · used ${e.usageCount||1}× · last ${d}${e.acWO?' · <b>WO: '+escHtml(e.acWO)+'</b>':''}${e.acSN?' · SN: '+escHtml(e.acSN):''}</span></div><div style="font-size:11px;color:var(--amb);margin-bottom:5px">⚠️ Different aircraft type — verify P/N applicability before use</div>${renderItems(e,'other-'+ri)}`;
       otherEl.appendChild(warn);
     });
   } else {
@@ -9062,8 +9074,8 @@ async function renderSquawkHistory() {
       const d=new Date(e.lastUsed||0).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'});
       return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:5px;flex-wrap:wrap">
         <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:700;color:var(--g900)">${e.squawkRaw||'—'} <span style="font-size:10px;font-weight:400;color:var(--blue)">${e.acModel||''} ${e.acSN?'/ '+e.acSN:''}</span></div>
-          <div style="font-size:11px;color:var(--g600)">${total} item(s) · used ${e.usageCount||1}× · last ${d} · by ${e.addedBy||'?'}</div>
+          <div style="font-size:12px;font-weight:700;color:var(--g900)">${escHtml(e.squawkRaw)||'—'} <span style="font-size:10px;font-weight:400;color:var(--blue)">${escHtml(e.acModel)||''} ${e.acSN?'/ '+escHtml(e.acSN):''}</span></div>
+          <div style="font-size:11px;color:var(--g600)">${total} item(s) · used ${e.usageCount||1}× · last ${d} · by ${escHtml(e.addedBy)||'?'}</div>
         </div>
         <button class="btn danger" onclick="squawkHistoryDelete('${key}')" style="padding:4px 8px;font-size:11px">🗑</button>
       </div>`;
@@ -10135,8 +10147,8 @@ async function renderFSRList() {
   list.innerHTML = fsrs.map((f, i) => `
     <div style="display:flex;align-items:center;gap:8px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:6px 10px">
       <div style="flex:1">
-        <span style="font-weight:600;font-size:13px">${f.name}</span>
-        <span style="font-size:11px;color:var(--g600);margin-left:8px">${f.email}</span>
+        <span style="font-weight:600;font-size:13px">${escHtml(f.name)}</span>
+        <span style="font-size:11px;color:var(--g600);margin-left:8px">${escHtml(f.email)}</span>
       </div>
       <button onclick="deleteFSR(${i})" style="background:none;border:none;cursor:pointer;color:var(--g400);font-size:16px;line-height:1" title="Remove">×</button>
     </div>`).join('');
@@ -10176,7 +10188,7 @@ async function koLoadFSRSelector() {
     const snap = await get(ref(db, 'fsrContacts'));
     const fsrs = snap.exists() ? snap.val() : [];
     sel.innerHTML = '<option value="">— select FSR (optional) —</option>' +
-      fsrs.map((f, i) => `<option value="${i}">${f.name} · ${f.email}</option>`).join('');
+      fsrs.map((f, i) => `<option value="${i}">${escHtml(f.name)} · ${escHtml(f.email)}</option>`).join('');
     sel._fsrData = fsrs;
   } catch(e) {
     console.warn('koLoadFSRSelector failed:', e);
@@ -10420,7 +10432,6 @@ G.setIntroMsg = function(msg) {
     // On ne met plus G.autosave() ici pour que le champ reste 100% temporaire !
   }
 };
-	
 // Expose auth functions to window for HTML inline handlers (required for <script type="module"> scope)
 window.userPinInput      = G.userPinInput;
 window.showPicker        = G.showPicker;
@@ -10438,7 +10449,7 @@ window.logout            = G.logout;
 window.openModal         = G.openModal;
 window.closeModal        = G.closeModal;
 window.resetEngineerFully = G.resetEngineerFully;
-window.setIntroMsg 		 = G.setIntroMsg;	
+window.setIntroMsg        = G.setIntroMsg;
 
 // Expose all ko functions to window for HTML inline handlers
 window.koUpdatePreview = koUpdatePreview;
