@@ -863,10 +863,18 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="fg" style="background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:10px 12px;margin-bottom:10px">
     <label style="color:var(--g800)">💬 Email Intro message (optional)</label>
     <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
-      <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease find below the latest FAST update for the aircraft.')" style="font-size:11px;padding:4px 8px">📝 See update</button>
-      <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note the aircraft is now RTS.')" style="font-size:11px;padding:4px 8px">✅ A/C is RTS</button>
-      <button class="btn" onclick="setIntroMsg('')" style="font-size:11px;padding:4px 8px">✕ Clear</button>
-    </div>
+	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease find below the latest FAST update for the aircraft.')" style="font-size:11px;padding:4px 8px">📝 See update</button>
+	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note the aircraft is now RTS.')" style="font-size:11px;padding:4px 8px">✅ A/C is RTS</button>
+	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that the support will commence tomorrow.')" style="font-size:11px;padding:4px 8px">📅 Support starts tomorrow</button>
+	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that I will begin the support tomorrow.')" style="font-size:11px;padding:4px 8px">👨‍🔧 I start tomorrow</button>
+	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that we will start the intervention tomorrow.')" style="font-size:11px;padding:4px 8px">👷‍♂️ We start tomorrow</button>
+	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that I will be supporting this aircraft tomorrow.')" style="font-size:11px;padding:4px 8px">✈️ I will support tomorrow</button>
+	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that we will be supporting this aircraft tomorrow.')" style="font-size:11px;padding:4px 8px">✈️ We will support tomorrow</button>
+	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease be advised that the maintenance intervention is scheduled to start tomorrow morning.')" style="font-size:11px;padding:4px 8px">🌅 Scheduled tomorrow AM</button>
+	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that we will attend the aircraft tomorrow.')" style="font-size:11px;padding:4px 8px">🚶‍♂️ Attend A/C tomorrow</button>
+	  <button class="btn" onclick="setIntroMsg('Dear All,\n\nI will be travelling today and will commence the support on the aircraft tomorrow.')" style="font-size:11px;padding:4px 8px">🧳 Travel today, support tomorrow</button>
+	  <button class="btn" onclick="setIntroMsg('')" style="font-size:11px;padding:4px 8px">✕ Clear</button>
+	</div>
 	<textarea id="f_intro_msg" style="min-height:60px;font-size:13px;padding:8px;border:1px solid var(--g200);border-radius:var(--r);font-family:inherit" placeholder="Type your intro message here..."></textarea>    <div><button type="button" class="ai-improve-btn" onclick="aiImproveField('f_intro_msg', this)">✨ Improve text</button></div>
   </div>
   <div class="output-head">
