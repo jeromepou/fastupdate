@@ -863,8 +863,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="fg" style="background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:10px 12px;margin-bottom:10px">
     <label style="color:var(--g800)">💬 Email Intro message (optional)</label>
     <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
-      <button class="btn" onclick="setIntroMsg('Dear All,\\n\\nPlease find below the latest FAST update for the aircraft.')" style="font-size:11px;padding:4px 8px">📝 See update</button>
-      <button class="btn" onclick="setIntroMsg('Dear All,\\n\\nPlease note the aircraft is now RTS.')" style="font-size:11px;padding:4px 8px">✅ A/C is RTS</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease find below the latest FAST update for the aircraft.')" style="font-size:11px;padding:4px 8px">📝 See update</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note the aircraft is now RTS.')" style="font-size:11px;padding:4px 8px">✅ A/C is RTS</button>
       <button class="btn" onclick="setIntroMsg('')" style="font-size:11px;padding:4px 8px">✕ Clear</button>
     </div>
 	<textarea id="f_intro_msg" style="min-height:60px;font-size:13px;padding:8px;border:1px solid var(--g200);border-radius:var(--r);font-family:inherit" placeholder="Type your intro message here..."></textarea>    <div><button type="button" class="ai-improve-btn" onclick="aiImproveField('f_intro_msg', this)">✨ Improve text</button></div>
@@ -6166,7 +6166,7 @@ G.draftInGmail = async function() {
     // ✅ Fix tableau : styles inline explicites pour Gmail (format corporate standard)
     const tblClone = buildInlinedTableClone(tbl);
 
-    const htmlBody = tblClone.outerHTML;
+    let htmlBody = tblClone.outerHTML;
 	const introMsg = document.getElementById('f_intro_msg')?.value.trim() || '';
     if (introMsg) {
       const introHtml = `<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:13px;line-height:1.6;margin-bottom:12px;white-space:pre-wrap">${koFormatEmailHtml(introMsg)}</div>`;
