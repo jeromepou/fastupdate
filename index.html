@@ -5952,7 +5952,7 @@ G.generate = async function() {
         const displayNum = it ? it.num : iu.num;
         const statusLabel = SL[iu.status];
         const statusColor = SC[iu.status]||'#555';
-        const statusHtml = statusLabel ? `&nbsp;—&nbsp;<span style="color:#ffffff;font-weight:700;background-color:${statusColor};padding:2px 7px;border-radius:10px;font-size:11px;white-space:nowrap;">${statusLabel.replace(/ /g, '&nbsp;')}</span>` : '';
+        const statusHtml = statusLabel ? `&nbsp;—&nbsp;<span style="color:#ffffff;font-weight:700;background-color:${statusColor};padding:2px 7px;border-radius:10px;font-size:11px;white-space:nowrap;display:inline-block;">${statusLabel.replace(/ /g, '&nbsp;')}</span>` : '';
         updContent += `${it?`${displayNum}-${it.label.toUpperCase().trim()}`:`Item ${displayNum}`}${statusHtml}<br>`;
         if(iu.detail) updContent += `<span>${iu.detail}</span><br>`;
       });
@@ -6114,7 +6114,7 @@ G.copyTable = async function() {
   // AJOUT : Intégration du message d'intro
   const introMsg = document.getElementById('f_intro_msg')?.value.trim() || '';
   if (introMsg) {
-    const introHtml = `<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:13px;line-height:1.6;margin-bottom:12px;white-space:pre-wrap">${koFormatEmailHtml(introMsg)}</div>`;
+    const introHtml = `<div style="font-family:Aptos,Calibri,'Segoe UI',Arial,sans-serif;font-size:13px;line-height:1.6;margin-bottom:12px;white-space:pre-wrap">${koFormatEmailHtml(introMsg)}</div>`;
     htmlBody = introHtml + htmlBody;
     plainText = introMsg + '\n\n' + plainText;
   }
@@ -6177,7 +6177,7 @@ G.draftInGmail = async function() {
     let htmlBody = tblClone.outerHTML;
 	const introMsg = document.getElementById('f_intro_msg')?.value.trim() || '';
     if (introMsg) {
-      const introHtml = `<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:13px;line-height:1.6;margin-bottom:12px;white-space:pre-wrap">${koFormatEmailHtml(introMsg)}</div>`;
+      const introHtml = `<div style="font-family:Aptos,Calibri,'Segoe UI',Arial,sans-serif;font-size:13px;line-height:1.6;margin-bottom:12px;white-space:pre-wrap">${koFormatEmailHtml(introMsg)}</div>`;
       htmlBody = introHtml + htmlBody;
     }  
 
