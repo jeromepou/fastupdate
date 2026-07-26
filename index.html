@@ -860,6 +860,15 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <button class="btn" onclick="addRecipient()" style="font-size:12px;padding:5px 10px">+ Add</button>
     </div>
   </div>
+  <div class="fg" style="background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:10px 12px;margin-bottom:10px">
+    <label style="color:var(--g800)">💬 Email Intro message (optional)</label>
+    <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+      <button class="btn" onclick="setIntroMsg('Dear All,\\n\\nPlease find below the latest FAST update for the aircraft.')" style="font-size:11px;padding:4px 8px">📝 See update</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\\n\\nPlease note the aircraft is now RTS.')" style="font-size:11px;padding:4px 8px">✅ A/C is RTS</button>
+      <button class="btn" onclick="setIntroMsg('')" style="font-size:11px;padding:4px 8px">✕ Clear</button>
+    </div>
+	<textarea id="f_intro_msg" style="min-height:60px;font-size:13px;padding:8px;border:1px solid var(--g200);border-radius:var(--r);font-family:inherit" placeholder="Type your intro message here..."></textarea>    <div><button type="button" class="ai-improve-btn" onclick="aiImproveField('f_intro_msg', this)">✨ Improve text</button></div>
+  </div>
   <div class="output-head">
     <h3>Generated table — ready to paste into email</h3>
     <button class="copy-btn" id="copy-btn" onclick="copyTable()">
@@ -4254,6 +4263,7 @@ function fillFromProj(proj) {
   sv('f_ac_hours', proj.ac_hours || ''); sv('f_ac_cycles', proj.ac_cycles || '');
   sv('f_erts', proj.erts || ''); sv('f_nxt', proj.nxt || ''); sv('f_retdate', proj.retdate || ''); sv('f_rettime', proj.rettime || ''); sv('f_info', proj.info || '');
   sv('f_job_desc', proj.job_desc || '');
+  sv('f_intro_msg', '');	
   const savedRecipients = Array.isArray(proj.recipients) ? proj.recipients : [];
   renderRecipients(savedRecipients.length > 0 ? savedRecipients : [..._defaultRecipients]);
   sv('f_cust_name', proj.cust_name || ''); sv('f_cust_tel', proj.cust_tel || ''); sv('f_cust_email', proj.cust_email || '');
@@ -4291,7 +4301,7 @@ function fillFromProj(proj) {
 
 function clearForm() {
   curProjSubjectTemplate = curProfile?.subjectTemplate || DEFAULT_SUBJECT_TEMPLATE;
-  ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_job_desc','f_cust_name','f_cust_tel','f_cust_email','f_cust_company','f_cust_code','f_ac_hours','f_ac_cycles']
+  ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_job_desc','f_intro_msg','f_cust_name','f_cust_tel','f_cust_email','f_cust_company','f_cust_code','f_ac_hours','f_ac_cycles']
     .forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
   document.getElementById('f_rts_assist').value = 'RTS';
   const btn = document.getElementById('btn-mark-rts');
@@ -5934,8 +5944,8 @@ G.generate = async function() {
         const displayNum = it ? it.num : iu.num;
         const statusLabel = SL[iu.status];
         const statusColor = SC[iu.status]||'#555';
-        const statusHtml = statusLabel ? ` — <span style="color:#fff;font-weight:700;background:${statusColor};padding:1px 7px;border-radius:10px;font-size:11px;white-space:nowrap;display:inline-block;">${statusLabel.replace(/ /g, '&nbsp;')}</span>` : '';
-        updContent += `${it?`${displayNum}-${it.label.toUpperCase()}`:`Item ${displayNum}`}${statusHtml}<br>`;
+        const statusHtml = statusLabel ? `&nbsp;—&nbsp;<span style="color:#ffffff;font-weight:700;background-color:${statusColor};padding:2px 7px;border-radius:10px;font-size:11px;white-space:nowrap;">${statusLabel.replace(/ /g, '&nbsp;')}</span>` : '';
+        updContent += `${it?`${displayNum}-${it.label.toUpperCase().trim()}`:`Item ${displayNum}`}${statusHtml}<br>`;
         if(iu.detail) updContent += `<span>${iu.detail}</span><br>`;
       });
       if(upd.freeText) updContent += `<div style="border-top:1px dashed #666;margin-top:6px;padding-top:4px"><span style="font-style:italic">${upd.freeText}</span></div>`;
@@ -6090,14 +6100,23 @@ G.copyTable = async function() {
   };
 
   const tblClone = buildInlinedTableClone(tbl);
-  const plainText = buildPlainTextTable(tbl);
+    let plainText = buildPlainTextTable(tbl);
+  let htmlBody = tblClone.outerHTML;
+
+  // AJOUT : Intégration du message d'intro
+  const introMsg = document.getElementById('f_intro_msg')?.value.trim() || '';
+  if (introMsg) {
+    const introHtml = `<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:13px;line-height:1.6;margin-bottom:12px;white-space:pre-wrap">${koFormatEmailHtml(introMsg)}</div>`;
+    htmlBody = introHtml + htmlBody;
+    plainText = introMsg + '\n\n' + plainText;
+  }
 
   try {
     // Tier 1 — HTML + texte. Le text/plain est indispensable : sans lui,
     // certaines apps mobiles ne collent rien du tout (c'est ça le bug).
     await navigator.clipboard.write([
       new ClipboardItem({
-        'text/html': new Blob([tblClone.outerHTML], { type: 'text/html' }),
+        'text/html': new Blob([htmlBody], { type: 'text/html' }),
         'text/plain': new Blob([plainText], { type: 'text/plain' })
       })
     ]);
@@ -6110,10 +6129,14 @@ G.copyTable = async function() {
       markCopied();
     } catch(e2) {
       console.warn('copyTable: writeText a aussi échoué, fallback execCommand —', e2);
-      // Tier 3 — fallback pour les navigateurs très anciens
-      const range = document.createRange(); range.selectNode(tbl);
+      // Fallback mis à jour pour englober le message ET le tableau
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = htmlBody;
+      document.body.appendChild(tempDiv);
+      const range = document.createRange(); range.selectNode(tempDiv);
       const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
       document.execCommand('copy'); sel.removeAllRanges();
+      document.body.removeChild(tempDiv);
       markCopied();
     }
   }
@@ -6144,6 +6167,11 @@ G.draftInGmail = async function() {
     const tblClone = buildInlinedTableClone(tbl);
 
     const htmlBody = tblClone.outerHTML;
+	const introMsg = document.getElementById('f_intro_msg')?.value.trim() || '';
+    if (introMsg) {
+      const introHtml = `<div style="font-family:Aptos,Calibri,Arial,sans-serif;font-size:13px;line-height:1.6;margin-bottom:12px;white-space:pre-wrap">${koFormatEmailHtml(introMsg)}</div>`;
+      htmlBody = introHtml + htmlBody;
+    }  
 
     const encoded = buildRfc2822(toAddrs, subject, htmlBody);
 
@@ -10377,6 +10405,14 @@ G.koNewJob = async function() {
   }
 })();
 
+G.setIntroMsg = function(msg) {
+  const el = document.getElementById('f_intro_msg');
+  if (el) {
+    el.value = msg;
+    // On ne met plus G.autosave() ici pour que le champ reste 100% temporaire !
+  }
+};
+	
 // Expose auth functions to window for HTML inline handlers (required for <script type="module"> scope)
 window.userPinInput      = G.userPinInput;
 window.showPicker        = G.showPicker;
@@ -10394,6 +10430,7 @@ window.logout            = G.logout;
 window.openModal         = G.openModal;
 window.closeModal        = G.closeModal;
 window.resetEngineerFully = G.resetEngineerFully;
+window.setIntroMsg 		 = G.setIntroMsg;	
 
 // Expose all ko functions to window for HTML inline handlers
 window.koUpdatePreview = koUpdatePreview;
