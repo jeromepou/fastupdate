@@ -4521,15 +4521,34 @@ function rteSanitize(html) {
   return tmp.innerHTML;
 }
 
-// Legacy plain text (typed in the old <textarea>, before this feature)
-// vs. already-clean new HTML: never confuse the two. Plain text never
-// contains one of our allowed tags — if none is found, escape it and
-// turn line breaks into <br> so old multi-line notes keep displaying
-// the way they used to.
+// Legacy plain text (typed in the old <textarea>, before this feature
+// existed) vs. already-clean new HTML: never confuse the two. Plain text
+// never contains one of our allowed tags OR a real HTML entity — if
+// neither is found, escape it and turn line breaks into <br> so old
+// multi-line notes keep displaying the way they used to.
+//
+// Also self-heals notes mangled by an older version of this function: a
+// trailing space auto-converted by the browser into "&nbsp;" used to come
+// back through here as literal "&amp;nbsp;", and every further save/reload
+// added one more "&amp;" layer on top. This collapses any number of
+// accumulated layers back down to a single correct entity.
+function rteFixDoubleEscapedEntities(raw) {
+  if (!raw) return raw;
+  let prev, cur = String(raw);
+  do {
+    prev = cur;
+    cur = cur.replace(/&amp;(amp|lt|gt|quot|#39|nbsp|#\d+|#x[0-9a-fA-F]+);/g, '&$1;');
+  } while (cur !== prev);
+  return cur;
+}
+
 function rteInitialHtml(raw) {
   if (!raw) return '';
-  if (/<(b|strong|u|i|em|br|div|p|span)[\s/>]/i.test(raw)) return rteSanitize(raw);
-  return escHtml(raw).replace(/\r\n|\r|\n/g, '<br>');
+  const fixed = rteFixDoubleEscapedEntities(raw);
+  if (/<(b|strong|u|i|em|br|div|p|span)[\s/>]/i.test(fixed) || /&(amp|lt|gt|quot|#39|nbsp|#\d+|#x[0-9a-fA-F]+);/.test(fixed)) {
+    return rteSanitize(fixed);
+  }
+  return escHtml(fixed).replace(/\r\n|\r|\n/g, '<br>');
 }
 
 // Plain-text version of a note, for contexts that can't show HTML
@@ -4537,7 +4556,7 @@ function rteInitialHtml(raw) {
 function rteToPlainText(html) {
   const tmp = document.createElement('div');
   tmp.style.cssText = 'position:absolute;left:-9999px;top:-9999px;white-space:pre-wrap';
-  tmp.innerHTML = html || '';
+  tmp.innerHTML = rteFixDoubleEscapedEntities(html || '');
   document.body.appendChild(tmp);
   const text = tmp.innerText || tmp.textContent || '';
   document.body.removeChild(tmp);
