@@ -2339,6 +2339,20 @@ let tokenClient = null, gToken = null, gTokenExp = 0;
 //  Cloudflare qui lit Gmail + extrait les infos via Mistral.
 // ══════════════════════════════════════
 const KO_WORKER = 'https://orange-snow-95f7.jeromepoupinel.workers.dev';
+
+// Jeton de session émis par le Worker après connexion — exigé sur /chat,
+// /ocr, /embed. Gardé en mémoire seulement (jamais localStorage), comme
+// curProfile : perdu au reload, exactement comme le reste du login aujourd'hui.
+let _koSessionToken = null;
+
+// Remplace fetch(KO_WORKER + path, options) pour /chat, /ocr, /embed — attache
+// automatiquement le jeton.
+function koWorkerFetch(path, options = {}) {
+  const headers = Object.assign({}, options.headers || {});
+  if (_koSessionToken) headers['Authorization'] = 'Bearer ' + _koSessionToken;
+  return fetch(KO_WORKER + path, Object.assign({}, options, { headers }));
+}
+
 let koReplyCache = {};       // { customer:{replies,lastSync}, parts:{...}, fbo:{...} } pour le FA courant
 let koPartsUpdateQueue = []; // items cliquables (parts_updates / hsa_parts_added / hsa_parts_removed), reconstruit à chaque rendu de la section "parts"
 let koReplyCurrentFA = '';
@@ -2355,13 +2369,24 @@ const KO_REPLY_CAT_META = {
 // ══════════════════════════════════════
 //  GMAIL SYNC — per-engineer connection (refresh_token via popup)
 // ══════════════════════════════════════
-G.koConnectGmailSync = function() {
+G.koConnectGmailSync = async function() {
   if (!curProfile) return;
-  window.open(
-    KO_WORKER + '/oauth/gmail-connect?engineerId=' + encodeURIComponent(curProfile.id) + '&email=' + encodeURIComponent(curProfile.email || ''),
-    'gmailConnect',
-    'width=480,height=640'
-  );
+  // Popup ouverte tout de suite, en synchrone (sinon le navigateur la bloque
+  // après un await) — on la redirige une fois le nonce obtenu.
+  const popup = window.open('', 'gmailConnect', 'width=480,height=640');
+  if (!popup) { alert('Popup blocked — please allow popups for this site and try again.'); return; }
+  let nonce = null;
+  try {
+    const prepRes = await koWorkerFetch('/oauth/gmail-connect-prepare', { method: 'POST' });
+    const prepData = await prepRes.json();
+    nonce = prepData.nonce || null;
+  } catch (e) {}
+  if (!nonce) {
+    popup.close();
+    alert('Could not start the Gmail connection — please try again.');
+    return;
+  }
+  popup.location = KO_WORKER + '/oauth/gmail-connect?nonce=' + encodeURIComponent(nonce) + '&email=' + encodeURIComponent(curProfile.email || '');
   function handler(ev) {
     if (ev.origin !== 'https://orange-snow-95f7.jeromepoupinel.workers.dev') return; // [added] only accept messages from our own Worker
     if (ev.data?.type !== 'gmail-sync-connected' || ev.data.engineerId !== curProfile.id) return;
@@ -3361,6 +3386,7 @@ G.userPinInput = async function() {
           delete pendingUserToLogin._newPinFirst;
           await resetPinAttempts(id);
 
+          _koSessionToken = data.sessionToken || null;
           if (data.hasSecretQuestion) {
             loginAs(pendingUserToLogin);
           } else {
@@ -3435,6 +3461,7 @@ G.userPinInput = async function() {
       }
     } else {
       await resetPinAttempts(id);
+      _koSessionToken = data.sessionToken || null;
       loginAs(pendingUserToLogin);
     }
   } catch(e) {
@@ -3549,6 +3576,7 @@ G.newPinInput = async function() {
         delete pendingUserToLogin._pendingSecretAnswer;
         await resetPinAttempts(pendingUserToLogin.id);
         document.getElementById('view-new-pin').style.display = 'none';
+        _koSessionToken = data.sessionToken || null;
         loginAs(pendingUserToLogin);
       } catch (err) {
         console.error('Failed to reset PIN:', err);
@@ -3612,6 +3640,7 @@ G.saveSecretQuestion = async function() {
     if (!res.ok || !data.ok) throw new Error(data.error || 'Failed');
     const setupView = document.getElementById('view-secret-setup');
     if (setupView) setupView.style.display = 'none';
+    _koSessionToken = data.sessionToken || null;
     loginAs(pendingUserToLogin);
   } catch(e) {
     document.getElementById('secret-q-error').textContent = '❌ ' + e.message;
@@ -3719,7 +3748,11 @@ async function loginAs(profile, fromBiometric) {
 
 G.logout = async function() {
   stopIdleTimer();
+  if (_koSessionToken) {
+    fetch(KO_WORKER + '/revoke-session', { method: 'POST', headers: { 'Authorization': 'Bearer ' + _koSessionToken } }).catch(() => {});
+  }
   curProfile = null; curProj = null; curProjSubjectTemplate = null; pendingUserToLogin = null; isAdmin = false;
+  _koSessionToken = null;
   document.getElementById('poc-colleagues-container').innerHTML = ''; colleagueSlotCount = 0;
   document.getElementById('sync-badge').style.display = 'none';
   document.getElementById('btn-logout').style.display = 'none';
@@ -5320,7 +5353,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
 
     // Si PDF : extraire le texte via OCR Mistral d'abord
     if (isPdf) {
-      const ocrRes = await fetch(KO_WORKER + '/ocr', {
+      const ocrRes = await koWorkerFetch('/ocr', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({
@@ -5333,7 +5366,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
       emailText = ocrData.pages.map(p => p.markdown).join('\n\n');
     }
 
-    const chatRes = await fetch(KO_WORKER + '/chat', {
+    const chatRes = await koWorkerFetch('/chat', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
@@ -5440,7 +5473,7 @@ ${original}
 """`;
 
   try {
-    const res = await fetch(KO_WORKER + '/chat', {
+    const res = await koWorkerFetch('/chat', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
@@ -5705,7 +5738,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
 {"doc_type":"RFS or WORK_ORDER_DETAIL or WCR","work_order":"","model":"e.g. GVIII-G700","serial_number":"","registration":"","location":"ICAO","rts_assist":"RTS or Assist","far_certification":"","country":"","fbo":"","po_number":"","customer_name":"UPPERCASE","customer_company":"","customer_code":"","customer_phone":"","customer_email":"","estimated_rts":"","next_flight":"UNKWN if unknown","constraints":"","work_items":[{"label":"UPPERCASE"}]}`;
   try {
     // Étape 1 : OCR pour extraire le texte du PDF
-    const ocrRes = await fetch(KO_WORKER + '/ocr', {
+    const ocrRes = await koWorkerFetch('/ocr', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
@@ -5720,7 +5753,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
     console.log(extractedText);
 
     // Étape 2 : Analyse du texte extrait
-    const chatRes = await fetch(KO_WORKER + '/chat', {
+    const chatRes = await koWorkerFetch('/chat', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
@@ -7485,6 +7518,16 @@ window.addEventListener('message', function(ev) {
 window.addEventListener('message', function(ev) {
   if (ev.origin !== window.location.origin) return;
   const data = ev.data;
+  if (!data || data.type !== 'amm-task-reader:ready') return;
+  const iframe = document.getElementById('amm-reader-iframe');
+  if (iframe && iframe.contentWindow) {
+    iframe.contentWindow.postMessage({ type: 'amm-task-reader:session', token: _koSessionToken }, window.location.origin);
+  }
+});
+
+window.addEventListener('message', function(ev) {
+  if (ev.origin !== window.location.origin) return;
+  const data = ev.data;
   if (!data || data.type !== 'amm-task-reader:resize') return;
   const iframe = document.getElementById('amm-reader-iframe');
   if (!iframe) return;
@@ -8789,7 +8832,7 @@ async function koGetEmbedding(text) {
   const t = (text || '').trim();
   if (!t) return null;
   try {
-    const res = await fetch(KO_WORKER + '/embed', {
+    const res = await koWorkerFetch('/embed', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ model: 'mistral-embed', input: [t.slice(0, 2000)] })
