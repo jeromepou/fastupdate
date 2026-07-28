@@ -5994,7 +5994,7 @@ G.generate = async function() {
         const displayNum = it ? it.num : iu.num;
         const statusLabel = SL[iu.status];
         const statusColor = SC[iu.status]||'#555';
-        const statusHtml = statusLabel ? `&nbsp;—&nbsp;<span style="color:#ffffff;font-weight:700;background-color:${statusColor};padding:2px 7px;border-radius:10px;font-size:11px;white-space:nowrap;display:inline-block;">${statusLabel.replace(/ /g, '&nbsp;')}</span>` : '';
+        const statusHtml = statusLabel ? `<span style="white-space:nowrap;overflow-wrap:normal;word-break:keep-all;">&nbsp;—&nbsp;<span style="color:#ffffff;font-weight:700;background-color:${statusColor};padding:2px 7px;border-radius:10px;font-size:11px;white-space:nowrap;display:inline-block;">${statusLabel.replace(/ /g, '&nbsp;')}</span></span>` : '';
           updContent += `${it?`${displayNum}-${it.label.toUpperCase().trim()}`:`Item ${displayNum}`}${statusHtml}<br>`;
         if(iu.detail) updContent += `<span>${iu.detail}</span><br>`;
       });
