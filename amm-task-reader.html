@@ -328,6 +328,24 @@ window.ammCache = {
    ============================================================ */
 const KO_WORKER = 'https://orange-snow-95f7.jeromepoupinel.workers.dev';
 
+let _ammSessionToken = null;
+
+function koWorkerFetch(path, options = {}) {
+  const headers = Object.assign({}, options.headers || {});
+  if (_ammSessionToken) headers['Authorization'] = 'Bearer ' + _ammSessionToken;
+  return fetch(KO_WORKER + path, Object.assign({}, options, { headers }));
+}
+
+if (window.parent && window.parent !== window) {
+  window.parent.postMessage({ type: 'amm-task-reader:ready' }, window.location.origin);
+}
+window.addEventListener('message', function(ev) {
+  if (ev.origin !== window.location.origin) return;
+  const data = ev.data;
+  if (!data || data.type !== 'amm-task-reader:session') return;
+  _ammSessionToken = data.token || null;
+});
+
 /* ============================================================
    STATE
    ============================================================
@@ -1287,7 +1305,7 @@ function flagMissedImplicitEquipment(data, sourceText) {
 }
 
 async function runScan(text, knownRefs) {
-  const extractRes = await fetch(KO_WORKER + '/chat', {
+  const extractRes = await koWorkerFetch('/chat', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
@@ -1301,7 +1319,7 @@ async function runScan(text, knownRefs) {
   if (!extractRes.ok) throw new Error(extractData.message || ('Chat error ' + extractRes.status));
   const extractRaw = extractData.choices[0].message.content.replace(/```json|```/g, '').trim();
 
-  const verifyRes = await fetch(KO_WORKER + '/chat', {
+  const verifyRes = await koWorkerFetch('/chat', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
@@ -1343,7 +1361,7 @@ async function runScan(text, knownRefs) {
 // genuinely needs — always-required preliminary/preparation/follow-on
 // work, plus judgment-based access panel selection by system/location.
 async function runScopeReasoning(sourceText, confirmedRows, extractedData) {
-  const res = await fetch(KO_WORKER + '/chat', {
+  const res = await koWorkerFetch('/chat', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
@@ -1388,7 +1406,7 @@ function buildScopedData(fullData, reasoningResult) {
 // screen (the table-scoped subset if one applied, otherwise the full
 // verified card), so the two mechanisms stack instead of conflicting.
 async function runFinalRelevanceCheck(sourceText, baseData, partReplaced) {
-  const res = await fetch(KO_WORKER + '/chat', {
+  const res = await koWorkerFetch('/chat', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
@@ -1491,7 +1509,7 @@ function forceIncludeAlwaysApplicableItems(fullData, scopedResult) {
 }
 
 async function pdfToText(pdfB64) {
-  const ocrRes = await fetch(KO_WORKER + '/ocr', {
+  const ocrRes = await koWorkerFetch('/ocr', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
@@ -2875,7 +2893,7 @@ function exportSelection() {
   }
 
   if (window.parent && window.parent !== window) {
-    window.parent.postMessage({ type: 'amm-task-reader:export', payload }, '*');
+    window.parent.postMessage({ type: 'amm-task-reader:export', payload }, window.location.origin);
   } else {
     console.log('AMM reader export payload:', payload);
     alert('Selection ready (' + payload.tools.length + ' tool(s), ' + payload.consumables.length + ' consumable(s), ' + payload.implicit_materials.length + ' implicit material(s), ' + payload.access_panels.length + ' access panel(s), ' + payload.related_tasks.length + ' related task(s), ' + payload.fbo_requests.length + ' FBO request(s), ' + payload.suggested_items.length + ' suggested item(s) across ' + payload.cards.length + ' card(s)).\n\nOpened standalone: see the console for the JSON payload.');
