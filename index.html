@@ -135,6 +135,12 @@ textarea{resize:vertical}
 .s-done{background:var(--gl);color:var(--gd);border:1px solid var(--gb)}
 .s-err{background:var(--rl);color:var(--red);border:1px solid #e8b8a0}
 
+/* UPDATE BANNER — shown when version.json no longer matches the version this page was loaded with */
+.update-banner{position:fixed;left:0;right:0;bottom:0;z-index:999;display:none;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;background:var(--blue);color:#fff;padding:10px 16px;font-size:13px;font-weight:600;box-shadow:0 -2px 8px rgba(0,0,0,.2)}
+.update-banner.show{display:flex}
+.update-banner button{background:#fff;color:var(--blue);border:none;border-radius:var(--r);padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer}
+.update-banner button:hover{background:var(--bl)}
+
 /* WORK ITEMS */
 .item-row{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:6px}
 .item-num{font-size:11px;font-weight:700;color:var(--g400);min-width:18px;text-align:center;padding-top:9px;flex-shrink:0}
@@ -558,6 +564,11 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 
 </head>
 <body>
+
+<div id="update-banner" class="update-banner">
+  <span>🔄 A new version of this app is available.</span>
+  <button onclick="window.location.reload()">Reload</button>
+</div>
 
 <header>
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -6606,9 +6617,57 @@ G.confirmEditMember = async function() {
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      // Revérifie dès que l'app revient au premier plan (utile sur iPhone/iPad)
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update();
+      });
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          // "installed" + un controller déjà actif = vraie mise à jour (pas la 1ère install)
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            newWorker.postMessage({ type: 'SKIP_WAITING' });
+          }
+        });
+      });
+    }).catch(() => {});
+  });
+
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
   });
 }
+
+// ══════════════════════════════════════
+//  VERSION CHECK — safety net, independent from the service worker above.
+//  Works identically on PC, Mac, Android and iPhone/iPad: it's just a
+//  fetch() call + a timer, nothing platform-specific.
+//
+//  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
+//  version.json to the same new value. That's the only step to remember.
+// ══════════════════════════════════════
+const CURRENT_VERSION = 'v14';
+
+function checkForUpdate() {
+  fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.version && data.version !== CURRENT_VERSION) {
+        document.getElementById('update-banner').classList.add('show');
+      }
+    })
+    .catch(() => {}); // offline or blip — fail silently, just try again next time
+}
+
+window.addEventListener('load', () => setTimeout(checkForUpdate, 3000));
+setInterval(checkForUpdate, 5 * 60 * 1000); // re-check every 5 min
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') checkForUpdate();
+});
 
 // ══════════════════════════════════════
 //  KICKOFF — STATE
