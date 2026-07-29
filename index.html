@@ -873,6 +873,11 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
   <div class="fg" style="background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:10px 12px;margin-bottom:10px">
     <label style="color:var(--g800)">💬 Email Intro message (optional)</label>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+      <label style="font-size:11px;font-weight:600;color:var(--g600);white-space:nowrap">📅 Date to use below:</label>
+      <input type="date" id="intro-date-picker" style="font-size:12px;padding:4px 8px;border:1px solid var(--g200);border-radius:var(--r)"/>
+      <small style="font-size:10px;color:var(--g400)">defaults to tomorrow — only applies to buttons with a specific date</small>
+    </div>
     <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
       <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease find below the latest FAST update for the aircraft.')" style="font-size:11px;padding:4px 8px">📝 See update</button>
       <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note the aircraft is now RTS.')" style="font-size:11px;padding:4px 8px">✅ A/C is RTS</button>
@@ -884,6 +889,12 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease be advised that the maintenance intervention is scheduled to start tomorrow morning.')" style="font-size:11px;padding:4px 8px">🌅 Scheduled tomorrow AM</button>
       <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that we will attend the aircraft tomorrow.')" style="font-size:11px;padding:4px 8px">🚶‍♂️ Attend A/C tomorrow</button>
       <button class="btn" onclick="setIntroMsg('Dear All,\n\nI will be travelling today and will commence the support on the aircraft tomorrow.')" style="font-size:11px;padding:4px 8px">🧳 Travel today, support tomorrow</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nI am on site and waiting for the aircraft, new ETA is [ETA].')" style="font-size:11px;padding:4px 8px">🛬 Waiting for A/C, ETA</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nI am back at the aircraft and continue my work.')" style="font-size:11px;padding:4px 8px">🔁 Back on site, continuing</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nI will support the subject aircraft in {LOC} on {DATE}.')" style="font-size:11px;padding:4px 8px">📍 Support at [ICAO] on date</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nI will be supporting this aircraft on {DATE}. [Colleague name] will join me on [join date] for [task].')" style="font-size:11px;padding:4px 8px">🤝 Support, colleague joins later</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nSupport for today is now complete. I will resume the intervention on {DATE}.')" style="font-size:11px;padding:4px 8px">🏁 Done for today, resume on date</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nWork on this aircraft is currently on hold pending parts arrival. I will provide a further update once we have more information.')" style="font-size:11px;padding:4px 8px">⏸️ On hold, awaiting parts</button>
       <button class="btn" onclick="setIntroMsg('')" style="font-size:11px;padding:4px 8px">✕ Clear</button>
     </div>
     <textarea id="f_intro_msg" style="min-height:60px;font-size:13px;padding:8px;border:1px solid var(--g200);border-radius:var(--r);font-family:inherit" placeholder="Type your intro message here..."></textarea>
@@ -6616,8 +6627,6 @@ G.confirmEditMember = async function() {
 };
 
 if ('serviceWorker' in navigator) {
-  const hadController = !!navigator.serviceWorker.controller;
-
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').then(reg => {
       // Revérifie dès que l'app revient au premier plan (utile sur iPhone/iPad)
@@ -6636,9 +6645,11 @@ if ('serviceWorker' in navigator) {
     }).catch(() => {});
   });
 
+  let refreshing = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!hadController) return; // 1ere installation : pas une vraie mise a jour, on ne derange personne
-    document.getElementById('update-banner').classList.add('show'); // meme bandeau que version.json, l'utilisateur choisit quand recharger
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
   });
 }
 
@@ -6647,10 +6658,10 @@ if ('serviceWorker' in navigator) {
 //  Works identically on PC, Mac, Android and iPhone/iPad: it's just a
 //  fetch() call + a timer, nothing platform-specific.
 //
-//  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below, the number inside
-//  version.json, AND CACHE_NAME in sw.js — all three to the same new value.
+//  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
+//  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v15';
+const CURRENT_VERSION = 'v14';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -10570,13 +10581,34 @@ G.koNewJob = async function() {
   }
 })();
 
+function introFormatDate() {
+  const val = document.getElementById('intro-date-picker')?.value;
+  if (!val) return '[date]';
+  const d = new Date(val + 'T00:00:00');
+  const day = d.getDate();
+  const suffix = (n) => (n >= 11 && n <= 13) ? 'th' : ({1:'st',2:'nd',3:'rd'}[n % 10] || 'th');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return day + suffix(day) + ' ' + months[d.getMonth()];
+}
+
 G.setIntroMsg = function(msg) {
   const el = document.getElementById('f_intro_msg');
   if (el) {
-    el.value = msg;
+    el.value = msg
+      .replace(/\{DATE\}/g, introFormatDate())
+      .replace(/\{LOC\}/g, gv('f_loc') || '[location]');
     // On ne met plus G.autosave() ici pour que le champ reste 100% temporaire !
   }
 };
+
+// Le champ date par défaut sur demain — le cas le plus fréquent
+(function() {
+  const el = document.getElementById('intro-date-picker');
+  if (el) {
+    const t = new Date(); t.setDate(t.getDate() + 1);
+    el.value = t.toISOString().slice(0, 10);
+  }
+})();
 // Expose auth functions to window for HTML inline handlers (required for <script type="module"> scope)
 window.userPinInput      = G.userPinInput;
 window.showPicker        = G.showPicker;
