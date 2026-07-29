@@ -6616,6 +6616,8 @@ G.confirmEditMember = async function() {
 };
 
 if ('serviceWorker' in navigator) {
+  const hadController = !!navigator.serviceWorker.controller;
+
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').then(reg => {
       // Revérifie dès que l'app revient au premier plan (utile sur iPhone/iPad)
@@ -6634,11 +6636,9 @@ if ('serviceWorker' in navigator) {
     }).catch(() => {});
   });
 
-  let refreshing = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (refreshing) return;
-    refreshing = true;
-    window.location.reload();
+    if (!hadController) return; // 1ere installation : pas une vraie mise a jour, on ne derange personne
+    document.getElementById('update-banner').classList.add('show'); // meme bandeau que version.json, l'utilisateur choisit quand recharger
   });
 }
 
@@ -6647,10 +6647,10 @@ if ('serviceWorker' in navigator) {
 //  Works identically on PC, Mac, Android and iPhone/iPad: it's just a
 //  fetch() call + a timer, nothing platform-specific.
 //
-//  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
-//  version.json to the same new value. That's the only step to remember.
+//  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below, the number inside
+//  version.json, AND CACHE_NAME in sw.js — all three to the same new value.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v14';
+const CURRENT_VERSION = 'v15';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
