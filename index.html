@@ -2208,7 +2208,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div class="help-section">
       <h4>📬 Reply Sync — tracking Gmail responses</h4>
       <p>Reply Sync needs its own persistent Gmail connection (separate from the one-off Google sign-in used for "Draft in Gmail"), so it can keep scanning your threads in the background. Tap <strong>"🔗 Connect my Gmail (Reply Sync)"</strong> in the engineer bar (or Start Job header) once — it stays connected until Google requires re-authorisation (every 7 days while the app is in Google test mode), at which point the button turns into "⚠️ Reconnect Gmail".</p>
-	  <p>Tap the <strong>"📬 Replies"</strong> button (in the main action row, or in the Start Job panel header) to see what Materials, the FBO, and the customer have replied on this job's Customer Update, Part Request and FBO Coordination email threads. Each of the three sections shows cached results instantly, then refreshes quietly in the background — or tap "🔄 Refresh now" / "🔄 Refresh all" to force it.</p>
+	  <p>Tap the <strong>"📬 Replies"</strong> button (in the main action row, or in the Start Job panel header) to see what Materials, the FBO, and the customer have replied on this job's Customer Update, Part Request and FBO Coordination email threads. Each of the three sections shows cached results instantly, then refreshes quietly in the background — or tap "🔄 Refresh now" / "🔄 Refresh all" to force it. Behind the scenes, every active job is also re-checked automatically roughly every 2 hours, even if nobody has the app open — so what you see is rarely more than a couple of hours old.</p>
       <p>Each reply shows an AI-generated one-line summary, who it's from, and — where relevant — tappable buttons to apply what was found straight into your project:</p>
       <ul>
         <li><strong>Customer Update:</strong> your ETA on site, next scheduled flight, the customer's job/PO reference, and A/C hours &amp; cycles (which then pre-fill every GA3671 tag for this job).</li>
@@ -3199,6 +3199,7 @@ async function loadTeamForPicker() {
     window._pickerTeam = team;
 
     picker.innerHTML = `
+      <div id="picker-quick-access"></div>
       <div id="picker-tabs" style="display:flex;gap:4px;margin-bottom:10px;border-bottom:2px solid var(--g200);padding-bottom:0">
         <button class="ptab active" data-tab="FAST EMEA" onclick="switchPickerTab('FAST EMEA')">✈️ FAST EMEA</button>
         <button class="ptab" data-tab="FAST ASIA" onclick="switchPickerTab('FAST ASIA')">✈️ FAST ASIA</button>
@@ -3217,6 +3218,7 @@ async function loadTeamForPicker() {
       document.head.appendChild(s);
     }
 
+    renderPickerQuickAccess();
     window._pickerTab = 'FAST EMEA';
     renderPickerGrid();
 
@@ -3232,11 +3234,36 @@ G.switchPickerTab = function(tab) {
   renderPickerGrid();
 };
 
+// One-tap shortcut for whoever last logged in successfully on THIS device.
+// Purely a convenience: it does not skip the PIN/biometric check, and the
+// full team list below is untouched — so a borrowed device still shows everyone.
+function renderPickerQuickAccess() {
+  const wrap = document.getElementById('picker-quick-access');
+  if (!wrap) return;
+  const lastId = localStorage.getItem('fast_last_profile');
+  const lastProfile = lastId ? (window._pickerTeam || []).find(p => p.id === lastId) : null;
+  if (!lastProfile) { wrap.innerHTML = ''; return; }
+
+  const initials = (lastProfile.name||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+  wrap.innerHTML = `
+    <button class="profile-btn" id="picker-quick-btn" style="border-color:var(--gd);background:var(--gl);margin-bottom:6px">
+      <div class="pb-avatar">${escHtml(initials)}</div>
+      <div class="pb-info">
+        <div class="pb-name">${escHtml(lastProfile.name)}</div>
+        <div class="pb-sub">👋 Tap to continue</div>
+      </div>
+      <div style="font-size:13px">🔒</div>
+    </button>
+    <p style="font-size:11px;color:var(--g400);text-align:center;margin:0 0 12px">Not you? Pick from the list below</p>`;
+  document.getElementById('picker-quick-btn').onclick = () => showPinEntry(lastProfile);
+}
+
 function renderPickerGrid() {
   const grid = document.getElementById('picker-grid');
   if (!grid) return;
   const tab = window._pickerTab || 'FAST EMEA';
   const q = (document.getElementById('picker-search')?.value || '').toLowerCase();
+  const lastId = localStorage.getItem('fast_last_profile'); // for the "that's you" highlight below
 
   let members = (window._pickerTeam || []).filter(p => {
     if (tab === 'OPS') return p.role === 'ops';
@@ -3254,7 +3281,7 @@ function renderPickerGrid() {
   members.forEach(p => {
     const btn = document.createElement('button');
     btn.className = 'profile-btn';
-    btn.style.cssText = 'padding:8px 10px;';
+    btn.style.cssText = 'padding:8px 10px;' + (p.id === lastId ? 'border-color:var(--gd);background:var(--gl);' : '');
     const initials = (p.name||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
     btn.innerHTML = `
       <div class="pb-avatar" style="width:28px;height:28px;font-size:12px;flex-shrink:0">${escHtml(initials)}</div>
@@ -3739,6 +3766,7 @@ function stopIdleTimer() {
 
 async function loginAs(profile, fromBiometric) {
   curProfile = profile;
+  localStorage.setItem('fast_last_profile', profile.id); // Device-local "last user" shortcut for the picker screen (not a credential — PIN/biometric is still required)
   curProjSubjectTemplate = curProfile.subjectTemplate || DEFAULT_SUBJECT_TEMPLATE;
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = '';
@@ -6661,7 +6689,7 @@ if ('serviceWorker' in navigator) {
 //  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
 //  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v15';
+const CURRENT_VERSION = 'v16';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
