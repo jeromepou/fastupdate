@@ -8312,7 +8312,10 @@ function koInitialSurname(fullName) {
   const parts = (fullName || '').trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return '';
   if (parts.length === 1) return parts[0].toUpperCase();
-  return parts[0].charAt(0).toUpperCase() + '.' + parts[parts.length - 1].toUpperCase();
+  
+  // parts[parts.length - 1] correspond maintenant au Prénom (on prend la 1ère lettre)
+  // parts[0] correspond au Nom de famille (on le met en majuscules)
+  return parts[parts.length - 1].charAt(0).toUpperCase() + '.' + parts[0].toUpperCase();
 }
 
 function koExtractAirportCode(raw) {
@@ -8389,12 +8392,10 @@ G.koToggleDraftPreview = function(type) {
   if (willOpen) {
     const subjEl = document.getElementById('ko-prev-subj-' + type);
     const bodyEl = document.getElementById('ko-prev-body-' + type);
-    if (subjEl.dataset.populated !== '1') {
-      subjEl.value = koComputeSubjects()[type];
-      bodyEl.value = koComputeBodies()[type];
-      subjEl.dataset.populated = '1';
-      bodyEl.dataset.populated = '1';
-    }
+    if (subjEl.dataset.userEdited !== '1') subjEl.value = koComputeSubjects()[type];
+    if (bodyEl.dataset.userEdited !== '1') bodyEl.value = koComputeBodies()[type];
+    subjEl.dataset.populated = '1';
+    bodyEl.dataset.populated = '1';
     const recipEl = document.getElementById('ko-prev-recips-' + type);
     if (recipEl) recipEl.value = koGetAllRecips(type).join(', ');
   }
@@ -8424,8 +8425,12 @@ G.koCopyRecipients = function(type) {
 
 // Discards manual edits and refills the panel from current field values.
 G.koResetDraftPreview = function(type) {
-  document.getElementById('ko-prev-subj-' + type).value = koComputeSubjects()[type];
-  document.getElementById('ko-prev-body-' + type).value = koComputeBodies()[type];
+  const subjEl = document.getElementById('ko-prev-subj-' + type);
+  const bodyEl = document.getElementById('ko-prev-body-' + type);
+  subjEl.value = koComputeSubjects()[type];
+  bodyEl.value = koComputeBodies()[type];
+  delete subjEl.dataset.userEdited;
+  delete bodyEl.dataset.userEdited;
 };
 
 // Copy the subject + body of a draft to clipboard
@@ -8508,9 +8513,14 @@ function koUpdatePreview() {
       <span class="ko-badge ${missingIcao ? 'ko-badge-warn' : 'ko-badge-ok'}">${missingIcao ? '⚠ ICAO missing' : 'Ready'}</span>
     </div>`;
 
+  const bodies = koComputeBodies();
   ['customer','travel','parts','fbo'].forEach(t => {
     const recipEl = document.getElementById('ko-prev-recips-' + t);
     if (recipEl) recipEl.value = koGetAllRecips(t).join(', ');
+    const subjEl = document.getElementById('ko-prev-subj-' + t);
+    const bodyEl = document.getElementById('ko-prev-body-' + t);
+    if (subjEl && subjEl.dataset.populated === '1' && subjEl.dataset.userEdited !== '1') subjEl.value = subs[t];
+    if (bodyEl && bodyEl.dataset.populated === '1' && bodyEl.dataset.userEdited !== '1') bodyEl.value = bodies[t];
   });
 }
 
@@ -9041,8 +9051,8 @@ G.koGenerate = async function() {
   ['customer','travel','parts','fbo'].forEach(type => {
     const subjEl = document.getElementById('ko-prev-subj-' + type);
     const bodyEl = document.getElementById('ko-prev-body-' + type);
-    subjects[type] = (subjEl?.dataset.populated === '1') ? subjEl.value : autoSubjects[type];
-    bodies[type]   = (bodyEl?.dataset.populated === '1') ? bodyEl.value : autoBodies[type];
+    subjects[type] = (subjEl?.dataset.userEdited === '1') ? subjEl.value : autoSubjects[type];
+    bodies[type]   = (bodyEl?.dataset.userEdited === '1') ? bodyEl.value : autoBodies[type];
   });
 
   const btn = document.getElementById('ko-gen-btn');
@@ -9176,6 +9186,9 @@ document.getElementById('ko-parts-tbody')?.addEventListener('change', () => {
 ['customer','travel','parts','fbo'].forEach(type => {
   const inp = document.getElementById('ko-add-' + type + '-inp');
   if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); G.koAddRecip(type); } });
+});
+document.getElementById('ko-drafts-edit-panels')?.addEventListener('input', e => {
+  if (/^ko-prev-(subj|body)-/.test(e.target.id)) e.target.dataset.userEdited = '1';
 });
 // Enter on new airline name
 const koAirlineInp = document.getElementById('ko-new-airline-name');
