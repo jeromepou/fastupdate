@@ -8350,7 +8350,7 @@ function koComputeSubjects() {
   const travelDate = (document.getElementById('ko_travel_date')?.value || '').trim();
   const travelParts = [
     koInitialSurname(koTravelSubjectName()) || '[ENGINEER]',
-    `${koExtractAirportCode(from) || '[FROM]'} - ${koExtractAirportCode(to) || '[TO]'}`
+    `${(koExtractAirportCode(from) || '[FROM]').toUpperCase()} - ${(koExtractAirportCode(to) || '[TO]').toUpperCase()}`
   ];
   if (travelDate) travelParts.push(travelDate);
 
@@ -9120,7 +9120,7 @@ G.koGenerate = async function() {
 //  MOBILE — fermer clavier sur Enter pour les champs courts
 // ══════════════════════════════════════
 (function() {
-  const shortFields = ['ko_wo','ko_sn','ko_reg','ko_icao','ko_model','ko_defect','ko_travel_from','ko_travel_to'];
+  const shortFields = ['ko_wo','ko_sn','ko_reg','ko_icao','ko_model','ko_defect','ko_travel_from','ko_travel_to','ko_travel_date'];
   shortFields.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -9136,7 +9136,7 @@ document.addEventListener('change', e => {
 });
 
 document.addEventListener('input', e => {
-  const ids = ['ko_wo','ko_sn','ko_reg','ko_icao','ko_model','ko_defect','ko_travel_from','ko_travel_to'];
+  const ids = ['ko_wo','ko_sn','ko_reg','ko_icao','ko_model','ko_defect','ko_travel_from','ko_travel_to','ko_travel_date'];
   if (ids.includes(e.target?.id)) koUpdatePreview();
   // ko_colleague_name is now a <select> with onchange — handled inline
   // Live-update airline numbers in KO.airlines array
