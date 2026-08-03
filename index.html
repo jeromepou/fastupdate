@@ -6953,7 +6953,10 @@ if ('serviceWorker' in navigator) {
   let refreshing = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (refreshing) return;
+    const last = parseInt(sessionStorage.getItem('sw_reload_ts') || '0', 10);
+    if (Date.now() - last < 4000) return;
     refreshing = true;
+    sessionStorage.setItem('sw_reload_ts', String(Date.now()));
     window.location.reload();
   });
 }
