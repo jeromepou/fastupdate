@@ -640,6 +640,17 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
             oninput="newPinInput()"/>
           <div class="err-msg" id="new-pin-error"></div>
         </div>
+        
+        <!-- Nouvel appareil — code de vérification par email (2FA step-up) -->
+        <div id="view-device-code" style="display:none;margin-top:12px">
+          <p style="font-size:12px;color:var(--g600);margin-bottom:8px">🔒 New device detected. We emailed a 6-digit code to <b id="devcode-email-hint"></b>.</p>
+          <input type="text" id="devcode-input" placeholder="• • • • • •" maxlength="6" inputmode="numeric" pattern="[0-9]*"
+            style="text-align:center;font-size:22px;letter-spacing:.4em;width:100%;margin-bottom:8px"
+            oninput="deviceCodeInput()"/>
+          <div class="err-msg" id="devcode-error"></div>
+          <button class="btn" id="btn-resend-devcode" style="width:100%;justify-content:center;margin-top:6px;font-size:11px" onclick="resendDeviceCode()">✉️ Resend code</button>
+          <button class="btn" style="width:100%;justify-content:center;margin-top:6px;font-size:11px" onclick="cancelDeviceCode()">← Cancel</button>
+        </div>
       </div>
 
       <!-- Admin login -->
@@ -652,6 +663,26 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <button class="btn" style="width:100%;justify-content:center;margin-top:6px" onclick="showPicker()">← Back</button>
       </div>
 
+      <!-- Admin — first-time 2FA setup -->
+      <div id="view-admin-totp-setup" style="display:none">
+        <p style="font-size:13px;color:var(--g600);margin-bottom:10px">🔐 Set up two-factor authentication (one-time). Add this key in an authenticator app (Google Authenticator, Authy, 1Password…):</p>
+        <div style="text-align:center;font-family:monospace;font-size:16px;letter-spacing:.15em;background:var(--g100,#f4f4f5);border-radius:var(--r);padding:12px;margin-bottom:10px;word-break:break-all" id="admin-totp-secret">…</div>
+        <div class="fg" style="margin-bottom:8px;text-align:left"><label>6-digit code from the app</label>
+          <input type="text" id="admin-totp-setup-input" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="000000" style="text-align:center;font-size:20px;letter-spacing:.3em"/>
+        </div>
+        <div class="err-msg" id="admin-totp-setup-error"></div>
+        <button class="btn primary" style="width:100%;justify-content:center;margin-top:6px" onclick="confirmAdminTotpSetup()">✅ Confirm &amp; enable</button>
+        <button class="btn" style="width:100%;justify-content:center;margin-top:6px" onclick="cancelAdminTotp()">← Cancel</button>
+      </div>
+
+      <!-- Admin — 2FA code entry (already enrolled) -->
+      <div id="view-admin-totp-verify" style="display:none">
+        <p style="font-size:13px;color:var(--g600);margin-bottom:10px">🔐 Enter the 6-digit code from your authenticator app</p>
+        <input type="text" id="admin-totp-verify-input" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="000000" style="text-align:center;font-size:22px;letter-spacing:.3em;width:100%;margin-bottom:8px"/>
+        <div class="err-msg" id="admin-totp-verify-error"></div>
+        <button class="btn primary" style="width:100%;justify-content:center;margin-top:6px" onclick="confirmAdminTotpVerify()">✅ Verify</button>
+        <button class="btn" style="width:100%;justify-content:center;margin-top:6px" onclick="cancelAdminTotp()">← Cancel</button>
+      </div>
     </div>
   </div>
 </div>
@@ -666,6 +697,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div class="eng-name" id="eng-bar-name">—</div>
     <div class="eng-sub" id="eng-bar-sub">—</div>
   </div>
+  <button class="btn" onclick="openSubjectTemplateModal()" title="Personalize the subject format">✏️ Format</button>
   <button class="btn" id="btn-gmail-sync-status" onclick="koConnectGmailSync()" style="display:none;font-size:11px"></button>
   <button class="btn-start-job" id="btn-start-job" onclick="openKickoff()" style="display:none">🚀 Start Job</button>
 </div>
@@ -861,7 +893,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <span class="subj-lbl">📧 Email subject</span>
     <span class="subj-txt" id="email-subject">—</span>
     <button class="btn" onclick="copySubject()">Copy</button>
-    <button class="btn" onclick="openSubjectTemplateModal()" title="Personalize the subject format">✏️ Format</button>
   </div>
   <div style="background:#f0f4ff;border:1px solid #b8d0e8;border-radius:var(--r);padding:10px 12px;margin-bottom:10px">
     <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">📬 To (recipients)</div>
@@ -1063,6 +1094,16 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <div class="ko-fg"><label>From</label><input type="text" id="ko_travel_from" placeholder="Bangkok (BKK)"/></div>
         <div class="ko-fg"><label>To (ICAO / city)</label><input type="text" id="ko_travel_to" placeholder="LFPB"/></div>
         <div class="ko-fg"><label>Desired departure date</label><input type="text" id="ko_travel_date" placeholder="e.g. 25 Jun 2026"/></div>
+      </div>
+      <div class="ko-divider"></div>
+      <div class="ko-section-lbl">Request type</div>
+      <div class="ko-toggles" id="ko-flighttype-toggles" style="margin-bottom:10px">
+        <span class="ko-pill" data-val="SPECIFIC">Specific flight</span>
+        <span class="ko-pill" data-val="AVAILABILITY">Flight availability</span>
+      </div>
+      <div class="ko-fg" id="ko-flightnum-wrap" style="display:none;margin-bottom:10px">
+        <label>Specific flight (number / reference) — optional</label>
+        <input type="text" id="ko_travel_flightnum" placeholder="e.g. AF1780 09:40, or 'see attached screenshot'"/>
       </div>
       <div class="ko-divider"></div>
       <div class="ko-section-lbl">Preferred time of departure</div>
@@ -2149,6 +2190,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <p>This email asks OPS to book the flight to the aircraft location. Configure it with:</p>
       <ul>
         <li><strong>From / To / Date</strong> — departure city (pre-filled from your profile home base), destination ICAO or city, and desired travel date.</li>
+        <li><strong>Request type</strong> — Specific flight (you already picked one — optionally add its number/reference, or just note you'll attach a screenshot) or Flight availability (ask OPS to send back all the options between the two airports so you can choose).</li>
         <li><strong>Preferred time of departure</strong> — Morning, Afternoon, Evening, Night, or Any time. Tap again to deselect.</li>
         <li><strong>Cabin class</strong> — Economy and Business, Economy only, or Business only.</li>
         <li><strong>Extra baggage</strong> — toggle on if carrying tools and needing 2 checked bags.</li>
@@ -2366,6 +2408,10 @@ const KO_WORKER = 'https://orange-snow-95f7.jeromepoupinel.workers.dev';
 // /ocr, /embed. Gardé en mémoire seulement (jamais localStorage), comme
 // curProfile : perdu au reload, exactement comme le reste du login aujourd'hui.
 let _koSessionToken = null;
+
+// 2FA additions — new-device email step-up (engineers) and admin TOTP.
+let _pendingPinTicket = null;   // short-lived proof the PIN step just succeeded — used for /send-device-code + /verify-device-code
+let _adminTotpUser = null;      // Firebase Auth user object while the admin TOTP step is in progress
 
 // Remplace fetch(KO_WORKER + path, options) pour /chat, /ocr, /embed — attache
 // automatiquement le jeton.
@@ -3155,7 +3201,7 @@ onAuthStateChanged(auth, async (user) => {
     const snap = await get(ref(db, 'admins/' + user.uid));
     isAdmin = snap.exists();
     if (isAdmin) {
-      showAdminPanel();
+      startAdminTotpCheck(user);
     }
   }
 });
@@ -3382,6 +3428,113 @@ async function resetPinAttempts(profileId) {
   localStorage.removeItem('fast_pin_attempts_' + profileId);
 }
 
+function maskEmailForDisplay(email) {
+  const parts = (email || '').split('@');
+  if (parts.length !== 2) return 'your registered email address';
+  const user = parts[0], domain = parts[1];
+  return user.slice(0, Math.min(2, user.length)) + '•••@' + domain;
+}
+
+// ── New-device step: PIN was correct, but this browser has no valid device token yet.
+// Wrong-code lockout is enforced server-side (Worker, same rateLimits/* bucket used for
+// PIN and WebAuthn) — _devCodeWrongCount here is purely a local "X attempts left" display,
+// not a security boundary, so it doesn't need to survive a page reload. ──
+let _devCodeWrongCount = 0;
+function showDeviceCodeStep(pinTicket) {
+  _pendingPinTicket = pinTicket;
+  _devCodeWrongCount = 0;
+  document.getElementById('pin-input').value = '';
+  document.getElementById('pin-error').textContent = '';
+  document.getElementById('btn-forgot-pin').style.display = 'none';
+  document.getElementById('devcode-email-hint').textContent = maskEmailForDisplay(pendingUserToLogin && pendingUserToLogin.email);
+  document.getElementById('devcode-input').value = '';
+  document.getElementById('devcode-error').textContent = '';
+  document.getElementById('view-device-code').style.display = '';
+  setTimeout(() => document.getElementById('devcode-input').focus(), 100);
+  sendDeviceCode();
+}
+
+let _devCodeSending = false;
+async function sendDeviceCode() {
+  if (_devCodeSending || !pendingUserToLogin || !_pendingPinTicket) return;
+  _devCodeSending = true;
+  const btn = document.getElementById('btn-resend-devcode');
+  if (btn) btn.disabled = true;
+  try {
+    const res = await fetch(KO_WORKER + '/send-device-code', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ engineerId: pendingUserToLogin.id, pinTicket: _pendingPinTicket })
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      document.getElementById('devcode-error').textContent = '❌ ' + (data.error || 'Could not send the code. Try again.');
+    }
+  } catch(e) {
+    document.getElementById('devcode-error').textContent = '❌ Connection error — please try again.';
+  } finally {
+    _devCodeSending = false;
+    setTimeout(() => { const b = document.getElementById('btn-resend-devcode'); if (b) b.disabled = false; }, 20000);
+  }
+}
+
+G.resendDeviceCode = function() {
+  document.getElementById('devcode-error').textContent = '';
+  document.getElementById('devcode-input').value = '';
+  sendDeviceCode();
+};
+
+G.cancelDeviceCode = function() {
+  _pendingPinTicket = null;
+  document.getElementById('view-device-code').style.display = 'none';
+  document.getElementById('btn-forgot-pin').style.display = '';
+  document.getElementById('pin-input').value = '';
+  document.getElementById('pin-input').focus();
+};
+
+G.deviceCodeInput = async function() {
+  const val = document.getElementById('devcode-input').value;
+  if (val.length !== 6) return;
+  if (!pendingUserToLogin || !_pendingPinTicket) return;
+  const id = pendingUserToLogin.id;
+  const input = document.getElementById('devcode-input');
+  input.disabled = true;
+
+  try {
+    const res = await fetch(KO_WORKER + '/verify-device-code', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ engineerId: id, pinTicket: _pendingPinTicket, code: val })
+    });
+    const data = await res.json();
+    input.disabled = false;
+
+    if (data.rateLimited) {
+      document.getElementById('devcode-error').textContent =
+        `🔒 Too many attempts. Try again in ${Math.ceil((data.retryAfterSeconds || 900) / 60)} min.`;
+      input.value = '';
+      input.disabled = true;
+      return;
+    }
+
+    if (!data.valid) {
+      _devCodeWrongCount++;
+      const left = Math.max(0, 5 - _devCodeWrongCount);
+      document.getElementById('devcode-error').textContent = `❌ Incorrect code.${left ? ` ${left} attempt${left > 1 ? 's' : ''} left.` : ''}`;
+      input.value = '';
+      return;
+    }
+
+    if (data.deviceToken) localStorage.setItem('fast_device_token_' + id, data.deviceToken);
+    _koSessionToken = data.sessionToken || null;
+    _pendingPinTicket = null;
+    document.getElementById('view-device-code').style.display = 'none';
+    loginAs(pendingUserToLogin);
+  } catch(e) {
+    input.disabled = false;
+    document.getElementById('devcode-error').textContent = '❌ Connection error — please try again.';
+    input.value = '';
+  }
+};
+
 G.userPinInput = async function() {
   const val = document.getElementById('pin-input').value;
   if (val.length !== 4) return;
@@ -3459,7 +3612,7 @@ G.userPinInput = async function() {
     const res = await fetch(KO_WORKER + '/verify-pin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ engineerId: id, pin: val })
+      body: JSON.stringify({ engineerId: id, pin: val, deviceToken: localStorage.getItem('fast_device_token_' + id) || null })
     });
     const data = await res.json();
 
@@ -3510,8 +3663,16 @@ G.userPinInput = async function() {
       }
     } else {
       await resetPinAttempts(id);
-      _koSessionToken = data.sessionToken || null;
-      loginAs(pendingUserToLogin);
+      if (data.sessionToken) {
+        // Known device (or an older Worker not yet updated) — unchanged fast path.
+        _koSessionToken = data.sessionToken;
+        loginAs(pendingUserToLogin);
+      } else if (data.deviceTrusted === false && data.pinTicket) {
+        // New/unrecognized device — PIN was correct, but we still need the emailed one-time code.
+        showDeviceCodeStep(data.pinTicket);
+      } else {
+        document.getElementById('pin-error').textContent = '❌ Unexpected response — please try again.';
+      }
     }
   } catch(e) {
     console.error('verify-pin request failed:', e);
@@ -3724,7 +3885,109 @@ async function logLoginEvent(profile) {
     await set(ref(db, 'logs/logins/' + Date.now() + '_' + Math.random().toString(36).slice(2,6)), entry);
   } catch(e) {}
 }
-	
+
+// ── Admin 2FA (TOTP) — required before showAdminPanel() ──
+async function startAdminTotpCheck(user) {
+  document.getElementById('view-picker').style.display = 'none';
+  document.getElementById('view-pin').style.display = 'none';
+  document.getElementById('view-admin-login').style.display = 'none';
+  document.getElementById('login-screen').style.display = '';
+  setAuthBoxWide(false);
+  try {
+    const idToken = await user.getIdToken();
+    const res = await fetch(KO_WORKER + '/admin/totp-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken }
+    });
+    const data = await res.json();
+    if (data.enrolled) {
+      showAdminTotpVerify();
+    } else {
+      showAdminTotpSetup();
+    }
+  } catch(e) {
+    document.getElementById('view-admin-login').style.display = '';
+    document.getElementById('admin-login-error').textContent = '❌ Could not reach the security check — please try again.';
+  }
+}
+
+async function showAdminTotpSetup() {
+  _adminTotpUser = auth.currentUser;
+  document.getElementById('view-admin-totp-setup').style.display = '';
+  document.getElementById('admin-totp-secret').textContent = 'Loading…';
+  document.getElementById('admin-totp-setup-input').value = '';
+  document.getElementById('admin-totp-setup-error').textContent = '';
+  try {
+    const idToken = await _adminTotpUser.getIdToken();
+    const res = await fetch(KO_WORKER + '/admin/totp-setup-init', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken }
+    });
+    const data = await res.json();
+    document.getElementById('admin-totp-secret').textContent = data.secret ? data.secret.match(/.{1,4}/g).join(' ') : '⚠️ error';
+  } catch(e) {
+    document.getElementById('admin-totp-secret').textContent = '⚠️ Could not generate a key — try again.';
+  }
+}
+
+function showAdminTotpVerify() {
+  _adminTotpUser = auth.currentUser;
+  document.getElementById('view-admin-totp-verify').style.display = '';
+  document.getElementById('admin-totp-verify-input').value = '';
+  document.getElementById('admin-totp-verify-error').textContent = '';
+  setTimeout(() => document.getElementById('admin-totp-verify-input').focus(), 100);
+}
+
+G.cancelAdminTotp = async function() {
+  document.getElementById('view-admin-totp-setup').style.display = 'none';
+  document.getElementById('view-admin-totp-verify').style.display = 'none';
+  _adminTotpUser = null;
+  isAdmin = false;
+  if (auth.currentUser) await signOut(auth);
+  showPicker();
+};
+
+G.confirmAdminTotpSetup = async function() {
+  const code = document.getElementById('admin-totp-setup-input').value;
+  const errEl = document.getElementById('admin-totp-setup-error');
+  if (!/^\d{6}$/.test(code)) { errEl.textContent = 'Enter the 6-digit code.'; return; }
+  try {
+    const idToken = await _adminTotpUser.getIdToken();
+    const res = await fetch(KO_WORKER + '/admin/totp-setup-confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+      body: JSON.stringify({ code })
+    });
+    const data = await res.json();
+    if (!data.ok) { errEl.textContent = '❌ ' + (data.error || 'Incorrect code — try again.'); return; }
+    document.getElementById('view-admin-totp-setup').style.display = 'none';
+    showAdminPanel();
+  } catch(e) {
+    errEl.textContent = '❌ Connection error — please try again.';
+  }
+};
+
+G.confirmAdminTotpVerify = async function() {
+  const code = document.getElementById('admin-totp-verify-input').value;
+  const errEl = document.getElementById('admin-totp-verify-error');
+  if (!/^\d{6}$/.test(code)) { errEl.textContent = 'Enter the 6-digit code.'; return; }
+  try {
+    const idToken = await _adminTotpUser.getIdToken();
+    const res = await fetch(KO_WORKER + '/admin/totp-verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+      body: JSON.stringify({ code })
+    });
+    const data = await res.json();
+    if (data.rateLimited) { errEl.textContent = `🔒 Too many attempts. Try again in ${Math.ceil((data.retryAfterSeconds || 900) / 60)} min.`; return; }
+    if (!data.ok) { errEl.textContent = '❌ ' + (data.error || 'Incorrect code — try again.'); return; }
+    document.getElementById('view-admin-totp-verify').style.display = 'none';
+    showAdminPanel();
+  } catch(e) {
+    errEl.textContent = '❌ Connection error — please try again.';
+  }
+};
+
 async function showAdminPanel() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'none';
@@ -5725,7 +5988,7 @@ function ensureGTokenAsync() {
       tokenClient.error_callback = prevErrorCallback;
       resolve(false);
     };
-    tokenClient.requestAccessToken({ prompt: 'consent' });
+    tokenClient.requestAccessToken({});
   });
 }
 G.signOutGoogle = function() { if(gToken&&window.google?.accounts?.oauth2?.revoke) google.accounts.oauth2.revoke(gToken,()=>{}); gToken=null;gTokenExp=0;updateAuthUI(false); };
@@ -6206,10 +6469,18 @@ G.copyTable = async function() {
   // AJOUT : Intégration du message d'intro
   const introMsg = document.getElementById('f_intro_msg')?.value.trim() || '';
   if (introMsg) {
-    const introHtml = `<div style="font-family:Aptos,Calibri,'Segoe UI',Arial,sans-serif;font-size:13px;line-height:1.6;margin-bottom:12px;white-space:pre-wrap">${koFormatEmailHtml(introMsg)}</div>`;
+        // No font-family/font-size here anymore: forcing a font on this text was
+    // exactly what made it clash with the destination email's default font,
+    // forcing a manual correction on every draft.
+    const introHtml = `<div style="line-height:1.6;margin-bottom:12px;white-space:pre-wrap">${koFormatEmailHtml(introMsg)}</div>`;
     htmlBody = introHtml + htmlBody;
     plainText = introMsg + '\n\n' + plainText;
   }
+  
+  // Signature — this table had no sign-off at all before; both the HTML and
+  // plain-text versions now close with the engineer's own signature.
+  htmlBody = htmlBody + koBuildSignatureHtml();
+  plainText = plainText + '\n\nKind regards\n\n' + koBuildSignature();
 
   try {
     // Tier 1 — HTML + texte. Le text/plain est indispensable : sans lui,
@@ -6270,9 +6541,15 @@ G.draftInGmail = async function() {
 
     const introMsg = document.getElementById('f_intro_msg')?.value.trim() || '';
     if (introMsg) {
-      const introHtml = `<div style="font-family:Aptos,Calibri,'Segoe UI',Arial,sans-serif;font-size:13px;line-height:1.6;margin-bottom:12px;white-space:pre-wrap">${koFormatEmailHtml(introMsg)}</div>`;
+            // No font-family/font-size here anymore — see copyTable() for why.
+      const introHtml = `<div style="line-height:1.6;margin-bottom:12px;white-space:pre-wrap">${koFormatEmailHtml(introMsg)}</div>`;
       htmlBody = introHtml + htmlBody;
-    }    
+    }
+    
+    // Signature — a Gmail draft created via the API never gets Gmail's own
+    // "insert my signature" (that only fires from Gmail's own compose UI),
+    // so we add it ourselves here.
+    htmlBody = htmlBody + koBuildSignatureHtml();    
 
     const encoded = buildRfc2822(toAddrs, subject, htmlBody);
 
@@ -6714,6 +6991,7 @@ document.addEventListener('visibilitychange', () => {
 const KO = {
   prefixSel: '',
   reqType:   '',
+  flightReqType: '',  // 'SPECIFIC' | 'AVAILABILITY' | ''
   addrMode:  '',
   travelTime: '',     // 'morning' | 'afternoon' | 'evening' | 'night' | 'any' | ''
   cabinClass: '',     // 'both' | 'eco' | 'business'
@@ -6734,14 +7012,34 @@ const KO = {
 function koBuildSignature() {
   const name  = curProfile?.name  || '[ENGINEER]';
   const phone = curProfile?.phone || '';
-  const lines = [
+    const contactLines = [
     name,
     phone ? `Mob. Tel. ${phone}` : '',
-    'Head-start Operations Tel. +41 43 588 1516',
-    'Head-start Aviation Systems',
+    'Head-Start Operations Tel: +41 43 588 1516',
+    'Head-Start Aviation Systems',
     'Gulfstream Authorized FAST Service Provider',
-  ];
-  return lines.filter(Boolean).join('\n');
+    'www.headstartaviation.com',
+  ].filter(Boolean).join('\n');
+  // 2 blank lines here + the 1 already baked into every "Regards,\n\n${eng}"
+  // template = 3 lines of breathing space above the name (Mauritz's request).
+  return '\n\n' + contactLines;
+}
+
+// ── HTML version of the same signature, used where the app builds an HTML
+// body directly (FAST Update Generator's "Copy table" / "Draft in Gmail").
+// No font-family is set here on purpose, so it inherits whatever font the
+// destination email is using instead of fighting it (see intro-text fix).
+function koBuildSignatureHtml() {
+  const name  = curProfile?.name  || '[ENGINEER]';
+  const phone = curProfile?.phone || '';
+  const contactLines = [
+    name,
+    phone ? `Mob. Tel. ${phone}` : '',
+    'Head-Start Operations Tel: +41 43 588 1516',
+    'Head-Start Aviation Systems',
+    'Gulfstream Authorized FAST Service Provider',
+  ].filter(Boolean).map(escHtml).join('<br>');
+  return `<div style="line-height:1.6;margin-top:16px">Kind regards<br><br><br><br>${contactLines}<br><a href="https://www.headstartaviation.com">www.headstartaviation.com</a></div>`;
 }
 
 // ── Fixed recipients loaded from Firebase /config/kickoffRecipients
@@ -6898,7 +7196,7 @@ G.koRemoveCustomQuestion = async function(i) {
 function koBuildStateSnapshot() {
   const textIds = [
     'ko_model','ko_sn','ko_reg','ko_wo','ko_icao','ko_defect','ko_cust_name','ko_item_prefix',
-    'ko_eta','ko_travel_from','ko_travel_to','ko_travel_date',
+    'ko_eta','ko_travel_from','ko_travel_to','ko_travel_date','ko_travel_flightnum',
     'ko_shipping_addr','ko_broker_contact','ko_action_plan',
     'koq_custom','kofbo_custom','kofbo_custom_questions','kofbo_transport_eta'
   ];
@@ -6919,6 +7217,7 @@ function koBuildStateSnapshot() {
     parts: koGetParts(),
     prefixSel:    KO.prefixSel,
     reqType:      KO.reqType,
+    flightReqType: KO.flightReqType,
     addrMode:     KO.addrMode,
     travelTime:   KO.travelTime,
     cabinClass:   KO.cabinClass,
@@ -7102,6 +7401,12 @@ function koApplyStateToForm(state) {
     KO.reqType = state.reqType;
     document.querySelectorAll('#ko-reqtype-toggles .ko-pill').forEach(p =>
       p.classList.toggle('active-green', p.dataset.val === state.reqType));
+  }
+  if (state.flightReqType) {
+    KO.flightReqType = state.flightReqType;
+    document.querySelectorAll('#ko-flighttype-toggles .ko-pill').forEach(p =>
+      p.classList.toggle('active-green', p.dataset.val === state.flightReqType));
+    document.getElementById('ko-flightnum-wrap').style.display = state.flightReqType === 'SPECIFIC' ? '' : 'none';
   }
   if (state.travelTime) {
     KO.travelTime = state.travelTime;
@@ -7541,6 +7846,16 @@ function koInitToggles() {
       document.querySelectorAll('#ko-reqtype-toggles .ko-pill').forEach(x => x.classList.remove('active-green'));
       p.classList.add('active-green');
       KO.reqType = p.dataset.val;
+      koUpdatePreview();
+      koSaveState();
+    };
+  });
+  document.querySelectorAll('#ko-flighttype-toggles .ko-pill').forEach(p => {
+    p.onclick = () => {
+      document.querySelectorAll('#ko-flighttype-toggles .ko-pill').forEach(x => x.classList.remove('active-green'));
+      p.classList.add('active-green');
+      KO.flightReqType = p.dataset.val;
+      document.getElementById('ko-flightnum-wrap').style.display = KO.flightReqType === 'SPECIFIC' ? '' : 'none';
       koUpdatePreview();
       koSaveState();
     };
@@ -7990,6 +8305,31 @@ function koTypedSubjectTemplate(typeLabel) {
   return tpl.replace(/^UPDATE\b/i, typeLabel);
 }
 
+function koInitialSurname(fullName) {
+  const parts = (fullName || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '';
+  if (parts.length === 1) return parts[0].toUpperCase();
+  return parts[0].charAt(0).toUpperCase() + '.' + parts[parts.length - 1].toUpperCase();
+}
+
+function koExtractAirportCode(raw) {
+  const val = (raw || '').trim();
+  if (!val) return '';
+  const paren = val.match(/\(([^)]+)\)/);
+  if (paren && paren[1].trim()) return paren[1].trim().toUpperCase();
+  if (/^[A-Za-z0-9]{2,4}$/.test(val)) return val.toUpperCase();
+  return val;
+}
+
+function koTravelSubjectName() {
+  const colleagueMode = document.getElementById('ko-colleague-toggle')?.checked;
+  if (colleagueMode) {
+    const name = koGetColleagueName();
+    if (name && name !== '__not_decided__') return name;
+  }
+  return curProfile?.name || '';
+}
+
 function koComputeSubjects() {
   const wo    = document.getElementById('ko_wo')?.value    || '';
   const sn    = document.getElementById('ko_sn')?.value    || '';
@@ -8000,9 +8340,17 @@ function koComputeSubjects() {
   const from  = document.getElementById('ko_travel_from')?.value || '[FROM]';
   const to    = document.getElementById('ko_travel_to')?.value   || icao || '';
   const tokenData = { wo, model, sn, reg, loc: icao, desc: def };
+
+  const travelDate = (document.getElementById('ko_travel_date')?.value || '').trim();
+  const travelParts = [
+    koInitialSurname(koTravelSubjectName()) || '[ENGINEER]',
+    `${koExtractAirportCode(from) || '[FROM]'} - ${koExtractAirportCode(to) || '[TO]'}`
+  ];
+  if (travelDate) travelParts.push(travelDate);
+
   return {
     customer: buildEmailSubject(koTypedSubjectTemplate('CUSTOMER UPDATE'), tokenData),
-    travel:   `Flight from ${from} to ${to}`,
+    travel:   travelParts.join(' // '),
     parts:    buildEmailSubject(koTypedSubjectTemplate(KO.prefixSel), tokenData),
     fbo:      `Maintenance ${reg}`,
   };
@@ -8081,7 +8429,7 @@ G.koResetDraftPreview = function(type) {
 G.koCopyDraft = async function(type) {
   const bodyEl = document.getElementById('ko-prev-body-' + type);
   const body = bodyEl?.value || koComputeBodies()[type];
-  const htmlBody = `<div style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;white-space:pre-wrap">${koFormatEmailHtml(body)}</div>`;
+  const htmlBody = `<div style="line-height:1.6;white-space:pre-wrap">${koFormatEmailHtml(body)}</div>`;
   const btn = event.target;
   const orig = btn.textContent;
   try {
@@ -8132,7 +8480,7 @@ function koUpdatePreview() {
     <div class="ko-draft-row" style="${skipTravel ? 'opacity:.5' : ''}" onclick="koToggleDraftPreview('travel')">
       <div class="ko-draft-ico" style="background:var(--al);color:var(--amb)">✈️</div>
       <div class="ko-draft-info">
-        <div class="ko-draft-label">Travel request</div>
+        <div class="ko-draft-label">Travel request${KO.flightReqType === 'AVAILABILITY' ? ' — Availability' : KO.flightReqType === 'SPECIFIC' ? ' — Specific flight' : ''}</div>
         <div class="ko-draft-sub">${subs.travel}${loyalty ? ' · '+loyalty : ''}</div>
         <div style="font-size:10px;color:var(--g400);margin-top:2px">→ ${recipSummary('travel')} · tap to preview &amp; edit</div>
       </div>
@@ -8305,6 +8653,7 @@ function koBuildTravelBody() {
   const from  = document.getElementById('ko_travel_from')?.value || '[FROM]';
   const to    = document.getElementById('ko_travel_to')?.value   || document.getElementById('ko_icao')?.value || '[DESTINATION]';
   const date  = document.getElementById('ko_travel_date')?.value || '';
+  const flightDetail = document.getElementById('ko_travel_flightnum')?.value.trim() || '';
   const eng  = KO.signature || koBuildSignature();
 
   const colleagueMode = document.getElementById('ko-colleague-toggle')?.checked;
@@ -8339,11 +8688,19 @@ function koBuildTravelBody() {
     ? `\nAs ${travelerPoss} return date is not yet confirmed, could you please also issue a dummy return ticket, to be used as proof of onward travel for visa/immigration purposes if required?\n`
     : '';
 
+  const isAvailability = KO.flightReqType === 'AVAILABILITY';
+  const askLine = isAvailability
+    ? `Could you please share all available flight options (${cabinTxt}) from ${from} to ${to}${dateLine} for a maintenance mission${travelerName ? ' — travelling engineer: ' + travelerName : ''}.${timeLine}`
+    : `Could you please book a flight (${cabinTxt}) from ${from} to ${to}${dateLine} for a maintenance mission${travelerName ? ' — travelling engineer: ' + travelerName : ''}.${timeLine}${flightDetail ? `\nSpecific flight requested: ${flightDetail}.` : ''}`;
+  const closingLine = isAvailability
+    ? 'Please prioritise direct flights when possible. Once you send the options over, I will confirm which one to book.'
+    : 'Please prioritise direct flights when possible.';
+
   return `Dear Team,
 
-Could you please book a flight (${cabinTxt}) from ${from} to ${to}${dateLine} for a maintenance mission${travelerName ? ' — travelling engineer: ' + travelerName : ''}.${timeLine}
+${askLine}
 
-Please prioritise direct flights when possible.
+${closingLine}
 
 ${bagLine}
 ${fakeReturnLine}${loyaltyBlock}
@@ -8656,6 +9013,7 @@ G.koGenerate = async function() {
   if (!KO.prefixSel) warnings.push('• Email Prefix (Part request options): nothing selected');
   if (!KO.reqType)   warnings.push('• Request Type (Part request options): nothing selected');
   const skipTravel = document.getElementById('ko_skip_travel')?.checked;
+  if (!skipTravel && !KO.flightReqType) warnings.push('• Request Type (Travel): nothing selected');
   if (!skipTravel && !KO.cabinClass) warnings.push('• Cabin Class (Travel): nothing selected');
   if (warnings.length) {
     const go = confirm('⚠️ Some options are not selected:\n\n' + warnings.join('\n') + '\n\nGenerate anyway?');
@@ -10489,7 +10847,7 @@ G.koNewJob = async function() {
 
   // Clear all text fields
   const allTextIds = [
-    'ko_eta','ko_travel_from','ko_travel_to','ko_travel_date',
+    'ko_eta','ko_travel_from','ko_travel_to','ko_travel_date','ko_travel_flightnum',
     'ko_shipping_addr','ko_broker_contact','ko_action_plan',
     'koq_custom','kofbo_custom','kofbo_custom_questions','kofbo_transport_eta',
     'ko_parts_freetext'
@@ -10515,12 +10873,13 @@ G.koNewJob = async function() {
   allCbIds.forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
 
   // Reset toggle pills
-  document.querySelectorAll('#ko-prefix-toggles .ko-pill, #ko-reqtype-toggles .ko-pill, #ko-time-toggles .ko-pill, #ko-cabin-toggles .ko-pill').forEach(p => {
+  document.querySelectorAll('#ko-prefix-toggles .ko-pill, #ko-reqtype-toggles .ko-pill, #ko-flighttype-toggles .ko-pill, #ko-time-toggles .ko-pill, #ko-cabin-toggles .ko-pill').forEach(p => {
     p.classList.remove('active-blue','active-green');
   });
   document.getElementById('ko-extra-baggage')?.classList.remove('active-green');
   document.getElementById('ko-fake-return')?.classList.remove('active-green');
-  KO.prefixSel = ''; KO.reqType = ''; KO.addrMode = ''; KO.travelTime = ''; KO.cabinClass = '';
+  document.getElementById('ko-flightnum-wrap').style.display = 'none';
+  KO.prefixSel = ''; KO.reqType = ''; KO.flightReqType = ''; KO.addrMode = ''; KO.travelTime = ''; KO.cabinClass = '';
 
   // Reset colleague section
   G.koToggleColleague(false);
