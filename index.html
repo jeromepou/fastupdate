@@ -6477,10 +6477,11 @@ G.copyTable = async function() {
     plainText = introMsg + '\n\n' + plainText;
   }
   
-  // Signature — this table had no sign-off at all before; both the HTML and
-  // plain-text versions now close with the engineer's own signature.
-  htmlBody = htmlBody + koBuildSignatureHtml();
-  plainText = plainText + '\n\nKind regards\n\n' + koBuildSignature();
+  // Signature — deliberately NOT added here: the destination mail client
+  // (Mail app / Gmail compose window) already inserts its own configured
+  // signature, so appending ours on top produced a duplicate. Only
+  // draftInGmail() (which bypasses that compose UI via the API) still needs
+  // to call koBuildSignatureHtml()/koBuildSignature().
 
   try {
     // Tier 1 — HTML + texte. Le text/plain est indispensable : sans lui,
