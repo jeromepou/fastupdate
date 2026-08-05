@@ -1519,6 +1519,18 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div id="ai-briefing-output" style="display:none;background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:10px 12px;margin-top:8px;max-height:400px;overflow-y:auto;font-size:12px;line-height:1.6"></div>
     </div>
 
+        <!-- ADMIN 2FA MANAGEMENT -->
+    <div style="background:#ecfeff;border:1px solid #67e8f9;border-radius:var(--r);padding:12px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="font-size:12px;font-weight:700;color:#155e75;flex:1">🔐 Admin accounts — Two-factor authentication</div>
+        <button class="btn" onclick="renderAdminTotpList()" style="font-size:11px;padding:4px 9px">🔄 Refresh</button>
+      </div>
+      <p style="font-size:11px;color:var(--g600);margin-bottom:8px">Who has 2FA enabled. If a colleague admin loses their authenticator device, resetting them here lets them set it up again from scratch on their next login.</p>
+      <div id="admin-totp-list" style="display:flex;flex-direction:column;gap:6px">
+        <p style="font-size:12px;color:var(--g400)"><span class="spin" style="vertical-align:middle"></span> Loading…</p>
+      </div>
+    </div>
+
     <!-- DEFAULT RECIPIENTS SECTION -->
     <div style="background:#f0f4ff;border:1px solid #b8d0e8;border-radius:var(--r);padding:12px;margin-bottom:14px">
       <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px">📬 Default email recipients (shared by all engineers)</div>
@@ -3468,6 +3480,7 @@ async function sendDeviceCode() {
     const data = await res.json();
     if (!data.ok) {
       document.getElementById('devcode-error').textContent = '❌ ' + (data.error || 'Could not send the code. Try again.');
+      if (data.debugDetail) console.error('send-device-code failed:', data.debugDetail);      
     }
   } catch(e) {
     document.getElementById('devcode-error').textContent = '❌ Connection error — please try again.';
@@ -4002,6 +4015,7 @@ async function showAdminPanel() {
   await loadDefaultRecipients();
   renderDefaultRecipientTags();
   renderTeamAdminList();
+  renderAdminTotpList();  
 }
 
 // ── Session timeout — déconnexion automatique après 45 min d'inactivité ──
@@ -4103,6 +4117,61 @@ async function renderTeamAdminList() {
       <button class="btn danger" onclick="deleteTeamMember('${id}')" style="padding:4px 8px;font-size:11px">🗑</button>
     </div>`).join('');
 }
+
+// ══════════════════════════════════════
+//  ADMIN — 2FA management for OTHER admins (reset a colleague's TOTP)
+//  Reset button restricted to MY_UID — same "super-admin only" pattern
+//  already used for login logs and squawk history in this file. The
+//  read-only list (who's enrolled) stays visible to every admin, since
+//  unlike the reset action itself it's just informational.
+// ══════════════════════════════════════
+G.renderAdminTotpList = async function() {
+  const MY_UID = '43oyona7f0SgVwWH6JZUp5rqIbI3';
+  const isSuperAdmin = auth.currentUser?.uid === MY_UID;
+  const list = document.getElementById('admin-totp-list');
+  if (!list) return;
+  list.innerHTML = '<p style="font-size:12px;color:var(--g400)"><span class="spin" style="vertical-align:middle"></span> Loading…</p>';
+  try {
+    const idToken = await auth.currentUser.getIdToken();
+    const res = await fetch(KO_WORKER + '/admin/totp-list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error ' + res.status);
+    const admins = data.admins || [];
+    if (!admins.length) { list.innerHTML = '<p style="font-size:12px;color:var(--g400)">No admin accounts found.</p>'; return; }
+    list.innerHTML = admins.map(a => {
+      const label = a.email || a.uid;
+      const labelEsc = label.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+      return `
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#fff;border:1px solid #a5f3fc;border-radius:var(--r)">
+        <span style="font-size:12px;flex:1;color:var(--g900)">${escHtml(label)}${a.isYou ? ' <span style="font-size:10px;color:#0891b2;font-weight:700">(you)</span>' : ''}</span>
+        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;${a.enrolled ? 'background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7' : 'background:var(--g100);color:var(--g600);border:1px solid var(--g200)'}">${a.enrolled ? '✅ Enrolled' : '— Not set up yet'}</span>
+        ${(a.isYou || !isSuperAdmin) ? '' : `<button class="btn danger" onclick="resetAdminTotp('${a.uid}','${labelEsc}')" style="padding:4px 8px;font-size:11px">🔄 Reset 2FA</button>`}
+      </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = `<p style="font-size:12px;color:var(--red)">❌ ${escHtml(e.message)}</p>`;
+  }
+};
+
+G.resetAdminTotp = async function(targetUid, label) {
+  if (!confirm(`Reset 2FA for ${label}? They will be prompted to set it up again from scratch on their next login.`)) return;
+  try {
+    const idToken = await auth.currentUser.getIdToken();
+    const res = await fetch(KO_WORKER + '/admin/totp-reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+      body: JSON.stringify({ targetUid })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Error ' + res.status);
+    G.renderAdminTotpList();
+  } catch(e) {
+    alert('❌ Could not reset 2FA: ' + e.message);
+  }
+};
 
 G.addTeamMember = async function() {
   const name = document.getElementById('nt_name').value.trim();
@@ -8533,7 +8602,6 @@ function koBuildCustomerBody() {
   const reg    = document.getElementById('ko_reg')?.value    || '[REG]';
   const icao   = document.getElementById('ko_icao')?.value   || '[ICAO]';
   const def    = document.getElementById('ko_defect')?.value || '[DEFECT]';
-  const eng  = KO.signature || koBuildSignature();
   const colleagueMode = document.getElementById('ko-colleague-toggle')?.checked;
   const colleagueNameRaw = koGetColleagueName() || '[COLLEAGUE]';
   const notDecided = colleagueNameRaw === '__not_decided__';
@@ -8656,11 +8724,7 @@ function koBuildCustomerBody() {
 ${introLine}
 ${defectLine}
 ${questionsBlock}
-${etaLine}
-
-Regards,
-
-${eng}`;
+${etaLine}`;
 }
 
 function koBuildTravelBody() {
@@ -8668,7 +8732,6 @@ function koBuildTravelBody() {
   const to    = document.getElementById('ko_travel_to')?.value   || document.getElementById('ko_icao')?.value || '[DESTINATION]';
   const date  = document.getElementById('ko_travel_date')?.value || '';
   const flightDetail = document.getElementById('ko_travel_flightnum')?.value.trim() || '';
-  const eng  = KO.signature || koBuildSignature();
 
   const colleagueMode = document.getElementById('ko-colleague-toggle')?.checked;
   const colleagueNameRaw = koGetColleagueName();
@@ -8718,15 +8781,10 @@ ${closingLine}
 
 ${bagLine}
 ${fakeReturnLine}${loyaltyBlock}
-Thank you.
-
-Regards,
-
-${eng}`;
+Thank you.`;
 }
 	
 function koBuildPartsBody() {
-  const eng  = KO.signature || koBuildSignature();
   const parts   = koGetParts();
   const isAvail = KO.reqType === 'AVAILABILITY';
 
@@ -8839,17 +8897,12 @@ function koBuildPartsBody() {
 ${intro}
 ${partBlock}
 ${extraLines}${brokerLine}${partsFreeLine}Shipping Address:
-${addrLine}
-
-Regards,
-
-${eng}`;
+${addrLine}`;
 }
 
 function koBuildFboBody() {
   const reg  = document.getElementById('ko_reg')?.value   || '[REG]';
   const icao = document.getElementById('ko_icao')?.value  || '[ICAO]';
-  const eng  = KO.signature || koBuildSignature();
 
   const q = id => document.getElementById(id)?.checked;
   const equip = [];
@@ -8982,11 +9035,7 @@ ${fboIntro}
 
 ${accessLine}
 ${docsBlock}${extraQsBlockFinal}${equipBlockFinal}
-Please let me know if you require any further details.
-
-Kind regards,
-
-${eng}`;
+Please let me know if you require any further details.`;
 }
 
 // ══════════════════════════════════════
@@ -9088,7 +9137,7 @@ G.koGenerate = async function() {
       const toAddrs = koGetAllRecips(type);
       const subject = subjects[type];
       const body    = bodies[type];    
-      const htmlBody = `<html><body style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;white-space:pre-wrap">${koFormatEmailHtml(body)}</body></html>`;
+      const htmlBody = `<html><body style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;white-space:pre-wrap">${koFormatEmailHtml(body)}${koBuildSignatureHtml()}</body></html>`;
       const encoded = buildRfc2822(toAddrs, subject, htmlBody);
 
       const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
