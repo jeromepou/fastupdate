@@ -697,8 +697,10 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div class="eng-name" id="eng-bar-name">—</div>
     <div class="eng-sub" id="eng-bar-sub">—</div>
   </div>
-  <button class="btn" onclick="openSubjectTemplateModal()" title="Personalize the subject format">✏️ Format</button>
-  <button class="btn" onclick="openSignatureModal()" title="Personalize your email signature">✍️ Signature</button>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <button class="btn" onclick="openSubjectTemplateModal()" title="Personalize the subject format">✏️ Format</button>
+    <button class="btn" onclick="openSignatureModal()" title="Personalize your email signature">✍️ Signature</button>
+  </div>
   <button class="btn" id="btn-gmail-sync-status" onclick="koConnectGmailSync()" style="display:none;font-size:11px"></button>
   <button class="btn-start-job" id="btn-start-job" onclick="openKickoff()" style="display:none">🚀 Start Job</button>
 </div>
