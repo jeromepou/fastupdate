@@ -941,9 +941,9 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note the aircraft is now RTS.')" style="font-size:11px;padding:4px 8px">✅ A/C is RTS</button>
       <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that the support will commence tomorrow.')" style="font-size:11px;padding:4px 8px">📅 Support starts tomorrow</button>
       <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that I will begin the support tomorrow.')" style="font-size:11px;padding:4px 8px">👨‍🔧 I start tomorrow</button>
-      <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that we will start the intervention tomorrow.')" style="font-size:11px;padding:4px 8px">👷‍♂️ We start tomorrow</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that {TEAM} will start the intervention tomorrow.')" style="font-size:11px;padding:4px 8px">👷‍♂️ We start tomorrow</button>
       <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that I will be supporting this aircraft tomorrow.')" style="font-size:11px;padding:4px 8px">✈️ I will support tomorrow</button>
-      <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that we will be supporting this aircraft tomorrow.')" style="font-size:11px;padding:4px 8px">✈️ We will support tomorrow</button>
+      <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that {TEAM} will be supporting this aircraft tomorrow.')" style="font-size:11px;padding:4px 8px">✈️ We will support tomorrow</button>
       <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease be advised that the maintenance intervention is scheduled to start tomorrow morning.')" style="font-size:11px;padding:4px 8px">🌅 Scheduled tomorrow AM</button>
       <button class="btn" onclick="setIntroMsg('Dear All,\n\nPlease note that we will attend the aircraft tomorrow.')" style="font-size:11px;padding:4px 8px">🚶‍♂️ Attend A/C tomorrow</button>
       <button class="btn" onclick="setIntroMsg('Dear All,\n\nI will be travelling today and will commence the support on the aircraft tomorrow.')" style="font-size:11px;padding:4px 8px">🧳 Travel today, support tomorrow</button>
@@ -7117,7 +7117,7 @@ if ('serviceWorker' in navigator) {
 //  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
 //  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v18';
+const CURRENT_VERSION = 'v19';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -11302,13 +11302,33 @@ function introFormatDate() {
   return day + suffix(day) + ' ' + months[d.getMonth()];
 }
 
+// Récupère les noms des collègues actuellement sélectionnés en Step 6
+function introGetTeamNames() {
+  const names = [];
+  document.querySelectorAll('.colleague-slot .coll-sel').forEach(sel => {
+    if (!sel.value) return;
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt) return;
+    const name = (opt.textContent || '').replace(/\s*\([^)]*\)\s*$/, '').trim(); // enlève le " (Team)" affiché dans l'option
+    if (name) names.push(name);
+  });
+  return names;
+}
+
+// "Untel and myself" / "Untel, Untel2 and myself" — ou "We" si personne n'est sélectionné
+function introTeamPhrase() {
+  const names = introGetTeamNames();
+  if (!names.length) return 'We';
+  return names.join(', ') + ' and myself';
+}
+
 G.setIntroMsg = function(msg) {
   const el = document.getElementById('f_intro_msg');
   if (el) {
     el.value = msg
       .replace(/\{DATE\}/g, introFormatDate())
-      .replace(/\{LOC\}/g, gv('f_loc') || '[location]');
-    // On ne met plus G.autosave() ici pour que le champ reste 100% temporaire !
+      .replace(/\{LOC\}/g, gv('f_loc') || '[location]')
+      .replace(/\{TEAM\}/g, introTeamPhrase());
   }
 };
 
