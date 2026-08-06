@@ -2424,7 +2424,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 ════════════════════════════════════ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken }
   from "https://www.gstatic.com/firebasejs/11.9.0/firebase-auth.js";
 import { getDatabase, ref, set, get, update, remove, onValue, child, runTransaction }
   from "https://www.gstatic.com/firebasejs/11.9.0/firebase-database.js";
@@ -3321,11 +3321,14 @@ G.koApplyPartsUpdate = async function(btn, idx) {
 // ══════════════════════════════════════
 onAuthStateChanged(auth, async (user) => {
   if (user) {
-    // Signed in via email — check if admin
-    const snap = await get(ref(db, 'admins/' + user.uid));
-    isAdmin = snap.exists();
-    if (isAdmin) {
-      startAdminTotpCheck(user);
+    try {
+      const snap = await get(ref(db, 'admins/' + user.uid));
+      isAdmin = snap.exists();
+      if (isAdmin) {
+        startAdminTotpCheck(user);
+      }
+    } catch (e) {
+      isAdmin = false;
     }
   }
 });
@@ -3652,7 +3655,7 @@ G.deviceCodeInput = async function() {
     _koSessionToken = data.sessionToken || null;
     _pendingPinTicket = null;
     document.getElementById('view-device-code').style.display = 'none';
-    loginAs(pendingUserToLogin);
+    loginAs(pendingUserToLogin, false, data.firebaseCustomToken);
   } catch(e) {
     input.disabled = false;
     document.getElementById('devcode-error').textContent = '❌ Connection error — please try again.';
@@ -3667,15 +3670,6 @@ G.userPinInput = async function() {
 
   const id = pendingUserToLogin.id;
   document.getElementById('pin-input').disabled = true;
-  const attempts = await getPinAttempts(id);
-
-  if (attempts.until > Date.now()) {
-    const mins = Math.ceil((attempts.until - Date.now()) / 60000);
-    document.getElementById('pin-error').textContent = `🔒 Too many attempts. Try again in ${mins} min.`;
-    document.getElementById('pin-input').value = '';
-    document.getElementById('pin-input').disabled = false;
-    return;
-  }
   document.getElementById('pin-input').disabled = false;
 
   // ── Flux première connexion / setup ──
@@ -3711,11 +3705,10 @@ G.userPinInput = async function() {
           delete pendingUserToLogin._settingUpPin;
           delete pendingUserToLogin._newPinStep;
           delete pendingUserToLogin._newPinFirst;
-          await resetPinAttempts(id);
 
           _koSessionToken = data.sessionToken || null;
           if (data.hasSecretQuestion) {
-            loginAs(pendingUserToLogin);
+            loginAs(pendingUserToLogin, false, data.firebaseCustomToken);
           } else {
             showSecretQuestionSetup();
           }
@@ -3772,28 +3765,13 @@ G.userPinInput = async function() {
     }
 
     if (!data.valid) {
-      attempts.count = (attempts.count || 0) + 1;
-      if (attempts.count >= 5) {
-        attempts.until = Date.now() + 15 * 60 * 1000;
-        attempts.count = 0;
-        await setPinAttempts(id, attempts);
-        document.getElementById('pin-error').textContent = '🔒 Too many attempts. Locked for 15 minutes.';
-        document.getElementById('pin-input').value = '';
-        document.getElementById('pin-input').disabled = true;
-      } else {
-        await setPinAttempts(id, attempts);
-        const left = 5 - attempts.count;
-        document.getElementById('pin-error').textContent = `❌ Incorrect PIN. ${left} attempt${left > 1 ? 's' : ''} left.`;
-        document.getElementById('pin-input').value = '';
-      }
+      document.getElementById('pin-error').textContent = '❌ Incorrect PIN.';
+      document.getElementById('pin-input').value = '';
     } else {
-      await resetPinAttempts(id);
       if (data.sessionToken) {
-        // Known device (or an older Worker not yet updated) — unchanged fast path.
         _koSessionToken = data.sessionToken;
-        loginAs(pendingUserToLogin);
+        loginAs(pendingUserToLogin, false, data.firebaseCustomToken);
       } else if (data.deviceTrusted === false && data.pinTicket) {
-        // New/unrecognized device — PIN was correct, but we still need the emailed one-time code.
         showDeviceCodeStep(data.pinTicket);
       } else {
         document.getElementById('pin-error').textContent = '❌ Unexpected response — please try again.';
@@ -3909,10 +3887,9 @@ G.newPinInput = async function() {
         delete pendingUserToLogin._resetStep;
         delete pendingUserToLogin._resetPinFirst;
         delete pendingUserToLogin._pendingSecretAnswer;
-        await resetPinAttempts(pendingUserToLogin.id);
         document.getElementById('view-new-pin').style.display = 'none';
         _koSessionToken = data.sessionToken || null;
-        loginAs(pendingUserToLogin);
+        loginAs(pendingUserToLogin, false, data.firebaseCustomToken);
       } catch (err) {
         console.error('Failed to reset PIN:', err);
         document.getElementById('new-pin-error').textContent =
@@ -3976,7 +3953,7 @@ G.saveSecretQuestion = async function() {
     const setupView = document.getElementById('view-secret-setup');
     if (setupView) setupView.style.display = 'none';
     _koSessionToken = data.sessionToken || null;
-    loginAs(pendingUserToLogin);
+    loginAs(pendingUserToLogin, false, data.firebaseCustomToken);
   } catch(e) {
     document.getElementById('secret-q-error').textContent = '❌ ' + e.message;
   }
@@ -4153,9 +4130,18 @@ function stopIdleTimer() {
   ['click', 'keydown', 'touchstart'].forEach(e => document.removeEventListener(e, _fastIdleReset));
 }
 
-async function loginAs(profile, fromBiometric) {
+async function loginAs(profile, fromBiometric, firebaseCustomToken) {
+  if (firebaseCustomToken) {
+    try {
+      await signInWithCustomToken(auth, firebaseCustomToken);
+      const freshSnap = await get(ref(db, 'team/' + profile.id));
+      if (freshSnap.exists()) profile = { ...profile, ...freshSnap.val(), id: profile.id };
+    } catch (e) {
+      console.error('Firebase custom-token sign-in failed:', e.message);
+    }
+  }
   curProfile = profile;
-  localStorage.setItem('fast_last_profile', profile.id); // Device-local "last user" shortcut for the picker screen (not a credential — PIN/biometric is still required)
+  localStorage.setItem('fast_last_profile', profile.id);
   curProjSubjectTemplate = curProfile.subjectTemplate || DEFAULT_SUBJECT_TEMPLATE;
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = '';
@@ -7007,7 +6993,7 @@ G.doBiometricLogin = window.doBiometricLogin = async function() {
     if (!verData.sessionToken) throw new Error(verData.error || 'Biometric verification failed');
 
     _koSessionToken = verData.sessionToken;
-    loginAs(profile, true);
+    loginAs(profile, true, verData.firebaseCustomToken);
   } catch(e) {
     if (e.name === 'NotAllowedError') {
       // User cancelled or timed out — fall back silently to PIN
