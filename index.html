@@ -3534,26 +3534,6 @@ const WEAK_PINS = new Set(['1234','0000','1111','2222','3333','4444','5555','666
 // ── Lockout : max 5 tentatives, blocage 15 min
 // Stocké dans Firebase (server-side) ET localStorage (fallback/vitesse)
 // Résiste au contournement par vidage du localStorage ou navigation privée.
-async function getPinAttempts(profileId) {
-  // Lire depuis Firebase (source de vérité)
-  try {
-    const snap = await get(ref(db, 'team/' + profileId + '/pinLock'));
-    if (snap.exists()) return snap.val();
-  } catch(e) {}
-  // Fallback localStorage
-  try { return JSON.parse(localStorage.getItem('fast_pin_attempts_' + profileId) || '{"count":0,"until":0}'); }
-  catch(e) { return { count: 0, until: 0 }; }
-}
-async function setPinAttempts(profileId, data) {
-  // Écrire dans Firebase (bloque même depuis un autre device/onglet)
-  try { await set(ref(db, 'team/' + profileId + '/pinLock'), data); } catch(e) {}
-  // Garder aussi en localStorage pour les lectures rapides suivantes
-  localStorage.setItem('fast_pin_attempts_' + profileId, JSON.stringify(data));
-}
-async function resetPinAttempts(profileId) {
-  try { await set(ref(db, 'team/' + profileId + '/pinLock'), null); } catch(e) {}
-  localStorage.removeItem('fast_pin_attempts_' + profileId);
-}
 
 function maskEmailForDisplay(email) {
   const parts = (email || '').split('@');
