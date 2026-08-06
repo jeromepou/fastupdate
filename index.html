@@ -392,6 +392,30 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   background: var(--gl); border-color: var(--gb); color: var(--gd); font-weight: 700;
 }
 
+/* signature — colour/bold/italic/underline toolbar under the two free-text lines */
+.sig-fmt-row { display: flex; align-items: center; gap: 7px; margin-top: 6px; flex-wrap: wrap }
+.sig-fmt-label { font-size: 11px; color: var(--g600); margin-right: 1px }
+.sig-fmt-btn {
+  width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--g200); border-radius: var(--r); background: #fff; color: var(--g800);
+  cursor: pointer; font-size: 12px; line-height: 1; padding: 0;
+}
+.sig-fmt-btn:hover { background: var(--g100) }
+.sig-fmt-btn.active-blue { background: var(--bl); border-color: #378ADD; color: var(--blue) }
+.sig-fmt-sep { width: 1px; align-self: stretch; background: var(--g200); margin: 2px 1px }
+.sig-swatches { display: flex; align-items: center; gap: 6px }
+.sig-swatch {
+  width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--g200); cursor: pointer;
+  padding: 0; position: relative;
+}
+.sig-swatch[data-color=""] { background: #fff }
+.sig-swatch[data-color=""]::after {
+  content: ''; position: absolute; inset: 3px; border-radius: 50%;
+  background: linear-gradient(135deg, transparent 46%, var(--g400) 46%, var(--g400) 54%, transparent 54%);
+}
+.sig-swatch.sig-swatch-active { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--blue) }
+.sig-fmt-custom { width: 28px; height: 28px; padding: 0; border: 1px solid var(--g200); border-radius: var(--r); cursor: pointer; background: #fff }
+
 /* parts table */
 .ko-parts-tbl { width: 100%; border-collapse: collapse; font-size: 12px }
 .ko-parts-tbl th {
@@ -2089,11 +2113,12 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 </div>
 
 <!-- SIGNATURE MODAL -->
+<!-- SIGNATURE MODAL -->
 <div class="modal-bg" id="modal-signature">
-  <div class="modal" style="max-width:520px">
+  <div class="modal" style="max-width:560px">
     <h3>✍️ Personalize your email signature</h3>
     <p style="font-size:12px;color:var(--g600);margin-bottom:12px">
-      Applies to every Gmail draft you generate (Draft in Gmail, Start Job). Your Mob. Tel, Head-Start Operations line, and job title always stay fixed below.
+      Applies to every Gmail draft you generate (Draft in Gmail, Start Job). The wording of the fixed lines (Mob. Tel, Head-Start Operations, job title, links, disclaimer) can't be changed — but you can format every single line below (bold, colour, size) to make the whole signature consistent.
     </p>
 
     <div class="fg" style="margin-bottom:10px">
@@ -2127,6 +2152,11 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
         <input type="checkbox" id="sig-show-disclaimer" onchange="previewSignature()"/> Include legal disclaimer
       </label>
+    </div>
+
+    <div class="fg" style="margin-bottom:10px">
+      <label>🎨 Formatting — every line</label>
+      <div id="sig-lines-fmt-list" style="display:flex;flex-direction:column;gap:10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:10px 12px;max-height:280px;overflow-y:auto"></div>
     </div>
 
     <div class="fg" style="margin-bottom:10px">
@@ -7139,17 +7169,35 @@ const KO = {
   signature: '',  // built automatically from the engineer's Firebase profile
 };
 
-// ── Editable per-engineer signature: closing phrase, spacing before the
-// name, and the name itself are personal — everything else (Mob. Tel,
-// Head-Start Operations line, job title) stays fixed. Saved to the
-// engineer's own profile (team/{id}/signature), same pattern as subjectTemplate.
+// ── Editable per-engineer signature: content of "closing phrase" and
+// "name" is free text; the formatting (bold/italic/underline/colour/size)
+// of EVERY line — including the fixed contact lines — is individually
+// adjustable so the whole signature can be visually unified, even though
+// the wording of the fixed lines can never be edited.
+const DEFAULT_SIG_LINE_STYLE = { color: '', bold: false, italic: false, underline: false, size: '' };
+// The disclaimer keeps its historical look (small, grey) as its own default,
+// while still being fully overridable from the modal like every other line.
+const DEFAULT_SIG_DISCLAIMER_STYLE = { color: '#888888', bold: false, italic: false, underline: false, size: '10' };
+
+const SIG_STYLE_FIELDS = ['closing','name','phone','ops','aviation','gulfstream','website','workorder','disclaimer'];
+const SIG_FIELD_TO_STYLE_KEY = Object.fromEntries(SIG_STYLE_FIELDS.map(f => [f, f + 'Style']));
+
 const DEFAULT_SIGNATURE_SETTINGS = {
   closing: 'Kind regards',
-  spacing: 3,           // blank lines between the closing phrase and the name
-  nameOverride: '',     // empty = use curProfile.name
+  spacing: 3,
+  nameOverride: '',
   showWebsite: true,
   showWorkorderLink: false,
-  showDisclaimer: false
+  showDisclaimer: false,
+  closingStyle:    { ...DEFAULT_SIG_LINE_STYLE },
+  nameStyle:       { ...DEFAULT_SIG_LINE_STYLE },
+  phoneStyle:      { ...DEFAULT_SIG_LINE_STYLE },
+  opsStyle:        { ...DEFAULT_SIG_LINE_STYLE },
+  aviationStyle:   { ...DEFAULT_SIG_LINE_STYLE },
+  gulfstreamStyle: { ...DEFAULT_SIG_LINE_STYLE },
+  websiteStyle:    { ...DEFAULT_SIG_LINE_STYLE },
+  workorderStyle:  { ...DEFAULT_SIG_LINE_STYLE },
+  disclaimerStyle: { ...DEFAULT_SIG_DISCLAIMER_STYLE },
 };
 
 const GULFSTREAM_WORKORDER_TEXT = 'Raise a new workorder:';
@@ -7158,36 +7206,67 @@ const GULFSTREAM_WORKORDER_URL  = 'https://surveys.gulfstream.com/s3/Aircraft-Sc
 const EMAIL_DISCLAIMER_TEXT = "This e-mail message, including all attachments, is for the sole use of the intended recipient(s) and may contain Personal Information under General Dynamics policy CP 07-105 and/or legally privileged and confidential information. Any Personal Information can be accessed only by authorized personnel of General Dynamics and its approved service providers and may be used only as permitted by General Dynamics and its policies. Contractual restrictions apply to third parties. If you are not an intended recipient, you are hereby notified that you have either received this message in error or through interception, and that any review, use, distribution, copying or disclosure of this message or its attachments is strictly prohibited and is subject to criminal and civil penalties. All personal messages express solely the sender's views and not those of Gulfstream Aerospace Corporation. If you received this message in error, please contact the sender by reply e-mail and destroy all copies of the original message.";
 
 function getSignatureSettings() {
-  return { ...DEFAULT_SIGNATURE_SETTINGS, ...(curProfile?.signature || {}) };
+  const saved = curProfile?.signature || {};
+  const merged = { ...DEFAULT_SIGNATURE_SETTINGS, ...saved };
+  SIG_STYLE_FIELDS.forEach(field => {
+    const key = SIG_FIELD_TO_STYLE_KEY[field];
+    const base = field === 'disclaimer' ? DEFAULT_SIG_DISCLAIMER_STYLE : DEFAULT_SIG_LINE_STYLE;
+    merged[key] = { ...base, ...(saved[key] || {}) };
+  });
+  return merged;
 }
 
-// Builds the HTML signature from a given settings object — used both for
-// the live preview (unsaved values) and the real signature (saved values).
+function koSigLineCssDecls(style) {
+  if (!style) return '';
+  const decls = [];
+  if (style.color)     decls.push(`color:${style.color}`);
+  if (style.bold)       decls.push('font-weight:bold');
+  if (style.italic)     decls.push('font-style:italic');
+  if (style.underline)  decls.push('text-decoration:underline');
+  if (style.size)        decls.push(`font-size:${style.size}px`);
+  return decls.join(';');
+}
+function koSigLineStyleAttr(style) {
+  const decls = koSigLineCssDecls(style);
+  return decls ? ` style="${decls}"` : '';
+}
+
+// Every line is wrapped in its own styled <span> so each can be
+// independently bold/italic/underlined/coloured/resized. Links also get the
+// style repeated directly on the <a> tag, since most mail clients (Outlook
+// especially) apply their own default link colour unless it's inlined on
+// the anchor itself, not just an ancestor.
 function koBuildSignatureHtmlFrom(sig) {
   const name  = (sig.nameOverride || curProfile?.name || '[ENGINEER]');
   const phone = curProfile?.phone || '';
-  const contactLines = [
-    name,
-    phone ? `Mob. Tel. ${phone}` : '',
-    'Head-Start Operations Tel: +41 43 588 1516',
-    'Head-Start Aviation Systems',
-    'Gulfstream Authorized FAST Service Provider',
-  ].filter(Boolean).map(escHtml).join('<br>');
 
-  // +1 so a spacing of 0 still returns to a new line right after the closing phrase.
-  const spacingHtml   = '<br>'.repeat(Math.max(0, Number(sig.spacing ?? 3)) + 1);
-  const websiteHtml   = sig.showWebsite ? '<br><a href="https://www.headstartaviation.com">www.headstartaviation.com</a>' : '';
+  const nameHtml      = `<span${koSigLineStyleAttr(sig.nameStyle)}>${escHtml(name)}</span>`;
+  const phoneHtml      = phone ? `<span${koSigLineStyleAttr(sig.phoneStyle)}>Mob. Tel. ${escHtml(phone)}</span>` : '';
+  const opsHtml         = `<span${koSigLineStyleAttr(sig.opsStyle)}>Head-Start Operations Tel: +41 43 588 1516</span>`;
+  const aviationHtml    = `<span${koSigLineStyleAttr(sig.aviationStyle)}>Head-Start Aviation Systems</span>`;
+  const gulfstreamHtml  = `<span${koSigLineStyleAttr(sig.gulfstreamStyle)}>Gulfstream Authorized FAST Service Provider</span>`;
+
+  const fixedLines = [phoneHtml, opsHtml, aviationHtml, gulfstreamHtml].filter(Boolean).join('<br>');
+  const contactLines = nameHtml + (fixedLines ? '<br>' + fixedLines : '');
+
+  const spacingHtml = '<br>'.repeat(Math.max(0, Number(sig.spacing ?? 3)) + 1);
+
+  const websiteHtml = sig.showWebsite
+    ? `<br><span${koSigLineStyleAttr(sig.websiteStyle)}><a href="https://www.headstartaviation.com" style="${koSigLineCssDecls(sig.websiteStyle)}">www.headstartaviation.com</a></span>`
+    : '';
   const workorderHtml = sig.showWorkorderLink
-    ? `<br><br>${escHtml(GULFSTREAM_WORKORDER_TEXT)}<br><a href="${GULFSTREAM_WORKORDER_URL}">${GULFSTREAM_WORKORDER_URL}</a>`
+    ? `<br><br><span${koSigLineStyleAttr(sig.workorderStyle)}>${escHtml(GULFSTREAM_WORKORDER_TEXT)}<br><a href="${GULFSTREAM_WORKORDER_URL}" style="${koSigLineCssDecls(sig.workorderStyle)}">${GULFSTREAM_WORKORDER_URL}</a></span>`
     : '';
   const disclaimerHtml = sig.showDisclaimer
-    ? `<br><br><span style="font-size:10px;color:#888;line-height:1.4">${escHtml(EMAIL_DISCLAIMER_TEXT)}</span>`
+    ? `<br><br><span style="line-height:1.4;${koSigLineCssDecls(sig.disclaimerStyle)}">${escHtml(EMAIL_DISCLAIMER_TEXT)}</span>`
     : '';
 
-  return `<div style="line-height:1.6;margin-top:16px">${escHtml(sig.closing || 'Kind regards')}${spacingHtml}${contactLines}${websiteHtml}${workorderHtml}${disclaimerHtml}</div>`;
+  const closingHtml = `<span${koSigLineStyleAttr(sig.closingStyle)}>${escHtml(sig.closing || 'Kind regards')}</span>`;
+
+  return `<div style="line-height:1.6;margin-top:16px">${closingHtml}${spacingHtml}${contactLines}${websiteHtml}${workorderHtml}${disclaimerHtml}</div>`;
 }
 
-// ── Build the 4-line email signature from the logged-in engineer's profile
+// ── Build the plain-text email signature from the logged-in engineer's profile
 function koBuildSignature() {
   const sig   = getSignatureSettings();
   const name  = sig.nameOverride || curProfile?.name || '[ENGINEER]';
@@ -7204,12 +7283,94 @@ function koBuildSignature() {
   return (sig.closing || 'Kind regards') + spacing + contactLines;
 }
 
-// ── HTML version of the same signature, used where the app builds an HTML
-// body directly (FAST Update Generator's "Copy table" / "Draft in Gmail").
-// No font-family is set here on purpose, so it inherits whatever font the
-// destination email is using instead of fighting it (see intro-text fix).
 function koBuildSignatureHtml() {
   return koBuildSignatureHtmlFrom(getSignatureSettings());
+}
+
+// ── Per-line formatting state while the modal is open ──
+let sigFmtState = Object.fromEntries(SIG_STYLE_FIELDS.map(f =>
+  [f, { ...(f === 'disclaimer' ? DEFAULT_SIG_DISCLAIMER_STYLE : DEFAULT_SIG_LINE_STYLE) }]
+));
+
+function sigRefreshFmtUI(field) {
+  const s = sigFmtState[field];
+  if (!s) return;
+  ['bold','italic','underline'].forEach(prop => {
+    const btn = document.getElementById(`sig-${field}-fmt-${prop}`);
+    if (btn) btn.classList.toggle('active-blue', !!s[prop]);
+  });
+  document.querySelectorAll(`#sig-${field}-swatches .sig-swatch`).forEach(sw => {
+    sw.classList.toggle('sig-swatch-active', sw.dataset.color === (s.color || ''));
+  });
+  const customInput = document.getElementById(`sig-${field}-custom-color`);
+  if (customInput && s.color) customInput.value = s.color;
+  const sizeSel = document.getElementById(`sig-${field}-size`);
+  if (sizeSel) sizeSel.value = s.size || '';
+}
+
+G.sigToggleFmt = function(field, prop) {
+  sigFmtState[field] = { ...sigFmtState[field], [prop]: !sigFmtState[field][prop] };
+  sigRefreshFmtUI(field);
+  G.previewSignature();
+};
+
+G.sigSetColor = function(field, color) {
+  sigFmtState[field] = { ...sigFmtState[field], color };
+  sigRefreshFmtUI(field);
+  G.previewSignature();
+};
+
+G.sigSetSize = function(field, size) {
+  sigFmtState[field] = { ...sigFmtState[field], size };
+  sigRefreshFmtUI(field);
+  G.previewSignature();
+};
+
+const SIG_SIZE_OPTIONS = ['10','11','12','13','14','16','18','20'];
+const SIG_LINE_ROWS = [
+  { field: 'closing',    label: 'Closing phrase' },
+  { field: 'name',       label: 'Your name' },
+  { field: 'phone',      label: 'Mob. Tel.',                  sample: 'Mob. Tel. +41 79 000 00 00' },
+  { field: 'ops',        label: 'Head-Start Operations line', sample: 'Head-Start Operations Tel: +41 43 588 1516' },
+  { field: 'aviation',   label: 'Head-Start Aviation Systems',sample: 'Head-Start Aviation Systems' },
+  { field: 'gulfstream', label: 'Job title line',             sample: 'Gulfstream Authorized FAST Service Provider' },
+  { field: 'website',    label: 'Website link',               sample: 'www.headstartaviation.com' },
+  { field: 'workorder',  label: '"Raise a new workorder" link' },
+  { field: 'disclaimer', label: 'Legal disclaimer' },
+];
+
+function sigFmtRowHtml(field, label, sample) {
+  return `
+  <div style="border-bottom:1px solid var(--g200);padding-bottom:8px">
+    <div style="font-size:11px;font-weight:700;color:var(--g600);margin-bottom:5px">${label}${sample ? ' <span style="font-weight:400;color:var(--g400)">— "'+escHtml(sample)+'"</span>' : ''}</div>
+    <div class="sig-fmt-row" style="margin-top:0">
+      <button type="button" class="sig-fmt-btn" id="sig-${field}-fmt-bold" onclick="sigToggleFmt('${field}','bold')" title="Bold"><b>B</b></button>
+      <button type="button" class="sig-fmt-btn" id="sig-${field}-fmt-italic" onclick="sigToggleFmt('${field}','italic')" title="Italic"><i>I</i></button>
+      <button type="button" class="sig-fmt-btn" id="sig-${field}-fmt-underline" onclick="sigToggleFmt('${field}','underline')" title="Underline"><u>U</u></button>
+      <span class="sig-fmt-sep"></span>
+      <select id="sig-${field}-size" onchange="sigSetSize('${field}', this.value)" style="font-size:11px;padding:3px 5px;border:1px solid var(--g200);border-radius:var(--r);background:#fff">
+        <option value="">Size —</option>
+        ${SIG_SIZE_OPTIONS.map(s => `<option value="${s}">${s}px</option>`).join('')}
+      </select>
+      <span class="sig-fmt-sep"></span>
+      <div class="sig-swatches" id="sig-${field}-swatches">
+        <span class="sig-swatch" data-color="" style="background:#fff" onclick="sigSetColor('${field}','')" title="Default"></span>
+        <span class="sig-swatch" data-color="#2d5a2d" style="background:#2d5a2d" onclick="sigSetColor('${field}','#2d5a2d')" title="Head-Start green"></span>
+        <span class="sig-swatch" data-color="#1a4a7a" style="background:#1a4a7a" onclick="sigSetColor('${field}','#1a4a7a')" title="Blue"></span>
+        <span class="sig-swatch" data-color="#8a2e00" style="background:#8a2e00" onclick="sigSetColor('${field}','#8a2e00')" title="Red"></span>
+        <span class="sig-swatch" data-color="#7a5a00" style="background:#7a5a00" onclick="sigSetColor('${field}','#7a5a00')" title="Amber"></span>
+        <span class="sig-swatch" data-color="#888888" style="background:#888888" onclick="sigSetColor('${field}','#888888')" title="Grey"></span>
+      </div>
+      <input type="color" class="sig-fmt-custom" id="sig-${field}-custom-color" value="#1a1a1a" oninput="sigSetColor('${field}', this.value)" title="Custom colour"/>
+    </div>
+  </div>`;
+}
+
+function renderSigLinesFmtList() {
+  const wrap = document.getElementById('sig-lines-fmt-list');
+  if (!wrap) return;
+  wrap.innerHTML = SIG_LINE_ROWS.map(r => sigFmtRowHtml(r.field, r.label, r.sample)).join('');
+  SIG_LINE_ROWS.forEach(r => sigRefreshFmtUI(r.field));
 }
 
 // ── Signature settings modal ──
@@ -7222,6 +7383,11 @@ G.openSignatureModal = function() {
   document.getElementById('sig-show-website').checked    = sig.showWebsite;
   document.getElementById('sig-show-workorder').checked  = sig.showWorkorderLink;
   document.getElementById('sig-show-disclaimer').checked = sig.showDisclaimer;
+  SIG_STYLE_FIELDS.forEach(field => {
+    const base = field === 'disclaimer' ? DEFAULT_SIG_DISCLAIMER_STYLE : DEFAULT_SIG_LINE_STYLE;
+    sigFmtState[field] = { ...base, ...sig[SIG_FIELD_TO_STYLE_KEY[field]] };
+  });
+  renderSigLinesFmtList();
   document.getElementById('sig-error').textContent = '';
   G.previewSignature();
   openModal('modal-signature');
@@ -7234,8 +7400,11 @@ G.previewSignature = function() {
     nameOverride: document.getElementById('sig-name-input').value,
     showWebsite: document.getElementById('sig-show-website').checked,
     showWorkorderLink: document.getElementById('sig-show-workorder').checked,
-    showDisclaimer: document.getElementById('sig-show-disclaimer').checked
+    showDisclaimer: document.getElementById('sig-show-disclaimer').checked,
   };
+  SIG_STYLE_FIELDS.forEach(field => {
+    tmpSig[SIG_FIELD_TO_STYLE_KEY[field]] = { ...sigFmtState[field] };
+  });
   document.getElementById('sig-preview').innerHTML = koBuildSignatureHtmlFrom(tmpSig);
 };
 
@@ -7246,6 +7415,11 @@ G.resetSignatureSettings = function() {
   document.getElementById('sig-show-website').checked    = DEFAULT_SIGNATURE_SETTINGS.showWebsite;
   document.getElementById('sig-show-workorder').checked  = DEFAULT_SIGNATURE_SETTINGS.showWorkorderLink;
   document.getElementById('sig-show-disclaimer').checked = DEFAULT_SIGNATURE_SETTINGS.showDisclaimer;
+  SIG_STYLE_FIELDS.forEach(field => {
+    const base = field === 'disclaimer' ? DEFAULT_SIG_DISCLAIMER_STYLE : DEFAULT_SIG_LINE_STYLE;
+    sigFmtState[field] = { ...base };
+  });
+  renderSigLinesFmtList();
   G.previewSignature();
 };
 
@@ -7260,8 +7434,11 @@ G.saveSignatureSettings = async function() {
     nameOverride: document.getElementById('sig-name-input').value.trim(),
     showWebsite: document.getElementById('sig-show-website').checked,
     showWorkorderLink: document.getElementById('sig-show-workorder').checked,
-    showDisclaimer: document.getElementById('sig-show-disclaimer').checked
+    showDisclaimer: document.getElementById('sig-show-disclaimer').checked,
   };
+  SIG_STYLE_FIELDS.forEach(field => {
+    newSig[SIG_FIELD_TO_STYLE_KEY[field]] = { ...sigFmtState[field] };
+  });
   try {
     await update(ref(db, 'team/' + curProfile.id), { signature: newSig });
     curProfile.signature = newSig;
