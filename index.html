@@ -698,6 +698,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div class="eng-sub" id="eng-bar-sub">—</div>
   </div>
   <button class="btn" onclick="openSubjectTemplateModal()" title="Personalize the subject format">✏️ Format</button>
+  <button class="btn" onclick="openSignatureModal()" title="Personalize your email signature">✍️ Signature</button>
   <button class="btn" id="btn-gmail-sync-status" onclick="koConnectGmailSync()" style="display:none;font-size:11px"></button>
   <button class="btn-start-job" id="btn-start-job" onclick="openKickoff()" style="display:none">🚀 Start Job</button>
 </div>
@@ -2081,6 +2082,61 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <button class="btn" onclick="resetSubjectTemplate()">↩ Reset to default</button>
       <button class="btn" onclick="closeModal('modal-subject-template')">Cancel</button>
       <button class="btn primary" onclick="saveSubjectTemplate()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- SIGNATURE MODAL -->
+<div class="modal-bg" id="modal-signature">
+  <div class="modal" style="max-width:520px">
+    <h3>✍️ Personalize your email signature</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:12px">
+      Applies to every Gmail draft you generate (Draft in Gmail, Start Job). Your Mob. Tel, Head-Start Operations line, and job title always stay fixed below.
+    </p>
+
+    <div class="fg" style="margin-bottom:10px">
+      <label>Closing phrase</label>
+      <input type="text" id="sig-closing-input" placeholder="Kind regards" oninput="previewSignature()"/>
+    </div>
+
+    <div class="fg" style="margin-bottom:10px">
+      <label>Space before your name</label>
+      <select id="sig-spacing-input" onchange="previewSignature()">
+        <option value="0">No blank line</option>
+        <option value="1">1 blank line</option>
+        <option value="2">2 blank lines</option>
+        <option value="3">3 blank lines (default)</option>
+        <option value="4">4 blank lines</option>
+      </select>
+    </div>
+
+    <div class="fg" style="margin-bottom:10px">
+      <label>Your name as shown in the signature</label>
+      <input type="text" id="sig-name-input" placeholder="Defaults to your profile name" oninput="previewSignature()"/>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;padding:10px 12px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r)">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+        <input type="checkbox" id="sig-show-website" onchange="previewSignature()"/> Include website link (www.headstartaviation.com)
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+        <input type="checkbox" id="sig-show-workorder" onchange="previewSignature()"/> Include "Raise a new workorder" link
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+        <input type="checkbox" id="sig-show-disclaimer" onchange="previewSignature()"/> Include legal disclaimer
+      </label>
+    </div>
+
+    <div class="fg" style="margin-bottom:10px">
+      <label>Preview</label>
+      <div id="sig-preview" style="font-size:13px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:10px 12px;line-height:1.6"></div>
+    </div>
+
+    <div class="err-msg" id="sig-error"></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="resetSignatureSettings()">↩ Reset to default</button>
+      <button class="btn" onclick="closeModal('modal-signature')">Cancel</button>
+      <button class="btn primary" onclick="saveSignatureSettings()">💾 Save</button>
     </div>
   </div>
 </div>
@@ -7081,29 +7137,32 @@ const KO = {
   signature: '',  // built automatically from the engineer's Firebase profile
 };
 
-// ── Build the 4-line email signature from the logged-in engineer's profile
-function koBuildSignature() {
-  const name  = curProfile?.name  || '[ENGINEER]';
-  const phone = curProfile?.phone || '';
-    const contactLines = [
-    name,
-    phone ? `Mob. Tel. ${phone}` : '',
-    'Head-Start Operations Tel: +41 43 588 1516',
-    'Head-Start Aviation Systems',
-    'Gulfstream Authorized FAST Service Provider',
-    'www.headstartaviation.com',
-  ].filter(Boolean).join('\n');
-  // 2 blank lines here + the 1 already baked into every "Regards,\n\n${eng}"
-  // template = 3 lines of breathing space above the name (Mauritz's request).
-  return '\n\n' + contactLines;
+// ── Editable per-engineer signature: closing phrase, spacing before the
+// name, and the name itself are personal — everything else (Mob. Tel,
+// Head-Start Operations line, job title) stays fixed. Saved to the
+// engineer's own profile (team/{id}/signature), same pattern as subjectTemplate.
+const DEFAULT_SIGNATURE_SETTINGS = {
+  closing: 'Kind regards',
+  spacing: 3,           // blank lines between the closing phrase and the name
+  nameOverride: '',     // empty = use curProfile.name
+  showWebsite: true,
+  showWorkorderLink: false,
+  showDisclaimer: false
+};
+
+const GULFSTREAM_WORKORDER_TEXT = 'Raise a new workorder:';
+const GULFSTREAM_WORKORDER_URL  = 'https://surveys.gulfstream.com/s3/Aircraft-Scheduling-Request';
+
+const EMAIL_DISCLAIMER_TEXT = "This e-mail message, including all attachments, is for the sole use of the intended recipient(s) and may contain Personal Information under General Dynamics policy CP 07-105 and/or legally privileged and confidential information. Any Personal Information can be accessed only by authorized personnel of General Dynamics and its approved service providers and may be used only as permitted by General Dynamics and its policies. Contractual restrictions apply to third parties. If you are not an intended recipient, you are hereby notified that you have either received this message in error or through interception, and that any review, use, distribution, copying or disclosure of this message or its attachments is strictly prohibited and is subject to criminal and civil penalties. All personal messages express solely the sender's views and not those of Gulfstream Aerospace Corporation. If you received this message in error, please contact the sender by reply e-mail and destroy all copies of the original message.";
+
+function getSignatureSettings() {
+  return { ...DEFAULT_SIGNATURE_SETTINGS, ...(curProfile?.signature || {}) };
 }
 
-// ── HTML version of the same signature, used where the app builds an HTML
-// body directly (FAST Update Generator's "Copy table" / "Draft in Gmail").
-// No font-family is set here on purpose, so it inherits whatever font the
-// destination email is using instead of fighting it (see intro-text fix).
-function koBuildSignatureHtml() {
-  const name  = curProfile?.name  || '[ENGINEER]';
+// Builds the HTML signature from a given settings object — used both for
+// the live preview (unsaved values) and the real signature (saved values).
+function koBuildSignatureHtmlFrom(sig) {
+  const name  = (sig.nameOverride || curProfile?.name || '[ENGINEER]');
   const phone = curProfile?.phone || '';
   const contactLines = [
     name,
@@ -7112,8 +7171,104 @@ function koBuildSignatureHtml() {
     'Head-Start Aviation Systems',
     'Gulfstream Authorized FAST Service Provider',
   ].filter(Boolean).map(escHtml).join('<br>');
-  return `<div style="line-height:1.6;margin-top:16px">Kind regards<br><br><br><br>${contactLines}<br><a href="https://www.headstartaviation.com">www.headstartaviation.com</a></div>`;
+
+  // +1 so a spacing of 0 still returns to a new line right after the closing phrase.
+  const spacingHtml   = '<br>'.repeat(Math.max(0, Number(sig.spacing ?? 3)) + 1);
+  const websiteHtml   = sig.showWebsite ? '<br><a href="https://www.headstartaviation.com">www.headstartaviation.com</a>' : '';
+  const workorderHtml = sig.showWorkorderLink
+    ? `<br><br>${escHtml(GULFSTREAM_WORKORDER_TEXT)}<br><a href="${GULFSTREAM_WORKORDER_URL}">${GULFSTREAM_WORKORDER_URL}</a>`
+    : '';
+  const disclaimerHtml = sig.showDisclaimer
+    ? `<br><br><span style="font-size:10px;color:#888;line-height:1.4">${escHtml(EMAIL_DISCLAIMER_TEXT)}</span>`
+    : '';
+
+  return `<div style="line-height:1.6;margin-top:16px">${escHtml(sig.closing || 'Kind regards')}${spacingHtml}${contactLines}${websiteHtml}${workorderHtml}${disclaimerHtml}</div>`;
 }
+
+// ── Build the 4-line email signature from the logged-in engineer's profile
+function koBuildSignature() {
+  const sig   = getSignatureSettings();
+  const name  = sig.nameOverride || curProfile?.name || '[ENGINEER]';
+  const phone = curProfile?.phone || '';
+  const contactLines = [
+    name,
+    phone ? `Mob. Tel. ${phone}` : '',
+    'Head-Start Operations Tel: +41 43 588 1516',
+    'Head-Start Aviation Systems',
+    'Gulfstream Authorized FAST Service Provider',
+    sig.showWebsite ? 'www.headstartaviation.com' : '',
+  ].filter(Boolean).join('\n');
+  const spacing = '\n'.repeat(Math.max(0, Number(sig.spacing ?? 3)) + 1);
+  return (sig.closing || 'Kind regards') + spacing + contactLines;
+}
+
+// ── HTML version of the same signature, used where the app builds an HTML
+// body directly (FAST Update Generator's "Copy table" / "Draft in Gmail").
+// No font-family is set here on purpose, so it inherits whatever font the
+// destination email is using instead of fighting it (see intro-text fix).
+function koBuildSignatureHtml() {
+  return koBuildSignatureHtmlFrom(getSignatureSettings());
+}
+
+// ── Signature settings modal ──
+G.openSignatureModal = function() {
+  const sig = getSignatureSettings();
+  document.getElementById('sig-closing-input').value    = sig.closing;
+  document.getElementById('sig-spacing-input').value    = String(sig.spacing);
+  document.getElementById('sig-name-input').value       = sig.nameOverride;
+  document.getElementById('sig-name-input').placeholder = curProfile?.name || '';
+  document.getElementById('sig-show-website').checked    = sig.showWebsite;
+  document.getElementById('sig-show-workorder').checked  = sig.showWorkorderLink;
+  document.getElementById('sig-show-disclaimer').checked = sig.showDisclaimer;
+  document.getElementById('sig-error').textContent = '';
+  G.previewSignature();
+  openModal('modal-signature');
+};
+
+G.previewSignature = function() {
+  const tmpSig = {
+    closing: document.getElementById('sig-closing-input').value || 'Kind regards',
+    spacing: parseInt(document.getElementById('sig-spacing-input').value, 10),
+    nameOverride: document.getElementById('sig-name-input').value,
+    showWebsite: document.getElementById('sig-show-website').checked,
+    showWorkorderLink: document.getElementById('sig-show-workorder').checked,
+    showDisclaimer: document.getElementById('sig-show-disclaimer').checked
+  };
+  document.getElementById('sig-preview').innerHTML = koBuildSignatureHtmlFrom(tmpSig);
+};
+
+G.resetSignatureSettings = function() {
+  document.getElementById('sig-closing-input').value     = DEFAULT_SIGNATURE_SETTINGS.closing;
+  document.getElementById('sig-spacing-input').value     = String(DEFAULT_SIGNATURE_SETTINGS.spacing);
+  document.getElementById('sig-name-input').value        = '';
+  document.getElementById('sig-show-website').checked    = DEFAULT_SIGNATURE_SETTINGS.showWebsite;
+  document.getElementById('sig-show-workorder').checked  = DEFAULT_SIGNATURE_SETTINGS.showWorkorderLink;
+  document.getElementById('sig-show-disclaimer').checked = DEFAULT_SIGNATURE_SETTINGS.showDisclaimer;
+  G.previewSignature();
+};
+
+G.saveSignatureSettings = async function() {
+  const errEl = document.getElementById('sig-error');
+  errEl.textContent = '';
+  const closing = document.getElementById('sig-closing-input').value.trim();
+  if (!closing) { errEl.textContent = 'Please enter a closing phrase.'; return; }
+  const newSig = {
+    closing,
+    spacing: parseInt(document.getElementById('sig-spacing-input').value, 10) || 0,
+    nameOverride: document.getElementById('sig-name-input').value.trim(),
+    showWebsite: document.getElementById('sig-show-website').checked,
+    showWorkorderLink: document.getElementById('sig-show-workorder').checked,
+    showDisclaimer: document.getElementById('sig-show-disclaimer').checked
+  };
+  try {
+    await update(ref(db, 'team/' + curProfile.id), { signature: newSig });
+    curProfile.signature = newSig;
+    closeModal('modal-signature');
+    setStatus('done', '✅ Signature saved — will apply to your next Gmail drafts.');
+  } catch(e) {
+    errEl.textContent = '❌ ' + e.message;
+  }
+};
 
 // ── Fixed recipients loaded from Firebase /config/kickoffRecipients
 const KO_FALLBACK_FIXED_RECIPS = {
