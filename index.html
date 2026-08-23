@@ -4727,7 +4727,21 @@ async function doSave() {
   if (!curProfile) return;
   const d = gatherData();
   if (!d.wo && !d.model && !d.sn) return;
-  if (!curProj) curProj = 'proj_' + Date.now();
+  if (!curProj) {
+    // Avant de créer un nouveau projet, vérifie si un projet ACTIF avec
+    // le même WO existe déjà (ex: reload en pleine extraction RFS) —
+    // pour ne jamais dupliquer un chantier existant.
+    if (d.wo) {
+      const allSnap = await get(ref(db, 'team/' + curProfile.id + '/projects'));
+      const all = allSnap.exists() ? allSnap.val() : {};
+      const match = Object.values(all).find(p =>
+        !p.transferred && !p.rts &&
+        (p.wo || '').trim().toUpperCase() === d.wo.trim().toUpperCase()
+      );
+      if (match) curProj = match.id;
+    }
+    if (!curProj) curProj = 'proj_' + Date.now();
+  }
   // Read existing to preserve rts flag
   const existing = (await get(ref(db, 'team/' + curProfile.id + '/projects/' + curProj))).val() || {};
   const toSave = {
@@ -4825,6 +4839,23 @@ function clearForm() {
   document.getElementById('output-section').style.display = 'none';
   const defaults = [..._defaultRecipients];
   renderRecipients(defaults);
+
+  // Step 1 (Upload PDF) keeps no memory of a previous project's file —
+  // reset it, otherwise the old filename/status stays displayed and a
+  // second "Extract" click would re-run extraction on the stale PDF.
+  pdfB64 = null;
+  const dropLabelEl = document.getElementById('drop-label');
+  if (dropLabelEl) dropLabelEl.textContent = 'Drag & drop or click to select a PDF (RFS, Work Order Detail, or WCR)';
+  const fileInputEl = document.getElementById('file-input');
+  if (fileInputEl) fileInputEl.value = '';
+  const extractBtnEl = document.getElementById('extract-btn');
+  if (extractBtnEl) extractBtnEl.disabled = true;
+  setStatus('idle', 'Select a PDF or fill the fields manually');
+
+  // The Start Job panel keeps its own fields outside this form too — wipe
+  // it fully so a later "Start Job" click doesn't resurrect the previous
+  // project's aircraft info, parts, and recipients.
+  if (typeof G.koNewJob === 'function') G.koNewJob(false);
 }
 
 // ══════════════════════════════════════
@@ -11162,10 +11193,13 @@ G.koRefreshSquawkSelects = window.koRefreshSquawkSelects = function() {
 // ══════════════════════════════════════
 //  NEW JOB — RESET QUESTIONNAIRE
 // ══════════════════════════════════════
-G.koNewJob = async function() {
+G.koNewJob = async function(keepAircraftInfo = true) {
 
-  // Fields to KEEP (from RFS scan)
+  // Fields to KEEP (from RFS scan) — only when reusing the SAME aircraft for
+  // its next intervention. Call with keepAircraftInfo=false to also wipe
+  // these (used when clearForm() switches to an unrelated project).
   const keepIds = ['ko_model','ko_sn','ko_reg','ko_wo','ko_icao','ko_defect','ko_cust_name','ko_item_prefix'];
+  const aircraftIds = keepIds.filter(id => id !== 'ko_item_prefix');
   const kept = {};
   keepIds.forEach(id => { kept[id] = document.getElementById(id)?.value || ''; });
 
@@ -11174,12 +11208,17 @@ G.koNewJob = async function() {
     'ko_eta','ko_travel_from','ko_travel_to','ko_travel_date','ko_travel_flightnum',
     'ko_shipping_addr','ko_broker_contact','ko_action_plan',
     'koq_custom','kofbo_custom','kofbo_custom_questions','kofbo_transport_eta',
-    'ko_parts_freetext'
+    'ko_parts_freetext',
+    ...(keepAircraftInfo ? [] : aircraftIds)
   ];
   allTextIds.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
 
-  // Restore kept fields
-  keepIds.forEach(id => { const el = document.getElementById(id); if (el) el.value = kept[id]; });
+  // Restore kept fields — ko_item_prefix always, the rest only when reusing the same aircraft
+  keepIds.forEach(id => {
+    if (id === 'ko_item_prefix' || keepAircraftInfo) {
+      const el = document.getElementById(id); if (el) el.value = kept[id];
+    }
+  });
 
   // Clear all checkboxes
   const allCbIds = [
