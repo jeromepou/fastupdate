@@ -584,6 +584,60 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   .ko-parts-tbl th:nth-child(1),
   .ko-parts-tbl td:nth-child(1) { display: none }
 }
+
+/* ===== TEMPLATES LIBRARY / NEW TEMPLATE (redesigned "Manage templates") ===== */
+.tpl-modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:2px}
+.tpl-modal-head h3{margin-bottom:0}
+.tpl-search-row{margin-bottom:10px}
+.tpl-search-row input{width:100%;font-size:13px;padding:8px 10px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;font-family:inherit}
+.tpl-search-row input:focus{outline:2px solid var(--gm);border-color:var(--gm)}
+
+.tpl-groups{max-height:420px;overflow-y:auto;padding-right:2px;margin-bottom:6px}
+.tpl-group-hd{font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 6px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.tpl-group-hd:first-child{margin-top:2px}
+.tpl-group-hd .cnt{font-weight:500;color:var(--g400);text-transform:none;letter-spacing:0;font-size:11px}
+
+.tpl-card{background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:7px;overflow:hidden}
+.tpl-card-row{display:flex;align-items:center;gap:8px;padding:9px 10px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.tpl-card-row:hover{background:var(--g100)}
+.tpl-card-chev{font-size:10px;color:var(--g400);transition:transform .15s;flex-shrink:0}
+.tpl-card.open .tpl-card-chev{transform:rotate(90deg)}
+.tpl-card-name-wrap{flex:1;min-width:0;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.tpl-card-name{font-size:13px;font-weight:700;color:var(--g900)}
+.tpl-card-count{font-size:11px;color:var(--g600);font-weight:500;white-space:nowrap}
+.tpl-card-del{background:none;border:none;color:var(--red);cursor:pointer;font-size:15px;padding:2px 4px;flex-shrink:0}
+.tpl-card-body{display:none;padding:0 10px 10px;border-top:1px solid var(--g200)}
+.tpl-card.open .tpl-card-body{display:block;padding-top:10px}
+.tpl-card-rename{width:100%;font-size:13px;font-weight:700;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--r);margin-bottom:8px;background:#fff;font-family:inherit}
+.tpl-card-rename:focus{outline:2px solid var(--gm);border-color:var(--gm)}
+
+.tpl-line-header{display:grid;grid-template-columns:minmax(150px,2fr) minmax(85px,1fr) minmax(65px,.9fr) 46px 92px minmax(160px,2fr) 22px;gap:8px;padding:0 6px 4px;font-size:10.5px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.03em}
+.tpl-lines{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.tpl-line{position:relative;display:grid;grid-template-columns:minmax(150px,2fr) minmax(85px,1fr) minmax(65px,.9fr) 46px 92px minmax(160px,2fr) 22px;gap:8px;align-items:start;background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:6px}
+.tpl-line.ko-cat-part{background:#eafaf0}
+.tpl-line.ko-cat-consumable{background:#fff8e6}
+.tpl-line.ko-cat-tool{background:#eaf2fc}
+.tpl-line-lbl{display:none;font-size:9px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px}
+.tpl-f input,.tpl-f select,.tpl-f textarea{width:100%;font-size:12px;padding:3px 4px;border:none;background:transparent;border-radius:6px;color:var(--g900);outline:none;font-family:inherit}
+.tpl-f input:focus,.tpl-f select:focus,.tpl-f textarea:focus{background:var(--g50)}
+.tpl-f textarea{resize:none;overflow:hidden;line-height:1.35;min-height:22px;white-space:pre-wrap;word-break:break-word;display:block}
+.tpl-f select{-webkit-appearance:none;appearance:none;padding-right:16px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236c757d'><path d='M5.25 7.5L10 12.25L14.75 7.5H5.25Z'/></svg>");background-repeat:no-repeat;background-position:right 2px center;background-size:10px}
+.tpl-line-opts{display:flex;flex-direction:column;gap:3px;margin-top:2px}
+.tpl-line-opt{display:flex;align-items:center;gap:4px;font-size:10px;white-space:nowrap;cursor:pointer}
+.tpl-line-opt input{width:auto!important;flex-shrink:0}
+.tpl-line-opt.opt-req{color:#9a3412;font-weight:600}
+.tpl-line-opt.opt-dg{color:var(--g600)}
+.tpl-line-rm{background:none;border:none;color:var(--g400);cursor:pointer;font-size:15px;padding:2px;justify-self:end}
+.tpl-line-rm:hover{color:var(--red)}
+
+@media(max-width:600px){
+  #modal-parttpl .modal{padding:1rem .75rem}
+  .tpl-line-header{display:none}
+  .tpl-line{grid-template-columns:1fr 1fr;row-gap:6px;padding:8px 26px 8px 8px}
+  .tpl-line-lbl{display:block}
+  .tpl-f-desc,.tpl-f-note{grid-column:1/-1}
+  .tpl-line-rm{position:absolute;top:6px;right:6px}
+}
 </style>
 
 </head>
@@ -1333,7 +1387,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 	<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:var(--r);padding:8px 12px;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
           <span style="font-size:12px;color:#166534;font-weight:600;flex:1">📋 Order templates — full kits (wheels, brakes…)</span>
-          <button class="btn" onclick="koManagePartTpl()" style="font-size:11px;padding:4px 9px">⚙️ Manage list</button>
+          <button class="btn" onclick="koManagePartTpl()" style="font-size:11px;padding:4px 9px">⚙️ Manage templates</button>
         </div>
         <input type="text" id="ko-parttpl-search" placeholder="🔍 Filtrer par titre…" oninput="koFilterPartTpl(this.value)" style="width:100%;font-size:12px;padding:6px 9px;border:1px solid var(--g200);border-radius:var(--r);margin-bottom:8px;background:#fff"/>
         <div id="ko-parttpl-chips"></div>
@@ -1877,15 +1931,28 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 <!-- PARTS TEMPLATES MANAGE MODAL -->
 <div class="modal-bg" id="modal-parttpl">
   <div class="modal" style="max-width:980px">
-    <h3>🛠️ Manage parts order templates</h3>
-    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">Shared with the whole team. One click adds every line to the parts table.</p>
-    <div id="parttpl-manage-list" style="max-height:280px;overflow-y:auto;margin-bottom:12px"></div>
 
-    <div style="border-top:1px solid var(--g200);padding-top:10px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <span style="font-size:12px;font-weight:700;color:var(--g600)">New template</span>
-        <button class="btn" onclick="koManageGsModels()" style="font-size:11px;padding:4px 9px">✈️ Edit models list</button>
+    <!-- ===== LIBRARY VIEW (default) ===== -->
+    <div id="parttpl-view-list">
+      <div class="tpl-modal-head">
+        <h3>🛠️ Order templates library</h3>
+        <button class="btn primary" onclick="koPartTplOpenEditor()" style="font-size:11px;padding:6px 11px">+ New template</button>
       </div>
+      <p style="font-size:12px;color:var(--g600);margin-bottom:10px">Shared with the whole team. Tap a template below to expand it and edit its lines — one click adds every line to the parts table.</p>
+      <div class="tpl-search-row">
+        <input type="text" id="parttpl-admin-search" placeholder="🔍 Filter templates by name…" oninput="koFilterPartTplAdmin(this.value)"/>
+      </div>
+      <div id="parttpl-manage-list" class="tpl-groups"></div>
+    </div>
+
+    <!-- ===== NEW TEMPLATE VIEW ===== -->
+    <div id="parttpl-view-editor" style="display:none">
+      <div class="tpl-modal-head">
+        <button class="btn" onclick="koPartTplBackToList()" style="font-size:11px;padding:6px 11px">← Back to library</button>
+        <button class="btn" onclick="koManageGsModels()" style="font-size:11px;padding:6px 9px">✈️ Edit models list</button>
+      </div>
+      <h3 style="margin:10px 0 10px">🛠️ New template</h3>
+
       <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:var(--r);padding:8px 10px;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span style="font-size:12px;color:#1d4ed8;font-weight:600;flex:1">🔧 Pre-fill these lines from an AMM card (tools, consumables, implicit materials)</span>
         <button class="btn" onclick="koOpenAmmReader('template')" style="font-size:11px;padding:4px 9px">📖 Read an AMM card</button>
@@ -1901,20 +1968,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <span style="font-size:12px;color:#9a3412;font-weight:600">Mandatory: the applicable aircraft Maintenance Documentation (AMM) must be checked and followed before using this template to place an order. Part numbers, quantities and applicability may vary by aircraft configuration/effectivity.</span>
       </div>
 
-      <table class="ko-parts-tbl" style="width:100%">
-        <thead>
-          <tr>
-            <th style="min-width:180px">Description</th>
-            <th style="min-width:90px">P/N</th>
-            <th style="min-width:70px">S/N</th>
-            <th style="width:45px">Qty</th>
-            <th style="width:85px">Category</th>
-            <th style="min-width:180px">Note</th>
-            <th style="width:28px"></th>
-          </tr>
-        </thead>
-        <tbody id="pt-new-parts-tbody"></tbody>
-      </table>
+      <div class="tpl-line-header"><span>Description</span><span>P/N</span><span>S/N</span><span>Qty</span><span>Category</span><span>Note / options</span><span></span></div>
+      <div id="pt-new-parts-tbody" class="tpl-lines"></div>
       <button class="btn-add" onclick="koAddPartTplLine()" style="margin-top:8px">+ Add row</button>
 
       <button class="btn primary" onclick="koAddPartTpl()" style="width:100%;margin-top:14px">💾 Save template</button>
@@ -2341,7 +2396,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 	  <h4 style="margin-top:1rem">📋 Order templates, ⭐ Quick add &amp; 🧪 Sealant lookup</h4>
 	  <p>Above the parts table, three shared shortcuts help you fill it faster:</p>
 	  <ul>
-	    <li><strong>📋 Order templates</strong> — full kits (e.g. main wheel change, brake change) saved per aircraft model. Filter by name with the search box, then tap a template to open it: mandatory lines are pre-ticked and always added, while lines marked <strong>"if required"</strong> are optional — tick them only if actually needed for this job. You can also assign the whole template to a squawk before adding it. Use <strong>"⚙️ Manage list"</strong> to create new templates (grouped by aircraft model — manage the model list itself from there too) or edit/delete existing ones. <strong>⚠️ Always check the applicable AMM before ordering</strong> — part numbers, quantities and applicability can vary by aircraft configuration/effectivity; templates are a starting point, not a substitute for engineering documentation.</li>
+	    <li><strong>📋 Order templates</strong> — full kits (e.g. main wheel change, brake change) saved per aircraft model. Filter by name with the search box, then tap a template to open it: mandatory lines are pre-ticked and always added, while lines marked <strong>"if required"</strong> are optional — tick them only if actually needed for this job. You can also assign the whole template to a squawk before adding it. Use <strong>"⚙️ Manage templates"</strong> to open the templates library — grouped by aircraft model and searchable, tap a template to expand and edit its lines. Use the <strong>"+ New template"</strong> button inside to create a new one (optionally pre-filled from an AMM card) or to manage the aircraft model list. <strong>⚠️ Always check the applicable AMM before ordering</strong> — part numbers, quantities and applicability can vary by aircraft configuration/effectivity; templates are a starting point, not a substitute for engineering documentation.</li>
 	    <li><strong>⭐ Quick add</strong> — one-tap chips for your team's frequently used tools and consumables (grouped by Parts/Consumables/Tools, filterable with the search box) — tapping a chip adds it straight to the table. Use its own <strong>"⚙️ Manage list"</strong> to add, edit or remove entries; shared with the whole team.</li>
 	    <li><strong>🧪 Sealant lookup</strong> — pick a MIL Spec / application (e.g. fuel tank sealant, firewall sealing) to see the approved part numbers. For each P/N you can specify a Type (A-1/2, A-1, A-2, B-1/2, B-1, B-2), a Size (2.5oz, 6oz) and whether it's a Semkit, then add it to your selection. If several P/Ns are interchangeable and only one is actually needed, give them the same group letter (A, B, C or D) — they'll be merged into a single "pick one of the following" line in the parts table instead of ordering all of them. Leave a P/N ungrouped if it's always required. Once ready, tap "+ Add selection to parts list". Use "⚙️ Manage list" to maintain the shared MIL Spec ↔ P/N reference.</li>
 	  </ul>
@@ -7171,7 +7226,7 @@ if ('serviceWorker' in navigator) {
 //  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
 //  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v22';
+const CURRENT_VERSION = 'v23';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -10527,7 +10582,7 @@ function koPartTplGrouped(list) {
 function koRenderPartTplChips() {
   const wrap = document.getElementById('ko-parttpl-chips');
   if (!wrap) return;
-  if (!KO_PARTTPL.length) { wrap.innerHTML = '<span style="font-size:11px;color:#166534">No templates yet — use "Manage list".</span>'; return; }
+  if (!KO_PARTTPL.length) { wrap.innerHTML = '<span style="font-size:11px;color:#166534">No templates yet — use "Manage templates".</span>'; return; }
 
   const q = _ptSearchQuery.trim().toLowerCase();
   const curModel = koCurrentModel();
@@ -10617,62 +10672,124 @@ G.koConfirmApplyPartTpl = function() {
 G.koManagePartTpl = function() {
   _ptNewLines = [];
   koRenderGsModelSelect();
+  document.getElementById('parttpl-view-editor').style.display = 'none';
+  document.getElementById('parttpl-view-list').style.display = '';
   renderPartTplManageList();
   renderPartTplNewLines();
   openModal('modal-parttpl');
 };
 
+G.koPartTplOpenEditor = function() {
+  document.getElementById('parttpl-view-list').style.display = 'none';
+  document.getElementById('parttpl-view-editor').style.display = '';
+  koRenderGsModelSelect();
+  renderPartTplNewLines();
+};
+
+G.koPartTplBackToList = function() {
+  document.getElementById('parttpl-view-editor').style.display = 'none';
+  document.getElementById('parttpl-view-list').style.display = '';
+  renderPartTplManageList();
+};
+
+let _ptAdminSearchQuery = '';
+let _ptExpandedTpl = new Set();
+
+G.koFilterPartTplAdmin = function(val) {
+  _ptAdminSearchQuery = (val || '').trim().toLowerCase();
+  renderPartTplManageList();
+};
+
+G.koTogglePartTplCard = function(idx) {
+  if (_ptExpandedTpl.has(idx)) _ptExpandedTpl.delete(idx); else _ptExpandedTpl.add(idx);
+  renderPartTplManageList();
+};
+
 function renderPartTplManageList() {
   const list = document.getElementById('parttpl-manage-list');
   if (!list) return;
-  if (!KO_PARTTPL.length) { list.innerHTML = '<p style="font-size:12px;color:var(--g400)">No templates yet.</p>'; return; }
+  if (!KO_PARTTPL.length) { list.innerHTML = '<p style="font-size:12px;color:var(--g400);text-align:center;padding:24px 0">No templates yet — tap "+ New template" above to create one.</p>'; return; }
 
-  const groups = koPartTplGrouped(KO_PARTTPL);
-  const models = Object.keys(groups).sort();
+  const q = _ptAdminSearchQuery;
+  const curModel = koCurrentModel();
+
+  const withIdx = KO_PARTTPL.map((t, i) => ({ ...t, _idx: i }));
+  const filtered = q ? withIdx.filter(t => (t.name || '').toLowerCase().includes(q)) : withIdx;
+
+  if (!filtered.length) {
+    list.innerHTML = '<p style="font-size:12px;color:#9a3412;text-align:center;padding:24px 0">No templates match "' + koEscapeHtml(_ptAdminSearchQuery) + '".</p>';
+    return;
+  }
+
+  const groups = {};
+  filtered.forEach(t => {
+    const model = t.model || '—';
+    (groups[model] = groups[model] || []).push(t);
+  });
+
+  const models = Object.keys(groups).sort((a, b) => {
+    const aMatch = curModel && a.toUpperCase().includes(curModel);
+    const bMatch = curModel && b.toUpperCase().includes(curModel);
+    if (aMatch && !bMatch) return -1;
+    if (bMatch && !aMatch) return 1;
+    return a.localeCompare(b);
+  });
 
   list.innerHTML = models.map(model => {
-    return `<div style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin:10px 0 5px">✈️ ${model}</div>` +
-      groups[model].map(t => `
-        <div style="background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:8px;margin-bottom:8px">
-          <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
-            <input type="text" value="${(t.name||'').replace(/"/g,'&quot;')}" placeholder="Template name" oninput="koPartTplEdit(${t._idx},'name',this.value)" style="flex:1;font-size:12px;padding:4px 6px;font-weight:700"/>
-            <button onclick="koDeletePartTpl(${t._idx})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
+    const isCurrent = curModel && model.toUpperCase().includes(curModel);
+    const tpls = groups[model];
+    return `<div class="tpl-group-hd">✈️ ${model}${isCurrent ? ' <span style="color:#166534">(current aircraft)</span>' : ''}<span class="cnt">— ${tpls.length} template${tpls.length>1?'s':''}</span></div>` +
+      tpls.map(t => {
+        const n = (t.parts||[]).length;
+        const isOpen = _ptExpandedTpl.has(t._idx) || (!!q && (t.name||'').toLowerCase().includes(q));
+        return `
+        <div class="tpl-card${isOpen?' open':''}">
+          <div class="tpl-card-row" onclick="koTogglePartTplCard(${t._idx})">
+            <span class="tpl-card-chev">▶</span>
+            <span class="tpl-card-name-wrap">
+              <span class="tpl-card-name">${koEscapeHtml(t.name || 'Untitled template')}</span>
+              <span class="tpl-card-count">${n} line${n===1?'':'s'}</span>
+            </span>
+            <button class="tpl-card-del" onclick="event.stopPropagation();koDeletePartTpl(${t._idx})" title="Delete template">🗑</button>
           </div>
-          <table class="ko-parts-tbl" style="width:100%;margin-bottom:6px">
-            <thead><tr>
-              <th style="min-width:170px">Description</th><th style="min-width:90px">P/N</th><th style="min-width:60px">S/N</th>
-              <th style="width:40px">Qty</th><th style="width:85px">Category</th><th style="min-width:180px">Note / options</th><th style="width:24px"></th>
-            </tr></thead>
-            <tbody>
+          <div class="tpl-card-body">
+            <input type="text" class="tpl-card-rename" value="${(t.name||'').replace(/"/g,'&quot;')}" placeholder="Template name" oninput="koPartTplEdit(${t._idx},'name',this.value)"/>
+            <div class="tpl-line-header"><span>Description</span><span>P/N</span><span>S/N</span><span>Qty</span><span>Category</span><span>Note / options</span><span></span></div>
+            <div class="tpl-lines">
               ${(t.parts||[]).map((p, li) => `
-                <tr class="${p.cat ? 'ko-cat-' + p.cat.toLowerCase() : ''}">
-                  <td><textarea class="ko-desc-ta" rows="1" oninput="koAutoGrow(this);koPartTplLineEdit(${t._idx},${li},'desc',this.value)">${koEscapeHtml(p.desc||'')}</textarea></td>
-                  <td><input type="text" value="${(p.pn||'').replace(/"/g,'&quot;')}" oninput="koPartTplLineEdit(${t._idx},${li},'pn',this.value)"/></td>
-                  <td><input type="text" value="${(p.sn||'').replace(/"/g,'&quot;')}" ${p.cat==='Consumable'?'disabled style="background:var(--g100)"':''} oninput="koPartTplLineEdit(${t._idx},${li},'sn',this.value)"/></td>
-                  <td><input type="text" value="${p.qty||''}" oninput="koPartTplLineEdit(${t._idx},${li},'qty',this.value)"/></td>
-                  <td>
+                <div class="tpl-line ${p.cat ? 'ko-cat-' + p.cat.toLowerCase() : ''}">
+                  <div class="tpl-f tpl-f-desc"><span class="tpl-line-lbl">Description</span><textarea class="ko-desc-ta" rows="1" oninput="koAutoGrow(this);koPartTplLineEdit(${t._idx},${li},'desc',this.value)">${koEscapeHtml(p.desc||'')}</textarea></div>
+                  <div class="tpl-f tpl-f-pn"><span class="tpl-line-lbl">P/N</span><input type="text" value="${(p.pn||'').replace(/"/g,'&quot;')}" oninput="koPartTplLineEdit(${t._idx},${li},'pn',this.value)"/></div>
+                  <div class="tpl-f tpl-f-sn"><span class="tpl-line-lbl">S/N</span><input type="text" value="${(p.sn||'').replace(/"/g,'&quot;')}" ${p.cat==='Consumable'?'disabled style="background:var(--g100)"':''} oninput="koPartTplLineEdit(${t._idx},${li},'sn',this.value)"/></div>
+                  <div class="tpl-f tpl-f-qty"><span class="tpl-line-lbl">Qty</span><input type="text" value="${p.qty||''}" oninput="koPartTplLineEdit(${t._idx},${li},'qty',this.value)"/></div>
+                  <div class="tpl-f tpl-f-cat">
+                    <span class="tpl-line-lbl">Category</span>
                     <select onchange="koPartTplLineCatChange(${t._idx},${li},this.value)">
                       <option value="" ${!p.cat?'selected':''}>— Type —</option>
                       <option ${p.cat==='Part'?'selected':''}>Part</option>
                       <option ${p.cat==='Consumable'?'selected':''}>Consumable</option>
                       <option ${p.cat==='Tool'?'selected':''}>Tool</option>
                     </select>
-                  </td>
-                  <td>
+                  </div>
+                  <div class="tpl-f tpl-f-note">
+                    <span class="tpl-line-lbl">Note / options</span>
                     <textarea class="ko-desc-ta" rows="1" placeholder="Note…" oninput="koAutoGrow(this);koPartTplLineEdit(${t._idx},${li},'note',this.value)">${koEscapeHtml(p.note||'')}</textarea>
-                    <label style="display:${p.cat==='Consumable'?'flex':'none'};align-items:center;gap:4px;font-size:10px;color:var(--g600);margin-top:3px">
-                      <input type="checkbox" ${p.smallQty?'checked':''} onchange="koPartTplLineEdit(${t._idx},${li},'smallQty',this.checked)"/> small qty/DG
-                    </label>
-                    <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:#9a3412;margin-top:3px;font-weight:600">
-                      <input type="checkbox" ${p.optional?'checked':''} onchange="koPartTplLineEdit(${t._idx},${li},'optional',this.checked)"/> if required (optional — not all engineers need it)
-                    </label>
-                  </td>
-                  <td><button class="ko-parts-tbl rm-btn" onclick="koRemovePartTplExistingLine(${t._idx},${li})">×</button></td>
-                </tr>`).join('')}
-            </tbody>
-          </table>
-          <button class="btn-add" onclick="koAddPartTplExistingLine(${t._idx})" style="font-size:11px;padding:5px">+ Add line</button>
-        </div>`).join('');
+                    <div class="tpl-line-opts">
+                      <label class="tpl-line-opt opt-dg" style="display:${p.cat==='Consumable'?'flex':'none'}">
+                        <input type="checkbox" ${p.smallQty?'checked':''} onchange="koPartTplLineEdit(${t._idx},${li},'smallQty',this.checked)"/> small qty/DG
+                      </label>
+                      <label class="tpl-line-opt opt-req">
+                        <input type="checkbox" ${p.optional?'checked':''} onchange="koPartTplLineEdit(${t._idx},${li},'optional',this.checked)"/> if required (optional — not all engineers need it)
+                      </label>
+                    </div>
+                  </div>
+                  <button class="tpl-line-rm" onclick="koRemovePartTplExistingLine(${t._idx},${li})" title="Remove line">×</button>
+                </div>`).join('')}
+            </div>
+            <button class="btn-add" onclick="koAddPartTplExistingLine(${t._idx})" style="font-size:11px;padding:5px">+ Add line</button>
+          </div>
+        </div>`;
+      }).join('');
   }).join('');
   list.querySelectorAll('.ko-desc-ta').forEach(koAutoGrow);
 }
@@ -10713,7 +10830,10 @@ G.koRemovePartTplExistingLine = function(tplIdx, lineIdx) {
 };
 
 G.koDeletePartTpl = function(i) {
+  const t = KO_PARTTPL[i];
+  if (!confirm('Delete template "' + (t?.name || 'this template') + '"? This cannot be undone.')) return;
   KO_PARTTPL.splice(i, 1);
+  _ptExpandedTpl.clear();
   renderPartTplManageList(); koRenderPartTplChips(); koSavePartTplCatalog();
 };
 
@@ -10736,30 +10856,34 @@ function renderPartTplNewLines() {
   const tbody = document.getElementById('pt-new-parts-tbody');
   if (!tbody) return;
   tbody.innerHTML = _ptNewLines.map(l => `
-    <tr id="pt-line-${l._id}" class="${l.cat ? 'ko-cat-' + l.cat.toLowerCase() : ''}">
-      <td><textarea class="ko-desc-ta" rows="1" placeholder="Description" oninput="koAutoGrow(this);koPartTplNewLineEdit(${l._id},'desc',this.value)">${koEscapeHtml(l.desc||'')}</textarea></td>
-      <td><input type="text" value="${(l.pn||'').replace(/"/g,'&quot;')}" placeholder="P/N" oninput="koPartTplNewLineEdit(${l._id},'pn',this.value)"/></td>
-      <td><input type="text" value="${(l.sn||'').replace(/"/g,'&quot;')}" placeholder="S/N off" class="pt-sn-field-${l._id}" ${l.cat==='Consumable'?'disabled style="background:var(--g100);color:var(--g400)"':''} oninput="koPartTplNewLineEdit(${l._id},'sn',this.value)"/></td>
-      <td><input type="text" value="${l.qty||''}" placeholder="Qty" oninput="koPartTplNewLineEdit(${l._id},'qty',this.value)"/></td>
-      <td>
+    <div class="tpl-line ${l.cat ? 'ko-cat-' + l.cat.toLowerCase() : ''}" id="pt-line-${l._id}">
+      <div class="tpl-f tpl-f-desc"><span class="tpl-line-lbl">Description</span><textarea class="ko-desc-ta" rows="1" placeholder="Description" oninput="koAutoGrow(this);koPartTplNewLineEdit(${l._id},'desc',this.value)">${koEscapeHtml(l.desc||'')}</textarea></div>
+      <div class="tpl-f tpl-f-pn"><span class="tpl-line-lbl">P/N</span><input type="text" value="${(l.pn||'').replace(/"/g,'&quot;')}" placeholder="P/N" oninput="koPartTplNewLineEdit(${l._id},'pn',this.value)"/></div>
+      <div class="tpl-f tpl-f-sn"><span class="tpl-line-lbl">S/N</span><input type="text" value="${(l.sn||'').replace(/"/g,'&quot;')}" placeholder="S/N off" class="pt-sn-field-${l._id}" ${l.cat==='Consumable'?'disabled style="background:var(--g100);color:var(--g400)"':''} oninput="koPartTplNewLineEdit(${l._id},'sn',this.value)"/></div>
+      <div class="tpl-f tpl-f-qty"><span class="tpl-line-lbl">Qty</span><input type="text" value="${l.qty||''}" placeholder="Qty" oninput="koPartTplNewLineEdit(${l._id},'qty',this.value)"/></div>
+      <div class="tpl-f tpl-f-cat">
+        <span class="tpl-line-lbl">Category</span>
         <select onchange="koPartTplNewLineCatChange(${l._id},this.value)" style="${!l.cat?'border:1px solid #e07700;background:#fef9e7':''}">
           <option value="" ${!l.cat?'selected':''} style="color:#aaa">— Type —</option>
           <option ${l.cat==='Part'?'selected':''}>Part</option>
           <option ${l.cat==='Consumable'?'selected':''}>Consumable</option>
           <option ${l.cat==='Tool'?'selected':''}>Tool</option>
         </select>
-      </td>
-      <td>
-        <label style="display:${l.cat==='Consumable'?'flex':'none'};align-items:center;gap:4px;font-size:11px;color:var(--g600);white-space:nowrap">
-          <input type="checkbox" ${l.smallQty?'checked':''} onchange="koPartTplNewLineEdit(${l._id},'smallQty',this.checked)"/> small qty — avoid DG
-        </label>
+      </div>
+      <div class="tpl-f tpl-f-note">
+        <span class="tpl-line-lbl">Note / options</span>
         <textarea class="ko-desc-ta" rows="1" placeholder="Note…" oninput="koAutoGrow(this);koPartTplNewLineEdit(${l._id},'note',this.value)">${koEscapeHtml(l.note||'')}</textarea>
-        <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#9a3412;white-space:nowrap;margin-top:3px">
-          <input type="checkbox" ${l.optional?'checked':''} onchange="koPartTplNewLineEdit(${l._id},'optional',this.checked)"/> if required (optional)
-        </label>
-      </td>
-      <td><button class="ko-parts-tbl rm-btn" onclick="koRemovePartTplLine(${l._id})">×</button></td>
-    </tr>`).join('') || '';
+        <div class="tpl-line-opts">
+          <label class="tpl-line-opt opt-dg" style="display:${l.cat==='Consumable'?'flex':'none'}">
+            <input type="checkbox" ${l.smallQty?'checked':''} onchange="koPartTplNewLineEdit(${l._id},'smallQty',this.checked)"/> small qty — avoid DG
+          </label>
+          <label class="tpl-line-opt opt-req">
+            <input type="checkbox" ${l.optional?'checked':''} onchange="koPartTplNewLineEdit(${l._id},'optional',this.checked)"/> if required (optional)
+          </label>
+        </div>
+      </div>
+      <button class="tpl-line-rm" onclick="koRemovePartTplLine(${l._id})" title="Remove line">×</button>
+    </div>`).join('') || '';
   tbody.querySelectorAll('.ko-desc-ta').forEach(koAutoGrow);
 }
 
@@ -10804,6 +10928,7 @@ G.koAddPartTpl = function() {
   document.getElementById('pt-new-name').value = '';
   _ptNewLines = [];
   renderPartTplNewLines(); renderPartTplManageList(); koRenderPartTplChips(); koSavePartTplCatalog();
+  G.koPartTplBackToList();
 };
 
 async function koSavePartTplCatalog() {
@@ -11450,6 +11575,10 @@ window.koManageGsModels = G.koManageGsModels;
 window.koAddGsModel = G.koAddGsModel;
 window.koDeleteGsModel = G.koDeleteGsModel;
 window.koManagePartTpl = G.koManagePartTpl;
+window.koPartTplOpenEditor = G.koPartTplOpenEditor;
+window.koPartTplBackToList = G.koPartTplBackToList;
+window.koFilterPartTplAdmin = G.koFilterPartTplAdmin;
+window.koTogglePartTplCard = G.koTogglePartTplCard;
 window.koUsePartTpl = G.koUsePartTpl;
 window.koDeletePartTpl = G.koDeletePartTpl;
 window.koPartTplEdit = G.koPartTplEdit;
