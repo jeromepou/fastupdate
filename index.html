@@ -3131,6 +3131,13 @@ function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// Comme escHtml, mais pour l'intérieur d'un attribut value="..." : échappe aussi les
+// guillemets. Sans ça, un PN/nomenclature contenant un " (cote en pouces, ex: 3/8") casse
+// l'attribut HTML et corrompt le reste de la ligne générée (voir G.addPart).
+function escAttr(s) {
+  return escHtml(s).replace(/"/g,'&quot;');
+}
+
 // ══════════════════════════════════════
 //  APPLY PARTS UPDATE — clic sur une pièce détectée dans Replies
 //  → met à jour orders/WO{fa} (la commande permanente du job, celle
@@ -5437,11 +5444,11 @@ G.addPart = function(nom='',pn_off='',sn_off='',pn_on='',sn_on='', koSrcUid='') 
   const d = document.createElement('div'); d.className = 'part-row'; d.id = 'part-'+partCount;
   if (koSrcUid) d.dataset.koSrc = koSrcUid;
   d.innerHTML = `<div class="part-fields">
-    <div class="fg"><label>Nomenclature</label><input type="text" class="p-nom" value="${nom}" placeholder="e.g. MAIN TIRE" oninput="autosave()"/></div>
-    <div class="fg"><label>PN OFF</label><input type="text" class="p-pnoff" value="${pn_off}" placeholder="PN OFF" oninput="onPnOffInput(this)"/></div>
-    <div class="fg"><label>SN OFF</label><input type="text" class="p-snoff" value="${sn_off}" placeholder="SN OFF" oninput="autosave()"/></div>
-    <div class="fg"><label>PN ON</label><input type="text" class="p-pnon" value="${pn_on}" placeholder="Auto-fills from PN OFF" oninput="autosave()"/></div>
-    <div class="fg"><label>SN ON</label><input type="text" class="p-snon" value="${sn_on}" placeholder="SN ON" oninput="autosave()"/></div>
+    <div class="fg"><label>Nomenclature</label><input type="text" class="p-nom" value="${escAttr(nom)}" placeholder="e.g. MAIN TIRE" oninput="autosave()"/></div>
+    <div class="fg"><label>PN OFF</label><input type="text" class="p-pnoff" value="${escAttr(pn_off)}" placeholder="PN OFF" oninput="onPnOffInput(this)"/></div>
+    <div class="fg"><label>SN OFF</label><input type="text" class="p-snoff" value="${escAttr(sn_off)}" placeholder="SN OFF" oninput="autosave()"/></div>
+    <div class="fg"><label>PN ON</label><input type="text" class="p-pnon" value="${escAttr(pn_on)}" placeholder="Auto-fills from PN OFF" oninput="autosave()"/></div>
+    <div class="fg"><label>SN ON</label><input type="text" class="p-snon" value="${escAttr(sn_on)}" placeholder="SN ON" oninput="autosave()"/></div>
   </div><button class="btn" onclick="openRepairTagModal(this)" title="Generate the GA3671 tag for this part" style="margin-top:18px;padding:6px 9px;font-size:11px;white-space:nowrap">🏷️</button><button class="btn-rm" onclick="this.parentElement.remove();autosave()" style="margin-top:18px">×</button>`;
   c.appendChild(d);
 };
@@ -6498,11 +6505,11 @@ G.generate = async function() {
   const emptyPartRow = `<tr><td style="padding:6px 8px">&nbsp;</td><td style="padding:6px 8px">&nbsp;</td><td style="padding:6px 8px">&nbsp;</td><td style="padding:6px 8px">&nbsp;</td><td style="padding:6px 8px">&nbsp;</td></tr>`;
   const filledPartRows = filledParts.map(p=>`
         <tr>
-          <td style="font-size:13px;padding:6px 8px">${p.nom||'—'}</td>
-          <td style="font-size:13px;padding:6px 8px">${p.pn_off||'—'}</td>
-          <td style="font-size:13px;padding:6px 8px">${p.sn_off||'—'}</td>
-          <td style="font-size:13px;padding:6px 8px">${p.pn_on||'—'}</td>
-          <td style="font-size:13px;padding:6px 8px">${p.sn_on||'—'}</td>
+          <td style="font-size:13px;padding:6px 8px">${p.nom?escHtml(p.nom):'—'}</td>
+          <td style="font-size:13px;padding:6px 8px">${p.pn_off?escHtml(p.pn_off):'—'}</td>
+          <td style="font-size:13px;padding:6px 8px">${p.sn_off?escHtml(p.sn_off):'—'}</td>
+          <td style="font-size:13px;padding:6px 8px">${p.pn_on?escHtml(p.pn_on):'—'}</td>
+          <td style="font-size:13px;padding:6px 8px">${p.sn_on?escHtml(p.sn_on):'—'}</td>
         </tr>`).join('');
   const paddingRowsNeeded = Math.max(0, 6 - filledParts.length); // complète jusqu'à 6 lignes visibles minimum, comme le template ; au-delà de 6 parts, pas de padding, juste toutes les lignes réelles
   const partRows = filledPartRows + emptyPartRow.repeat(paddingRowsNeeded);
@@ -7148,7 +7155,7 @@ if ('serviceWorker' in navigator) {
 //  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
 //  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v20';
+const CURRENT_VERSION = 'v21';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
