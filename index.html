@@ -460,6 +460,10 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 .ko-parts-tbl tr.ko-cat-tool{background:#eaf2fc}
 .ko-tbl-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--g200);border-radius:var(--r)}
 .ko-pcell-lbl{display:none}
+.ko-note-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.ko-note-head .ko-pcell-lbl{margin-bottom:0}
+.ko-smallqty-lbl{display:none;align-items:center;gap:4px;cursor:pointer;font-size:10.5px;font-weight:500;color:var(--g600);white-space:nowrap;text-transform:none;letter-spacing:0}
+.ko-smallqty-lbl input{width:auto;cursor:pointer}
 
 /* airline rows */
 .ko-airline-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px }
@@ -596,7 +600,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     background:#fff;
     border:1px solid var(--g200);
     border-radius:var(--r);
-    padding:10px 34px 10px 10px;
+    padding:30px 34px 10px 10px;
     margin-bottom:8px;
     position:relative;
   }
@@ -606,9 +610,12 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     text-transform:uppercase; letter-spacing:.03em; margin-bottom:2px;
   }
   .ko-pcell-desc, .ko-pcell-note, .ko-pcell-sq{ grid-column:1 / -1 }
-  .ko-pcell-cb{ grid-column:1 / -1; display:flex; align-items:center; gap:6px }
+  .ko-pcell-cb{
+    position:absolute; top:8px; left:10px;
+    display:flex; align-items:center; gap:4px;
+  }
   .ko-pcell-cb .ko-pcell-lbl{
-    display:inline; margin:0; font-size:11px; font-weight:600;
+    display:inline; margin:0; font-size:10.5px; font-weight:600;
     text-transform:none; letter-spacing:0; color:var(--g600);
   }
   .ko-pcell-rm{ position:absolute; top:8px; right:6px }
@@ -8773,10 +8780,12 @@ G.koAddPartRow = function(pn='', desc='', sn='', qty='', cat='', note='', sqLabe
       </select>
     </td>
     <td class="ko-pcell ko-pcell-note">
-      <span class="ko-pcell-lbl">Note</span>
-      <label class="ko-smallqty-lbl" style="display:none;align-items:center;gap:4px;font-size:11px;color:var(--g600);white-space:nowrap">
-        <input type="checkbox" class="ko-smallqty-cb"/> small qty — avoid DG
-      </label>
+      <div class="ko-note-head">
+        <span class="ko-pcell-lbl">Note</span>
+        <label class="ko-smallqty-lbl">
+          <input type="checkbox" class="ko-smallqty-cb"/> small qty — avoid DG
+        </label>
+      </div>
       <textarea class="ko-desc-ta ko-f-note" rows="1" oninput="koAutoGrow(this)" placeholder="Note…">${koEscapeHtml(note)}</textarea>
     </td>
     <td class="ko-pcell ko-pcell-sq">
