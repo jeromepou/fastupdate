@@ -956,6 +956,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div class="fg"><label>Next Flight</label><input type="text" id="f_nxt" placeholder="e.g. 19JUN26" oninput="autosave()"/></div>
       <div class="fg"><label>Return Date</label><input type="text" id="f_retdate" placeholder="e.g. JUN19/26" oninput="autosave()"/></div>
       <div class="fg"><label>Return Time</label><input type="text" id="f_rettime" placeholder="e.g. 14:00 UTC" oninput="autosave()"/></div>
+      <div class="fg"><label>Engineer Arrival On Site</label><input type="text" id="f_site_arrival" placeholder="e.g. 18SEP26 AM" oninput="autosave()"/></div>
     </div>
     <div class="fg">
       <label>Additional Info / Constraints</label>
@@ -999,6 +1000,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <button class="btn danger" id="btn-mark-rts" onclick="markRTS()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:700">✅ Mark A/C RTS</button>
   <button class="btn" id="btn-reply-sync" onclick="koOpenReplyModal()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:600" title="Scan Gmail for replies on this job">📬 Replies</button>
   <button class="btn" onclick="koOpenStatusComposer()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:600" title="Draft a customer status update from the current project state">🪄 Status update</button>
+  <button class="btn" onclick="koOpenDigestComposer()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:600" title="Scan today's emails (Techops + customer) and draft a daily digest">📋 Daily digest</button>
 </div>
 
 <div id="output-section" class="output-section" style="display:none">
@@ -3294,11 +3296,34 @@ function koLatestDailyUpdateText() {
 }
 
 // ── Draft a proactive status update — no specific message to reply to ──
+// Lit le cache Parts de Reply Sync (mémoire si déjà chargé cette session
+// pour ce WO, sinon Firebase) et l'aplatit en texte — même clé exacte que
+// koShowCachedThenRefresh. Jamais de scan Gmail en direct depuis ce point :
+// si le cache est vide, c'est qu'il faut d'abord ouvrir 📬 Replies une fois.
+async function koGetPartsCacheSummary(wo) {
+  let cache = (koReplyCurrentFA === wo) ? koReplyCache.parts : null;
+  if (!cache) {
+    try {
+      const faKey = wo.toLowerCase().replace(/[\s/]/g, '_');
+      const snap = await get(ref(db, 'squawkReplies/' + faKey + '/parts'));
+      if (snap.exists()) cache = snap.val();
+    } catch(e) { console.warn('Parts cache read failed:', e); }
+  }
+  const lines = [];
+  (cache?.replies || []).forEach(r => {
+    (r.parts_updates || []).forEach(p => {
+      if (!p.pn && !p.description) return;
+      lines.push([p.pn || '(no P/N)', p.description || '', p.status || '', p.eta_text ? ('ETA ' + p.eta_text) : '', p.source_location || ''].filter(Boolean).join(' — '));
+    });
+  });
+  return lines.length ? lines.join('\n') : '(no parts updates on file — open 📬 Replies once to populate this)';
+}
+
 G.koOpenStatusComposer = async function() {
   const custEmail = gv('f_cust_email').trim();
   if (!custEmail) { alert('⚠️ Add the customer email in Customer Info first.'); return; }
 
-  const wo    = gv('f_wo');
+  const wo    = koCurrentWoField();
   const model = gv('f_model');
   const sn    = gv('f_sn');
   const reg   = gv('f_reg');
@@ -3308,6 +3333,7 @@ G.koOpenStatusComposer = async function() {
   const erts  = gv('f_erts');
   const nxt   = gv('f_nxt');
   const info  = gv('f_info');
+  const siteArrival = gv('f_site_arrival');
   const dailyUpdate = koLatestDailyUpdateText();
 
   const idx = koReplyDraftQueue.push({
@@ -3334,6 +3360,8 @@ G.koOpenStatusComposer = async function() {
     return;
   }
 
+  const partsSummary = await koGetPartsCacheSummary(wo);
+
   const prompt = `You are drafting a proactive status update email from an aircraft maintenance engineer to a customer, for aviation job ${wo || '(unknown WO)'}.
 
 Known facts you may use — do not invent anything beyond this list:
@@ -3342,7 +3370,10 @@ Known facts you may use — do not invent anything beyond this list:
 - Current squawks: ${items}
 - Estimated RTS: ${erts || 'not yet known'}
 - Next flight: ${nxt || 'not yet known'}
+- Engineer arrival on site: ${siteArrival || 'not yet known'}
 - Additional info / constraints: ${info || '(none)'}
+- Parts status (from Reply Sync):
+${partsSummary}
 - Most recent internal daily update: ${dailyUpdate || '(none logged yet)'}
 
 Write a short, professional proactive status update email body in English, covering current progress, parts/next-steps status, and anything time-sensitive the customer should know — using ONLY the facts above. If a fact isn't listed above, say the engineer will confirm it shortly — never invent a date, part number, status, or name.
@@ -3362,6 +3393,115 @@ Reply with plain text only, no markdown, no quotes.`;
   } catch(e) {
     document.getElementById('reply-composer-body').value = '';
     document.getElementById('reply-composer-error').textContent = '❌ Drafting failed: ' + e.message + ' — you can still write the update manually.';
+  }
+};
+
+// ── Phase 3 : digest quotidien — Daily Update + Parts + tout ce qui a
+// bougé aujourd'hui côté Techops/client (scan Gmail large côté worker,
+// seul endroit qui détient le refresh token persistant ; la synthèse
+// finale reste ici, via /chat, comme les deux autres flux).
+G.koOpenDigestComposer = async function() {
+  const custEmail = gv('f_cust_email').trim();
+  if (!custEmail) { alert('⚠️ Add the customer email in Customer Info first.'); return; }
+
+  const wo = koCurrentWoField();
+  if (!wo) { alert('⚠️ Load a project with a Work Order number first.'); return; }
+  const model = gv('f_model');
+  const sn    = gv('f_sn');
+  const reg   = gv('f_reg');
+  const loc   = gv('f_loc');
+  const desc  = gv('f_job_desc');
+  const items = getItems().map(it => it.num + '. ' + it.label).join('; ') || '(none on file)';
+  const erts  = gv('f_erts');
+  const nxt   = gv('f_nxt');
+  const info  = gv('f_info');
+  const siteArrival = gv('f_site_arrival');
+  const dailyUpdate = koLatestDailyUpdateText();
+
+  const idx = koReplyDraftQueue.push({
+    msgId: null, threadId: null, messageIdHeader: '', subjectHeader: '',
+    from: custEmail, summary: '', questions: []
+  }) - 1;
+
+  try {
+    document.getElementById('reply-composer-error').textContent = '';
+    const titleEl = document.querySelector('#modal-reply-composer h3');
+    if (titleEl) titleEl.textContent = '📋 Draft daily digest';
+    const origLabel = document.getElementById('reply-composer-original').previousElementSibling;
+    if (origLabel) origLabel.textContent = 'Context';
+    document.getElementById('reply-composer-original').value =
+      'Daily digest for ' + wo + ' — ' + (model || '') + ' ' + (reg || '') + ' at ' + (loc || 'unknown location');
+    document.getElementById('reply-composer-subject').value =
+      buildEmailSubject(koTypedSubjectTemplate('CUSTOMER UPDATE'), { wo, model, sn, reg, loc, desc });
+    document.getElementById('reply-composer-body').value = '⏳ Scanning today’s emails…';
+    document.getElementById('reply-composer-btn').dataset.replyIdx = idx;
+    openModal('modal-reply-composer');
+  } catch(e) {
+    console.error('koOpenDigestComposer: failed to open composer', e);
+    alert('❌ Could not open the composer: ' + e.message);
+    return;
+  }
+
+  const partsSummary = await koGetPartsCacheSummary(wo);
+
+  let activityText = '(mailbox scan unavailable)';
+  try {
+    const res = await fetch(KO_WORKER + '/scan-daily-activity', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ faNumber: wo, acReg: reg })
+    });
+    const data = await res.json();
+    if (res.status === 409 && data.error === 'gmail_not_connected') {
+      const engName = await koFetchEngineerName(data.leadEngId);
+      activityText = '(mailbox scan unavailable — ' + (engName || 'the lead engineer') + ' needs to connect Gmail for Reply Sync)';
+    } else if (!res.ok) {
+      activityText = '(mailbox scan failed: ' + (data.error || res.status) + ')';
+    } else {
+      const msgs = data.items || [];
+      activityText = msgs.length
+        ? msgs.map(m => '[' + (m.isHSA ? 'US → ' : 'IN ← ') + (m.subject || '(no subject)') + '] ' + m.body.slice(0, 300)).join('\n\n')
+        : '(nothing found in the mailbox for today)';
+    }
+  } catch(e) {
+    console.warn('scan-daily-activity failed:', e);
+  }
+
+  document.getElementById('reply-composer-body').value = '⏳ Drafting…';
+
+  const prompt = `You are drafting a daily status update email from an aircraft maintenance engineer to a customer, for aviation job ${wo}.
+
+Known facts you may use — do not invent anything beyond this list:
+- Aircraft: ${model || 'unknown model'} ${reg || ''}, currently at ${loc || 'unknown location'}
+- Job: ${desc || '(no description on file)'}
+- Current squawks: ${items}
+- Estimated RTS: ${erts || 'not yet known'}
+- Next flight: ${nxt || 'not yet known'}
+- Engineer arrival on site: ${siteArrival || 'not yet known'}
+- Additional info / constraints: ${info || '(none)'}
+- Parts status (from Reply Sync):
+${partsSummary}
+- Most recent internal daily update: ${dailyUpdate || '(none logged yet)'}
+- Today's raw email activity on this job (internal Techops and/or customer threads — "US →" is our own team writing, "IN ←" is an incoming message; use this to understand what happened today, not as text to quote verbatim):
+${activityText}
+
+Write a short, professional daily status update email body in English for the customer, summarising today's progress and anything time-sensitive — using ONLY the facts above. Never repeat internal-only remarks (pricing, internal complaints, colleague names not meant for the customer) verbatim — translate them into a customer-appropriate status line, or omit them if they aren't customer-relevant. If a fact isn't listed above, say the engineer will confirm it shortly — never invent a date, part number, status, or name.
+Do not include a greeting or a sign-off — only the body paragraphs, those are added separately.
+Reply with plain text only, no markdown, no quotes.`;
+
+  try {
+    const res = await koWorkerFetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'mistral-small-latest', temperature: 0.2, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Error ' + res.status);
+    const draft = (data.choices?.[0]?.message?.content || '').trim();
+    document.getElementById('reply-composer-body').value = draft || '(empty response — write the digest manually)';
+  } catch(e) {
+    document.getElementById('reply-composer-body').value = '';
+    document.getElementById('reply-composer-error').textContent = '❌ Drafting failed: ' + e.message + ' — you can still write the digest manually.';
   }
 };
 
@@ -5143,6 +5283,7 @@ function gatherData() {
     rts_assist: gv('f_rts_assist'), far: gv('f_far'), country: gv('f_country'), fbo: gv('f_fbo'), po: gv('f_po'),
     ac_hours: gv('f_ac_hours'), ac_cycles: gv('f_ac_cycles'),
     erts: gv('f_erts'), nxt: gv('f_nxt'), retdate: gv('f_retdate'), rettime: gv('f_rettime'), info: gv('f_info'),
+    site_arrival: gv('f_site_arrival'),
     job_desc: gv('f_job_desc'),
     recipients: getRecipients(),
     cust_name: gv('f_cust_name'), cust_tel: gv('f_cust_tel'), cust_email: gv('f_cust_email'),
@@ -5222,6 +5363,7 @@ function fillFromProj(proj) {
   if (btn) btn.textContent = isAssist ? '🤝 Assistance Provided' : '✅ Mark A/C RTS'; sv('f_far', proj.far); sv('f_country', proj.country); sv('f_fbo', proj.fbo); sv('f_po', proj.po);
   sv('f_ac_hours', proj.ac_hours || ''); sv('f_ac_cycles', proj.ac_cycles || '');
   sv('f_erts', proj.erts || ''); sv('f_nxt', proj.nxt || ''); sv('f_retdate', proj.retdate || ''); sv('f_rettime', proj.rettime || ''); sv('f_info', proj.info || '');
+  sv('f_site_arrival', proj.site_arrival || '');
   sv('f_job_desc', proj.job_desc || '');
   sv('f_intro_msg', '');
   const savedRecipients = Array.isArray(proj.recipients) ? proj.recipients : [];
