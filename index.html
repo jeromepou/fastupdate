@@ -936,9 +936,11 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="card-body">
     <div id="parts-container"></div>
     <button class="btn-add" onclick="addPart()">+ Add part</button>
+    <button class="btn-add" onclick="koOpenScanCapture('newpart')">📷 Scan a plate/tag (new part)</button>
     <button class="btn" onclick="openRepairTagModal()" style="width:100%;justify-content:center;margin-top:8px" title="Opens a blank GA3671 tag — useful if the part isn't (or isn't yet) in the table above">🏷️ Generate GA3671 tag (standalone)</button>
   </div>
 </div>
+<input type="file" id="scan-tag-input" accept="image/*" capture="environment" style="display:none" onchange="koScanTagFileSelected(this)"/>
 
 <!-- STEP 5 -->
 <div class="card">
@@ -1901,6 +1903,30 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
+<!-- SCAN TAG PREVIEW MODAL -->
+<div class="modal-bg" id="modal-scan-tag-preview">
+  <div class="modal" style="max-width:420px">
+    <h3>📷 Plate/tag scan — review before using</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">⚠️ AI-read — always double-check against the physical plate/tag before relying on this for traceability. A blank field means it couldn't be read confidently — fill it manually rather than guess.</p>
+    <img id="scan-tag-preview-img" style="max-width:100%;max-height:160px;object-fit:contain;border:1px solid var(--g200);border-radius:var(--r);margin-bottom:10px;background:#000"/>
+    <div id="scan-tag-confidence-note" style="display:none;font-size:12px;color:var(--amb);background:var(--al);border:1px solid #d4b800;border-radius:var(--r);padding:7px 10px;margin-bottom:10px">⚠️ Low confidence read — check carefully against the photo above.</div>
+    <div class="fg" style="margin-bottom:8px"><label>Nomenclature</label><input type="text" id="scan-tag-nom"/></div>
+    <div class="fg" style="margin-bottom:8px"><label>Part Number</label><input type="text" id="scan-tag-pn"/></div>
+    <div class="fg" style="margin-bottom:14px"><label>Serial Number</label><input type="text" id="scan-tag-sn"/></div>
+    <div id="scan-tag-side-buttons" class="modal-btns" style="justify-content:space-between">
+      <button class="btn" onclick="closeModal('modal-scan-tag-preview')">Cancel</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="confirmScanTag('off')">Use as OFF (removed)</button>
+        <button class="btn primary" onclick="confirmScanTag('on')">Use as ON (installed)</button>
+      </div>
+    </div>
+    <div id="scan-tag-single-button" class="modal-btns" style="display:none">
+      <button class="btn" onclick="closeModal('modal-scan-tag-preview')">Cancel</button>
+      <button class="btn primary" onclick="confirmScanTag('single')">✓ Use these values</button>
+    </div>
+  </div>
+</div>
+
 <!-- PARTS PREVIEW MODAL -->
 <div class="modal-bg" id="modal-parts-preview">
   <div class="modal" style="max-width:760px">
@@ -2076,6 +2102,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div class="fg"><label>A/C Cycles</label><input type="text" id="rtag_cycles" placeholder="e.g. 1064" oninput="rtagSyncHoursCycles()"/></div>
       <div class="fg"><label>Date</label><input type="text" id="rtag_date"/></div>
     </div>
+    <button type="button" class="btn" onclick="koOpenScanCapture('ga3671')" style="margin-bottom:8px;font-size:12px">📷 Scan a plate/tag to fill these fields</button>
     <div class="grid g3" style="margin-bottom:10px">
       <div class="fg"><label>Part Name</label><input type="text" id="rtag_partname"/></div>
       <div class="fg"><label>Part Number</label><input type="text" id="rtag_pn"/></div>
@@ -6067,7 +6094,7 @@ G.addPart = function(nom='',pn_off='',sn_off='',pn_on='',sn_on='', koSrcUid='') 
     <div class="fg"><label>SN OFF</label><input type="text" class="p-snoff" value="${escAttr(sn_off)}" placeholder="SN OFF" oninput="autosave()"/></div>
     <div class="fg"><label>PN ON</label><input type="text" class="p-pnon" value="${escAttr(pn_on)}" placeholder="Auto-fills from PN OFF" oninput="autosave()"/></div>
     <div class="fg"><label>SN ON</label><input type="text" class="p-snon" value="${escAttr(sn_on)}" placeholder="SN ON" oninput="autosave()"/></div>
-  </div><button class="btn" onclick="openRepairTagModal(this)" title="Generate the GA3671 tag for this part" style="margin-top:18px;padding:6px 9px;font-size:11px;white-space:nowrap">🏷️</button><button class="btn-rm" onclick="this.parentElement.remove();autosave()" style="margin-top:18px">×</button>`;
+  </div><button class="btn" onclick="koOpenScanCapture('row', this)" title="Scan a plate/tag to fill this row" style="margin-top:18px;padding:6px 9px;font-size:11px;white-space:nowrap">📷</button><button class="btn" onclick="openRepairTagModal(this)" title="Generate the GA3671 tag for this part" style="margin-top:18px;padding:6px 9px;font-size:11px;white-space:nowrap">🏷️</button><button class="btn-rm" onclick="this.parentElement.remove();autosave()" style="margin-top:18px">×</button>`;
   c.appendChild(d);
 };
 G.onPnOffInput = function(el) {
@@ -6076,6 +6103,185 @@ G.onPnOffInput = function(el) {
   G.autosave();
 };
 document.addEventListener('input', e => { if(e.target.classList.contains('p-pnon')) e.target.dataset.manualEdit = '1'; });
+
+// ══════════════════════════════════════
+//  PLATE/TAG SCAN (camera) — nameplate & 8130-3/Form 1 OCR
+// ══════════════════════════════════════
+let _scanTagMode = null;   // 'newpart' | 'row' | 'ga3671'
+let _scanTagRow  = null;   // .part-row ciblé, uniquement en mode 'row'
+
+G.koOpenScanCapture = function(mode, rowBtnOrEl) {
+  _scanTagMode = mode;
+  _scanTagRow  = (mode === 'row' && rowBtnOrEl) ? rowBtnOrEl.closest('.part-row') : null;
+  document.getElementById('scan-tag-input').value = ''; // permet de reprendre la même photo 2x de suite
+  document.getElementById('scan-tag-input').click();
+};
+
+// Calcule le gamma à appliquer pour ramener la luminance moyenne mesurée
+// (avgLum, 0-255) vers une cible (target), borné à minGamma pour ne jamais
+// sur-éclaircir au point de faire ressortir le bruit numérique à la place
+// du texte gravé. Isolée en pure fonction pour rester facilement vérifiable.
+function scanTagComputeGamma(avgLum, target, minGamma) {
+  if (avgLum <= 0) return minGamma;
+  const g = Math.log(target / 255) / Math.log(avgLum / 255);
+  return Math.min(Math.max(g, minGamma), 1);
+}
+
+// Éclaircit une photo prise dans un lieu sombre (hangar mal éclairé, sous
+// l'aile, à la lampe torche) AVANT de l'envoyer à l'IA. Correction gamma
+// adaptative plutôt qu'un simple +brightness linéaire : celui-ci cramerait
+// les reflets sur une plaque métallique gravée au lieu d'éclaircir surtout
+// les tons sombres. Ne touche à RIEN si la photo est déjà correctement
+// exposée (seuil sur la luminance moyenne).
+function scanTagAutoBrighten(ctx, w, h) {
+  const DARK_THRESHOLD = 95;  // luminance moyenne (/255) en dessous de laquelle la photo est jugée sombre
+  const TARGET_LUM     = 130; // luminance moyenne visée après correction
+  const MIN_GAMMA      = 0.4; // plancher — évite un éclaircissement extrême
+
+  const imgData = ctx.getImageData(0, 0, w, h);
+  const d = imgData.data;
+
+  let sum = 0, n = 0;
+  for (let i = 0; i < d.length; i += 16) { // 1 pixel sur 4 — moyenne fiable, bien plus rapide
+    sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+    n++;
+  }
+  const avgLum = n ? sum / n : 255;
+  if (avgLum >= DARK_THRESHOLD) return; // déjà assez lumineuse — ne rien changer
+
+  const gamma = scanTagComputeGamma(avgLum, TARGET_LUM, MIN_GAMMA);
+  for (let i = 0; i < d.length; i += 4) {
+    d[i]     = 255 * Math.pow(d[i]     / 255, gamma);
+    d[i + 1] = 255 * Math.pow(d[i + 1] / 255, gamma);
+    d[i + 2] = 255 * Math.pow(d[i + 2] / 255, gamma);
+  }
+  ctx.putImageData(imgData, 0, 0);
+}
+
+function scanTagResizeImage(file, maxDim) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        scanTagAutoBrighten(ctx, w, h); // photo sombre → éclaircie avant envoi à l'IA
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => reject(new Error('Cannot read the image.'));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error('Cannot read the file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+G.koScanTagFileSelected = async function(inputEl) {
+  const file = inputEl.files[0];
+  if (!file) return;
+
+  const btnEls = document.querySelectorAll('[onclick^="koOpenScanCapture"]');
+  btnEls.forEach(b => b.disabled = true);
+  const toast = document.createElement('div');
+  toast.textContent = '⏳ Reading photo…';
+  toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--gd);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:700;z-index:300;box-shadow:0 2px 10px rgba(0,0,0,.2)';
+  document.body.appendChild(toast);
+
+  try {
+    const dataUrl = await scanTagResizeImage(file, 1000);
+    document.getElementById('scan-tag-preview-img').src = dataUrl;
+
+    const prompt = `You are looking at a photo of an aviation part identification plate/tag (a metal data plate riveted to a part, or an attached paperwork tag such as an FAA 8130-3 or EASA Form 1 release tag). The photo may have been taken in a dim hangar or under a wing — read carefully even if lighting is imperfect.
+
+Extract:
+- nomenclature: the part's name/description, in UPPERCASE (e.g. "MAIN TIRE", "BRAKE CONTROL UNIT"). If not clearly stated, leave "".
+- pn: the Part Number exactly as printed (look for labels like "P/N", "PART NO", "PART NUMBER"). Leave "" if not visible.
+- sn: the Serial Number exactly as printed (look for labels like "S/N", "SERIAL NO"). Leave "" if not visible.
+- confidence: "high" if the plate/tag is sharp and fully legible, "low" if blurry, partially obscured, poorly lit, or you had to guess any character.
+
+Do not invent or guess characters you cannot read clearly — if a character is ambiguous, leave the whole field "" rather than guessing wrong (this data affects aircraft parts traceability).
+
+Reply ONLY with valid JSON, no markdown:
+{"nomenclature":"","pn":"","sn":"","confidence":"high"}`;
+
+    const res = await koWorkerFetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'mistral-small-latest',
+        temperature: 0,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: dataUrl }
+          ]
+        }],
+        response_format: { type: 'json_object' }
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || ('Error ' + res.status));
+    const raw = data.choices?.[0]?.message?.content || '';
+    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+
+    sv('scan-tag-nom', parsed.nomenclature || '');
+    sv('scan-tag-pn', parsed.pn || '');
+    sv('scan-tag-sn', parsed.sn || '');
+    document.getElementById('scan-tag-confidence-note').style.display = parsed.confidence === 'low' ? '' : 'none';
+
+    const isGa3671 = _scanTagMode === 'ga3671';
+    document.getElementById('scan-tag-side-buttons').style.display = isGa3671 ? 'none' : 'flex';
+    document.getElementById('scan-tag-single-button').style.display = isGa3671 ? 'flex' : 'none';
+
+    openModal('modal-scan-tag-preview');
+  } catch(e) {
+    alert('📷 Scan failed: ' + e.message);
+  } finally {
+    btnEls.forEach(b => b.disabled = false);
+    toast.remove();
+  }
+};
+
+G.confirmScanTag = function(side) {
+  const nom = gv('scan-tag-nom');
+  const pn  = gv('scan-tag-pn');
+  const sn  = gv('scan-tag-sn');
+
+  if (_scanTagMode === 'ga3671') {
+    sv('rtag_partname', nom);
+    sv('rtag_pn', pn);
+    sv('rtag_partsn', sn);
+  } else if (_scanTagMode === 'row' && _scanTagRow) {
+    const nomEl = _scanTagRow.querySelector('.p-nom');
+    if (nomEl && !nomEl.value) nomEl.value = nom;
+    if (side === 'off') {
+      _scanTagRow.querySelector('.p-pnoff').value = pn;
+      _scanTagRow.querySelector('.p-snoff').value = sn;
+    } else {
+      const pnOnEl = _scanTagRow.querySelector('.p-pnon');
+      pnOnEl.value = pn;
+      pnOnEl.dataset.manualEdit = '1'; // sinon un futur edit de PN OFF écraserait ce PN ON tout juste scanné
+      _scanTagRow.querySelector('.p-snon').value = sn;
+    }
+    G.autosave();
+  } else if (_scanTagMode === 'newpart') {
+    if (side === 'off') G.addPart(nom, pn, sn, '', '');
+    else G.addPart(nom, '', '', pn, sn);
+    G.autosave();
+  }
+
+  closeModal('modal-scan-tag-preview');
+  _scanTagMode = null;
+  _scanTagRow = null;
+};
+
 function getParts() {
   return Array.from(document.querySelectorAll('.part-row')).map(r => ({
     nom: r.querySelector('.p-nom').value, pn_off: r.querySelector('.p-pnoff').value,
@@ -7925,7 +8131,7 @@ if ('serviceWorker' in navigator) {
 //  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
 //  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v24';
+const CURRENT_VERSION = 'v25';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
