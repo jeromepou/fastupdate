@@ -996,6 +996,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </button>
   <button class="btn danger" id="btn-mark-rts" onclick="markRTS()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:700">✅ Mark A/C RTS</button>
   <button class="btn" id="btn-reply-sync" onclick="koOpenReplyModal()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:600" title="Scan Gmail for replies on this job">📬 Replies</button>
+  <button class="btn" onclick="koOpenStatusComposer()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:600" title="Draft a customer status update from the current project state">🪄 Status update</button>
 </div>
 
 <div id="output-section" class="output-section" style="display:none">
@@ -2354,7 +2355,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 </div>
 
 <!-- CUSTOMER REPLY COMPOSER MODAL -->
-<div class="modal-bg" id="modal-reply-composer">
+<div class="modal-bg" id="modal-reply-composer" style="z-index:999999">
   <div class="modal" style="max-width:560px">
     <h3>✍️ Draft reply to customer</h3>
     <p style="font-size:12px;color:var(--g600);margin-bottom:10px">⚠️ AI-generated — review every fact before creating the draft. Nothing is sent automatically.</p>
@@ -3188,6 +3189,10 @@ G.koOpenReplyComposer = async function(idx) {
 
   try {
     document.getElementById('reply-composer-error').textContent = '';
+    const rTitleEl = document.querySelector('#modal-reply-composer h3');
+    if (rTitleEl) rTitleEl.textContent = '✍️ Draft reply to customer';
+    const rOrigLabel = document.getElementById('reply-composer-original').previousElementSibling;
+    if (rOrigLabel) rOrigLabel.textContent = 'Their message (for reference)';
     document.getElementById('reply-composer-original').value =
       (item.from ? item.from + ' — ' : '') + (item.summary || '(no summary)') +
       (questions.length ? '\n\nQuestions: ' + questions.join(' / ') : '');
@@ -3239,6 +3244,97 @@ Reply with plain text only, no markdown, no quotes.`;
   } catch(e) {
     document.getElementById('reply-composer-body').value = '';
     document.getElementById('reply-composer-error').textContent = '❌ Drafting failed: ' + e.message + ' — you can still write the reply manually.';
+  }
+};
+
+// Aplati la dernière Daily Update (freeText + statut de chaque item) en texte
+// brut, pour alimenter le prompt du point de situation.
+function koLatestDailyUpdateText() {
+  const updates = getUpdatesData();
+  if (!updates.length) return '';
+  const latest = updates.reduce((a, b) => (b.ts > a.ts ? b : a));
+  const scratch = document.createElement('div');
+  const plain = (html) => { scratch.innerHTML = html || ''; return scratch.textContent.trim(); };
+  const parts = [];
+  if (latest.date) parts.push('Update dated ' + latest.date + ':');
+  const free = plain(latest.freeText);
+  if (free) parts.push(free);
+  latest.itemUpdates.forEach(it => {
+    const detail = plain(it.detail);
+    if (it.status || detail) parts.push('- Item ' + it.num + ' [' + (it.status || 'no status') + ']' + (detail ? ': ' + detail : ''));
+  });
+  return parts.join('\n');
+}
+
+// ── Draft a proactive status update — no specific message to reply to ──
+G.koOpenStatusComposer = async function() {
+  const custEmail = gv('f_cust_email').trim();
+  if (!custEmail) { alert('⚠️ Add the customer email in Customer Info first.'); return; }
+
+  const wo    = gv('f_wo');
+  const model = gv('f_model');
+  const sn    = gv('f_sn');
+  const reg   = gv('f_reg');
+  const loc   = gv('f_loc');
+  const desc  = gv('f_job_desc');
+  const items = getItems().map(it => it.num + '. ' + it.label).join('; ') || '(none on file)';
+  const erts  = gv('f_erts');
+  const nxt   = gv('f_nxt');
+  const info  = gv('f_info');
+  const dailyUpdate = koLatestDailyUpdateText();
+
+  const idx = koReplyDraftQueue.push({
+    msgId: null, threadId: null, messageIdHeader: '', subjectHeader: '',
+    from: custEmail, summary: '', questions: []
+  }) - 1;
+
+  try {
+    document.getElementById('reply-composer-error').textContent = '';
+    const titleEl = document.querySelector('#modal-reply-composer h3');
+    if (titleEl) titleEl.textContent = '🪄 Draft status update';
+    const origLabel = document.getElementById('reply-composer-original').previousElementSibling;
+    if (origLabel) origLabel.textContent = 'Context';
+    document.getElementById('reply-composer-original').value =
+      'Status update for ' + (wo || '(unknown WO)') + ' — ' + (model || '') + ' ' + (reg || '') + ' at ' + (loc || 'unknown location');
+    document.getElementById('reply-composer-subject').value =
+      buildEmailSubject(koTypedSubjectTemplate('CUSTOMER UPDATE'), { wo, model, sn, reg, loc, desc });
+    document.getElementById('reply-composer-body').value = '⏳ Drafting…';
+    document.getElementById('reply-composer-btn').dataset.replyIdx = idx;
+    openModal('modal-reply-composer');
+  } catch(e) {
+    console.error('koOpenStatusComposer: failed to open composer', e);
+    alert('❌ Could not open the composer: ' + e.message);
+    return;
+  }
+
+  const prompt = `You are drafting a proactive status update email from an aircraft maintenance engineer to a customer, for aviation job ${wo || '(unknown WO)'}.
+
+Known facts you may use — do not invent anything beyond this list:
+- Aircraft: ${model || 'unknown model'} ${reg || ''}, currently at ${loc || 'unknown location'}
+- Job: ${desc || '(no description on file)'}
+- Current squawks: ${items}
+- Estimated RTS: ${erts || 'not yet known'}
+- Next flight: ${nxt || 'not yet known'}
+- Additional info / constraints: ${info || '(none)'}
+- Most recent internal daily update: ${dailyUpdate || '(none logged yet)'}
+
+Write a short, professional proactive status update email body in English, covering current progress, parts/next-steps status, and anything time-sensitive the customer should know — using ONLY the facts above. If a fact isn't listed above, say the engineer will confirm it shortly — never invent a date, part number, status, or name.
+Do not include a greeting or a sign-off — only the body paragraphs, those are added separately.
+Reply with plain text only, no markdown, no quotes.`;
+
+  try {
+    const res = await koWorkerFetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'mistral-small-latest', temperature: 0.2, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Error ' + res.status);
+    const draft = (data.choices?.[0]?.message?.content || '').trim();
+    document.getElementById('reply-composer-body').value = draft || '(empty response — write the update manually)';
+  } catch(e) {
+    document.getElementById('reply-composer-body').value = '';
+    document.getElementById('reply-composer-error').textContent = '❌ Drafting failed: ' + e.message + ' — you can still write the update manually.';
   }
 };
 
