@@ -1932,8 +1932,12 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 <!-- AMM TASK READER MODAL -->
 <div class="modal-bg" id="modal-amm-reader">
   <div class="modal" style="max-width:960px;width:95vw;max-height:90vh;display:flex;flex-direction:column;padding:0">
-    <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--g200);flex-shrink:0">
+    <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--g200);flex-shrink:0;flex-wrap:wrap">
       <h3 style="margin:0;flex:1">🔧 AMM Task Reader</h3>
+      <div id="amm-reader-sq-row" style="display:flex;align-items:center;gap:6px">
+        <label style="font-size:11px;font-weight:600;color:var(--g600);white-space:nowrap">Assign to squawk:</label>
+        <select id="amm-reader-sq-sel" style="font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;max-width:220px"></select>
+      </div>
       <button class="btn" onclick="closeModal('modal-amm-reader')" style="font-size:12px;padding:5px 10px">✕ Close</button>
     </div>
     <iframe id="amm-reader-iframe" src="amm-task-reader.html" style="width:100%;border:none;background:#fff;height:420px;min-height:160px"></iframe>
@@ -2349,6 +2353,31 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
+<!-- CUSTOMER REPLY COMPOSER MODAL -->
+<div class="modal-bg" id="modal-reply-composer">
+  <div class="modal" style="max-width:560px">
+    <h3>✍️ Draft reply to customer</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">⚠️ AI-generated — review every fact before creating the draft. Nothing is sent automatically.</p>
+    <div class="fg" style="margin-bottom:8px">
+      <label>Their message (for reference)</label>
+      <textarea id="reply-composer-original" readonly style="min-height:60px;background:var(--g100);color:var(--g600)"></textarea>
+    </div>
+    <div class="fg" style="margin-bottom:8px">
+      <label>Subject</label>
+      <input type="text" id="reply-composer-subject" style="font-size:13px"/>
+    </div>
+    <div class="fg">
+      <label>Body (editable)</label>
+      <textarea id="reply-composer-body" style="min-height:180px"></textarea>
+    </div>
+    <div class="err-msg" id="reply-composer-error"></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('modal-reply-composer')">Cancel</button>
+      <button class="btn primary" id="reply-composer-btn" onclick="koConfirmReplyDraft()">📧 Create draft in Gmail</button>
+    </div>
+  </div>
+</div>
+
 <!-- HELP MODAL -->
 <div class="modal-bg" id="modal-help">
   <div class="modal" style="max-width:600px">
@@ -2501,6 +2530,12 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       </ul>
       <p>The results popup shows: squawk text, aircraft type, serial number, <strong>Work Order (FAXXXXX)</strong>, engineer who entered the data, number of times those parts were used, and last date used. Results are split into <strong>Same aircraft type</strong> (highest confidence) and <strong>Other aircraft types</strong> (collapsed by default — always verify P/N applicability before using). Tick the parts you want and click <strong>✓ Add selected to parts list</strong> to insert them directly into the table.</p>
       <p><strong>Important:</strong> the history is a starting point only. Always cross-check any suggested part number against the current AMM, IPC, and applicable release documentation before ordering or installing.</p>
+    </div>
+
+    <div class="help-section">
+      <h4>💡 Smart Diagnosis — troubleshooting suggestions from past squawks</h4>
+      <p>As you type a work item description in <strong>Step 3</strong>, the app quietly checks it against every past resolved defect logged by the whole team (same aircraft family weighted first). If a good match is found, a small <strong>"💡 N similar case(s) resolved"</strong> pill appears under the item — tap it to see what actually fixed the problem (resolution, and any parts replaced), with the Work Order, date and engineer who logged it. A <strong>"📝 Reprendre l'action dans le Daily Update"</strong> button lets you insert that resolution straight into today's Daily Update note for that item and mark it carried out.</p>
+      <p>This knowledge base fills itself automatically, with no extra typing: every time you generate a <strong>GA 3671 tag</strong> with a "Work Performed / Resolution" filled in, and every time you mark an aircraft <strong>RTS</strong> with a work item checked "Carried out" and a note attached, that resolution is saved for the whole team to benefit from on future jobs.</p>
     </div>
 
     <div class="help-section">
@@ -2679,6 +2714,7 @@ function koWorkerFetch(path, options = {}) {
 
 let koReplyCache = {};       // { customer:{replies,lastSync}, parts:{...}, fbo:{...} } pour le FA courant
 let koPartsUpdateQueue = []; // items cliquables (parts_updates / hsa_parts_added / hsa_parts_removed), reconstruit à chaque rendu de la section "parts"
+let koReplyDraftQueue = [];  // messages clients cliquables pour "✍️ Draft reply", reconstruit à chaque rendu de la section "customer"
 let koReplyCurrentFA = '';
 
 // NOUVEAU — anti double-appel + seuil auto-refresh + libellés des 3 sections affichées ensemble
@@ -2961,6 +2997,7 @@ function koRenderReplyBody(replies, cat, lastSync) {
   const labelEl = document.getElementById('reply-sync-label-' + cat);
   if (!bodyEl) return;
   if (cat === 'parts') koPartsUpdateQueue = []; // reconstruit à chaque rendu de la section "parts"
+  if (cat === 'customer') koReplyDraftQueue = []; // reconstruit à chaque rendu de la section "customer"
 
   if (labelEl) labelEl.textContent = lastSync ? ('Synced ' + koSyncFreshnessLabel(lastSync)) : 'Never synced yet';
 
@@ -2996,6 +3033,7 @@ function koRenderReplyBody(replies, cat, lastSync) {
       html += '<div style="font-size:11px;background:#fef3c7;border:1px solid #fde68a;border-radius:4px;padding:5px 8px;margin-bottom:8px">⚠️ They need from us: ' + escHtml(r.questions_back.slice(0,3).join(' / ')) + '</div>';
     }
 
+    html += koReplyDraftButtonHtml(r, cat);
     html += koReplyActionsHtml(r, cat);
     html += '</div>';
   }
@@ -3016,6 +3054,19 @@ function koSafeStr(v) {
   return String(v);
 }
 	
+// Bouton "Draft reply" — uniquement sur les messages clients externes (pas
+// HSA). Empile l'item dans koReplyDraftQueue et référence son index dans
+// l'onclick, pour éviter d'échapper summary/questions dans l'attribut HTML.
+function koReplyDraftButtonHtml(r, cat) {
+  if (cat !== 'customer' || r.isHSA) return '';
+  const idx = koReplyDraftQueue.push({
+    msgId: r.msgId, threadId: r.threadId,
+    messageIdHeader: r.messageIdHeader || '', subjectHeader: r.subjectHeader || '',
+    from: r.from || '', summary: r.summary || '', questions: r.questions_back || []
+  }) - 1;
+  return '<div style="margin-top:6px"><button onclick="koOpenReplyComposer(' + idx + ')" style="font-size:11px;padding:4px 10px;border-radius:20px;cursor:pointer;border:1px solid #a5b4fc;background:#eef2ff;color:#3730a3;font-weight:600">✍️ Draft reply</button></div>';
+}
+
 // Construit les boutons "Apply" selon la catégorie — c'est ici que
 // chaque ETA va vers SON champ précis et nulle part ailleurs.
 function koReplyActionsHtml(r, cat) {
@@ -3117,6 +3168,117 @@ function koReplyActionsHtml(r, cat) {
   html += '</div>';
   return html;
 }
+
+// ── Draft reply — question client détectée dans Reply Sync ──
+G.koOpenReplyComposer = async function(idx) {
+  const item = koReplyDraftQueue[idx];
+  if (!item) return;
+
+  const loadedWo = (gv('f_wo') || '').trim().toUpperCase();
+  const replyWo  = (koReplyCurrentFA || '').trim().toUpperCase();
+  if (loadedWo && replyWo && loadedWo !== replyWo) {
+    if (!confirm('⚠️ The project currently loaded (' + loadedWo + ') does not match this Work Order (' + replyWo + ').\n\nContinue anyway? The draft will use whatever aircraft/squawk facts are currently on screen, which may be wrong.')) return;
+  }
+
+  document.getElementById('reply-composer-error').textContent = '';
+  document.getElementById('reply-composer-original').value =
+    (item.from ? item.from + ' — ' : '') + (item.summary || '(no summary)') +
+    (item.questions.length ? '\n\nQuestions: ' + item.questions.join(' / ') : '');
+  document.getElementById('reply-composer-subject').value =
+    /^re:/i.test(item.subjectHeader || '') ? item.subjectHeader : 'Re: ' + (item.subjectHeader || '');
+  document.getElementById('reply-composer-body').value = '⏳ Drafting…';
+  document.getElementById('reply-composer-btn').dataset.replyIdx = idx;
+  openModal('modal-reply-composer');
+
+  const wo    = gv('f_wo');
+  const model = gv('f_model');
+  const reg   = gv('f_reg');
+  const loc   = gv('f_loc');
+  const items = getItems().map(it => it.num + '. ' + it.label).join('; ') || '(none on file)';
+  const erts  = gv('f_erts');
+  const nxt   = gv('f_nxt');
+
+  const prompt = `You are drafting a reply email from an aircraft maintenance engineer to a customer, for aviation job ${wo || '(unknown WO)'}.
+
+The customer previously wrote. Here is what they said, extracted automatically:
+Summary: ${item.summary || '(no summary)'}
+Their question(s): ${item.questions.length ? item.questions.join(' / ') : '(none extracted — write a brief general status reply)'}
+
+Known facts you may use — do not invent anything beyond this list:
+- Aircraft: ${model || 'unknown model'} ${reg || ''}, currently at ${loc || 'unknown location'}
+- Current squawks: ${items}
+- Estimated RTS: ${erts || 'not yet known'}
+- Next flight: ${nxt || 'not yet known'}
+
+Write a short, professional reply email body in English that addresses their question(s) using ONLY the facts above. If a fact needed to answer isn't listed above, say the engineer will confirm it shortly — never invent a date, part number, status, or name.
+Do not include a greeting or a sign-off — only the body paragraphs, those are added separately.
+Reply with plain text only, no markdown, no quotes.`;
+
+  try {
+    const res = await koWorkerFetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'mistral-small-latest', temperature: 0.2, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Error ' + res.status);
+    const draft = (data.choices?.[0]?.message?.content || '').trim();
+    document.getElementById('reply-composer-body').value = draft || '(empty response — write the reply manually)';
+  } catch(e) {
+    document.getElementById('reply-composer-body').value = '';
+    document.getElementById('reply-composer-error').textContent = '❌ Drafting failed: ' + e.message + ' — you can still write the reply manually.';
+  }
+};
+
+G.koConfirmReplyDraft = async function() {
+  const idx = parseInt(document.getElementById('reply-composer-btn').dataset.replyIdx, 10);
+  const item = koReplyDraftQueue[idx];
+  const errEl = document.getElementById('reply-composer-error');
+  errEl.textContent = '';
+  if (!item) { errEl.textContent = '❌ Lost track of this message — reopen it from the Replies panel.'; return; }
+
+  const subject = document.getElementById('reply-composer-subject').value.trim();
+  const body    = document.getElementById('reply-composer-body').value.trim();
+  if (!body) { errEl.textContent = 'Write a body before creating the draft.'; return; }
+
+  if (!(gToken && Date.now() < gTokenExp)) {
+    errEl.textContent = '⏳ Waiting for Google sign-in…';
+    const ok = await ensureGTokenAsync();
+    if (!ok) { errEl.textContent = '⚠️ Google sign-in was cancelled — click "Create draft" again to retry.'; return; }
+  }
+
+  const btn = document.getElementById('reply-composer-btn');
+  btn.disabled = true;
+  const origLabel = btn.textContent;
+  btn.textContent = '⏳ Creating…';
+
+  try {
+    const toAddrs = item.from ? [item.from.replace(/^.*<(.+)>.*$/, '$1')] : [];
+    const htmlBody = `<div style="line-height:1.6;white-space:pre-wrap">${koFormatEmailHtml(body)}</div>` + koBuildSignatureHtml();
+    const encoded = buildRfc2822(toAddrs, subject, htmlBody, { messageId: item.messageIdHeader || undefined });
+
+    const payload = { message: { raw: encoded } };
+    if (item.threadId) payload.message.threadId = item.threadId;
+
+    const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${gToken}` },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      if (res.status === 401) { gToken = null; updateAuthUI(false); throw new Error('Session expired — sign in again and retry.'); }
+      const err = await res.json();
+      throw new Error(err.error?.message || 'Gmail API error ' + res.status);
+    }
+
+    btn.textContent = '✅ Draft created!';
+    setTimeout(() => { closeModal('modal-reply-composer'); btn.disabled = false; btn.textContent = origLabel; }, 1200);
+  } catch(e) {
+    errEl.textContent = '❌ ' + e.message;
+    btn.disabled = false;
+    btn.textContent = origLabel;
+  }
+};
 
 // Applique une donnée extraite dans le bon champ du formulaire.
 // IMPORTANT : "eng_eta" (ETA ingénieur) et "nxt" (next flight) ne
@@ -5095,12 +5257,19 @@ G.addItem = function(label = '', explicitId = null) {
   d.innerHTML = `<span class="item-num">${id}</span>
     <div class="item-fields">
       <div class="item-label-row">
-        <input type="text" value="${label.replace(/"/g,'&quot;')}" placeholder="Work item description" oninput="autosave()"/>
+        <input type="text" value="${label.replace(/"/g,'&quot;')}" placeholder="Work item description" 
+               oninput="autosave(); triggerSmartDiagSearch(this, ${id})"/>
       </div>
+      <div class="smart-diag-container" id="smart-diag-${id}" style="display:none;margin-top:4px"></div>
     </div>
     <button class="btn-rm" onclick="this.parentElement.remove();autosave()">×</button>`;
   c.appendChild(d);
   syncNewItemToExistingUpdateDays();
+
+  if (label.trim().length > 3) {
+    const inputEl = d.querySelector('input');
+    triggerSmartDiagSearch(inputEl, id);
+  }
 };
 
 function getItems() {
@@ -5154,6 +5323,215 @@ function syncNewItemToExistingUpdateDays() {
     updateDayProgress(dayEl);
   });
 }
+
+// ══════════════════════════════════════
+//  SMART DIAGNOSIS — historique des résolutions de pannes
+//  (troubleshootingKnowledge) — alimenté automatiquement par les
+//  fiches GA3671 et les Daily Updates marqués "Carried out"
+// ══════════════════════════════════════
+
+async function saveTroubleshootingEntry({ squawk, resolution, rootCause = '', parts = [], faultCodes = [], wiringResetOnly = false }) {
+  if (!squawk || !resolution) return;
+  const entryId = 'entry_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  const currentModel = (gv('f_model') || gv('ko_model') || '').trim().toUpperCase();
+  const currentWo = (gv('f_wo') || gv('ko_wo') || '').trim().toUpperCase();
+
+  const familyMatch = currentModel.match(/G\d{3,4}|GV|GIV/i);
+  const modelFamily = familyMatch ? familyMatch[0].toUpperCase() : currentModel;
+
+  // Même infra que squawkHistorySave() : mots-clés + embedding sémantique,
+  // pour que la recherche retrouve un cas même formulé différemment.
+  const embedText = [squawk, rootCause, resolution].filter(Boolean).join(' — ');
+  const embedding = await koGetEmbedding(embedText); // null si l'appel échoue — dégrade en mots-clés seuls, sans bloquer la sauvegarde
+
+  const payload = {
+    model: currentModel,
+    modelFamily: modelFamily,
+    squawk: squawk.trim().toUpperCase(),
+    keywords: squawkTokenize(squawk),
+    rootCause: rootCause.trim(),
+    resolution: resolution.trim(),
+    partsReplaced: parts,
+    faultCodes: faultCodes.filter(Boolean),
+    wiringResetOnly: wiringResetOnly,
+    engineerName: curProfile?.name || 'FAST Engineer',
+    wo: currentWo,
+    date: rtagTodayFormatted(),
+    ts: Date.now(),
+    embedding: embedding || null
+  };
+
+  try {
+    await set(ref(db, 'troubleshootingKnowledge/' + entryId), payload);
+  } catch (err) {
+    console.warn('Smart Diagnosis: failed to persist knowledge entry', err);
+  }
+}
+
+// Capture n°2 : items Daily Update cochés "Carried out" avec une note,
+// au moment où l'avion passe RTS. Prend, pour chaque item, la DERNIÈRE
+// note connue (le jour le plus récent où il a été touché).
+async function saveTroubleshootingFromDailyUpdates() {
+  try {
+    const items = getItems();
+    const updates = getUpdatesData(); // du plus ancien au plus récent
+    const latestByItem = {};
+    updates.forEach(u => {
+      u.itemUpdates.forEach(iu => {
+        if (iu.id != null) latestByItem[iu.id] = iu; // écrasé par la version la plus récente
+      });
+    });
+    for (const it of items) {
+      const iu = latestByItem[it.id];
+      if (!iu || iu.status !== 'done') continue;
+      const plainDetail = rteToPlainText(iu.detail);
+      if (!plainDetail) continue;
+      await saveTroubleshootingEntry({
+        squawk: it.label,
+        resolution: plainDetail,
+        rootCause: '',
+        parts: [],
+        faultCodes: [],
+        wiringResetOnly: true
+      });
+    }
+  } catch (err) {
+    console.warn('Smart Diagnosis: failed to extract from Daily Updates', err);
+  }
+}
+
+let smartDiagTimers = {};
+
+G.triggerSmartDiagSearch = function(inputEl, itemId) {
+  const query = (inputEl.value || '').trim();
+  const container = document.getElementById('smart-diag-' + itemId);
+  if (!container) return;
+
+  clearTimeout(smartDiagTimers[itemId]);
+  if (query.length < 4) {
+    container.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+
+  smartDiagTimers[itemId] = setTimeout(async () => {
+    const currentModel = (gv('f_model') || '').trim();
+    const familyMatch = currentModel.match(/G\d{3,4}|GV|GIV/i);
+    const targetFamily = familyMatch ? familyMatch[0].toUpperCase() : '';
+
+    try {
+      // Même hybride mots-clés + embedding que la recherche pièces (squawkRunSearch)
+      const [snap, queryEmbedding] = await Promise.all([
+        get(ref(db, 'troubleshootingKnowledge')),
+        koGetEmbedding(query)
+      ]);
+      if (!snap.exists()) return;
+
+      const entries = Object.values(snap.val());
+      const queryTokens = squawkTokenize(query);
+
+      const matches = entries.map(entry => {
+        const entryTokens = entry.keywords || squawkTokenize(entry.squawk || '');
+        const tokenScore = queryTokens.filter(t => entryTokens.includes(t)).length;
+        const semScore = (queryEmbedding && entry.embedding) ? cosineSimilarity(queryEmbedding, entry.embedding) : 0;
+        if (tokenScore < 1 && semScore < SEMANTIC_MATCH_THRESHOLD) return null;
+        let score = tokenScore + (semScore * 5);
+        if (targetFamily && entry.modelFamily === targetFamily) score += 3;
+        return { entry, score };
+      }).filter(Boolean)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 2);
+
+      if (!matches.length) {
+        container.style.display = 'none';
+        container.innerHTML = '';
+        return;
+      }
+
+      renderSmartDiagPill(container, matches.map(m => m.entry), itemId);
+    } catch (e) {
+      console.warn('Smart Diagnosis lookup failed:', e);
+    }
+  }, 400);
+};
+
+function renderSmartDiagPill(container, entries, itemId) {
+  container.style.display = 'block';
+  const count = entries.length;
+
+  container.innerHTML = `
+    <div style="background:#f0f7ff;border:1px solid #b8d0e8;border-radius:6px;padding:6px 10px;font-size:11px">
+      <div style="display:flex;align-items:center;gap:6px;cursor:pointer" onclick="toggleDiagDetail(${itemId})">
+        <span style="font-size:13px">💡</span>
+        <strong style="color:var(--blue);flex:1">
+          ${count} cas similaire${count > 1 ? 's' : ''} résolu${count > 1 ? 's' : ''} sur la flotte
+        </strong>
+        <span id="smart-diag-toggle-${itemId}" style="color:var(--blue);font-weight:700">Afficher ▼</span>
+      </div>
+      <div id="smart-diag-detail-${itemId}" style="display:none;margin-top:8px;border-top:1px solid #d0e0f0;padding-top:6px">
+        <div style="font-size:10px;color:#92400e;background:#fef3c7;border:1px solid #d97706;border-radius:4px;padding:5px 8px;margin-bottom:6px">
+          ⚠️ À titre indicatif — un retour terrain passé peut être obsolète ou spécifique à une autre configuration avion. Toujours confirmer la cause et la procédure via l'AMM applicable.
+        </div>
+        ${entries.map(e => `
+          <div style="margin-bottom:8px;background:#fff;border:1px solid #e0e8f0;border-radius:4px;padding:8px">
+            <div style="display:flex;justify-content:space-between;font-weight:700;color:var(--gd);margin-bottom:3px">
+              <span>✈️ ${escHtml(e.model)} — WO ${escHtml(e.wo)}</span>
+              <span style="font-weight:400;color:var(--g600)">${escHtml(e.date)} (${escHtml(e.engineerName)})</span>
+            </div>
+            <div style="color:var(--g800);margin-bottom:4px">
+              <b>Dépannage :</b> ${escHtml(e.resolution)}
+            </div>
+            ${e.partsReplaced && e.partsReplaced.length ? `
+              <div style="font-size:10.5px;color:#1e40af;margin-bottom:4px">
+                📦 <b>Pièces :</b> ${e.partsReplaced.map(p => `${escHtml(p.nom)} (P/N: ${escHtml(p.pn)})`).join(', ')}
+              </div>` : '<div style="font-size:10.5px;color:#065f46">⚡ Résolu sans dépose de pièce (câblage / connecteur / reset)</div>'}
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <button class="btn" style="font-size:10px;padding:3px 8px" 
+                      onclick="applyDiagResolutionToNote(${itemId}, '${escAttr(e.resolution)}')">
+                📝 Reprendre l'action dans le Daily Update
+              </button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+G.toggleDiagDetail = function(itemId) {
+  const detail = document.getElementById('smart-diag-detail-' + itemId);
+  const toggleLbl = document.getElementById('smart-diag-toggle-' + itemId);
+  if (!detail) return;
+  const isHidden = detail.style.display === 'none';
+  detail.style.display = isHidden ? 'block' : 'none';
+  if (toggleLbl) toggleLbl.textContent = isHidden ? 'Masquer ▲' : 'Afficher ▼';
+};
+
+G.applyDiagResolutionToNote = function(itemId, resolutionText) {
+  let todayBlock = Array.from(document.querySelectorAll('.update-day')).find(d => d.dataset.date === todayLabel());
+  if (!todayBlock) {
+    G.addTodayUpdate();
+    todayBlock = Array.from(document.querySelectorAll('.update-day')).find(d => d.dataset.date === todayLabel());
+  }
+  if (!todayBlock) return;
+
+  const itemBlock = todayBlock.querySelector(`.upd-item-block[data-item-id="${itemId}"]`);
+  if (!itemBlock) return;
+
+  const editor = itemBlock.querySelector('.rte-editable');
+  if (editor) {
+    if (editor.textContent.trim()) editor.appendChild(document.createElement('br'));
+    editor.appendChild(document.createTextNode('Per past REX: ' + resolutionText));
+    editor.dispatchEvent(new Event('input'));
+  }
+
+  const chk = itemBlock.querySelector('input[type=checkbox]');
+  if (chk) { chk.checked = true; chk.dispatchEvent(new Event('change')); }
+
+  itemBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  itemBlock.style.outline = '2px solid var(--gd)';
+  setTimeout(() => { itemBlock.style.outline = ''; }, 2000);
+};
 
 // ══════════════════════════════════════
 //  DAILY UPDATES
@@ -6008,6 +6386,21 @@ G.generateRepairTag = async function() {
       } catch(e) { console.warn('Stamp embed failed:', e); }
     }  
 	  
+    // Smart Diagnosis — capture best-effort du REX, ne bloque jamais la génération du tag
+    const diagParts = [];
+    const diagPnOff = gv('rtag_pn');
+    if (diagPnOff) {
+      diagParts.push({ nom: gv('rtag_partname'), pn: diagPnOff, sn: gv('rtag_partsn') });
+    }
+    saveTroubleshootingEntry({
+      squawk: gv('rtag_reason') || gv('rtag_partname'),
+      resolution: gv('rtag_workperf'),
+      rootCause: gv('rtag_reason'),
+      parts: diagParts,
+      faultCodes: [gv('rtag_code1'), gv('rtag_code2')].filter(Boolean),
+      wiringResetOnly: diagParts.length === 0
+    });    
+
     const pdfBytes = await pdfDoc.save();
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
@@ -7018,17 +7411,23 @@ function toB64(str) {
   return btoa(bin);
 }
 
-function buildRfc2822(toAddrs, subject, htmlBody) {
+function buildRfc2822(toAddrs, subject, htmlBody, replyTo) {
   const encSubject = '=?UTF-8?B?' + toB64(subject) + '?=';
   const lines = [
     toAddrs.length ? `To: ${toAddrs.join(', ')}` : 'To: ',
     `Subject: ${encSubject}`,
+  ];
+  if (replyTo?.messageId) {
+    lines.push(`In-Reply-To: ${replyTo.messageId}`);
+    lines.push(`References: ${replyTo.messageId}`);
+  }
+  lines.push(
     'MIME-Version: 1.0',
     'Content-Type: text/html; charset=UTF-8',
     'Content-Transfer-Encoding: base64',
     '',
     toB64(htmlBody)
-  ];
+  );
   // Le raw est tout ASCII ici (tout est déjà encodé) — btoa direct, pas de TextEncoder
   const raw = lines.join('\r\n');
   return btoa(raw).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -7043,6 +7442,7 @@ G.markRTS = function() {
 G.confirmRTS = async function() {
   if(!curProj||!curProfile){closeModal('modal-rts');return;}
   await doSave();
+  saveTroubleshootingFromDailyUpdates(); // Smart Diagnosis — capture best-effort des items "Carried out" avec note  
   await update(ref(db,'team/'+curProfile.id+'/projects/'+curProj),{rts:true,updatedAt:Date.now()});
   // Le job est archivé — ses réponses Gmail scannées n'ont plus besoin d'être
   // gardées (le cron les aurait de toute façon purgées au passage quotidien).
@@ -8587,6 +8987,22 @@ G.koOpenAmmReader = function(target) {
   if (model) params.set('model', model);
   if (curProfile?.name) params.set('engineer', curProfile.name);
   if (iframe) iframe.src = 'amm-task-reader.html' + (params.toString() ? ('?' + params.toString()) : '');
+
+  // L'assignation à un squawk n'a de sens que pour un import direct dans un
+  // job en cours — les lignes de template ne sont pas liées à un squawk
+  // (koUsePartTpl a déjà son propre sélecteur, appliqué au moment de l'USAGE
+  // du template, pas à sa création).
+  const sqRow = document.getElementById('amm-reader-sq-row');
+  const sqSel = document.getElementById('amm-reader-sq-sel');
+  if (sqRow && sqSel) {
+    if (_koAmmReaderTarget === 'project') {
+      sqSel.innerHTML = koSquawkSelectOptions();
+      sqRow.style.display = '';
+    } else {
+      sqRow.style.display = 'none';
+    }
+  }
+
   openModal('modal-amm-reader');
 };
 window.koOpenAmmReader = G.koOpenAmmReader;
@@ -8685,30 +9101,32 @@ G.koImportFromAmmReader = function(payload, mode) {
   }
 
   // mode === 'project' — live Kickoff parts table
+  const ammSqId = document.getElementById('amm-reader-sq-sel')?.value || '';
+
   (payload.tools || []).forEach(t => {
     let note = t.step_reference ? '📍 ' + t.step_reference : ('AMM ' + (payload.card_ref || ''));
     if (!t.pn) note = (note ? note + ' — ' : '') + 'no P/N stated in card, verify before use.';
-    koAddPartRow(t.pn || '', t.name || '', '', t.qty || '', 'Tool', note);
+    koAddPartRow(t.pn || '', t.name || '', '', t.qty || '', 'Tool', note, '', '', ammSqId);
     added++;
   });
 
   (payload.consumables || []).forEach(c => {
     let note = c.step_reference ? '📍 ' + c.step_reference : ('AMM ' + (payload.card_ref || ''));
     if (c.note_ipc) note = '⚠ Refer to IPC (' + (c.step_reference || 'Material Required table') + ') — ' + (c.ipc_note_text || 'no P/N given in AMM, check IPC');
-    koAddPartRow(c.pn || '', c.name || '', '', c.qty || '', 'Consumable', note);
+    koAddPartRow(c.pn || '', c.name || '', '', c.qty || '', 'Consumable', note, '', '', ammSqId);
     added++;
   });
 
   (payload.implicit_materials || []).forEach(m => {
     const note = '⚠ Implied by procedure (' + (m.step_reference || payload.card_ref || '') + ') — not in Material Required table, verify before ordering: ' + (m.source_quote || '');
-    koAddPartRow('', m.name || '', '', '', 'Consumable', note);
+    koAddPartRow('', m.name || '', '', '', 'Consumable', note, '', '', ammSqId);
     added++;
   });
 
   (payload.suggested_items || []).filter(s => s.type !== 'customer_message_note').forEach(s => {
     const cat = s.type === 'tool' ? 'Tool' : 'Consumable';
     const note = '💡 Suggested (not from AMM text) — ' + (s.reason || '');
-    koAddPartRow('', s.name || '', '', s.qty || '', cat, note);
+    koAddPartRow('', s.name || '', '', s.qty || '', cat, note, '', '', ammSqId);
     added++;
   });
 
@@ -8735,9 +9153,11 @@ G.koImportFromAmmReader = function(payload, mode) {
       if (cb) cb.checked = true;
   });
 
+  koSortPartsTable();
   koRenderRecips('parts');
   koUpdatePreview();
   koSyncPartsToMainTable();
+  koSaveState();
   closeModal('modal-amm-reader');
 
   // Related tasks aren't parts — surface them as a plain summary so nothing
