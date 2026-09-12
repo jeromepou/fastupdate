@@ -3180,15 +3180,27 @@ G.koOpenReplyComposer = async function(idx) {
     if (!confirm('⚠️ The project currently loaded (' + loadedWo + ') does not match this Work Order (' + replyWo + ').\n\nContinue anyway? The draft will use whatever aircraft/squawk facts are currently on screen, which may be wrong.')) return;
   }
 
-  document.getElementById('reply-composer-error').textContent = '';
-  document.getElementById('reply-composer-original').value =
-    (item.from ? item.from + ' — ' : '') + (item.summary || '(no summary)') +
-    (item.questions.length ? '\n\nQuestions: ' + item.questions.join(' / ') : '');
-  document.getElementById('reply-composer-subject').value =
-    /^re:/i.test(item.subjectHeader || '') ? item.subjectHeader : 'Re: ' + (item.subjectHeader || '');
-  document.getElementById('reply-composer-body').value = '⏳ Drafting…';
-  document.getElementById('reply-composer-btn').dataset.replyIdx = idx;
-  openModal('modal-reply-composer');
+  // Garde-fou : "questions" peut arriver malformé (pas un tableau) selon ce
+  // que Mistral a renvoyé pour ce message — sans ça, tout plante en silence
+  // ci-dessous et la modale ne s'ouvre jamais.
+  const questions = Array.isArray(item.questions) ? item.questions
+    : (item.questions ? [String(item.questions)] : []);
+
+  try {
+    document.getElementById('reply-composer-error').textContent = '';
+    document.getElementById('reply-composer-original').value =
+      (item.from ? item.from + ' — ' : '') + (item.summary || '(no summary)') +
+      (questions.length ? '\n\nQuestions: ' + questions.join(' / ') : '');
+    document.getElementById('reply-composer-subject').value =
+      /^re:/i.test(item.subjectHeader || '') ? item.subjectHeader : 'Re: ' + (item.subjectHeader || '');
+    document.getElementById('reply-composer-body').value = '⏳ Drafting…';
+    document.getElementById('reply-composer-btn').dataset.replyIdx = idx;
+    openModal('modal-reply-composer');
+  } catch(e) {
+    console.error('koOpenReplyComposer: failed to open composer', e);
+    alert('❌ Could not open the reply composer: ' + e.message);
+    return;
+  }
 
   const wo    = gv('f_wo');
   const model = gv('f_model');
@@ -3202,7 +3214,7 @@ G.koOpenReplyComposer = async function(idx) {
 
 The customer previously wrote. Here is what they said, extracted automatically:
 Summary: ${item.summary || '(no summary)'}
-Their question(s): ${item.questions.length ? item.questions.join(' / ') : '(none extracted — write a brief general status reply)'}
+Their question(s): ${questions.length ? questions.join(' / ') : '(none extracted — write a brief general status reply)'}
 
 Known facts you may use — do not invent anything beyond this list:
 - Aircraft: ${model || 'unknown model'} ${reg || ''}, currently at ${loc || 'unknown location'}
@@ -12240,6 +12252,7 @@ window.koAddPartTplLine = G.koAddPartTplLine;
 window.koRemovePartTplLine = G.koRemovePartTplLine;
 window.koAddPartTpl = G.koAddPartTpl;
 window.koFilterPartTpl = G.koFilterPartTpl;
+window.koRenderPartTplChips = koRenderPartTplChips;
 window.koManageShipAddr = G.koManageShipAddr;
 window.koAddShipAddr = G.koAddShipAddr;
 window.koDeleteShipAddr = G.koDeleteShipAddr;
