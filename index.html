@@ -940,7 +940,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <button class="btn" onclick="openRepairTagModal()" style="width:100%;justify-content:center;margin-top:8px" title="Opens a blank GA3671 tag — useful if the part isn't (or isn't yet) in the table above">🏷️ Generate GA3671 tag (standalone)</button>
   </div>
 </div>
-<input type="file" id="scan-tag-input" accept="image/*" capture="environment" style="display:none" onchange="koScanTagFileSelected(this)"/>
+<input type="file" id="scan-tag-input" accept="image/*" style="display:none" onchange="koScanTagFileSelected(this)"/>
 
 <!-- STEP 5 -->
 <div class="card">
@@ -999,8 +999,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </button>
   <button class="btn danger" id="btn-mark-rts" onclick="markRTS()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:700">✅ Mark A/C RTS</button>
   <button class="btn" id="btn-reply-sync" onclick="koOpenReplyModal()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:600" title="Scan Gmail for replies on this job">📬 Replies</button>
-  <button class="btn" onclick="koOpenStatusComposer()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:600" title="Draft a customer status update from the current project state">🪄 Status update</button>
-  <button class="btn" onclick="koOpenDigestComposer()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:600" title="Scan today's emails (Techops + customer) and draft a daily digest">📋 Daily digest</button>
+  <button class="btn" onclick="koOpenStatusComposer()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:600" title="Quick Update: instantly drafts a customer email from what's already on this screen (squawks, ETA, Daily Update, cached Parts). Doesn't check Gmail.">🪄 Quick Update</button>
+  <button class="btn" onclick="koOpenDigestComposer()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:600" title="Full Update: same as Quick Update, but first scans today's Gmail (Techops + customer threads) so nothing gets missed. Takes a few extra seconds.">🔍 Full Update</button>
 </div>
 
 <div id="output-section" class="output-section" style="display:none">
@@ -2471,6 +2471,17 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     </div>
 
     <div class="help-section">
+      <h4>🪄🔍 Quick Update, Full Update &amp; Draft Reply — AI-drafted customer emails</h4>
+      <p>Three buttons have the app write a customer-facing email for you. All three always open an editable draft first — nothing is ever sent, or even saved as a Gmail draft, without you reviewing it.</p>
+      <ul>
+        <li><strong>🪄 Quick Update</strong> (main action row): instantly drafts a status email from what's already on this screen — squawks, Estimated RTS, Next Flight, Engineer Arrival On Site, your latest Daily Update, and cached Parts status from Reply Sync. Doesn't check Gmail, so it's only as fresh as what you've typed in.</li>
+        <li><strong>🔍 Full Update</strong> (main action row): the same as Quick Update, but first scans today's Gmail activity — Techops and customer threads — so anything that happened today is included even if you haven't logged it anywhere yet. Takes a few extra seconds for the scan.</li>
+        <li><strong>✍️ Draft Reply</strong> (inside 📬 Replies, under a specific customer message): answers that exact message. Unlike the two buttons above, this creates a threaded reply in the same Gmail conversation, not a new email.</li>
+      </ul>
+      <p>All three need the customer's email filled in under <strong>Customer Info</strong> first.</p>
+    </div>
+
+    <div class="help-section">
       <h4>🚀 Start Job — Customer Update, Part Request, Travel and FBO emails</h4>
       <p>The <strong>Start Job</strong> button appears in the engineer bar once you are logged in. It opens a dedicated panel to configure and generate up to 4 Gmail draft emails in one click — customer introduction, travel booking, parts order, and FBO coordination.</p>
       <p>You can also launch Start Job directly from any project card using the 🚀 button — the aircraft details are pre-filled automatically from that project. Use <strong>"🔄 Clear &amp; New Job"</strong> in the panel header to reset the questionnaire for a new intervention while keeping the aircraft info you've already entered.</p>
@@ -2578,6 +2589,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <li><strong>Part Request:</strong> Materials PO confirmation, and per-part status (confirmed, backordered, shipped, delivered, alternative P/N offered, tracking numbers) — matched automatically against your existing parts list where possible. A colleague adding or removing a part in the thread also shows up here for you to confirm.</li>
         <li><strong>FBO Coordination:</strong> shipping address, readiness date, contact name, and closed dates.</li>
         <li><strong>Any category:</strong> a "📝 Note in update" button lets you insert a mentioned part/shipment ETA directly into a specific work item's note for today's Daily Update.</li>
+        <li><strong>Customer messages:</strong> a "✍️ Draft Reply" button drafts an AI-written reply in the same thread — see "Quick Update, Full Update &amp; Draft Reply" above for details.</li>
       </ul>
       <p>If a reply isn't being found, add the exact subject wording your team uses for that email type in the "Can't find a reply?" box — it's shared with the whole team and improves detection for every future job with that wording.</p>
     </div>
@@ -3094,7 +3106,7 @@ function koReplyDraftButtonHtml(r, cat) {
     messageIdHeader: r.messageIdHeader || '', subjectHeader: r.subjectHeader || '',
     from: r.from || '', summary: r.summary || '', questions: r.questions_back || []
   }) - 1;
-  return '<div style="margin-top:6px"><button onclick="koOpenReplyComposer(' + idx + ')" style="font-size:11px;padding:4px 10px;border-radius:20px;cursor:pointer;border:1px solid #a5b4fc;background:#eef2ff;color:#3730a3;font-weight:600">✍️ Draft reply</button></div>';
+  return '<div style="margin-top:6px"><button onclick="koOpenReplyComposer(' + idx + ')" title="Drafts an AI-written reply to this specific message, in the same Gmail thread" style="font-size:11px;padding:4px 10px;border-radius:20px;cursor:pointer;border:1px solid #a5b4fc;background:#eef2ff;color:#3730a3;font-weight:600">✍️ Draft Reply</button></div>';
 }
 
 // Construit les boutons "Apply" selon la catégorie — c'est ici que
@@ -11378,8 +11390,10 @@ function koRenderQuickPartsChips() {
       <div style="font-size:10px;font-weight:700;color:${meta.color};text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">${meta.icon} ${meta.label} (${groups[cat].length})</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         ${groups[cat].map(p => `
-          <button onclick="koUseQuickPart(${p._idx})" style="font-size:12px;padding:5px 11px;border-radius:20px;cursor:pointer;border:1px solid ${meta.color};background:#fff;color:${meta.color}">
-            ${meta.icon} ${p.desc}
+          <button onclick="koUseQuickPart(${p._idx})"
+            title="${p.pn ? 'P/N : ' + escAttr(p.pn) : ''}"
+            style="font-size:12px;padding:5px 11px;border-radius:20px;cursor:pointer;border:1px solid ${meta.color};background:#fff;color:${meta.color};text-align:left;line-height:1.35">
+            ${meta.icon} ${p.desc}${p.pn ? `<br><span style="font-size:9.5px;font-weight:400;opacity:.65">P/N ${escHtml(p.pn)}</span>` : ''}
           </button>`).join('')}
       </div>
     </div>`;
