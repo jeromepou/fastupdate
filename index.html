@@ -5957,7 +5957,7 @@ function renderSmartDiagPill(container, entries, itemId) {
       <div style="display:flex;align-items:center;gap:6px;cursor:pointer" onclick="toggleDiagDetail(${itemId})">
         <span style="font-size:13px">💡</span>
         <strong style="color:var(--blue);flex:1">
-          ${count} similar case(s)${count > 1 ? 's' : ''} résolu${count > 1 ? 's' : ''} sur la flotte
+          ${count} similar case${count > 1 ? 's' : ''} solved${count > 1 ? 's' : ''} on the fleet.
         </strong>
         <span id="smart-diag-toggle-${itemId}" style="color:var(--blue);font-weight:700">Afficher ▼</span>
       </div>
