@@ -676,28 +676,6 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 .tpl-line-rm{background:none;border:none;color:var(--g400);cursor:pointer;font-size:16px;padding:2px;justify-self:end}
 .tpl-line-rm:hover{color:var(--red)}
 
-/* ===== MANAGE LOOKUP MODALS (sealant + grease/oil/hydraulic/…) ===== */
-.lkm-hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0 6px}
-.lkm-hd-title{font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em}
-.lkm-hd-cnt{font-size:11px;color:var(--g400)}
-.lkm-filter{width:100%;font-size:12px;padding:7px 10px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;margin-bottom:8px;font-family:inherit}
-.lkm-filter:focus{outline:2px solid var(--gm);border-color:var(--gm)}
-.lkm-list{max-height:320px;overflow-y:auto;background:var(--g100);border:1px solid var(--g200);border-radius:var(--rlg);padding:8px}
-.lkm-entry{display:flex;gap:6px;align-items:flex-start;background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:6px 8px;margin-bottom:5px;flex-wrap:wrap}
-.lkm-entry:last-child{margin-bottom:0}
-.lkm-entry.lkm-hit{border-color:var(--gd);box-shadow:0 0 0 2px var(--gb)}
-.lkm-empty{font-size:12px;color:var(--g400);text-align:center;padding:16px 0;margin:0}
-.lkm-new{background:var(--gl);border:2px solid var(--gb);border-radius:var(--rlg);padding:12px;margin-top:16px}
-.lkm-new-hd{font-size:13px;font-weight:700;color:var(--gd);margin-bottom:3px}
-.lkm-new-sub{font-size:11px;color:var(--g600);margin-bottom:9px}
-.lkm-new-f{width:100%;font-size:12px;padding:6px 9px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;margin-bottom:6px;font-family:inherit}
-.lkm-dupe{background:#fff;border:1px solid #d4b800;border-radius:var(--r);padding:7px 9px;margin:0 0 6px;font-size:11px}
-.lkm-dupe-title{color:var(--amb);font-weight:700;margin-bottom:5px}
-.lkm-dupe-row{display:flex;align-items:center;gap:7px;padding:3px 0;flex-wrap:wrap}
-.lkm-dupe-row .txt{flex:1;min-width:130px;color:var(--g800)}
-.lkm-jump{font-size:10.5px;padding:3px 9px;border-radius:20px;border:1px solid var(--gb);background:var(--gl);color:var(--gd);cursor:pointer;font-weight:600;white-space:nowrap}
-.lkm-ok{background:#fff;border:1px solid var(--gb);border-radius:var(--r);padding:6px 9px;margin:0 0 6px;font-size:11px;color:var(--gd)}
-
 @media(max-width:600px){
   #modal-parttpl .modal{padding:1rem .75rem}
   .tpl-line-header{display:none}
@@ -2129,30 +2107,17 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 <div class="modal-bg" id="modal-sealant-manage">
   <div class="modal" style="max-width:620px">
     <h3>🧪 Manage sealant MIL Spec lookup</h3>
-    <p style="font-size:12px;color:var(--g600);margin-bottom:2px">Shared with the whole team. One or more P/N per MIL Spec.</p>
-
-    <div class="lkm-hd">
-      <span class="lkm-hd-title">📋 Existing entries</span>
-      <span class="lkm-hd-cnt" id="sealant-count"></span>
-      <button class="btn" onclick="koJumpToNewEntry('sealant')" style="margin-left:auto;font-size:11px;padding:4px 10px">➕ New entry</button>
-    </div>
-    <input type="text" class="lkm-filter" id="sealant-filter" placeholder="🔍 Filter existing entries (MIL Spec, application, P/N)…" oninput="koFilterManageList('sealant', this.value)"/>
-    <div id="sealant-manage-list" class="lkm-list"></div>
-
-    <div class="lkm-new" id="sealant-new-block">
-      <div class="lkm-new-hd">➕ Create a new MIL Spec entry</div>
-      <div class="lkm-new-sub">Duplicates are checked live across every lookup as you type.</div>
-      <input type="text" class="lkm-new-f" id="sm-new-spec" placeholder="MIL Spec (e.g. AMS-3281)" oninput="koCheckDuplicate('sealant','spec')"/>
-      <input type="text" class="lkm-new-f" id="sm-new-app" placeholder="Application (e.g. Fuel tank sealant)" oninput="koCheckDuplicate('sealant','spec')"/>
-      <div id="sm-dupe-spec"></div>
-      <input type="text" class="lkm-new-f" id="sm-new-pns" placeholder="P/Ns, comma-separated (e.g. PR1776, PR1750)" oninput="koCheckDuplicate('sealant','pns')"/>
-      <div id="sm-dupe-pns"></div>
-      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:#3730a3;margin-bottom:9px">
+    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">Shared with the whole team. One or more P/N per MIL Spec, comma-separated.</p>
+    <div id="sealant-manage-list" style="max-height:340px;overflow-y:auto;margin-bottom:12px"></div>
+    <div style="display:flex;gap:6px;padding-top:10px;border-top:1px solid var(--g200);flex-wrap:wrap">
+      <input type="text" id="sm-new-spec" placeholder="MIL Spec (e.g. AMS-3281)" style="flex:1;min-width:130px;font-size:12px;padding:5px 8px"/>
+      <input type="text" id="sm-new-app" placeholder="Application (e.g. Fuel tank sealant)" style="flex:2;min-width:180px;font-size:12px;padding:5px 8px"/>
+      <input type="text" id="sm-new-pns" placeholder="P/Ns, comma-separated (e.g. PR1776, PR1750)" style="flex:2;min-width:200px;font-size:12px;padding:5px 8px"/>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;flex:1 1 100%;color:#3730a3">
         <input type="checkbox" id="sm-new-prc"/> 🧪 PRC / 2-part product — adds Type / Size / Semkit when ordering
-      </label>
-      <button class="btn primary" onclick="koAddSealantSpec()" style="width:100%;justify-content:center">+ Add this entry</button>
+      </label>      
+      <button class="btn primary" onclick="koAddSealantSpec()" style="width:100%">+ Add</button>
     </div>
-
     <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-sealant-manage')">Done</button></div>
   </div>
 </div>
@@ -2161,30 +2126,17 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 <div class="modal-bg" id="modal-lookup-manage">
   <div class="modal" style="max-width:620px">
     <h3 id="lookup-manage-title">Manage MIL Spec lookup</h3>
-    <p style="font-size:12px;color:var(--g600);margin-bottom:2px">Shared with the whole team. One or more P/N per MIL Spec.</p>
-
-    <div class="lkm-hd">
-      <span class="lkm-hd-title">📋 Existing entries</span>
-      <span class="lkm-hd-cnt" id="lookup-count"></span>
-      <button class="btn" onclick="koJumpToNewEntry('lookup')" style="margin-left:auto;font-size:11px;padding:4px 10px">➕ New entry</button>
-    </div>
-    <input type="text" class="lkm-filter" id="lookup-filter" placeholder="🔍 Filter existing entries (MIL Spec, application, P/N)…" oninput="koFilterManageList('lookup', this.value)"/>
-    <div id="lookup-manage-list" class="lkm-list"></div>
-
-    <div class="lkm-new" id="lookup-new-block">
-      <div class="lkm-new-hd">➕ Create a new MIL Spec entry</div>
-      <div class="lkm-new-sub">Duplicates are checked live across every lookup as you type.</div>
-      <input type="text" class="lkm-new-f" id="lkm-new-spec" placeholder="MIL Spec (e.g. MIL-PRF-81322)" oninput="koCheckDuplicate('lookup','spec')"/>
-      <input type="text" class="lkm-new-f" id="lkm-new-app" placeholder="Application (e.g. Wheel bearing grease)" oninput="koCheckDuplicate('lookup','spec')"/>
-      <div id="lkm-dupe-spec"></div>
-      <input type="text" class="lkm-new-f" id="lkm-new-pns" placeholder="P/Ns, comma-separated (e.g. Mobil 28, AeroShell 22)" oninput="koCheckDuplicate('lookup','pns')"/>
-      <div id="lkm-dupe-pns"></div>
-      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:#3730a3;margin-bottom:9px">
+    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">Shared with the whole team. One or more P/N per MIL Spec, comma-separated.</p>
+    <div id="lookup-manage-list" style="max-height:340px;overflow-y:auto;margin-bottom:12px"></div>
+    <div style="display:flex;gap:6px;padding-top:10px;border-top:1px solid var(--g200);flex-wrap:wrap">
+      <input type="text" id="lkm-new-spec" placeholder="MIL Spec (e.g. MIL-PRF-81322)" style="flex:1;min-width:130px;font-size:12px;padding:5px 8px"/>
+      <input type="text" id="lkm-new-app" placeholder="Application (e.g. Wheel bearing grease)" style="flex:2;min-width:180px;font-size:12px;padding:5px 8px"/>
+      <input type="text" id="lkm-new-pns" placeholder="P/Ns, comma-separated (e.g. Mobil 28, AeroShell 22)" style="flex:2;min-width:200px;font-size:12px;padding:5px 8px"/>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;flex:1 1 100%;color:#3730a3">
         <input type="checkbox" id="lkm-new-prc"/> 🧪 PRC / 2-part product — adds Type / Size / Semkit when ordering
-      </label>
-      <button class="btn primary" onclick="koAddLookupSpec()" style="width:100%;justify-content:center">+ Add this entry</button>
+      </label>      
+      <button class="btn primary" onclick="koAddLookupSpec()" style="width:100%">+ Add</button>
     </div>
-
     <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-lookup-manage')">Done</button></div>
   </div>
 </div>
@@ -5963,7 +5915,7 @@ function renderSmartDiagPill(container, entries, itemId) {
       </div>
       <div id="smart-diag-detail-${itemId}" style="display:none;margin-top:8px;border-top:1px solid #d0e0f0;padding-top:6px">
         <div style="font-size:10px;color:#92400e;background:#fef3c7;border:1px solid #d97706;border-radius:4px;padding:5px 8px;margin-bottom:6px">
-          ⚠️ For reference only — past field feedback may be outdated or specific to a different aircraft configuration. Always confirm the cause and procedure using the applicable AMM.
+          ⚠️ À titre indicatif — un retour terrain passé peut être obsolète ou spécifique à une autre configuration avion. Toujours confirmer la cause et la procédure via l'AMM applicable.
         </div>
         ${entries.map(e => `
           <div style="margin-bottom:8px;background:#fff;border:1px solid #e0e8f0;border-radius:4px;padding:8px">
@@ -6558,44 +6510,26 @@ function scanTagAutoBrighten(ctx, w, h) {
 }
 
 function scanTagResizeImage(file, maxDim) {
-  return scanTagResizeImageViaBitmap(file, maxDim).catch(e => {
-    console.warn('scanTagResizeImage: createImageBitmap indisponible, repli legacy —', e.message);
-    return scanTagResizeImageLegacy(file, maxDim);
-  });
-}
-
-async function scanTagResizeImageViaBitmap(file, maxDim) {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(maxDim / bitmap.width, maxDim / bitmap.height, 1);
-  const w = Math.max(1, Math.round(bitmap.width * scale));
-  const h = Math.max(1, Math.round(bitmap.height * scale));
-  const canvas = document.createElement('canvas');
-  canvas.width = w; canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(bitmap, 0, 0, w, h);
-  bitmap.close(); // libère le buffer plein format tout de suite — le canvas a déjà sa copie réduite
-  scanTagAutoBrighten(ctx, w, h);
-  return canvas.toDataURL('image/jpeg', 0.85);
-}
-
-function scanTagResizeImageLegacy(file, maxDim) {
   return new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
-      const w = Math.max(1, Math.round(img.width * scale));
-      const h = Math.max(1, Math.round(img.height * scale));
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
-      URL.revokeObjectURL(objectUrl);
-      scanTagAutoBrighten(ctx, w, h);
-      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        scanTagAutoBrighten(ctx, w, h); // photo sombre → éclaircie avant envoi à l'IA
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => reject(new Error('Cannot read the image.'));
+      img.src = reader.result;
     };
-    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Cannot read the image.')); };
-    img.src = objectUrl;
+    reader.onerror = () => reject(new Error('Cannot read the file.'));
+    reader.readAsDataURL(file);
   });
 }
 
@@ -6956,58 +6890,39 @@ function rtagKeyOutPaperBackground(canvas) {
 }
 
 function rtagResizeImageToDataUrl(file, maxW, maxH) {
-  return rtagResizeImageViaBitmap(file, maxW, maxH).catch(e => {
-    console.warn('rtagResizeImageToDataUrl: createImageBitmap indisponible, repli legacy —', e.message);
-    return rtagResizeImageLegacy(file, maxW, maxH);
-  });
-}
-
-async function rtagResizeImageViaBitmap(file, maxW, maxH) {
-  const bitmap = await createImageBitmap(file);
-  // Résolution de travail plus grande que la taille finale, pour que
-  // le seuillage/recadrage ait assez de pixels à analyser
-  const workMax = 900;
-  const scale0 = Math.min(workMax / bitmap.width, workMax / bitmap.height, 1);
-  const w0 = Math.max(1, Math.round(bitmap.width * scale0));
-  const h0 = Math.max(1, Math.round(bitmap.height * scale0));
-  const canvas0 = document.createElement('canvas');
-  canvas0.width = w0; canvas0.height = h0;
-  canvas0.getContext('2d').drawImage(bitmap, 0, 0, w0, h0);
-  bitmap.close(); // libère le buffer plein format tout de suite — canvas0 a déjà sa copie réduite
-  return rtagFinishStampCanvas(canvas0, maxW, maxH);
-}
-
-function rtagResizeImageLegacy(file, maxW, maxH) {
   return new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      const workMax = 900;
-      const scale0 = Math.min(workMax / img.width, workMax / img.height, 1);
-      const w0 = Math.max(1, Math.round(img.width * scale0));
-      const h0 = Math.max(1, Math.round(img.height * scale0));
-      const canvas0 = document.createElement('canvas');
-      canvas0.width = w0; canvas0.height = h0;
-      canvas0.getContext('2d').drawImage(img, 0, 0, w0, h0);
-      URL.revokeObjectURL(objectUrl);
-      resolve(rtagFinishStampCanvas(canvas0, maxW, maxH));
-    };
-    img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error("Cannot read the image.")); };
-    img.src = objectUrl;
-  });
-}
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        // Résolution de travail plus grande que la taille finale, pour que
+        // le seuillage/recadrage ait assez de pixels à analyser
+        const workMax = 900;
+        const scale0 = Math.min(workMax / img.width, workMax / img.height, 1);
+        const w0 = Math.max(1, Math.round(img.width * scale0));
+        const h0 = Math.max(1, Math.round(img.height * scale0));
+        const canvas0 = document.createElement('canvas');
+        canvas0.width = w0; canvas0.height = h0;
+        canvas0.getContext('2d').drawImage(img, 0, 0, w0, h0);
 
-// Étape commune (seuillage transparent + downscale final) — inchangée dans le fond,
-// juste extraite pour être partagée entre le chemin createImageBitmap et le repli.
-function rtagFinishStampCanvas(canvas0, maxW, maxH) {
-  const transparent = rtagKeyOutPaperBackground(canvas0);
-  const scale1 = Math.min(maxW / transparent.width, maxH / transparent.height, 1);
-  const w1 = Math.max(1, Math.round(transparent.width * scale1));
-  const h1 = Math.max(1, Math.round(transparent.height * scale1));
-  const canvas1 = document.createElement('canvas');
-  canvas1.width = w1; canvas1.height = h1;
-  canvas1.getContext('2d').drawImage(transparent, 0, 0, w1, h1);
-  return canvas1.toDataURL('image/png');
+        const transparent = rtagKeyOutPaperBackground(canvas0);
+
+        // Downscale final à la taille d'affichage, proportions conservées
+        const scale1 = Math.min(maxW / transparent.width, maxH / transparent.height, 1);
+        const w1 = Math.max(1, Math.round(transparent.width * scale1));
+        const h1 = Math.max(1, Math.round(transparent.height * scale1));
+        const canvas1 = document.createElement('canvas');
+        canvas1.width = w1; canvas1.height = h1;
+        canvas1.getContext('2d').drawImage(transparent, 0, 0, w1, h1);
+
+        resolve(canvas1.toDataURL('image/png'));
+      };
+      img.onerror = () => reject(new Error("Cannot read the image."));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error('Cannot read the file.'));
+    reader.readAsDataURL(file);
+  });
 }
 
 G.rtagStampFileSelected = async function(inputEl) {
@@ -8579,7 +8494,7 @@ if ('serviceWorker' in navigator) {
 //  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
 //  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v27';
+const CURRENT_VERSION = 'v26';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -13373,182 +13288,6 @@ function koReadPnOptions(idPrefix, i, prc) {
     semkit: document.getElementById(idPrefix + '-semkit-' + i)?.checked || false,
   };
 }
-
-// ══════════════════════════════════════
-//  MANAGE LOOKUP MODALS — filtre, détection de doublon en direct,
-//  et saut vers l'entrée existante. Partagé par le modal sealant
-//  (kind='sealant') et le modal générique (kind='lookup').
-// ══════════════════════════════════════
-const _lkmFilter = { sealant: '', lookup: '' };
-
-function koNewFormPrefix(kind) { return kind === 'sealant' ? 'sm' : 'lkm'; }
-function koManageCurrentKey(kind) { return kind === 'sealant' ? 'sealant' : _lookupManageKey; }
-function koManageSpecs(kind) {
-  return kind === 'sealant' ? SEALANT_MIL_SPECS : (KO_LOOKUP_STATE[_lookupManageKey]?.specs || []);
-}
-
-// Toutes les sources de lookup confondues — sert à détecter un doublon
-// même s'il a été saisi dans une AUTRE catégorie (ex: un P/N sealant
-// déjà présent côté adhesive).
-function koAllLookupSources() {
-  return [
-    { key: 'sealant', label: 'Sealant', icon: '🧪', specs: SEALANT_MIL_SPECS },
-    ...KO_LOOKUP_CATEGORIES.map(c => ({
-      key: c.key, label: c.label, icon: c.icon, specs: KO_LOOKUP_STATE[c.key]?.specs || []
-    }))
-  ];
-}
-
-// field='pns' → cherche dans les P/N ; field='spec' → cherche MIL Spec + application.
-function koFindLookupHits(field, terms) {
-  const cleaned = (terms || []).map(t => String(t || '').trim()).filter(t => koNormSearch(t).length >= 3);
-  if (!cleaned.length) return [];
-  const out = [], seen = new Set();
-  koAllLookupSources().forEach(src => {
-    (src.specs || []).forEach((s, i) => {
-      const dedupeKey = src.key + '|' + i;
-      if (seen.has(dedupeKey)) return;
-      const candidates = field === 'pns'
-        ? koPnList(s).map(p => ({ txt: p.pn, label: p.pn }))
-        : [{ txt: s.spec || '', label: s.spec || '' }, { txt: s.app || '', label: s.app || '' }];
-      for (const term of cleaned) {
-        const t = koNormSearch(term);
-        const hit = candidates.find(c => {
-          const v = koNormSearch(c.txt);
-          if (!v) return false;
-          // inclusion dans les deux sens : "PR1776" trouve "PR1776A" et l'inverse,
-          // mais jamais sur un fragment trop court (sinon tout matche tout).
-          return v.includes(t) || (t.length >= 4 && v.length >= 4 && t.includes(v));
-        });
-        if (hit) { seen.add(dedupeKey); out.push({ ...src, srcKey: src.key, srcLabel: src.label, srcIcon: src.icon, idx: i, spec: s, matched: hit.label }); break; }
-      }
-    });
-  });
-  return out;
-}
-
-G.koCheckDuplicate = function(kind, field) {
-  const P = koNewFormPrefix(kind);
-  const box = document.getElementById(P + '-dupe-' + field);
-  if (!box) return;
-
-  const terms = field === 'pns'
-    ? (document.getElementById(P + '-new-pns')?.value || '').split(',')
-    : [document.getElementById(P + '-new-spec')?.value || '', document.getElementById(P + '-new-app')?.value || ''];
-
-  if (!terms.some(t => koNormSearch(t).length >= 3)) { box.innerHTML = ''; return; }
-
-  const hits = koFindLookupHits(field, terms).slice(0, 6);
-  if (!hits.length) {
-    box.innerHTML = '<div class="lkm-ok">✓ Nothing similar found — safe to add.</div>';
-    return;
-  }
-  box.innerHTML = `<div class="lkm-dupe">
-    <div class="lkm-dupe-title">⚠️ ${hits.length} similar entr${hits.length > 1 ? 'ies' : 'y'} already exist${hits.length > 1 ? '' : 's'}</div>
-    ${hits.map(h => `
-      <div class="lkm-dupe-row">
-        <span class="txt">${h.srcIcon} <b>${escHtml(h.srcLabel)}</b> — ${escHtml(h.spec.spec || 'N/A')} · ${escHtml(h.spec.app || '')}${field === 'pns' ? ' <span style="color:var(--g600)">(P/N ' + escHtml(h.matched) + ')</span>' : ''}</span>
-        <button class="lkm-jump" onclick="koJumpToEntry('${h.srcKey}',${h.idx})">↗ Show it</button>
-      </div>`).join('')}
-  </div>`;
-};
-
-// Indice compact sous le champ "Add a P/N…" de chaque entrée existante.
-G.koCheckPnDupeInline = function(kind, i) {
-  const hintEl = document.getElementById(kind + '-addpn-hint-' + i);
-  if (!hintEl) return;
-  const val = (document.getElementById(kind + '-addpn-' + i)?.value || '').trim();
-  if (koNormSearch(val).length < 3) { hintEl.innerHTML = ''; return; }
-  const hits = koFindLookupHits('pns', [val]).slice(0, 3);
-  if (!hits.length) { hintEl.innerHTML = '<span style="color:var(--gd)">✓ Not used anywhere yet.</span>'; return; }
-  hintEl.innerHTML = hits.map(h =>
-    `<div style="display:flex;align-items:center;gap:6px;padding:2px 0;flex-wrap:wrap">
-       <span style="flex:1;min-width:130px;color:var(--amb)">⚠️ ${escHtml(h.matched)} already in ${h.srcIcon} ${escHtml(h.srcLabel)} — ${escHtml(h.spec.spec || 'N/A')}</span>
-       <button class="lkm-jump" onclick="koJumpToEntry('${h.srcKey}',${h.idx})">↗ Show it</button>
-     </div>`).join('');
-};
-
-function koScrollToEntry(kind, i) {
-  const f = document.getElementById(kind + '-filter');
-  if (f && f.value) { f.value = ''; _lkmFilter[kind] = ''; koRenderManageList(kind); }
-  const list = document.getElementById(kind + '-manage-list');
-  const el   = document.getElementById(kind + '-entry-' + i);
-  if (!list || !el) return;
-  const r = el.getBoundingClientRect(), lr = list.getBoundingClientRect();
-  list.scrollTop += (r.top - lr.top) - (list.clientHeight / 2 - r.height / 2);
-  el.classList.add('lkm-hit');
-  setTimeout(() => el.classList.remove('lkm-hit'), 2600);
-}
-
-// Va jusqu'à l'entrée existante — en changeant de modal si le doublon
-// se trouve dans une autre catégorie.
-function koJumpToEntry(srcKey, idx) {
-  const sealantOpen = document.getElementById('modal-sealant-manage')?.classList.contains('open');
-  const curKey = sealantOpen ? 'sealant' : _lookupManageKey;
-  if (srcKey === curKey) { koScrollToEntry(sealantOpen ? 'sealant' : 'lookup', idx); return; }
-  if (srcKey === 'sealant') {
-    closeModal('modal-lookup-manage');
-    G.koManageSealants();
-    setTimeout(() => koScrollToEntry('sealant', idx), 80);
-  } else {
-    closeModal('modal-sealant-manage');
-    G.koManageLookup(srcKey);
-    setTimeout(() => koScrollToEntry('lookup', idx), 80);
-  }
-}
-G.koJumpToEntry = koJumpToEntry;
-
-G.koJumpToNewEntry = function(kind) {
-  document.getElementById(kind + '-new-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  setTimeout(() => document.getElementById(koNewFormPrefix(kind) + '-new-spec')?.focus(), 350);
-};
-
-G.koFilterManageList = function(kind, val) {
-  _lkmFilter[kind] = val || '';
-  koRenderManageList(kind);
-};
-
-function koEntryMatchesFilter(s, q) {
-  const tokens = String(q || '').trim().split(/\s+/).map(koNormSearch).filter(Boolean);
-  if (!tokens.length) return true;
-  const hay = koNormSearch((s.spec || '') + ' ' + (s.app || '') + ' ' + koPnList(s).map(p => p.pn).join(' '));
-  return tokens.every(t => hay.includes(t));
-}
-
-function koResetManageUI(kind) {
-  const f = document.getElementById(kind + '-filter');
-  if (f) f.value = '';
-  _lkmFilter[kind] = '';
-  const P = koNewFormPrefix(kind);
-  [P + '-dupe-spec', P + '-dupe-pns'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; });
-}
-
-function koRenderManageList(kind) {
-  const list = document.getElementById(kind + '-manage-list');
-  if (!list) return;
-  const specs  = koManageSpecs(kind);
-  const q      = _lkmFilter[kind] || '';
-  const rows   = specs.map((s, i) => ({ s, i })).filter(({ s }) => koEntryMatchesFilter(s, q));
-  const editFn = kind === 'sealant' ? 'koSealantEdit' : 'koLookupEdit';
-  const delFn  = kind === 'sealant' ? 'koDeleteSealantSpec' : 'koDeleteLookupSpec';
-
-  const cnt = document.getElementById(kind + '-count');
-  if (cnt) cnt.textContent = q ? `— ${rows.length} of ${specs.length} shown` : `— ${specs.length}`;
-
-  if (!specs.length) { list.innerHTML = '<p class="lkm-empty">No entries yet — create the first one below.</p>'; return; }
-  if (!rows.length)  { list.innerHTML = `<p class="lkm-empty">No entry matches “${escHtml(q)}”.</p>`; return; }
-
-  list.innerHTML = rows.map(({ s, i }) => `
-    <div class="lkm-entry" id="${kind}-entry-${i}">
-      <input type="text" value="${escAttr(s.spec || '')}" placeholder="MIL Spec" oninput="${editFn}(${i},'spec',this.value)" style="flex:1;min-width:110px;font-size:12px;padding:4px 6px"/>
-      <input type="text" value="${escAttr(s.app || '')}" placeholder="Application" oninput="${editFn}(${i},'app',this.value)" style="flex:2;min-width:160px;font-size:12px;padding:4px 6px"/>
-      <button onclick="${delFn}(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
-      ${koPnManageHtml(kind, i, koPnList(s))}
-    </div>`).join('');
-}
-
-function renderSealantManageList() { koRenderManageList('sealant'); }
-function renderLookupManageList()  { koRenderManageList('lookup'); }
 
 // ── Éditeur de P/N dans les modales "Manage list" (sealant + lookups) ──
 function koPnManageHtml(kind, i, pns) {
