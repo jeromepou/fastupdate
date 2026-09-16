@@ -5957,7 +5957,7 @@ function renderSmartDiagPill(container, entries, itemId) {
       <div style="display:flex;align-items:center;gap:6px;cursor:pointer" onclick="toggleDiagDetail(${itemId})">
         <span style="font-size:13px">💡</span>
         <strong style="color:var(--blue);flex:1">
-          ${count} cas similaire${count > 1 ? 's' : ''} résolu${count > 1 ? 's' : ''} sur la flotte
+          ${count} similar case(s)${count > 1 ? 's' : ''} résolu${count > 1 ? 's' : ''} sur la flotte
         </strong>
         <span id="smart-diag-toggle-${itemId}" style="color:var(--blue);font-weight:700">Afficher ▼</span>
       </div>
@@ -8211,8 +8211,38 @@ G.confirmRTS = async function() {
   projTab='archive'; G.switchProjTab('archive');
 };
 
-G.openModal = function(id){document.getElementById(id).classList.add('open');};
-G.closeModal = function(id){document.getElementById(id).classList.remove('open');};
+// Modal stack: always move the modal being opened to the end of <body>.
+// This is important for nested modals (e.g. GA3671 -> Scan source): both
+// overlays use the same z-index, so DOM order decides which one is on top.
+G.openModal = function(id){
+  const modal = document.getElementById(id);
+  if (!modal) return;
+
+  // Put the newly opened modal after all other body children so it paints last.
+  // appendChild preserves the element, its event listeners and its contents.
+  if (modal.parentElement === document.body) {
+    document.body.appendChild(modal);
+  } else {
+    document.body.appendChild(modal);
+  }
+
+  // Also give nested/opened modals an explicit stacking level. This makes the
+  // behavior robust even if another component later introduces a stacking
+  // context or a different DOM order.
+  const openModals = Array.from(document.querySelectorAll('.modal-bg.open'));
+  const topZ = openModals.reduce((max, el) => {
+    const z = parseInt(getComputedStyle(el).zIndex, 10);
+    return Number.isFinite(z) ? Math.max(max, z) : max;
+  }, 500);
+  modal.style.zIndex = String(Math.max(500, topZ + 1));
+
+  modal.classList.add('open');
+};
+G.closeModal = function(id){
+  const modal = document.getElementById(id);
+  if (!modal) return;
+  modal.classList.remove('open');
+};
 document.querySelectorAll('.modal-bg').forEach(m=>{
   // GA3671 (trop de champs) et AMM Task Reader (session de scan en cours dans l'iframe) —
   // fermeture uniquement via leur propre bouton "✕ Close" / "Annuler" / "Générer".
