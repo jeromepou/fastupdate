@@ -5961,27 +5961,32 @@ function renderSmartDiagPill(container, entries, itemId) {
         </strong>
         <span id="smart-diag-toggle-${itemId}" style="color:var(--blue);font-weight:700">Show ▼</span>
       </div>
+
       <div id="smart-diag-detail-${itemId}" style="display:none;margin-top:8px;border-top:1px solid #d0e0f0;padding-top:6px">
         <div style="font-size:10px;color:#92400e;background:#fef3c7;border:1px solid #d97706;border-radius:4px;padding:5px 8px;margin-bottom:6px">
           ⚠️ For reference only — past field feedback may be outdated or specific to a different aircraft configuration. Always confirm the cause and procedure using the applicable AMM.
         </div>
+
         ${entries.map(e => `
           <div style="margin-bottom:8px;background:#fff;border:1px solid #e0e8f0;border-radius:4px;padding:8px">
             <div style="display:flex;justify-content:space-between;font-weight:700;color:var(--gd);margin-bottom:3px">
               <span>✈️ ${escHtml(e.model)} — WO ${escHtml(e.wo)}</span>
               <span style="font-weight:400;color:var(--g600)">${escHtml(e.date)} (${escHtml(e.engineerName)})</span>
             </div>
+
             <div style="color:var(--g800);margin-bottom:4px">
-              <b>Dépannage :</b> ${escHtml(e.resolution)}
+              <b>Troubleshooting:</b> ${escHtml(e.resolution)}
             </div>
+
             ${e.partsReplaced && e.partsReplaced.length ? `
               <div style="font-size:10.5px;color:#1e40af;margin-bottom:4px">
-                📦 <b>Pièces :</b> ${e.partsReplaced.map(p => `${escHtml(p.nom)} (P/N: ${escHtml(p.pn)})`).join(', ')}
-              </div>` : '<div style="font-size:10.5px;color:#065f46">⚡ Résolu sans dépose de pièce (câblage / connecteur / reset)</div>'}
+                📦 <b>Parts:</b> ${e.partsReplaced.map(p => `${escHtml(p.nom)} (P/N: ${escHtml(p.pn)})`).join(', ')}
+              </div>` : '<div style="font-size:10.5px;color:#065f46">⚡ Resolved without part removal (wiring / connector / reset)</div>'}
+
             <div style="display:flex;gap:6px;margin-top:6px">
               <button class="btn" style="font-size:10px;padding:3px 8px" 
                       onclick="applyDiagResolutionToNote(${itemId}, '${escAttr(e.resolution)}')">
-                📝 Reprendre l'action dans le Daily Update
+                📝 Add action to Daily Update
               </button>
             </div>
           </div>
