@@ -5957,9 +5957,9 @@ function renderSmartDiagPill(container, entries, itemId) {
       <div style="display:flex;align-items:center;gap:6px;cursor:pointer" onclick="toggleDiagDetail(${itemId})">
         <span style="font-size:13px">💡</span>
         <strong style="color:var(--blue);flex:1">
-          ${count} similar case${count > 1 ? 's' : ''} solved${count > 1 ? 's' : ''} on the fleet.
+          ${count} similar case${count > 1 ? 's' : ''} solved on the fleet.
         </strong>
-        <span id="smart-diag-toggle-${itemId}" style="color:var(--blue);font-weight:700">Afficher ▼</span>
+        <span id="smart-diag-toggle-${itemId}" style="color:var(--blue);font-weight:700">Show ▼</span>
       </div>
       <div id="smart-diag-detail-${itemId}" style="display:none;margin-top:8px;border-top:1px solid #d0e0f0;padding-top:6px">
         <div style="font-size:10px;color:#92400e;background:#fef3c7;border:1px solid #d97706;border-radius:4px;padding:5px 8px;margin-bottom:6px">
@@ -5997,7 +5997,7 @@ G.toggleDiagDetail = function(itemId) {
   if (!detail) return;
   const isHidden = detail.style.display === 'none';
   detail.style.display = isHidden ? 'block' : 'none';
-  if (toggleLbl) toggleLbl.textContent = isHidden ? 'Masquer ▲' : 'Afficher ▼';
+  if (toggleLbl) toggleLbl.textContent = isHidden ? 'Hide ▲' : 'Show ▼';
 };
 
 G.applyDiagResolutionToNote = function(itemId, resolutionText) {
