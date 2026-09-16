@@ -244,6 +244,12 @@ table.fast-tbl{width:100%;border-collapse:collapse;table-layout:fixed;font-size:
 .tag-rts{display:inline-block;background:var(--gl);border:1px solid var(--gb);color:var(--gd);border-radius:20px;font-size:10px;font-weight:700;padding:1px 8px}
 .tag-open{display:inline-block;background:var(--al);border:1px solid #d4b800;color:var(--amb);border-radius:20px;font-size:10px;font-weight:700;padding:1px 8px}
 .tag-arch{display:inline-block;background:var(--bl);border:1px solid #b8d0e8;color:var(--blue);border-radius:20px;font-size:10px;font-weight:700;padding:1px 8px}
+.day-status-row{display:flex;gap:5px;flex-wrap:wrap;padding:0 14px 8px}
+.day-status-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid var(--g200);background:var(--g100);color:var(--g600);cursor:pointer;transition:all .12s;white-space:nowrap}
+.day-status-pill.active-blue{background:var(--bl);border-color:#378ADD;color:var(--blue)}
+.day-status-pill.active-green{background:var(--gl);border-color:var(--gb);color:var(--gd)}
+.day-status-pill.active-amber{background:var(--al);border-color:#d4b800;color:var(--amb)}
+.day-status-pill.active-orange{background:#fdf2e9;border-color:#f3c9a3;color:#e07800}
 
 /* MISC */
 .spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:rot .7s linear infinite;flex-shrink:0}
@@ -860,7 +866,9 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div class="fg"><label>Model</label><input type="text" id="f_model" placeholder="e.g. GVIII-G700" oninput="autosave();koRenderPartTplChips()"/></div>
       <div class="fg"><label>Serial Number</label><input type="text" id="f_sn" placeholder="e.g. 87033" oninput="autosave()"/></div>
       <div class="fg"><label>A/C Registry</label><input type="text" id="f_reg" placeholder="e.g. T7-MINT" oninput="autosave()"/></div>
-      <div class="fg"><label>A/C Location (ICAO)</label><input type="text" id="f_loc" placeholder="e.g. LFMN" oninput="autosave()"/></div>
+      <div class="fg"><label>A/C Location (ICAO)</label><input type="text" id="f_loc" placeholder="e.g. LFMN" oninput="autosave();koIcaoSuggestInput(this.value,'step2')"/>
+        <div id="fbo-suggestions-step2" style="display:none;margin-top:4px;gap:5px;flex-wrap:wrap"></div>
+      </div>
       <div class="fg"><label>RTS / Assist</label>
         <select id="f_rts_assist" onchange="autosave()"><option value="RTS">RTS</option><option value="Assist">Assist</option></select>
       </div>
@@ -940,7 +948,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <button class="btn" onclick="openRepairTagModal()" style="width:100%;justify-content:center;margin-top:8px" title="Opens a blank GA3671 tag — useful if the part isn't (or isn't yet) in the table above">🏷️ Generate GA3671 tag (standalone)</button>
   </div>
 </div>
-<input type="file" id="scan-tag-input" accept="image/*" style="display:none" onchange="koScanTagFileSelected(this)"/>
+<input type="file" id="scan-tag-input-camera" accept="image/*" capture="environment" style="display:none" onchange="koScanTagFileSelected(this)"/>
+<input type="file" id="scan-tag-input-gallery" accept="image/*" style="display:none" onchange="koScanTagFileSelected(this)"/>
 
 <!-- STEP 5 -->
 <div class="card">
@@ -1103,7 +1112,9 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       </div>
       <div class="ko-g2">
         <div class="ko-fg"><label>Work Order (WO)</label><input type="text" id="ko_wo" placeholder="FA32988" onblur="koCheckWoDraft(this.value)"/></div>
-        <div class="ko-fg"><label>ICAO airport</label><input type="text" id="ko_icao" placeholder="LFPB" oninput="this.value=this.value.toUpperCase()"/></div>
+        <div class="ko-fg"><label>ICAO airport</label><input type="text" id="ko_icao" placeholder="LFPB" oninput="this.value=this.value.toUpperCase();koIcaoSuggestInput(this.value,'ko')"/>
+          <div id="fbo-suggestions-ko" style="display:none;margin-top:4px;gap:5px;flex-wrap:wrap"></div>
+        </div>
       </div>
       <div class="ko-fg" style="margin-top:10px">
         <label>Defect / job description</label>
@@ -1445,6 +1456,11 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <input type="text" id="ko-quickparts-search" placeholder="🔍 Filtrer…" oninput="koFilterQuickParts(this.value)" style="width:100%;font-size:12px;padding:6px 9px;border:1px solid var(--g200);border-radius:var(--r);margin-bottom:8px;background:#fff"/>
         <div id="ko-quickparts-chips"></div>
       </div>
+      <div style="background:#f5f3ff;border:1px solid #c4b5fd;border-radius:var(--r);padding:8px 12px;margin-bottom:10px">
+        <div style="font-size:12px;color:#5b21b6;font-weight:600;margin-bottom:8px">🔎 Consumable search — searches every lookup at once (sealant, grease, oil, hydraulic, adhesive, lubricant, cleaner)</div>
+        <input type="text" id="ko-consumable-search" placeholder="🔍 MIL Spec, P/N or application… (e.g. PR1776, MIL-PRF-81322, fuel tank)" oninput="koConsumableSearch(this.value)" style="width:100%;font-size:12px;padding:6px 9px;border:1px solid var(--g200);border-radius:var(--r);background:#fff"/>
+        <div id="ko-consumable-search-results" style="display:none;margin-top:8px;max-height:280px;overflow-y:auto;flex-direction:column;gap:5px"></div>
+      </div>      
 	  <div style="background:#eef2ff;border:1px solid #a5b4fc;border-radius:var(--r);padding:8px 12px;margin-bottom:10px">
 	  	<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
 	      <span style="font-size:12px;color:#3730a3;font-weight:600;flex:1">🧪 Sealant lookup — select a MIL Spec to see approved P/Ns</span>
@@ -1460,7 +1476,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <div id="ko-sealant-cart-list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px"></div>
       </div>
       <button class="btn" id="ko-sealant-add-btn" onclick="koAddSelectedSealants()" style="display:none;font-size:12px;padding:5px 10px">+ Add selection to parts list</button>
-	  </div>	
+	    </div>
+      <div id="ko-lookup-cards"></div>    
       <div style="background:var(--bl);border:1px solid #b8d0e8;border-radius:var(--r);padding:8px 12px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <span style="font-size:12px;color:var(--blue);font-weight:600;flex:1">🔍 Search squawk history</span>
@@ -1929,6 +1946,18 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
+<!-- SCAN SOURCE CHOICE MODAL -->
+<div class="modal-bg" id="modal-scan-tag-source">
+  <div class="modal" style="max-width:300px">
+    <h3>📷 Scan a plate/tag</h3>
+    <div class="modal-btns" style="flex-direction:column;gap:10px">
+      <button class="btn primary" style="width:100%;justify-content:center" onclick="koScanTagPickSource('camera')">📷 Take a photo</button>
+      <button class="btn" style="width:100%;justify-content:center" onclick="koScanTagPickSource('gallery')">🖼️ Choose from gallery</button>
+      <button class="btn" style="width:100%;justify-content:center" onclick="closeModal('modal-scan-tag-source')">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- PARTS PREVIEW MODAL -->
 <div class="modal-bg" id="modal-parts-preview">
   <div class="modal" style="max-width:760px">
@@ -1982,6 +2011,8 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div style="display:flex;gap:6px;padding-top:10px;border-top:1px solid var(--g200);flex-wrap:wrap">
       <input type="text" id="sa-new-airport" placeholder="ICAO e.g. LEMD" style="flex:0 0 90px;font-size:12px;padding:5px 8px;text-transform:uppercase"/>
       <input type="text" id="sa-new-label" placeholder="FBO / recipient name" style="flex:1;min-width:140px;font-size:12px;padding:5px 8px"/>
+      <input type="email" id="sa-new-email" placeholder="Email" style="flex:1;min-width:140px;font-size:12px;padding:5px 8px"/>
+      <input type="text" id="sa-new-phone" placeholder="Phone" style="flex:1;min-width:120px;font-size:12px;padding:5px 8px"/>
       <textarea id="sa-new-body" placeholder="Full address (street, city, country…)" style="flex:1 1 100%;min-height:50px;font-size:12px;padding:5px 8px"></textarea>
       <button class="btn primary" onclick="koAddShipAddr()" style="width:100%">+ Add</button>
     </div>
@@ -2082,12 +2113,34 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <input type="text" id="sm-new-spec" placeholder="MIL Spec (e.g. AMS-3281)" style="flex:1;min-width:130px;font-size:12px;padding:5px 8px"/>
       <input type="text" id="sm-new-app" placeholder="Application (e.g. Fuel tank sealant)" style="flex:2;min-width:180px;font-size:12px;padding:5px 8px"/>
       <input type="text" id="sm-new-pns" placeholder="P/Ns, comma-separated (e.g. PR1776, PR1750)" style="flex:2;min-width:200px;font-size:12px;padding:5px 8px"/>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;flex:1 1 100%;color:#3730a3">
+        <input type="checkbox" id="sm-new-prc"/> 🧪 PRC / 2-part product — adds Type / Size / Semkit when ordering
+      </label>      
       <button class="btn primary" onclick="koAddSealantSpec()" style="width:100%">+ Add</button>
     </div>
     <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-sealant-manage')">Done</button></div>
   </div>
 </div>
-	
+
+<!-- CONSUMABLE LOOKUP MANAGE MODAL (generic: grease, oil, future categories) -->
+<div class="modal-bg" id="modal-lookup-manage">
+  <div class="modal" style="max-width:620px">
+    <h3 id="lookup-manage-title">Manage MIL Spec lookup</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">Shared with the whole team. One or more P/N per MIL Spec, comma-separated.</p>
+    <div id="lookup-manage-list" style="max-height:340px;overflow-y:auto;margin-bottom:12px"></div>
+    <div style="display:flex;gap:6px;padding-top:10px;border-top:1px solid var(--g200);flex-wrap:wrap">
+      <input type="text" id="lkm-new-spec" placeholder="MIL Spec (e.g. MIL-PRF-81322)" style="flex:1;min-width:130px;font-size:12px;padding:5px 8px"/>
+      <input type="text" id="lkm-new-app" placeholder="Application (e.g. Wheel bearing grease)" style="flex:2;min-width:180px;font-size:12px;padding:5px 8px"/>
+      <input type="text" id="lkm-new-pns" placeholder="P/Ns, comma-separated (e.g. Mobil 28, AeroShell 22)" style="flex:2;min-width:200px;font-size:12px;padding:5px 8px"/>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;flex:1 1 100%;color:#3730a3">
+        <input type="checkbox" id="lkm-new-prc"/> 🧪 PRC / 2-part product — adds Type / Size / Semkit when ordering
+      </label>      
+      <button class="btn primary" onclick="koAddLookupSpec()" style="width:100%">+ Add</button>
+    </div>
+    <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-lookup-manage')">Done</button></div>
+  </div>
+</div>
+
 <!-- REPAIR TAG MODAL (GA 3671 — Unserviceable Tag) -->
 <div class="modal-bg" id="modal-repair-tag">
   <div class="modal" style="max-width:640px">
@@ -2540,12 +2593,13 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <li><strong>Customer's broker</strong> — paste broker contact details if the customer has provided one for import.</li>
       </ul>
 
-	  <h4 style="margin-top:1rem">📋 Order templates, ⭐ Quick add &amp; 🧪 Sealant lookup</h4>
+	  <h4 style="margin-top:1rem">📋 Order templates, ⭐ Quick add &amp; 🧪 Consumable lookups</h4>
 	  <p>Above the parts table, three shared shortcuts help you fill it faster:</p>
 	  <ul>
 	    <li><strong>📋 Order templates</strong> — full kits (e.g. main wheel change, brake change) saved per aircraft model. Filter by name with the search box, then tap a template to open it: mandatory lines are pre-ticked and always added, while lines marked <strong>"if required"</strong> are optional — tick them only if actually needed for this job. You can also assign the whole template to a squawk before adding it. Use <strong>"⚙️ Manage templates"</strong> to open the templates library — grouped by aircraft model and searchable, tap a template to expand and edit its lines. Use the <strong>"+ New template"</strong> button inside to create a new one (optionally pre-filled from an AMM card) or to manage the aircraft model list. <strong>⚠️ Always check the applicable AMM before ordering</strong> — part numbers, quantities and applicability can vary by aircraft configuration/effectivity; templates are a starting point, not a substitute for engineering documentation.</li>
 	    <li><strong>⭐ Quick add</strong> — one-tap chips for your team's frequently used tools and consumables (grouped by Parts/Consumables/Tools, filterable with the search box) — tapping a chip adds it straight to the table. Use its own <strong>"⚙️ Manage list"</strong> to add, edit or remove entries; shared with the whole team.</li>
 	    <li><strong>🧪 Sealant lookup</strong> — pick a MIL Spec / application (e.g. fuel tank sealant, firewall sealing) to see the approved part numbers. For each P/N you can specify a Type (A-1/2, A-1, A-2, B-1/2, B-1, B-2), a Size (2.5oz, 6oz) and whether it's a Semkit, then add it to your selection. If several P/Ns are interchangeable and only one is actually needed, give them the same group letter (A, B, C or D) — they'll be merged into a single "pick one of the following" line in the parts table instead of ordering all of them. Leave a P/N ungrouped if it's always required. Once ready, tap "+ Add selection to parts list". Use "⚙️ Manage list" to maintain the shared MIL Spec ↔ P/N reference.</li>
+	    <li><strong>⚙️ Grease lookup</strong> and <strong>🛢️ Oil lookup</strong> — same idea as the Sealant lookup above: pick a MIL Spec / application to see the approved part numbers, then add your selection to the parts list. Use the same group-letter trick (A/B/C/D) for interchangeable alternates (OR) — leave a P/N ungrouped if it's always required (AND). Each block has its own "⚙️ Manage list" to maintain its shared MIL Spec ↔ P/N reference. Application labels are a first pass — please review/edit via Manage list if something looks off.</li>      
 	  </ul>
       
 	  <h4 style="margin-top:1rem">🏢 FBO Coordination</h4>
@@ -2978,7 +3032,7 @@ async function koLiveRefresh(cat) {
   try {
     // No more token sent from the browser: the Worker resolves the job's
     // lead engineer itself and fetches THEIR refresh_token from Firebase.
-    const res = await fetch(KO_WORKER + '/sync-replies', {
+    const res = await koWorkerFetch('/sync-replies', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
@@ -3252,9 +3306,13 @@ G.koOpenReplyComposer = async function(idx) {
   const model = gv('f_model');
   const reg   = gv('f_reg');
   const loc   = gv('f_loc');
+  const desc  = gv('f_job_desc');
   const items = getItems().map(it => it.num + '. ' + it.label).join('; ') || '(none on file)';
   const erts  = gv('f_erts');
   const nxt   = gv('f_nxt');
+  const info  = gv('f_info');
+  const siteArrival = gv('f_site_arrival');
+  const [partsSummary, engineersLine] = await Promise.all([koGetPartsCacheSummary(wo), koGetEngineersLine()]);
 
   const prompt = `You are drafting a reply email from an aircraft maintenance engineer to a customer, for aviation job ${wo || '(unknown WO)'}.
 
@@ -3263,14 +3321,10 @@ Summary: ${item.summary || '(no summary)'}
 Their question(s): ${questions.length ? questions.join(' / ') : '(none extracted — write a brief general status reply)'}
 
 Known facts you may use — do not invent anything beyond this list:
-- Aircraft: ${model || 'unknown model'} ${reg || ''}, currently at ${loc || 'unknown location'}
-- Current squawks: ${items}
-- Estimated RTS: ${erts || 'not yet known'}
-- Next flight: ${nxt || 'not yet known'}
+${koComposerKnownFacts({ model, reg, loc, desc, items, erts, nxt, siteArrival, info, partsSummary, engineersLine })}
 
 Write a short, professional reply email body in English that addresses their question(s) using ONLY the facts above. If a fact needed to answer isn't listed above, say the engineer will confirm it shortly — never invent a date, part number, status, or name.
-Do not include a greeting or a sign-off — only the body paragraphs, those are added separately.
-Reply with plain text only, no markdown, no quotes.`;
+${KO_COMPOSER_RULES}`;
 
   try {
     const res = await koWorkerFetch('/chat', {
@@ -3298,6 +3352,7 @@ function koLatestDailyUpdateText() {
   const plain = (html) => { scratch.innerHTML = html || ''; return scratch.textContent.trim(); };
   const parts = [];
   if (latest.date) parts.push('Update dated ' + latest.date + ':');
+  if ((latest.dayStatuses||[]).length) parts.push('Status: ' + latest.dayStatuses.map(k => DAY_STATUS_META[k]?.label).filter(Boolean).join(', '));
   const free = plain(latest.freeText);
   if (free) parts.push(free);
   latest.itemUpdates.forEach(it => {
@@ -3330,6 +3385,45 @@ async function koGetPartsCacheSummary(wo) {
   });
   return lines.length ? lines.join('\n') : '(no parts updates on file — open 📬 Replies once to populate this)';
 }
+
+// Combien de personnes sont réellement sur ce chantier (Step 6 : moi +
+// "Assist Engineer" éventuels) — pour que l'IA écrive "I" ou "we" selon la
+// réalité du dossier, plutôt qu'une règle figée à l'aveugle.
+async function koGetEngineersLine() {
+  let pocs = [];
+  try { pocs = await getAllPocsData(); } catch(e) { console.warn('getAllPocsData failed:', e); }
+  if (pocs.length <= 1) return '1 engineer on site (just me — write in first person singular, "I"/"my")';
+  const names = pocs.map(p => p.name).filter(Boolean).join(', ');
+  return pocs.length + ' engineers on site' + (names ? ' (' + names + ')' : '') + ' — write in first person plural, "we"/"our"';
+}
+
+// Bloc de faits partagé entre les 3 flux de composition (Draft Reply /
+// Quick Update / Full Update) — un seul endroit à modifier si un fait
+// change, pour éviter la classe de bug "oublié dans un des trois" (ex :
+// l'arrivée sur site qui manquait dans Draft Reply). Inclut la date du
+// jour pour que l'IA distingue une date future (prévue) d'un fait déjà
+// acquis — partsSummary/dailyUpdate restent optionnels (Draft Reply n'a
+// pas besoin du daily update, mais profite maintenant du reste).
+function koComposerKnownFacts({ model, reg, loc, desc, items, erts, nxt, siteArrival, info, partsSummary, dailyUpdate, engineersLine }) {
+  const todayStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  let block = `- Today's date: ${todayStr}
+- Engineers on this job: ${engineersLine}
+- Aircraft: ${model || 'unknown model'} ${reg || ''}, currently at ${loc || 'unknown location'}
+- Job: ${desc || '(no description on file)'}
+- Current squawks: ${items}
+- Estimated RTS: ${erts || 'not yet known'}
+- Next flight: ${nxt || 'not yet known'}
+- Engineer arrival on site: ${siteArrival || 'not yet known'}
+- Additional info / constraints: ${info || '(none)'}
+- Parts status (from Reply Sync):
+${partsSummary}`;
+  if (dailyUpdate !== undefined) block += `\n- Most recent internal daily update: ${dailyUpdate || '(none logged yet)'}`;
+  return block;
+}
+
+const KO_COMPOSER_RULES = `Check every date above against today's date: a future date is PLANNED/EXPECTED, not something that has already happened — never phrase a future date as an already-true current state (e.g. don't write "I am on site as of [future date]"; write "I am scheduled to arrive on site on [future date]" instead).
+Do not include a greeting or a sign-off — only the body paragraphs, those are added separately.
+Reply with plain text only, no markdown, no quotes.`;
 
 G.koOpenStatusComposer = async function() {
   const custEmail = gv('f_cust_email').trim();
@@ -3372,25 +3466,15 @@ G.koOpenStatusComposer = async function() {
     return;
   }
 
-  const partsSummary = await koGetPartsCacheSummary(wo);
+  const [partsSummary, engineersLine] = await Promise.all([koGetPartsCacheSummary(wo), koGetEngineersLine()]);
 
   const prompt = `You are drafting a proactive status update email from an aircraft maintenance engineer to a customer, for aviation job ${wo || '(unknown WO)'}.
 
 Known facts you may use — do not invent anything beyond this list:
-- Aircraft: ${model || 'unknown model'} ${reg || ''}, currently at ${loc || 'unknown location'}
-- Job: ${desc || '(no description on file)'}
-- Current squawks: ${items}
-- Estimated RTS: ${erts || 'not yet known'}
-- Next flight: ${nxt || 'not yet known'}
-- Engineer arrival on site: ${siteArrival || 'not yet known'}
-- Additional info / constraints: ${info || '(none)'}
-- Parts status (from Reply Sync):
-${partsSummary}
-- Most recent internal daily update: ${dailyUpdate || '(none logged yet)'}
+${koComposerKnownFacts({ model, reg, loc, desc, items, erts, nxt, siteArrival, info, partsSummary, dailyUpdate, engineersLine })}
 
 Write a short, professional proactive status update email body in English, covering current progress, parts/next-steps status, and anything time-sensitive the customer should know — using ONLY the facts above. If a fact isn't listed above, say the engineer will confirm it shortly — never invent a date, part number, status, or name.
-Do not include a greeting or a sign-off — only the body paragraphs, those are added separately.
-Reply with plain text only, no markdown, no quotes.`;
+${KO_COMPOSER_RULES}`;
 
   try {
     const res = await koWorkerFetch('/chat', {
@@ -3454,11 +3538,11 @@ G.koOpenDigestComposer = async function() {
     return;
   }
 
-  const partsSummary = await koGetPartsCacheSummary(wo);
+  const [partsSummary, engineersLine] = await Promise.all([koGetPartsCacheSummary(wo), koGetEngineersLine()]);
 
   let activityText = '(mailbox scan unavailable)';
   try {
-    const res = await fetch(KO_WORKER + '/scan-daily-activity', {
+    const res = await koWorkerFetch('/scan-daily-activity', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ faNumber: wo, acReg: reg })
@@ -3484,22 +3568,12 @@ G.koOpenDigestComposer = async function() {
   const prompt = `You are drafting a daily status update email from an aircraft maintenance engineer to a customer, for aviation job ${wo}.
 
 Known facts you may use — do not invent anything beyond this list:
-- Aircraft: ${model || 'unknown model'} ${reg || ''}, currently at ${loc || 'unknown location'}
-- Job: ${desc || '(no description on file)'}
-- Current squawks: ${items}
-- Estimated RTS: ${erts || 'not yet known'}
-- Next flight: ${nxt || 'not yet known'}
-- Engineer arrival on site: ${siteArrival || 'not yet known'}
-- Additional info / constraints: ${info || '(none)'}
-- Parts status (from Reply Sync):
-${partsSummary}
-- Most recent internal daily update: ${dailyUpdate || '(none logged yet)'}
+${koComposerKnownFacts({ model, reg, loc, desc, items, erts, nxt, siteArrival, info, partsSummary, dailyUpdate, engineersLine })}
 - Today's raw email activity on this job (internal Techops and/or customer threads — "US →" is our own team writing, "IN ←" is an incoming message; use this to understand what happened today, not as text to quote verbatim):
 ${activityText}
 
 Write a short, professional daily status update email body in English for the customer, summarising today's progress and anything time-sensitive — using ONLY the facts above. Never repeat internal-only remarks (pricing, internal complaints, colleague names not meant for the customer) verbatim — translate them into a customer-appropriate status line, or omit them if they aren't customer-relevant. If a fact isn't listed above, say the engineer will confirm it shortly — never invent a date, part number, status, or name.
-Do not include a greeting or a sign-off — only the body paragraphs, those are added separately.
-Reply with plain text only, no markdown, no quotes.`;
+${KO_COMPOSER_RULES}`;
 
   try {
     const res = await koWorkerFetch('/chat', {
@@ -3574,7 +3648,7 @@ G.koConfirmReplyDraft = async function() {
 G.koApplyReply = function(btn, key, val) {
   // ac_hours/ac_cycles → Step 2 (f_ac_hours/f_ac_cycles), partagés par toutes
   // les fiches GA3671 du WO — voir rtagSyncHoursCycles / openRepairTagModal.
-  const fieldMap = { nxt:'f_nxt', cust_ref:'f_po', ac_hours:'f_ac_hours', ac_cycles:'f_ac_cycles' };
+  const fieldMap = { nxt:'f_nxt', cust_ref:'f_po', ac_hours:'f_ac_hours', ac_cycles:'f_ac_cycles', eng_eta:'f_site_arrival' };
 
   if (key === 'noted') {
     btn.textContent = '✓ Noted';
@@ -3589,8 +3663,8 @@ G.koApplyReply = function(btn, key, val) {
     if (el) { el.value = val; el.dispatchEvent(new Event('input')); }
     btn.textContent = '✓ Copied (and filled if Start Job is open)';
 
-  } else if (key === 'eng_eta' || key === 'mat_po') {
-    // Pas de champ form direct connu pour ces deux — copie presse-papier
+  } else if (key === 'mat_po') {
+    // Pas de champ form dédié — copie presse-papier
     navigator.clipboard?.writeText(val).catch(()=>{});
     btn.textContent = '✓ Copied to clipboard';
 
@@ -3951,12 +4025,21 @@ async function loadTeamForPicker() {
   const picker = document.getElementById('profile-picker');
   picker.innerHTML = '<p style="font-size:13px;color:var(--g400);text-align:center;padding:.5rem 0"><span class="spin" style="vertical-align:middle"></span> Loading…</p>';
   try {
-    const snap = await get(ref(db, 'team'));
+    // Le picker s'affiche AVANT toute authentification : il ne lit donc que le
+    // miroir public minimal (id/nom/équipe/rôle). /team reste fermé, sinon tous
+    // les projets et coordonnées clients seraient lisibles sans être connecté.
+    let snap = await get(ref(db, 'teamPublic'));
+    if (!snap.exists()) {
+      // Repli le temps de la migration : teamPublic est peuplé à la première
+      // ouverture de "Manage Team" par un admin. Une fois les règles durcies,
+      // cette lecture échoue simplement et on tombe dans le catch.
+      snap = await get(ref(db, 'team'));
+    }
     if (!snap.exists()) {
       picker.innerHTML = '<p style="font-size:13px;color:var(--g400);text-align:center;padding:.5rem 0">No engineers yet — contact your admin.</p>';
       return;
     }
-    const team = Object.values(snap.val()).sort((a,b) => a.name.localeCompare(b.name));
+    const team = Object.values(snap.val()).sort((a,b) => (a.name||'').localeCompare(b.name||''));
     window._pickerTeam = team;
 
     picker.innerHTML = `
@@ -4019,19 +4102,23 @@ function renderPickerQuickAccess() {
   document.getElementById('picker-quick-btn').onclick = () => showPinEntry(lastProfile);
 }
 
-function renderPickerGrid() {
+function renderPickerGrid(list) {
   const grid = document.getElementById('picker-grid');
   if (!grid) return;
-  const tab = window._pickerTab || 'FAST EMEA';
-  const q = (document.getElementById('picker-search')?.value || '').toLowerCase();
   const lastId = localStorage.getItem('fast_last_profile'); // for the "that's you" highlight below
 
-  let members = (window._pickerTeam || []).filter(p => {
-    if (tab === 'OPS') return p.role === 'ops';
-    return p.team === tab && p.role !== 'ops';
-  });
-
-  if (q) members = members.filter(p => p.name.toLowerCase().includes(q));
+  let members;
+  if (Array.isArray(list)) {
+    members = list; // pré-filtré par G.filterPicker (nom + équipe + rôle, toutes tabs confondues)
+  } else {
+    const tab = window._pickerTab || 'FAST EMEA';
+    const q = (document.getElementById('picker-search')?.value || '').toLowerCase();
+    members = (window._pickerTeam || []).filter(p => {
+      if (tab === 'OPS') return p.role === 'ops';
+      return p.team === tab && p.role !== 'ops';
+    });
+    if (q) members = members.filter(p => p.name.toLowerCase().includes(q));
+  }
 
   if (!members.length) {
     grid.innerHTML = '<p style="font-size:13px;color:var(--g400);text-align:center;grid-column:1/-1;padding:1rem 0">No results.</p>';
@@ -4057,6 +4144,7 @@ function renderPickerGrid() {
 
 G.filterPicker = function() {
   const q = document.getElementById('picker-search')?.value.toLowerCase() || '';
+  if (!q) { renderPickerGrid(); return; }
   const filtered = (window._pickerTeam || []).filter(p =>
     p.name.toLowerCase().includes(q) ||
     (p.team||'').toLowerCase().includes(q) ||
@@ -4135,13 +4223,14 @@ function maskEmailForDisplay(email) {
 // PIN and WebAuthn) — _devCodeWrongCount here is purely a local "X attempts left" display,
 // not a security boundary, so it doesn't need to survive a page reload. ──
 let _devCodeWrongCount = 0;
-function showDeviceCodeStep(pinTicket) {
+function showDeviceCodeStep(pinTicket, emailHint) {
   _pendingPinTicket = pinTicket;
   _devCodeWrongCount = 0;
   document.getElementById('pin-input').value = '';
   document.getElementById('pin-error').textContent = '';
   document.getElementById('btn-forgot-pin').style.display = 'none';
-  document.getElementById('devcode-email-hint').textContent = maskEmailForDisplay(pendingUserToLogin && pendingUserToLogin.email);
+  document.getElementById('devcode-email-hint').textContent =
+    emailHint || maskEmailForDisplay(pendingUserToLogin && pendingUserToLogin.email);
   document.getElementById('devcode-input').value = '';
   document.getElementById('devcode-error').textContent = '';
   document.getElementById('view-device-code').style.display = '';
@@ -4340,7 +4429,7 @@ G.userPinInput = async function() {
         _koSessionToken = data.sessionToken;
         loginAs(pendingUserToLogin, false, data.firebaseCustomToken);
       } else if (data.deviceTrusted === false && data.pinTicket) {
-        showDeviceCodeStep(data.pinTicket);
+        showDeviceCodeStep(data.pinTicket, data.emailHint);
       } else {
         document.getElementById('pin-error').textContent = '❌ Unexpected response — please try again.';
       }
@@ -4512,7 +4601,7 @@ G.saveSecretQuestion = async function() {
   if (!answer) { document.getElementById('secret-q-error').textContent = 'Please enter an answer.'; return; }
   const question = SECRET_QUESTIONS[parseInt(qIndex)];
   try {
-    const res = await fetch(KO_WORKER + '/setup-secret-question', {
+    const res = await koWorkerFetch('/setup-secret-question', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ engineerId: pendingUserToLogin.id, question, answer })
     });
@@ -4760,6 +4849,30 @@ G.logout = async function() {
 // ══════════════════════════════════════
 //  ADMIN: MANAGE TEAM
 // ══════════════════════════════════════
+// Miroir public minimal pour l'écran de connexion. Jamais d'email, de
+// téléphone, de FN ni de projets ici : ce noeud est le seul lisible sans
+// authentification.
+function teamPublicEntry(p) {
+  return { id: p.id, name: p.name || '', team: p.team || '', role: p.role || 'engineer' };
+}
+
+async function syncTeamPublic(team) {
+  try {
+    const pubSnap = await get(ref(db, 'teamPublic'));
+    const pub = pubSnap.exists() ? (pubSnap.val() || {}) : {};
+    for (const [id, p] of Object.entries(team)) {
+      const wanted = teamPublicEntry({ ...p, id });
+      const cur = pub[id];
+      if (!cur || cur.name !== wanted.name || cur.team !== wanted.team || cur.role !== wanted.role) {
+        await set(ref(db, 'teamPublic/' + id), wanted);
+      }
+    }
+    for (const id of Object.keys(pub)) {
+      if (!team[id]) await remove(ref(db, 'teamPublic/' + id));
+    }
+  } catch(e) { console.warn('syncTeamPublic failed:', e); }
+}
+
 async function renderTeamAdminList() {
   const list = document.getElementById('team-list');
   list.innerHTML = '<p style="font-size:13px;color:var(--g400)"><span class="spin" style="vertical-align:middle"></span> Loading…</p>';
@@ -4782,6 +4895,7 @@ async function renderTeamAdminList() {
       <button class="btn danger" onclick="resetEngineerFully('${id}')" style="padding:4px 8px;font-size:11px" title="Full reset — PIN + security question (engineer starts fresh)">🔄🔐</button>
       <button class="btn danger" onclick="deleteTeamMember('${id}')" style="padding:4px 8px;font-size:11px">🗑</button>
     </div>`).join('');
+  syncTeamPublic(team); // rattrape aussi les profils créés avant la migration
 }
 
 // ══════════════════════════════════════
@@ -4846,6 +4960,7 @@ G.addTeamMember = async function() {
   errEl.textContent = '';
   if (!name) { errEl.textContent = 'Name required.'; return; }
   if (pin && !/^\d{4}$/.test(pin)) { errEl.textContent = 'PIN must be exactly 4 digits.'; return; }
+  if (pin && WEAK_PINS.has(pin)) { errEl.textContent = 'PIN too simple — choose a less predictable one.'; return; }
   const id = 'prof_' + Date.now();
   const member = {
     id, name,
@@ -4859,6 +4974,7 @@ G.addTeamMember = async function() {
     projects: {}
   };
   await set(ref(db, 'team/' + id), member);
+  await set(ref(db, 'teamPublic/' + id), teamPublicEntry(member));
   await set(ref(db, 'teamSecrets/' + id + '/pinHash'), pin ? await hashPin(pin, id) : 'SETUP_REQUIRED');
   ['nt_name','nt_email','nt_team','nt_phone','nt_pin','nt_homebase','nt_fn'].forEach(i => { const el=document.getElementById(i); if(el) el.value=''; });
   document.getElementById('nt_role').value = 'engineer';
@@ -4868,6 +4984,7 @@ G.addTeamMember = async function() {
 G.deleteTeamMember = async function(id) {
   if (!confirm('Delete this engineer? Their projects will be deleted too.')) return;
   await remove(ref(db, 'team/' + id));
+  await remove(ref(db, 'teamPublic/' + id));
   renderTeamAdminList();
 };
 
@@ -4884,7 +5001,11 @@ G.generateAIBriefing = async function() {
   out.style.display = '';
   out.textContent = '⏳ Analyzing active jobs (can take 15-30s)…';
   try {
-    const res = await fetch(KO_WORKER + '/daily-briefing', { method: 'POST' });
+    const idToken = await auth.currentUser.getIdToken();
+    const res = await fetch(KO_WORKER + '/daily-briefing', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + idToken }
+    });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Error ' + res.status);
     const stamp = new Date(data.generatedAt || Date.now()).toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
@@ -5106,6 +5227,7 @@ function handoverBuildSupportUpdates(proj) {
   const sorted = [...updates].sort((a,b) => (a.ts||0) - (b.ts||0));
   return sorted.map(u => {
     const lines = [u.date + (u.isRTS ? ' — A/C RTS' : '')];
+    if ((u.dayStatuses||[]).length) lines.push('Status: ' + u.dayStatuses.map(k => DAY_STATUS_META[k]?.label).filter(Boolean).join(', '));
     (u.itemUpdates||[]).filter(iu => iu.checked).forEach(iu => {
       const it = items.find(x => iu.id != null ? x.id === iu.id : x.num === iu.num);
       const label = it ? it.label : ('Item ' + iu.num);
@@ -5312,7 +5434,23 @@ G.autosave = function() {
   saveTimer = setTimeout(doSave, 1200);
 };
 
+// Sérialise les sauvegardes : si une écriture dépassait le debounce de 1,2 s,
+// deux appels pouvaient passer le test `if (!curProj)` et créer deux projets
+// pour le même WO. Le second est mis en attente et rejoué une seule fois.
+let _saveInFlight = false;
+let _savePending  = false;
+
 async function doSave() {
+  if (_saveInFlight) { _savePending = true; return; }
+  _saveInFlight = true;
+  try { await doSaveInner(); }
+  finally {
+    _saveInFlight = false;
+    if (_savePending) { _savePending = false; doSave(); }
+  }
+}
+
+async function doSaveInner() {
   if (!curProfile) return;
   const d = gatherData();
   if (!d.wo && !d.model && !d.sn) return;
@@ -5415,7 +5553,7 @@ function fillFromProj(proj) {
 
 function clearForm() {
   curProjSubjectTemplate = curProfile?.subjectTemplate || DEFAULT_SUBJECT_TEMPLATE;
-  ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_job_desc','f_intro_msg','f_cust_name','f_cust_tel','f_cust_email','f_cust_company','f_cust_code','f_ac_hours','f_ac_cycles']
+  ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_site_arrival','f_job_desc','f_intro_msg','f_cust_name','f_cust_tel','f_cust_email','f_cust_company','f_cust_code','f_ac_hours','f_ac_cycles']
     .forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
   document.getElementById('f_rts_assist').value = 'RTS';
   const btn = document.getElementById('btn-mark-rts');
@@ -5469,7 +5607,7 @@ function renderDefaultRecipientTags() {
   const c = document.getElementById('default-recipients-tags'); if (!c) return;
   c.innerHTML = _defaultRecipients.map((e,i) => `
     <span style="display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid #b8d0e8;border-radius:20px;font-size:11px;padding:3px 10px;color:var(--blue)">
-      ${e}
+      ${escHtml(e)}
       <button onclick="removeDefaultRecipient(${i})" style="background:none;border:none;cursor:pointer;color:#999;font-size:14px;line-height:1;padding:0 0 0 2px">&times;</button>
     </span>`).join('');
 }
@@ -5506,12 +5644,12 @@ function renderRecipients(list) {
   c.innerHTML = [
     ...defaults.map(e => `
       <span style="display:inline-flex;align-items:center;gap:4px;background:#e8f0fe;border:1px solid #b8d0e8;border-radius:20px;font-size:11px;padding:3px 10px;color:var(--blue)">
-        ${e}
+        ${escHtml(e)}
       </span>`),
     ...extras.map((e,i) => `
       <span style="display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid #b8d0e8;border-radius:20px;font-size:11px;padding:3px 10px;color:var(--g800)">
-        ${e}
-        <button onclick="removeRecipient('${e}')" style="background:none;border:none;cursor:pointer;color:#999;font-size:14px;line-height:1;padding:0 0 0 2px">&times;</button>
+        ${escHtml(e)}
+        <button data-email="${koAttrEscape(e)}" onclick="removeRecipient(this.dataset.email)" style="background:none;border:none;cursor:pointer;color:#999;font-size:14px;line-height:1;padding:0 0 0 2px">&times;</button>
       </span>`)
   ].join('');
 }
@@ -5531,6 +5669,16 @@ G.removeRecipient = function(email) {
   G.autosave();
 };
 // ══════════════════════════════════════
+// Renumérote le badge visible de chaque item Step 3 sur sa position
+// courante dans la liste — pour rester aligné avec la numérotation utilisée
+// dans le tableau FAST Update et dans les select de squawk de Start Job.
+G.renumberItemBadges = function() {
+  document.querySelectorAll('#items-container .item-row').forEach((row, i) => {
+    const badge = row.querySelector('.item-num');
+    if (badge) badge.textContent = i + 1;
+  });
+};
+
 G.addItem = function(label = '', explicitId = null) {
   let id;
   if (explicitId != null && !Number.isNaN(Number(explicitId))) {
@@ -5551,9 +5699,10 @@ G.addItem = function(label = '', explicitId = null) {
       </div>
       <div class="smart-diag-container" id="smart-diag-${id}" style="display:none;margin-top:4px"></div>
     </div>
-    <button class="btn-rm" onclick="this.parentElement.remove();autosave()">×</button>`;
+    <button class="btn-rm" onclick="this.parentElement.remove();renumberItemBadges();autosave()">×</button>`;
   c.appendChild(d);
   syncNewItemToExistingUpdateDays();
+  G.renumberItemBadges();   // NOUVEAU
 
   if (label.trim().length > 3) {
     const inputEl = d.querySelector('input');
@@ -5591,7 +5740,7 @@ function syncNewItemToExistingUpdateDays() {
         <div class="upd-item-header">
           <div class="upd-item-chk">
             <input type="checkbox" id="uchk_${uid}" onchange="onUpdChk(this)" style="width:auto"/>
-            <label for="uchk_${uid}">${it.num} — ${it.label||'(no description)'}</label>
+            <label for="uchk_${uid}">${it.num} — ${escHtml(it.label) || '(no description)'}</label>
           </div>
           <select class="upd-status-sel" onchange="onUpdStatusChange(this)">
             <option value="">— (no status)</option>
@@ -5619,11 +5768,15 @@ function syncNewItemToExistingUpdateDays() {
 //  fiches GA3671 et les Daily Updates marqués "Carried out"
 // ══════════════════════════════════════
 
-async function saveTroubleshootingEntry({ squawk, resolution, rootCause = '', parts = [], faultCodes = [], wiringResetOnly = false }) {
+async function saveTroubleshootingEntry({ squawk, resolution, rootCause = '', parts = [], faultCodes = [], wiringResetOnly = false, model = null, wo = null }) {
   if (!squawk || !resolution) return;
   const entryId = 'entry_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-  const currentModel = (gv('f_model') || gv('ko_model') || '').trim().toUpperCase();
-  const currentWo = (gv('f_wo') || gv('ko_wo') || '').trim().toUpperCase();
+  // model/wo peuvent être passés explicitement : au passage RTS, clearForm()
+  // vide le formulaire pendant que la boucle attend encore les embeddings, donc
+  // les lire ici à la volée donnait des entrées sans modèle ni WO à partir de
+  // la deuxième.
+  const currentModel = (model ?? (gv('f_model') || gv('ko_model') || '')).trim().toUpperCase();
+  const currentWo    = (wo    ?? (gv('f_wo')    || gv('ko_wo')    || '')).trim().toUpperCase();
 
   const familyMatch = currentModel.match(/G\d{3,4}|GV|GIV/i);
   const modelFamily = familyMatch ? familyMatch[0].toUpperCase() : currentModel;
@@ -5664,6 +5817,8 @@ async function saveTroubleshootingFromDailyUpdates() {
   try {
     const items = getItems();
     const updates = getUpdatesData(); // du plus ancien au plus récent
+    const model = gv('f_model'); // capturés AVANT le premier await (cf. clearForm)
+    const wo    = gv('f_wo');
     const latestByItem = {};
     updates.forEach(u => {
       u.itemUpdates.forEach(iu => {
@@ -5681,7 +5836,8 @@ async function saveTroubleshootingFromDailyUpdates() {
         rootCause: '',
         parts: [],
         faultCodes: [],
-        wiringResetOnly: true
+        wiringResetOnly: true,
+        model, wo
       });
     }
   } catch (err) {
@@ -5983,6 +6139,14 @@ G.rteNormalize = function(el) {
   if (!el.textContent.trim()) el.innerHTML = '';
 };
 
+const DAY_STATUS_META = {
+  arrived:        { emoji:'✈️', label:'Arrived on site',   cls:'active-blue',   bg:'#e8f0f8', fg:'#1a4a7a' },
+  parts_received: { emoji:'📦', label:'Parts received',    cls:'active-green',  bg:'#e8f2e8', fg:'#2d5a2d' },
+  parts_pending:  { emoji:'⏳', label:'Parts pending',     cls:'active-amber',  bg:'#fef9e7', fg:'#7a5a00' },
+  waiting_ac:     { emoji:'🛬', label:'Waiting for A/C',   cls:'active-orange', bg:'#fdf2e9', fg:'#e07800' },
+  done_today:     { emoji:'🏁', label:'Done for today',    cls:'active-green',  bg:'#e8f2e8', fg:'#2d5a2d' }
+};
+
 function todayLabel() { return new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}); }
 
 // Normalise une date à minuit -> timestamp comparable (indépendant de l'heure de clic)
@@ -6091,6 +6255,7 @@ function renderUpdateBlock(upd) {
   d.className = 'update-day' + (upd.isRTS ? ' is-rts' : '');
   d.id = upd.id; d.dataset.date = upd.date;
   d.dataset.ts = String(upd.ts ?? parseDateLabel(upd.date) ?? Date.now());
+  d.dataset.dayStatuses = JSON.stringify(upd.dayStatuses || []);
 
   const itemsHtml = items.length > 0 ? items.map((it, i) => {
     const saved = itemUpdatesArr.find(u => (u.id != null ? u.id === it.id : u.num === it.num)) || {};
@@ -6111,7 +6276,7 @@ function renderUpdateBlock(upd) {
       <div class="upd-item-header">
         <div class="upd-item-chk">
           <input type="checkbox" id="uchk_${upd.id}_${i}" ${checked} onchange="onUpdChk(this)" style="width:auto"/>
-          <label for="uchk_${upd.id}_${i}">${it.num} — ${it.label||'(no description)'}</label>
+          <label for="uchk_${upd.id}_${i}">${it.num} — ${escHtml(it.label) || '(no description)'}</label>
         </div>
         <select class="upd-status-sel" onchange="onUpdStatusChange(this)">${statusOpts}</select>
       </div>
@@ -6132,6 +6297,11 @@ function renderUpdateBlock(upd) {
       <span id="rts-lbl_${d.id}"></span>
     </label>
     <button class="update-day-del" onclick="removeUpdateBlock('${d.id}')" aria-label="Delete this day">🗑</button>
+  </div>
+  <div class="day-status-row">
+    ${Object.entries(DAY_STATUS_META).map(([key, m]) =>
+      `<span class="day-status-pill ${(upd.dayStatuses||[]).includes(key) ? m.cls : ''}" data-status="${key}" onclick="toggleDayStatus('${d.id}','${key}')">${m.emoji} ${m.label}</span>`
+    ).join('')}
   </div>
   <div class="update-day-body">
     ${itemsHtml}
@@ -6162,7 +6332,6 @@ function renderUpdateBlock(upd) {
     if (lbl) lbl.textContent = isAssist ? '🤝 Assistance provided' : '✅ A/C RTS this day';
   }
   updateRtsLabel(d.id);
-  document.getElementById('f_rts_assist').addEventListener('change', () => updateRtsLabel(d.id));
   updateDayProgress(d);
 }
 
@@ -6217,12 +6386,28 @@ G.removeUpdateBlock = function(id) {
   }
   G.autosave();
 };
-  
+
+G.toggleDayStatus = function(dayId, status) {
+  const dayEl = document.getElementById(dayId);
+  if (!dayEl) return;
+  let list = [];
+  try { list = JSON.parse(dayEl.dataset.dayStatuses || '[]'); } catch(e) { list = []; }
+  const idx = list.indexOf(status);
+  if (idx === -1) list.push(status); else list.splice(idx, 1);
+  dayEl.dataset.dayStatuses = JSON.stringify(list);
+  dayEl.querySelectorAll('.day-status-pill').forEach(pill => {
+    const key = pill.dataset.status;
+    pill.className = 'day-status-pill' + (list.includes(key) ? ' ' + DAY_STATUS_META[key].cls : '');
+  });
+  G.autosave();
+};
+
 function getUpdatesData() {
   return Array.from(document.querySelectorAll('.update-day')).map(block => ({
     id: block.id, date: block.dataset.date,
     ts: block.dataset.ts ? parseInt(block.dataset.ts, 10) : (parseDateLabel(block.dataset.date) ?? 0),
     isRTS: block.querySelector('[id^="rts_"]')?.checked || false,
+    dayStatuses: (() => { try { return JSON.parse(block.dataset.dayStatuses || '[]'); } catch(e) { return []; } })(),
     freeText: rteSanitize(block.querySelector('.upd-free-global')?.innerHTML || ''),
     itemUpdates: Array.from(block.querySelectorAll('.upd-item-block')).map((ib, i) => ({
       id: parseInt(ib.dataset.itemId, 10) || null,
@@ -6267,8 +6452,20 @@ let _scanTagRow  = null;   // .part-row ciblé, uniquement en mode 'row'
 G.koOpenScanCapture = function(mode, rowBtnOrEl) {
   _scanTagMode = mode;
   _scanTagRow  = (mode === 'row' && rowBtnOrEl) ? rowBtnOrEl.closest('.part-row') : null;
-  document.getElementById('scan-tag-input').value = ''; // permet de reprendre la même photo 2x de suite
-  document.getElementById('scan-tag-input').click();
+  openModal('modal-scan-tag-source');
+};
+
+// Choix explicite caméra/galerie avant ouverture du picker : sur Android 13+, un
+// <input type=file> sans attribut capture ouvre directement le sélecteur de photos
+// système (aucun bouton appareil photo dedans, contrairement au chooser iOS) — on ne
+// peut donc plus laisser l'OS décider avec un seul input. Deux inputs cachés, un forcé
+// caméra (capture=environment) et un forcé galerie (pas de capture), déclenchés
+// explicitement selon le choix fait dans #modal-scan-tag-source.
+G.koScanTagPickSource = function(source) {
+  closeModal('modal-scan-tag-source');
+  const input = document.getElementById(source === 'camera' ? 'scan-tag-input-camera' : 'scan-tag-input-gallery');
+  input.value = ''; // permet de reprendre la même photo 2x de suite
+  input.click();
 };
 
 // Calcule le gamma à appliquer pour ramener la luminance moyenne mesurée
@@ -7590,6 +7787,12 @@ G.generate = async function() {
     updatesReversed.forEach((upd, di) => {
       if (di > 0) updContent += `<div style="border-top:1px solid #000;margin:8px 0;"></div>`;
       updContent += `<b style="background:#e8f2e8;padding:2px 8px;border-radius:4px;display:inline-block;margin-bottom:4px">${upd.date}</b><br>`;
+      (upd.dayStatuses || []).forEach(key => {
+        const m = DAY_STATUS_META[key];
+        if (!m) return;
+        updContent += `<span style="display:inline-block;background:${m.bg};color:${m.fg};font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;margin:0 4px 3px 0">${m.emoji} ${m.label}</span>`;
+      });
+      if ((upd.dayStatuses || []).length) updContent += '<br>';
       if(upd.isRTS) {
         const rtsLabel = rtsA === 'Assist' ? 'ASSISTANCE PROVIDED' : 'A/C RTS';
         updContent += `<span style="display:inline-block;background:#2d5a2d;color:#fff;font-size:11px;font-weight:700;padding:1px 10px;border-radius:20px;margin-bottom:3px">${rtsLabel}</span><br>`;
@@ -7909,6 +8112,7 @@ G.markRTS = function() {
 };
 G.confirmRTS = async function() {
   if(!curProj||!curProfile){closeModal('modal-rts');return;}
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; } // évite qu'une sauvegarde différée réécrive rts:false juste après
   await doSave();
   saveTroubleshootingFromDailyUpdates(); // Smart Diagnosis — capture best-effort des items "Carried out" avec note  
   await update(ref(db,'team/'+curProfile.id+'/projects/'+curProj),{rts:true,updatedAt:Date.now()});
@@ -7974,12 +8178,6 @@ window.addEventListener('resize', () => {
 // ══════════════════════════════════════
 //  UTILS
 // ══════════════════════════════════════
-// ── Ancien hash conservé UNIQUEMENT pour vérifier les réponses secrètes existantes ──
-function legacyHashPin(s) {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) + h) + s.charCodeAt(i);
-  return (h >>> 0).toString(16);
-}
 
 // ── Nouveau hash sécurisé SHA-256 pour les PINs ──
 async function hashPin(pin, uid) {
@@ -8164,6 +8362,12 @@ document.getElementById('f_rts_assist').addEventListener('change', () => {
   const isAssist = gv('f_rts_assist') === 'Assist';
   const btn = document.getElementById('btn-mark-rts');
   if (btn) btn.textContent = isAssist ? '🤝 Assistance Provided' : '✅ Mark A/C RTS';
+  // Un seul listener global pour tous les jours affichés : renderUpdateBlock
+  // en ajoutait un par bloc, jamais retiré, qui s'empilaient à chaque
+  // chargement de projet en retenant des noeuds DOM déjà supprimés.
+  document.querySelectorAll('.update-day [id^="rts-lbl_"]').forEach(lbl => {
+    lbl.textContent = isAssist ? '🤝 Assistance provided' : '✅ A/C RTS this day';
+  });
 });
 
 let resetPinTargetId = null;
@@ -8232,6 +8436,11 @@ G.confirmEditMember = async function() {
   const name = document.getElementById('edit_name').value.trim();
   const errEl = document.getElementById('edit-member-error');
   if (!name) { errEl.textContent = 'Name is required.'; return; }
+  await set(ref(db, 'teamPublic/' + id), teamPublicEntry({
+    id, name,
+    team: document.getElementById('edit_team').value.trim(),
+    role: document.getElementById('edit_role').value
+  }));
   await update(ref(db, 'team/' + id), {
     name,
     phone: document.getElementById('edit_phone').value.trim(),
@@ -8285,7 +8494,7 @@ if ('serviceWorker' in navigator) {
 //  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
 //  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v25';
+const CURRENT_VERSION = 'v26';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -8644,8 +8853,8 @@ function koRenderSqQuestionList(qid) {
   wrap.innerHTML = '<div style="font-size:11px;color:var(--g600);margin-bottom:5px">For which defect(s)?</div>' +
     items.map(it => `
       <label style="display:flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:5px 9px;margin-bottom:4px">
-        <input type="checkbox" class="koq-sq-item-cb" data-qid="${qid}" data-num="${it.num}" data-label="${it.label.replace(/"/g,'&quot;')}"/>
-        <span style="font-weight:700;color:var(--g600)">${it.num}</span> — ${it.label}
+        <input type="checkbox" class="koq-sq-item-cb" data-qid="${qid}" data-num="${it.num}" data-label="${koAttrEscape(it.label)}"/>
+        <span style="font-weight:700;color:var(--g600)">${it.num}</span> — ${escHtml(it.label)}
       </label>`).join('');
 }
 
@@ -9003,7 +9212,9 @@ G.openKickoff = async function(forceWo) {
   await koLoadGsModels();
   await koLoadPartTplCatalog();
   await koLoadShipAddrCatalog();
-  await koLoadSealantMilSpecs();	
+  await koLoadSealantMilSpecs();
+  koRenderLookupCards();
+  await koLoadAllLookupCategories();  
   KO.signature = koBuildSignature();
   koRenderAllRecips();
   koInitToggles();
@@ -9417,7 +9628,7 @@ function koSquawkSelectOptions(selectedId='', legacyLabel='') {
   const fallbackItem = (!selId && legacyLabel) ? items.find(it => it.label === legacyLabel) : null;
   const effectiveId = selId || (fallbackItem ? String(fallbackItem.id) : '');
   return '<option value="">— select squawk —</option>' +
-    items.map(it => `<option value="${it.id}" ${String(it.id)===effectiveId?'selected':''}>${it.displayNum} — ${it.label}</option>`).join('');
+    items.map(it => `<option value="${it.id}" ${String(it.id)===effectiveId?'selected':''}>${it.displayNum} — ${escHtml(it.label)}</option>`).join('');
 }
 
 G.koRefreshSquawkSelects = window.koRefreshSquawkSelects = function() {
@@ -11543,6 +11754,8 @@ function renderShipAddrManageList() {
           <input type="text" value="${(a.airport||'').replace(/"/g,'&quot;')}" placeholder="ICAO" oninput="koShipAddrEdit(${a._idx},'airport',this.value.toUpperCase())" style="flex:0 0 70px;font-size:11px;padding:4px 6px;text-transform:uppercase"/>
           <input type="text" value="${(a.label||'').replace(/"/g,'&quot;')}" placeholder="FBO / recipient name" oninput="koShipAddrEdit(${a._idx},'label',this.value)" style="flex:1 1 140px;min-width:120px;font-size:12px;padding:4px 6px"/>
           <button onclick="koDeleteShipAddr(${a._idx})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
+          <input type="email" value="${(a.email||'').replace(/"/g,'&quot;')}" placeholder="Email" oninput="koShipAddrEdit(${a._idx},'email',this.value)" style="flex:1 1 160px;min-width:140px;font-size:12px;padding:4px 6px"/>
+          <input type="text" value="${(a.phone||'').replace(/"/g,'&quot;')}" placeholder="Phone" oninput="koShipAddrEdit(${a._idx},'phone',this.value)" style="flex:1 1 120px;min-width:110px;font-size:12px;padding:4px 6px"/>
           <textarea oninput="koShipAddrEdit(${a._idx},'body',this.value)" placeholder="Full address" style="flex:1 1 100%;min-height:40px;font-size:12px;padding:4px 6px">${(a.body||'')}</textarea>
         </div>`).join('');
   }).join('');
@@ -11561,11 +11774,15 @@ G.koShipAddrEdit = function(i, field, val) {
 G.koAddShipAddr = function() {
   const airport = (document.getElementById('sa-new-airport')?.value || '').trim().toUpperCase();
   const label   = (document.getElementById('sa-new-label')?.value || '').trim();
+  const email   = (document.getElementById('sa-new-email')?.value || '').trim();
+  const phone   = (document.getElementById('sa-new-phone')?.value || '').trim();
   const body    = (document.getElementById('sa-new-body')?.value || '').trim();
   if (!airport || !body) return;
-  KO_SHIPADDR.push({ airport, label, body });
+  KO_SHIPADDR.push({ airport, label, email, phone, body });
   document.getElementById('sa-new-airport').value = '';
   document.getElementById('sa-new-label').value = '';
+  document.getElementById('sa-new-email').value = '';
+  document.getElementById('sa-new-phone').value = '';
   document.getElementById('sa-new-body').value = '';
   renderShipAddrManageList(); koRenderShipAddrChips(); koSaveShipAddrCatalog();
 };
@@ -11578,6 +11795,49 @@ G.koDeleteShipAddr = function(i) {
 async function koSaveShipAddrCatalog() {
   try { await set(ref(db, 'config/shippingAddresses'), KO_SHIPADDR); } catch(e) { console.warn(e); }
 }
+
+// ── Suggestions ICAO en direct (Step 2 f_loc + Start Job ko_icao) — réutilise
+// KO_SHIPADDR/config/shippingAddresses, pas de nouvelle source de données.
+G.koIcaoSuggestInput = async function(val, context) {
+  const containerId = context === 'ko' ? 'fbo-suggestions-ko' : 'fbo-suggestions-step2';
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const icao = (val || '').trim().toUpperCase();
+  if (icao.length < 3) { container.style.display = 'none'; container.innerHTML = ''; return; }
+
+  if (!KO_SHIPADDR.length) await koLoadShipAddrCatalog();
+
+  const matches = KO_SHIPADDR
+    .map((a, i) => ({ ...a, _idx: i }))
+    .filter(a => (a.airport || '').toUpperCase().startsWith(icao));
+
+  if (!matches.length) { container.style.display = 'none'; container.innerHTML = ''; return; }
+
+  container.style.display = 'flex';
+  container.innerHTML = matches.map(a => `
+    <button type="button" class="btn" style="font-size:11px;padding:3px 8px;background:var(--gl);border-color:var(--gb);color:var(--gd);font-weight:600"
+      onclick="koApplyIcaoSuggestion(${a._idx},'${context}')">
+      🏢 ${escHtml(a.label || a.airport)}
+    </button>`).join('');
+};
+
+G.koApplyIcaoSuggestion = function(idx, context) {
+  const a = KO_SHIPADDR[idx];
+  if (!a) return;
+
+  if (context === 'step2') {
+    sv('f_fbo', a.label || '');
+    G.autosave();
+    const c = document.getElementById('fbo-suggestions-step2');
+    if (c) { c.style.display = 'none'; c.innerHTML = ''; }
+  } else {
+    G.koSetAddr('manual');
+    G.koUseShipAddr(idx);
+    const c = document.getElementById('fbo-suggestions-ko');
+    if (c) { c.style.display = 'none'; c.innerHTML = ''; }
+  }
+};
 
 // ══════════════════════════════════════
 //  GULFSTREAM MODELS — fixed shared list, real FAA/EASA type-certificate designations
@@ -12062,37 +12322,191 @@ async function koSavePartTplCatalog() {
 // ══════════════════════════════════════
 let SEALANT_MIL_SPECS = [];
 const DEFAULT_SEALANT_MIL_SPECS = [
-  { spec:'N/A', app:'Fillet sealants', pns:['Presstite 1170-2','Proseal EP711'] },
-  { spec:'N/A', app:'Injection sealants', pns:['94-011','PR750'] },
-  { spec:'N/A', app:'Polysulfide sealant', pns:['PR142 (adhesion promoter)','PR1425','PR1725','PR1778','PR1829'] },
-  { spec:'AMS-3281', app:'Fuel tank sealant', pns:['PR1776'] },
-  { spec:'AMS-3374', app:'Firewall sealing', pns:['PR812','Proseal 700'] },
-  { spec:'AMS-3276', app:'Seal (-65°F to 360°F)', pns:['CS-5500','PR1741','PR1750','GMS-4107'] },
-  { spec:'AMS-S-8802', app:'Brushable sealant', pns:['AC-236','BR-4005','CS-3204','PR1440'] },
-  { spec:'FMS 1044', app:'Seal (-65°F to 360°F)', pns:['AC-275','FMS 3055'] },
-  { spec:'GMS 4113B', app:'Polythioether, rapid curing windshield sealant', pns:['PR1829 B-2'] },
-  { spec:'MIL-M-24041', app:'Polyurethane electrical sealant (-65°F to 180°F)', pns:['799 compound (776 primer)','PR1547 (PR420 primer)','PR1592 (PR420 primer)','Conathane 1554 (Conap 1146 primer)','Conathane EN-9 (AD-1146 primer)','Conathane EN-1556 (AD-1146 primer)'] },
-  { spec:'MIL-PRF-8516', app:'Polysulfide electrical sealant (-65°F to 180°F)', pns:['CS-3100','WS-516'] },
-  { spec:'MIL-PRF-23586', app:'Silicone electrical sealant (-80°F to 400°F)', pns:['RTV 8111','RTV 8112','RTV 8262','Silastic E RTV (primer DC 1200)','Sylgard 170 A&B (primer DC 1200)','Sylgard 567','Sylgard 577'] },
-  { spec:'MIL-PRF-81733', app:'Corrosion inhibitive', pns:['PR1436','Proseal 870'] },
-  { spec:'MIL-S-4383', app:'Buna-N type sealant (fill and drain)', pns:['EC-776SR','PR1005L'] },
-  { spec:'MIL-S-7502', app:'Fillet sealants', pns:['EC-1239','PR1221','Proseal 707'] },
-  { spec:'MIL-S-8784', app:'Low adhesion sealant', pns:['CS-3300','PR142B'] },
-  { spec:'MIL-S-11030 (Type I)', app:'Noncuring putty', pns:['EC-612'] },
-  { spec:'MIL-S-11031', app:'Polysulfide sealant', pns:['CS-3202'] },
-  { spec:'MIL-S-38228', app:'Aerodynamic smoothing', pns:['AC-236','CS-3204','PR1440','PR1740','Proseal 895'] },
-  { spec:'USAF ADMS 124418', app:'Injection sealants', pns:['PR706'] },
+  // ── 1.1 Structure, voilure & réservoirs carburant (Polysulfures & Polythioéthers) ──
+  { spec: 'AMS-3281 / PWC09-018 / PWC09-031 / PWC09-032 / PWA 416 / PMC 79739', app: 'Fuel tank sealant (polysulfide)', pns: ['PR1776', 'PR-1776', 'PS 870', 'CS5530', 'CS5540'] },
+  { spec: 'AMS-3276 / GMS-4107', app: 'Fuel tank & fuselage sealant (-65°F to 360°F)', pns: ['CS-5500', 'PR1741', 'PR1750'] },
+  { spec: 'AMS-S-8802 Class A / OMat 8/5 / OMat 8/5B / OMat 8/5C / PWC09-038 / PWC09-039', app: 'Brushable fuel tank sealant — Class A', pns: ['AC-236', 'BR-4005', 'CS-3204', 'PR1440', 'PR1422', 'PS890'] },
+  { spec: 'AMS-S-8802 Class B / OMat 8/136 / OMat 8/136B / OMat 8/215 / OMat 8/219 / MSRR 9144 / PWC09-040 / PWC09-041', app: 'Fillet fuel tank sealant — Class B', pns: ['CS-3204', 'PR1440', 'PR1422'] },
+  { spec: 'MIL-PRF-81733 Class A / OMat 8/106 / OMat 8/106B / OMat 8/106C', app: 'Corrosion inhibitive sealant — Class A (Brushable / Fasteners)', pns: ['PS 870', 'PR1436'] },
+  { spec: 'MIL-PRF-81733 Class B / OMat 8/107 / OMat 8/107C / OMat 8/107D / PWA 416 / PMC 79739 / PWC09-018', app: 'Corrosion inhibitive sealant — Class B (Extrusion / Fillet & Groove)', pns: ['PS 870', 'PR1436'] },
+  { spec: 'MIL-PRF-81733 Class C / PMC 79727 / PWC09-009', app: 'Corrosion inhibitive sealant — Class C (Faying surface / Interposition)', pns: ['PS 870 C-12 / C-24'] },
+  { spec: 'AMS 3265 / DMS 2013', app: 'Corrosion inhibitive sealant', pns: ['PR1775', 'CS5500ci'] },  
+  { spec: 'MIL-S-7502', app: 'Fillet sealants — Class B', pns: ['EC-1239', 'PR1221', 'PS 707', 'CS-3201'] },
+  { spec: 'MIL-S-7124', app: 'Aircraft structure polysulfide sealant', pns: ['PR1221', 'CS-3201', 'PS 894'] },
+  { spec: 'MIL-S-38228 / OMat 8/161B', app: 'Aerodynamic smoothing compound', pns: ['AC-236', 'CS-3204', 'PR1440', 'PR1740', 'PS 895'] },
+  { spec: 'MIL-S-8784B / AMS3284 (remplacé par CS3330 A&B)', app: 'Access door sealant — ancienne formulation (plomb)', pns: ['PR1321', 'CS-3300'] },
+  { spec: 'MIL-S-8784 / OMat 8/7B / BMS 5-37', app: 'Low adhesion sealant (fuel access doors)', pns: ['CS-3300', 'PR1428'] },
+  { spec: 'AMS 3277 / OMat 8/253 / OMat 8/253A', app: 'Fast curing polythioether fuel tank sealant', pns: ['PR2001'] },
+  { spec: 'MIL-S-11031', app: 'Polysulfide sealant', pns: ['CS-3202'] },
+  { spec: 'MIL-S-4383', app: 'Buna-N type sealant (fill and drain)', pns: ['EC-776SR', 'PR1005L'] },
+  { spec: 'FMS 1044', app: 'Seal (-65°F to 360°F)', pns: ['AC-275', 'FMS 3055'] },
+  { spec: 'GMS 4113B', app: 'Polythioether, rapid curing windshield sealant', pns: ['PR1829'] },
+  { spec: 'AMS 3333', app: 'Windshield sealant', pns: ['PR1425', 'CS3247'] },
+  { spec: 'USAF ADMS 124418', app: 'Injection sealants', pns: ['PR706'] },
+  { spec: 'OMat 8/120A / OMat 8/120B / MIL-S-83430', app: 'Polysulfide sealant, rapid cure', pns: ['PR1750', 'PR1770'] },
+  { spec: 'MIL-S-29574 TYI / AMS 3277 TYI', app: 'Fast cure sealant — flight line repair (Type I)', pns: ['PR1826', 'CS5306', 'CS5310'] },
+  { spec: 'MIL-S-29574 TYII / AMS 3277 TYII', app: 'Fast cure sealant — flight line repair (Type II)', pns: ['PR1828'] },
+  { spec: 'N/A', app: 'Fillet sealants', pns: ['Presstite 1170-2', 'PS EP711'] },
+  { spec: 'N/A', app: 'Injection sealants', pns: ['94-011', 'PR750'] },
+  { spec: 'N/A', app: 'Polysulfide sealant', pns: ['PR1425', 'PR1725', 'PR1778', 'PR1829'] },
+
+  // ── 1.2 Primaires & Promoteurs d'adhérence mastics ──
+  { spec: 'N/A', app: 'Adhesion promoter (sealant primer)', pns: ['PR142'] },
+  { spec: 'OMat 8/257A', app: 'Adhesion promoter for polythioether sealants', pns: ['PR184'] },
+  { spec: 'OMat 8/291 / OMat 8/291A', app: 'Adhesion promoter for PR1440 polysulfide', pns: ['PR148', 'AC-160'] },
+  { spec: 'OMat 8/290', app: 'Sol-gel adhesion promoter for structural bonding/sealing', pns: ['AC-130-2'] },
+
+  // ── 1.3 Pare-feu & haute température (Firewall & High Temp) ──
+  { spec: 'MIL-S-38249 TYI / AMS-3374 / OMat 8/101 / OMat 8/101A / OMat 8/288 / PWC09-042 / PMC 79080', app: 'Firewall sealing elastomer', pns: ['PR812', 'PS 700', 'Fastblock 100', 'CS1900'] },
+  { spec: 'OMat 8/258', app: 'Silicone firewall sealant', pns: ['DAPCO 2100'] },
+  { spec: 'PMC 79949-79950 / CPW 600 / PWC09-013 / PWC09-014', app: 'Elastomer sealant, fire resistant (use with primer)', pns: ['Dapco 18-4 sealant + Dapco 1-100 primer'] },
+  { spec: 'PMC 71617 / CPW 519-15 / PWC09-010 / PWC09-023 / OMat 872D', app: 'Silicone rubber sealant (RTV), high temperature', pns: ['GE RTV 159'] },
+  { spec: 'PWA 404 / PMC 79955 / CPW 418 / PWC09-028 à 028B', app: 'Silicone rubber compound, high temperature resistant', pns: ['Dow Corning Silastic J RTV', 'GE RTV 630 / RTV 668'] },
+  { spec: 'PWA 404-2 / PMC 79955 / CPW 418-2 / PWC09-016 / PWC09-016A / PWC09-028C', app: 'Silicone rubber compound, flow & high-temperature resistant', pns: ['V-612 A/B (Bluesil)', 'Thermosil 4000'] },
+  { spec: 'OMat 844 / MSRR 9298', app: 'Air curing high temp sealing compound', pns: ['PL224'] },
+  { spec: 'OMat 844A / OMat 8/97 / MSRR 1043', app: 'High temperature silicate sealing compound (slow drying)', pns: ['IP 1043 (PL 227)', 'VXP sealant'] },
+
+  // ── 1.4 Électrique, électronique & potting (Enrobage & Isolation) ──
+  { spec: 'MIL-I-46058 Type UR / PWC09-007 / PWC09-007A / LCPMC 79937', app: 'Conformal coat (polyurethane)', pns: ['Conathane CE-1155'] },
+  { spec: 'MIL-M-24041', app: 'Polyurethane electrical sealant (-65°F to 180°F)', pns: ['799 compound (776 primer)', 'PR1547 (PR420 primer)', 'PR1592 (PR420 primer)', 'Conathane 1554 (Conap 1146 primer)', 'Conathane EN-9 (AD-1146 primer)', 'Conathane EN-1556 (AD-1146 primer)'] },
+  { spec: 'MIL-PRF-8516', app: 'Polysulfide electrical sealant (-65°F to 180°F)', pns: ['CS-3100', 'WS-516', 'PR1201', 'PS 727'] },
+  { spec: 'MIL-PRF-23586', app: 'Silicone electrical sealant (-80°F to 400°F)', pns: ['RTV 8111', 'RTV 8112', 'RTV 8262', 'Silastic E RTV (primer DC 1200)', 'Sylgard 170 A&B (primer DC 1200)', 'Sylgard 567', 'Sylgard 577'] },
+  { spec: 'MIL-S-8660 / PMC 9926 / CPW 326 / PWC09-003 / PWC09-020 / OMat 418 / Def Stan 68-69', app: 'Sealing compound, electrical insulating (silicone)', pns: ['Molykote 4 (Dow Corning No. 4)', 'Speciality Silicone Products SP-1404', 'Ambersil M494', 'Grease 6026'] },
+  { spec: 'CPW 519-21 / PMC 71614 / PMC 71632 / PWC09-011 / PWC09-011A / PWC09-027 / OMat 879A / OMat 879B / MSRR 9357', app: 'Potting compound, general purpose silicone', pns: ['GE RTV 31 / RTV 60', 'Dow Corning Silastic RTV 3120 + Catalyst S or F'] },
+  { spec: 'PMC 71635 / CPW 519-22 / PWC09-025 / PWC09-025A / OMat 8/138A / MSRR 9357', app: 'Adhesive/sealant potting compound (Tin catalyst)', pns: ['GE RTV 88 + GE DBT 04J-Jar catalyst'] },
+  { spec: 'OMat 879C / A-A-56023', app: 'Two-part cold curing silicone potting rubber', pns: ['RTV 41'] },
+  { spec: 'OMat 879E', app: 'Silicone potting and bonding agent', pns: ['RTV 560 + curing agent STO'] },
+  { spec: 'OMat 848 / OMat 849 / MSRR 9147', app: 'Two-part fluid silicone sealing compound', pns: ['Silastic R9161 RTV + Dow Corning N.9162 catalyst'] },
+  { spec: 'OMat 8/135A / MSRR 9403', app: 'Silicone foam firestop sealant', pns: ['Dow Corning DC3-6548 Firestop'] },
+  { spec: 'PWC09-029 / PWC09-030', app: 'Caulking compound cartridge, potting', pns: ['P/N 600-61 (Dow Corning Sylgard 170)', 'P/N 600-80 (Dow Corning RTV 3120 + 5% DC200 + 5% Catalyst S)'] },
+
+  // ── 1.5 Silicones RTV & élastomères moteur ──
+  { spec: 'PMC 1836 / CPW 519-11 / PWC09-001 / PWC09-001A / OMat 872F / MIL-A-46106', app: 'Silicone rubber sealant (RTV), general purpose', pns: ['Dow Corning Silastic RTV 732', 'GE RTV 102 / 103 / 108 / 109'] },
+  { spec: 'PMC 79913 / CPW 519-13 / PWC09-008 / PWC09-008A / MIL-A-46146', app: 'Silicone rubber sealant (RTV, non-corrosive electronic)', pns: ['Dow Corning Silastic 748 RTV', 'GE RTV 162'] },
+  { spec: 'PMC 71631 / CPW 519-14 / PWC09-019 / PWC09-043', app: 'Adhesive/sealant, high strength rubber silicone', pns: ['GE RTV 157', 'Dow Corning RTV 157'] },
+  { spec: 'PMC 71616 / CPW 519-16 / MIL-A-46146 / PWC09-024 / OMat 8/168 / MSRR 9262', app: 'Adhesive/sealant, rubber silicone (non-corrosive)', pns: ['Dow Corning RTV 3145 (Grey / Clear)'] },
+  { spec: 'CPW 519-23 / PWC09-026', app: 'Adhesive/sealant, rubber silicone', pns: ['GE AR396C(1)'] },
+  { spec: 'PWA 616 / PMC 71836 / PWC09-017 / PWC09-017A / OMat 872A / MIL-A-46106', app: 'Adhesive/sealant, silicone rubber, high temperature (red)', pns: ['GE RTV 106', 'Dow Corning Silastic 736 RTV'] },
+  { spec: 'PWA 36057 / PWC09-021 / PWC09-021A / OMat 843E / OMat 843C / MIL-A-46106', app: 'Adhesive/sealant, flowable silicone (clear/red)', pns: ['GE RTV 116', 'GE RTV 112', 'Dow Corning Silastic 734 RTV'] },
+  { spec: 'PMC 71847 / PWC09-044', app: 'Adhesive/sealant, rubber silicone, clear', pns: ['Dow Corning 737 CLEAR'] },
+  { spec: 'OMat 843B / OMat 872 / OMat 872E / MSRR 9146 / MSRR 9085', app: 'Cold curing silicone rubber (white/black)', pns: ['Silcoset 151', 'Silcoset 152', 'Silcoset 158'] },
+  { spec: 'OMat 8/42 / MSRR 9410', app: 'Cold curing translucent silicone sealant', pns: ['Silcoset 153'] },
+  { spec: 'OMat 8/46 / OMat 8/173', app: 'Fluorosilicone adhesive/sealant (fuel & oil resistant)', pns: ['Dow Corning RTV 730 FS', 'Silastic 730', 'Dow Corning Q4-2817'] },
+  { spec: 'OMat 8/266 / OMat 8/266A / MSRR 5025', app: 'Fast cure silicone sealant (2-part cartridge)', pns: ['ACC RTV 332', 'ACC RTV 333'] },
+
+  // ── 1.6 Mastics anti-corrosion d'assemblage ──
+  { spec: 'OMat 8/176', app: 'Anti-corrosion jointing and sealing compound', pns: ['Mastinox D40'] },
+  { spec: 'OMat 8/278 / MIL-P-8116B', app: 'Silicone anti-corrosion jointing compound (Rolls-Royce BR 725) — Mastinox 6856K noted OBSOLETE by user reference, replaced by Cor-Ban 27L / GMS 4109 (see Lubricant → BMS 3-27)', pns: ['Mastinox 6856K (obsolete)'] },
+  { spec: 'OMat 4/17 / OMat 4/17A / DTD 369B', app: 'Anti-corrosive jointing compound (barium chromate)', pns: ['Duralac 1305', 'Duralac 2192'] },
+  { spec: 'OMat 479 / DTD 900/4488', app: 'Anti-corrosion jointing compound', pns: ['Titanine J.C.5A'] },
+
+  // ── 1.7 Pâtes à joint & composés non polymérisables ──
+  { spec: 'CPW 267 / PWC09-005A / PWC09-005B / OMat 4/47 / OMat 4/47A / MSRR 9055 / DTD 900/4586', app: 'Jointing compound, medium grade', pns: ['Hylomar Aerograde PL32 (Medium)', 'Hylomar Aerograde Ultra PL32A (Methylene chloride free)'] },
+  { spec: 'PWA 36000-4 / PWC09-006A / OMat 4/46 / OMat 4/46A / MSRR 9055', app: 'Jointing compound, light grade', pns: ['Aerograde Hylomar', 'HPF 490200', 'Hylomar Aerograde Ultra PL32A Light'] },
+  { spec: 'OMat 4/48 / MSRR 9055', app: 'Jointing compound, heavy grade', pns: ['Hylomar Aerograde Heavy (PL32H)'] },
+  { spec: 'OMat 4/81 / MSRR 1071', app: 'Jointing compound, aerosol spray', pns: ['Hylomar Universal Blue Aerosol'] },
+  { spec: 'CPW 638 / PWC09-022', app: 'Jointing compound, non-curing corrosion inhibitive', pns: ['CA 1000'] },
+  { spec: 'MIL-S-11030 (Type I)', app: 'Noncuring putty', pns: ['EC-612'] },
+  { spec: 'OMat 840', app: 'Plastic lead thread sealing compound', pns: ['Plastic Lead Seal (Crane 459)'] },
+  { spec: 'PWC09-045', app: 'Sealing compound, black gasket maker (RTV)', pns: ['Permatex Optimum Black Gasket Maker No. 27037'] },
+
+  // ── 1.8 Freinage filetée & étanchéité raccord anaérobie (Loctite) ──
+  { spec: 'MIL-S-22473 / MIL-S-46163 / PWA 549 / PMC 79893 à 79900 / PWC09-002 à 002F / OMat 8/66 / OMat 8/68 / OMat 8/69 / OMat 8/73 / MSRR 1013 à 1016', app: 'Locking and retaining compound, anaerobic', pns: ['Loctite 222 (purple)', 'Loctite 242 (blue)', 'Loctite 243 (oil tolerant)', 'Loctite 270 (green)', 'Loctite 271 (red)', 'Loctite 290 (penetrating green)', 'Loctite 609 (green)', 'Loctite 620 (green)', 'Loctite 648 (high temp)', 'Loctite 272'] },
+  { spec: 'MIL-S-22473 / PWA 549-8 / PMC 77208 / CPW 79-567 / PWC09-002G', app: 'Thread sealing compound, off-white (with PTFE)', pns: ['Loctite 567'] },
+  { spec: 'PMC 79892 / PWC09-046 / OMat 8/252', app: 'High temperature retaining compound', pns: ['Loctite 640'] },
+  { spec: 'OMat 8/90 / AFS 1374B', app: 'Thread sealant (pipe/hydraulic joints)', pns: ['Loctite 572', 'Loctite 570'] },
+  { spec: 'OMat 8/70 / OMat 8/70B / DTD 5633', app: 'Flange sealant & high-strength threadlocking', pns: ['Loctite 275', 'Loctite 277'] },
+  { spec: 'OMat 4/61 / MSRR 1029 / AFS 1696', app: 'High temperature anaerobic flange gasket', pns: ['Loctite 510'] },
+
+  // ── 1.9 Mastics et colles contact spécifiques ──
+  { spec: 'PWC09-015 / OMat 866 / MSRR 1008', app: 'Synthetic rubber cement (boscoprene / polychloroprene)', pns: ['Bostik 2402 Resin + Bostikure D'] },
+
+  // ── 1.10 Ajouts — fichier de référence consommables utilisateur ──
+  { spec: 'MIL-S-45180C', app: 'Room-temperature vulcanizing sealant / form-in-place gasket — added from user reference', pns: ['Form-A-Gasket #1', 'Form-A-Gasket #2', 'Form-A-Gasket #3'] },
 ];
+
+// ══════════════════════════════════════
+//  SEED MERGE — livraison des nouvelles entrées de référence
+//  Le seed d'origine ne tournait qu'UNE fois : dès que config/… existait en
+//  base, toute entrée ajoutée ensuite dans un DEFAULT_*_MIL_SPECS n'arrivait
+//  jamais chez l'équipe. Ici on ne remplace JAMAIS ce qui est en base (les
+//  ajouts et éditions faits via "Manage list" sont conservés) : on ajoute
+//  seulement les entrées par défaut absentes, et une seule fois par numéro
+//  de version, sinon une entrée supprimée volontairement reviendrait à
+//  chaque ouverture de Start Job.
+//  ⚠️ Incrémenter SEED_VERSION à chaque fois qu'on enrichit un DEFAULT_*.
+// ══════════════════════════════════════
+const SEED_VERSION = 1; // v1 : contrôle + intégration des références du fichier Excel consommables (sept. 2026)
+
+function koSeedKey(entry) {
+  const spec = (entry && entry.spec) || '';
+  const app  = (entry && entry.app)  || '';
+  return (spec + '|' + app).toLowerCase().replace(/[^a-z0-9|]/g, '');
+}
+
+// Firebase renvoie un objet et non un tableau si le nœud a été écrit avec des
+// index non contigus. Sans ça on prendrait la liste pour vide et on écraserait
+// les données de l'équipe avec les valeurs par défaut.
+function koSeedList(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === 'object') return Object.values(raw);
+  return [];
+}
+
+function koMergeSeedDefaults(existing, defaults) {
+  const list = [...existing];
+  const seen = new Set(list.map(koSeedKey));
+  let added = 0;
+  (defaults || []).forEach(d => {
+    const k = koSeedKey(d);
+    if (seen.has(k)) return;
+    seen.add(k);
+    list.push(d);
+    added++;
+  });
+  return { list, added };
+}
+
+async function koGetSeedVersion(key) {
+  try {
+    const snap = await get(ref(db, 'config/seedVersions/' + key));
+    return snap.exists() ? (Number(snap.val()) || 0) : 0;
+  } catch(e) { return 0; }
+}
+
+async function koSetSeedVersion(key, v) {
+  // Jamais bloquant : si les règles Firebase refusent l'écriture, la fusion
+  // reste idempotente (elle ne ré-ajoute rien), juste refaite à chaque load.
+  try { await set(ref(db, 'config/seedVersions/' + key), v); }
+  catch(e) { console.warn('koSetSeedVersion failed for ' + key + ':', e); }
+}
+
+// Charge une liste de référence partagée : seed complet si vide, sinon fusion
+// des seules entrées manquantes.
+async function koLoadSeededList(key, path, defaults) {
+  const snap = await get(ref(db, path));
+  const existing = koSeedList(snap.exists() ? snap.val() : null);
+
+  if (!existing.length) {
+    await set(ref(db, path), defaults);
+    await koSetSeedVersion(key, SEED_VERSION);
+    return defaults;
+  }
+
+  if ((await koGetSeedVersion(key)) >= SEED_VERSION) return existing;
+
+  const { list, added } = koMergeSeedDefaults(existing, defaults);
+  if (added) {
+    await set(ref(db, path), list);
+    console.log('🔄 ' + key + ' lookup: ' + added + ' new reference entry(ies) merged in.');
+  }
+  await koSetSeedVersion(key, SEED_VERSION);
+  return list;
+}
 
 async function koLoadSealantMilSpecs() {
   try {
-    const snap = await get(ref(db, 'config/sealantMilSpecs'));
-    if (snap.exists() && snap.val().length) {
-      SEALANT_MIL_SPECS = snap.val();
-    } else {
-      SEALANT_MIL_SPECS = DEFAULT_SEALANT_MIL_SPECS;
-      await set(ref(db, 'config/sealantMilSpecs'), SEALANT_MIL_SPECS); // seed once
-    }
+    SEALANT_MIL_SPECS = await koLoadSeededList('sealant', 'config/sealantMilSpecs', DEFAULT_SEALANT_MIL_SPECS);
   } catch(e) {
     console.warn('koLoadSealantMilSpecs failed, using defaults:', e);
     SEALANT_MIL_SPECS = DEFAULT_SEALANT_MIL_SPECS;
@@ -12117,50 +12531,6 @@ const SEALANT_SIZE_OPTIONS = ['2.5oz','6oz'];
 let koSealantCart = []; // persiste entre les changements de MIL Spec
 window.koSealantCart = koSealantCart; // requis : les oninput inline tournent hors du scope du module
 
-G.koRenderSealantPns = function() {
-  const sel = document.getElementById('ko-sealant-spec-sel');
-  const wrap = document.getElementById('ko-sealant-pn-list');
-  if (!sel || !wrap) return;
-  const idx = sel.value;
-  if (idx === '') { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
-  const entry = SEALANT_MIL_SPECS[idx];
-  wrap.style.display = 'flex';
-  wrap.innerHTML = entry.pns.map((pn, i) => `
-    <div style="display:flex;flex-direction:column;gap:5px;background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:6px 9px">
-      <div style="font-size:12px;font-weight:600">${pn}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <select id="ko-sealant-type-${i}" style="font-size:11px;padding:3px 6px;border:1px solid var(--g200);border-radius:4px;background:#fff">
-          <option value="">Type —</option>
-          ${SEALANT_TYPE_OPTIONS.map(t => `<option value="${t}">${t}</option>`).join('')}
-        </select>
-        <select id="ko-sealant-size-${i}" style="font-size:11px;padding:3px 6px;border:1px solid var(--g200);border-radius:4px;background:#fff">
-          <option value="">Size —</option>
-          ${SEALANT_SIZE_OPTIONS.map(s => `<option value="${s}">${s}</option>`).join('')}
-        </select>
-        <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer">
-          <input type="checkbox" id="ko-sealant-semkit-${i}"/> Semkit
-        </label>
-        <button class="btn" onclick="koAddSealantToCart(${idx},${i})" style="font-size:11px;padding:3px 10px;margin-left:auto">+ Add</button>
-      </div>
-    </div>`).join('');
-  document.getElementById('ko-sealant-hint-row').style.display = 'block';
-};
-
-G.koAddSealantToCart = function(specIdx, pnIdx) {
-  const entry = SEALANT_MIL_SPECS[specIdx];
-  const pn = entry.pns[pnIdx];
-  koSealantCart.push({
-    _cid: 'sc_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
-    pn,
-    specLabel: `${entry.spec} — ${entry.app}`,
-    type: document.getElementById('ko-sealant-type-' + pnIdx)?.value || '',
-    size: document.getElementById('ko-sealant-size-' + pnIdx)?.value || '',
-    semkit: document.getElementById('ko-sealant-semkit-' + pnIdx)?.checked || false,
-    setNum: ''
-  });
-  koRenderSealantCart();
-};
-
 function koSealantTagStr(p) {
   const tags = [];
   if (p.type) tags.push(`Type ${p.type}`);
@@ -12176,72 +12546,18 @@ function koRenderSealantCart() {
   if (!wrap || !list || !btn) return;
   if (!koSealantCart.length) { wrap.style.display = 'none'; btn.style.display = 'none'; return; }
   wrap.style.display = ''; btn.style.display = '';
-  const groupColors = { A:'#3b82f6', B:'#f59e0b', C:'#8b5cf6', D:'#ef4444' };
-  list.innerHTML = koSealantCart.map((c, i) => `
-    <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--g200);border-left:4px solid ${groupColors[c.setNum]||'#d1d5db'};border-radius:var(--r);padding:6px 9px;flex-wrap:wrap">
-      <div style="flex:1;min-width:160px;font-size:12px">
-        <b>${c.pn}</b>${koSealantTagStr(c)} ${c.setNum?`<span style="font-size:10px;font-weight:700;color:${groupColors[c.setNum]}">· Group ${c.setNum} — will be merged into ONE line</span>`:''}
-        <div style="font-size:10px;color:var(--g600)">${c.specLabel}</div>
-      </div>
-      <select onchange="koSealantSetGroup('${c._cid}',this.value)" style="font-size:11px;padding:4px 7px;border:1px solid var(--g200);border-radius:4px;background:#fff">
-        <option value="">✅ Required — always needed, its own line</option>
-        <option value="A" ${c.setNum==='A'?'selected':''}>🅰️ Group A — interchangeable, pick ONLY ONE</option>
-        <option value="B" ${c.setNum==='B'?'selected':''}>🅱️ Group B — interchangeable, pick ONLY ONE</option>
-        <option value="C" ${c.setNum==='C'?'selected':''}>🇨 Group C — interchangeable, pick ONLY ONE</option>
-        <option value="D" ${c.setNum==='D'?'selected':''}>🇩 Group D — interchangeable, pick ONLY ONE</option>
-      </select>
-      <button onclick="koRemoveSealantFromCart(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
-    </div>`).join('');
+  list.innerHTML = koSealantCart.map((c, i) => koCartRowHtml(
+    c, 'ko-sealant-cartqty-',
+    `koSealantSetQty('${c._cid}',this.value)`,
+    `koSealantSetGroup('${c._cid}',this.value)`,
+    `koRemoveSealantFromCart(${i})`
+  )).join('');
 }
 window.koRenderSealantCart = koRenderSealantCart;
-
-G.koSealantSetGroup = function(cid, val) {
-  const item = koSealantCart.find(c => c._cid === cid);
-  if (item) item.setNum = val;
-  koRenderSealantCart();
-};
 	
 G.koRemoveSealantFromCart = function(i) {
   koSealantCart.splice(i, 1);
   koRenderSealantCart();
-};
-
-G.koAddSelectedSealants = function() {
-  if (!koSealantCart.length) { alert('Please add at least one P/N to your selection.'); return; }
-
-  const groups = {};
-  koSealantCart.forEach(p => {
-    const key = p.setNum ? ('grp_' + p.setNum) : ('single_' + p._cid);
-    (groups[key] = groups[key] || []).push(p);
-  });
-
-  Object.values(groups).forEach(group => {
-    if (group.length > 1) {
-      const specLabels = [...new Set(group.map(p => p.specLabel))].join(' / ');
-      const pnList = group.map(p => `${p.pn}${koSealantTagStr(p)}`).join(' OR ');
-      G.koAddPartRow(
-        pnList,
-        `Sealant — ${specLabels} — pick ONE of the P/Ns listed`,
-        '', '1', 'Consumable',
-        '',
-        ''
-      );
-    } else {
-      const p = group[0];
-      G.koAddPartRow(p.pn, `Sealant — ${p.specLabel}${koSealantTagStr(p)}`, '', '1', 'Consumable', '', '');
-    }
-  });
-
-  koSortPartsTable();
-  koUpdatePreview();
-  koSaveState();
-
-  koSealantCart.length = 0; // vider SANS réassigner, sinon window.koSealantCart pointe vers l'ancien tableau
-  koRenderSealantCart();
-  document.getElementById('ko-sealant-spec-sel').value = '';
-  document.getElementById('ko-sealant-pn-list').style.display = 'none';
-  document.getElementById('ko-sealant-pn-list').innerHTML = '';
-  document.getElementById('ko-sealant-hint-row').style.display = 'none';
 };
 
 G.koManageSealants = function() { renderSealantManageList(); openModal('modal-sealant-manage'); };
@@ -12251,10 +12567,10 @@ function renderSealantManageList() {
   if (!list) return;
   list.innerHTML = SEALANT_MIL_SPECS.map((s, i) => `
     <div style="display:flex;gap:6px;align-items:flex-start;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:6px 8px;margin-bottom:5px;flex-wrap:wrap">
-      <input type="text" value="${(s.spec||'').replace(/"/g,'&quot;')}" placeholder="MIL Spec" oninput="koSealantEdit(${i},'spec',this.value)" style="flex:1;min-width:110px;font-size:12px;padding:4px 6px"/>
-      <input type="text" value="${(s.app||'').replace(/"/g,'&quot;')}" placeholder="Application" oninput="koSealantEdit(${i},'app',this.value)" style="flex:2;min-width:160px;font-size:12px;padding:4px 6px"/>
-      <input type="text" value="${(s.pns||[]).join(', ').replace(/"/g,'&quot;')}" placeholder="P/Ns, comma-separated" oninput="koSealantEditPns(${i},this.value)" style="flex:2;min-width:180px;font-size:12px;padding:4px 6px"/>
+      <input type="text" value="${escAttr(s.spec||'')}" placeholder="MIL Spec" oninput="koSealantEdit(${i},'spec',this.value)" style="flex:1;min-width:110px;font-size:12px;padding:4px 6px"/>
+      <input type="text" value="${escAttr(s.app||'')}" placeholder="Application" oninput="koSealantEdit(${i},'app',this.value)" style="flex:2;min-width:160px;font-size:12px;padding:4px 6px"/>
       <button onclick="koDeleteSealantSpec(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
+      ${koPnManageHtml('sealant', i, koPnList(s))}
     </div>`).join('') || '<p style="font-size:12px;color:var(--g400)">No entries yet.</p>';
 }
 
@@ -12266,35 +12582,970 @@ G.koSealantEdit = function(i, field, val) {
   _smEditTimer = setTimeout(() => { koSaveSealantMilSpecs(); koPopulateSealantSpecSelect(); }, 600);
 };
 
-G.koSealantEditPns = function(i, val) {
-  if (!SEALANT_MIL_SPECS[i]) return;
-  SEALANT_MIL_SPECS[i].pns = val.split(',').map(s => s.trim()).filter(Boolean);
-  clearTimeout(_smEditTimer);
-  _smEditTimer = setTimeout(() => { koSaveSealantMilSpecs(); koPopulateSealantSpecSelect(); }, 600);
+G.koDeleteSealantSpec = function(i) {
+  SEALANT_MIL_SPECS.splice(i, 1);
+  renderSealantManageList();
+  koPopulateSealantSpecSelect();
+  koSaveSealantMilSpecs();
+};
+
+// ══════════════════════════════════════
+//  GREASE LOOKUP DATA — MIL Spec → approved P/Ns
+//  Source: team reference file (consumables cross-reference), cross-checked
+//  and de-duplicated. Current MIL-PRF designation noted where the spec was
+//  renumbered. Review via "Manage list" — application labels are a first pass.
+// ══════════════════════════════════════
+const DEFAULT_GREASE_MIL_SPECS = [
+  // ── 2.1 Cellule, commandes de vol & multi-usage ──
+  { spec: 'MIL-PRF-81322 / MIL-G-81322 / PWC04-007A / PWC04-007B / OMat 487B / OMat 487C / OMat 4/3 / OMat 4/3A / Def Stan 91-52 / NATO G-395', app: 'General purpose synthetic grease (-54°C to 177°C)', pns: ['AEROSHELL 22', 'ROYCO 22CF', 'MOBIL 28', 'Braycote 622', 'GN-22', 'Mobil Grease SHC 100 (4.4lb/6oz — per user reference; DB already flags this brand as not formally spec-qualified under the AMS 3058 entry, verify before use)'] },
+  { spec: 'DOD-G-24508', app: 'Wide temp range synthetic grease (Navy / MIL-PRF-81322 family)', pns: ['AEROSHELL 22', 'ROYCO 22', 'MOBIL 28'] },
+  { spec: 'MIL-PRF-23827 Type II / PWC04-001 / PWC04-001A / PMC 9625 / OMat 401A / Def Stan 91-53 / NATO G-354 / XG-287', app: 'Low-temp airframe & instrument grease (-73°C to 121°C)', pns: ['AEROSHELL 7', 'ROYCO 27', 'Rocol Aerospec 200'] },
+  { spec: 'MIL-PRF-23827 Type I / AIMS 09-06-002 / SAE-AMS-3052 / BMS 3-33', app: 'Grease usage général (Type I) — NATO G-354', pns: ['AEROSHELL 33 (ASG 33)', 'Nyco GN 148', 'ROYCO 27', 'Braycote 627', 'Castrol Aeroplex GP 33'] },
+  { spec: 'BMS 3-24 / MIL-G-25760', app: 'General purpose synthetic grease', pns: ['AEROSHELL 16'] },
+  { spec: 'DCSEA 361', app: 'Grease — cross-ref ASG 16 (voir aussi BMS 3-24)', pns: ['AEROSHELL 16 (ASG 16)', 'Nyco GN 07', 'Braycote 660'] },
+  { spec: 'MIL-G-25537 / OMat 433 / Def Stan 91-51 / NATO G-366 / XG-284', app: 'Helicopter rotor & airframe wide temp grease', pns: ['AEROSHELL 14'] },
+  { spec: 'MIL-G-3545 / OMat 428A', app: 'High temperature wheel bearing / general grease', pns: ['AEROSHELL 5'] },
+  { spec: 'MIL-PRF-10924 / MIL-G-10924 / OMat 4/57 / Def Stan 91-27/1 / NATO G-403 / XG-279', app: 'General purpose automotive & artillery grease (GAA)', pns: ['Royco 610 (610)', 'Shell X5G6759-2'] },
+  { spec: 'MIL-PRF-24139A / MIL-G-24139 / OMat 455 / Def Stan 91-12 / NATO G-382 / XG-271', app: 'Multipurpose water resistant grease', pns: ['AEROSHELL 6'] },
+
+  // ── 2.2 Extrême pression, cannelures & roulements ──
+  { spec: 'MIL-PRF-21164 / MIL-G-21164D / PWC04-002 / NATO G-353 / OMat 476B / OMat 476C / Def Stan 91-57 / MSRR 3009 / XG-276', app: 'Extreme pressure / anti-fretting grease (5% MoS2)', pns: ['AEROSHELL GREASE 64', 'AEROSHELL 33MS', 'AEROSHELL 17', 'ROYCO 64', 'Rocol Aerospec 250', 'MOLYKOTE G-1502FM', 'NS-5806-G'] },
+  { spec: 'MIL-G-25013 / OMat 440A / OMat 440C / OMat 440D / Def Stan 91-55/1 / NATO G-372 / XG-300', app: 'Extreme-pressure high-temperature bearing grease', pns: ['AEROSHELL 15A', 'AeroShell Grease 15', 'ROYCO 13', 'Royco 13CF', 'Nyco GN 25013'] },
+  { spec: 'MIL-G-81827', app: 'High-load grease, extreme pressure (MoS2)', pns: ['AEROSHELL 23', 'ROYCO 22MS', 'MOBIL 29'] },
+  { spec: 'MIL-L-15719A', app: 'High-temperature bearing grease', pns: ['LUBRIPLATE 630-2', 'LU703'] },
+  { spec: 'PMC 79919 / LCPMC 79919 / PWC04-005 / PWC04-005A', app: 'Extreme (exterior) pressure grease (heavy duty)', pns: ['Lubriplate 130A', 'Lubriplate 130AA'] },
+  { spec: 'OMat 428 / Def Stan 91-106 / NATO G-1352 / XG-294', app: 'High-speed ball & roller bearing grease', pns: ['Aerospec 400 (Andok 260)'] },
+  { spec: 'SAE AMS 3058 / AIMS 09-06-003', app: 'Grease ASG 58 — ⚠ la fiche source liste aussi Rocol Aerospec 400 ici sans code NATO, ce qui contredit l\'entrée OMat 428/NATO G-1352 déjà existante pour Aerospec 400 : à vérifier', pns: ['AEROSHELL 58 (ASG 58)', 'Nyco GN 3058', 'Mobil Grease SHC 100 (non qualifiée à la spec)', 'Rocol Aerospec 400'] },
+  { spec: 'OMat 4/4A / Def Stan 91-105 / NATO G-421 / XG-291', app: 'Airframe bearing grease (non-clay)', pns: ['Aerospec 300'] },
+  { spec: 'OMat 4/21A', app: 'Anti-fretting grease (molybdenum disulphide)', pns: ['Nye Rheolube 733MZ'] },
+
+  // ── 2.3 Robinetterie carburant & résistance hydrocarbures ──
+  { spec: 'MIL-G-6032 TY1 / SAE-AMS-G-6032', app: 'Fuel, oil & solvent resistant plug valve grease', pns: ['ROYCO 32'] },
+  { spec: 'MIL-G-6032D', app: 'Fuel, oil & solvent resistant plug valve grease', pns: ['EZ-TURN GREASE'] },
+  { spec: 'SAE-AMS-G-6032 / DCSEA 363/B / DEF STAN 91-6 Iss.4', app: 'Grease résistante fuel/huile/solvant, plug valve (ASG S7108) — NATO G-363', pns: ['AEROSHELL S7108', 'Nyco GN HC', 'ROYCO 32', 'Castrolease PV'] },
+  { spec: 'MIL-G-25681 / DOD-L-25681D / OMat 4/64 / OMat 4/64A', app: 'Molybdenum disulfide silicone grease (-73°C to 204°C)', pns: ['ROYCO 81MS', 'Braycote 868'] },
+
+  // ── 2.4 Instruments & joints élastomères / pneumatiques ──
+  { spec: 'MIL-G-23549', app: 'Instrument grease', pns: ['ROYCO 49'] },
+  { spec: 'MIL-G-4343C / SAE-AMS-G-4343 / OMat 4/29A / NATO G-392 / XG-269', app: 'Pneumatic systems & rubber seal grease', pns: ['AEROSHELL 43', 'ROYCO 43', 'Molykote 55M', 'Dow Corning 55M'] },
+  { spec: 'SAE AS 8660', app: 'Grease — NATO S-736 (distinct de MIL-S-8660, mastic électrique)', pns: ['Nyco GN 69', 'Dow Corning DC-4'] },
+
+  // ── 2.5 Oxygène, silicone fluorée & haute température ──
+  { spec: 'MIL-G-83261 / MIL-PRF-83261B / MIL-G-27617 Type 3 / PWC06-050 / OMat 10/046', app: 'Perfluorinated (PFPE) grease — oxygen system safe & chemical resistant', pns: ['TRIBOLUBE 2', 'Krytox 240 AC'] },
+  { spec: 'MIL-G-46886 / OMat 4/86', app: 'Silicone grease (extreme low temperature bearing)', pns: ['DC33', 'Molykote 33 Extreme Low Temp (Light/Medium)'] },
+  { spec: 'PMC 79751 / CPW 785 / PWC04-009 / OMat 4/60 / MSRR 3012', app: 'Fluorosilicone / PFPE grease — non-melting, heat stable', pns: ['Molykote 3451', 'Sapphire Endure (BG741)'] },
+  { spec: 'OMat 4/65 / MSRR 3008 / DTD 900/4766A', app: 'Zinc chromate pigmented silicone grease (inhibition)', pns: ['LR 4871'] },
+
+  // ── 2.6 Graisses spécifiques atelier P&WC & Rolls-Royce ──
+  { spec: 'PMC 79671 / PWC04-003 / OMat 401', app: 'Synthetic low-temperature grease', pns: ['Beacon 325', 'Exxon Beacon 325'] },
+  { spec: 'PMC 9631 / PWC04-004', app: 'High-temperature grease (bentonite-type)', pns: ['Plastilube No. 3'] },
+  { spec: 'PWC04-010', app: 'High-temperature lubricating grease', pns: ['Versilube G-351'] },
+  { spec: 'PWC04-008 / PWC04-008A', app: 'Thread lubricant grease (moly-lithium)', pns: ['Lubriplate No. 930-AA', 'Lubriplate Mo-Lith No. 2'] },
+  { spec: 'PWC04-011', app: 'White gear marking compound', pns: ['Cadillac Oil Co. Lubricheq 04C-106 (LP / White Brush / Spray White)'] },
+  { spec: 'PWC06-012', app: 'Bearing grease, long life', pns: ['FS-1292'] },
+  { spec: 'PWC06-037 / PWC06-037A / PMC 9636', app: 'Heavy duty lubricating grease', pns: ['Texaco Marfak Grease (Heavy Duty 2 / Heavy Duty 3)'] },
+  { spec: 'CPMC 79816 / PWC06-051', app: 'Fluorinated lubricating grease', pns: ['UNIFLOR 8521BL'] },
+  { spec: 'OMat 488', app: 'Lithium multi-purpose grease', pns: ['Castrol Spheerol AP.3'] },
+  { spec: 'OMat 4/59', app: 'Zinc-containing electrically conductive grease', pns: ['Brisal OX50-855', 'OX-GARD OX-100B'] },
+];
+
+// ══════════════════════════════════════
+//  OIL LOOKUP DATA — MIL Spec → approved P/Ns
+// ══════════════════════════════════════
+const DEFAULT_OIL_MIL_SPECS = [
+  // ── 3.1 Turbines d'aviation, APU & turbomachines ──
+  { spec: 'MIL-PRF-23699 (STD) / PWA 521 / PMC 79873 / PWC03-001 / PWC03-008 / SAE-AS5780 Class SPC / OMat 1011 / Def Stan 91-101 / NATO O-156', app: 'Turbine engine oil — Standard (STD) grade / Standard Performance Capability (SPC)', pns: ['AEROSHELL 500', 'MOBIL JET II', 'BP 2380 (BP Turbo Oil 2380 / Eastman Turbo Oil 2380)', 'Castrol Aerojet 5 (PWC03-009)'] },
+  { spec: 'MIL-PRF-23699 (HTS) / MIL-L-23699 (ADV) / SAE-AS5780 Class HPC & HD / OMat 1011 / Def Stan 91-100 / NATO O-160', app: 'Turbine engine oil — High Thermal Stability (HTS) / High Performance Capability (HPC)', pns: ['Eastman Turbo Oil 2197 (BPTO 2197)', 'Mobil Jet Oil 254', 'Mobil Jet Oil 387', 'Aeroshell Ascender', 'AEROSHELL 560'] },
+  { spec: 'MIL-PRF-7808 / PMC 9874 / PWC03-004 / NATO O-148', app: 'Turbine engine oil — Grade 3/4 (transmissions, APUs)', pns: ['AEROSHELL 308', 'ROYCO 808', 'BP 2389'] },
+  { spec: 'MIL-L-85734 / DOD-PRF-85734A', app: 'Turbine engine oil, special helicopter transmission application', pns: ['AEROSHELL 555'] },
+  { spec: 'PMC 79870 / PWC03-006', app: 'Synthetic jet engine lubricating oil (alt. to MIL-PRF-23699)', pns: ['BP Turbo Oil 274'] },
+  { spec: 'DERD 2468 / DEF STAN 91-94 / NATO O-150', app: 'Turbine engine oil (synthetic, 3 cSt, UK DERD spec)', pns: ['AEROSHELL 390'] },
+  { spec: 'DERD 2487 / DEF STAN 91-98 / OMat 1071 / OMat 1071A / NATO O-149 / OX-38', app: 'Turbine engine & turboprop oil (Dart / Tyne & aid-to-assembly)', pns: ['AEROSHELL 750', 'Castrol 98'] },
+
+  // ── 3.2 Moteurs à pistons, rodage, réducteurs & graissage d'atelier ──
+  { spec: 'MIL-PRF-6081 Grade 1010 / MIL-L-6081 / OMat 1024A / OMat 1024C / OMat 1024E / OMat 1024F / Def Stan 91-99 / NATO O-133 / NATO O-135', app: 'Light mineral lubricating & fuel system inhibiting oil', pns: ['AEROSHELL 2', 'ROYCO 481', 'Avrex M Turbo 201/1010', 'Brayco 460', 'OM-11'] },
+  { spec: 'MIL-L-2105', app: 'Automotive / shop gear oil', pns: ['80W90'] },
+  { spec: 'MIL-PRF-7870 / NATO O-142', app: 'General purpose low-temperature lubricating oil', pns: ['AEROSHELL FLUID 3', 'ROYCO 363'] },
+  { spec: 'MIL-PRF-6085 / PWC03-010 / OMat 1046 / DEF STAN 91-41 / NATO O-147 / OX-14', app: 'Synthetic low-volatility instrument lubricating oil', pns: ['AEROSHELL FLUID 12', 'Royco 885'] },
+  { spec: 'DEF STAN 91-44 / OMat 10/045 / NATO OM-13', app: 'General purpose light mineral lubricating oil', pns: ['AEROSHELL FLUID 1'] },
+  { spec: 'PWC03-005', app: 'General purpose lubricating oil (workshop)', pns: ['Mobil D.T.E. Oil Light'] },
+
+  // ── 3.2b Ajouts — fichier de référence consommables utilisateur ──
+  { spec: 'MIL-L-3150', app: 'General lubricating oil', pns: ['Royco 315'] },
+  { spec: 'MIL-L-6086L', app: 'General lubricating oil (light viscosity grade)', pns: ['AeroShell Fluid 5LA'] },
+  { spec: 'MIL-L-6086M', app: 'General lubricating oil (medium viscosity grade)', pns: ['AeroShell Fluid 5MA'] },
+  { spec: 'MIL-L-63460', app: 'General lubricating oil', pns: ['Royco 634'] },
+
+  // ── 3.3 Huiles de conservation & fluides d'assemblage ──
+  { spec: 'MIL-PRF-6083 / PWC03-007 / PWC03-007A', app: 'Hydraulic & engine preservative mineral fluid (rust inhibited)', pns: ['AeroShell Fluid 71', 'Royco 783'] },
+  { spec: 'MIL-C-6529 Type I', app: 'Corrosion inhibiting preservative oil concentrate (Type I)', pns: ['AeroShell Fluid 2XN'] },
+  { spec: 'MIL-C-6529 Type II / OMat 1079 / NATO C609', app: 'Corrosion inhibiting preservative oil concentrate', pns: ['AeroShell Fluid 2F'] },
+  { spec: 'MIL-C-6529 Type III / OMat 10/048', app: 'Corrosion inhibiting preservative oil (ready to use)', pns: ['Royco 483', 'AeroShell Fluid 2T'] },
+  { spec: 'PWA 36500 / PMC 79934 / CPW 471 / PWC06-011 / OMat 1069 / OMat 1069A / MSRR 9295', app: 'Engine assembly fluid / O-ring installation fluid', pns: ['Ultrachem Assembly Fluid #1', 'Turbo 10'] },
+  { spec: 'OMat 1020', app: 'Liquid paraffin oil (pure assembly lubricant)', pns: ['Liquid Paraffin B.P. / Eu.P'] },
+
+  // ── 3.4 Fluides de calibrage & rinçage banc d'essai ──
+  { spec: 'MIL-PRF-7024 Type II / PMC 9041 / PWC03-002 à 002C / OMat 1025', app: 'Calibrating fluid for aircraft fuel system components', pns: ['Brayco 922', 'Shell Code 81003', 'Stoddard Solvent Type II', 'Royco 950 (per user reference, listed there for corrosion-inhibiting use — confirm application before substituting)'] },
+  { spec: 'PMC 9002 / PWC03-003', app: 'Mineral seal oil (calibration & flush)', pns: ['Renoclean OL 5 MS', 'Pella A'] },
+];
+
+// ══════════════════════════════════════
+//  HYDRAULIC FLUID LOOKUP DATA — MIL Spec → approved P/Ns
+//  ⚠️ MIL-PRF-5606/6083 (mineral, flammable) and MIL-PRF-83282/87257/46170
+//  (synthetic, fire-resistant) are different fluid families. Sources state
+//  them as miscible, but mixing degrades fire resistance — check the AMM
+//  before cross-using, don't rely on this list alone for that call.
+// ══════════════════════════════════════
+const DEFAULT_HYDRAULIC_MIL_SPECS = [
+  // ── 1. Fluides hydrauliques à ester phosphate (Circuits principaux / Main Hydraulic Systems) ──
+  { spec: 'Phosphate Ester — Type IV', app: 'Main hydraulic reservoirs and system components (Type IV)', pns: ['Skydrol LD-4', 'HyJet IV-A Plus'] },
+  { spec: 'Phosphate Ester — Type V', app: 'Main hydraulic reservoirs and system components (Type V high performance)', pns: ['Skydrol PE-5', 'HyJet V'] },
+
+  // ── 2. Fluides minéraux (Amortisseurs de trains d'atterrissage / Landing Gear Shock Struts) ──
+  { spec: 'MIL-PRF-5606', app: 'Mineral-based hydraulic fluid — NOT fire-resistant (Shock Struts)', pns: ['Brayco Micronic 756', 'Royco 756', 'Aeroshell Fluid 41'] },
+  { spec: 'MIL-PRF-6083', app: 'Preservative fluid, rust-inhibited (Mineral hydraulic system preservation)', pns: ['Brayco Micronic 783', 'Royco 783', 'Aeroshell Fluid 71'] },
+  { spec: 'MIL-PRF-83282', app: 'Fire-resistant synthetic hydrocarbon hydraulic fluid (-40°C to 205°C)', pns: ['Royco 782', 'Brayco Micronic 882', 'Aeroshell Fluid 31'] },
+  { spec: 'MIL-PRF-87257', app: 'Fire-resistant synthetic hydraulic fluid, low-temp (-54°C)', pns: ['Royco 777', 'Aeroshell Fluid 51', 'Brayco Micronic 881'] },
+  { spec: 'MIL-H-46170 / MIL-PRF-46170', app: 'Fire-resistant synthetic hydrocarbon hydraulic fluid (military ground/aircraft systems) — added from user reference', pns: ['Aeroshell Fluid 61', 'Royco 770'] },
+
+  // ── 3. Servitude sol & sol-équipement (GSE / Shop) ──
+  { spec: 'MIL-F-17111 / MIL-PRF-17111', app: 'Power transmission fluid — shop/ground equipment, petroleum base', pns: ['ROYCO 717'] },
+  { spec: 'PMC 9805', app: 'Hydraulic oil, medium-heavy 200 SUS — ground support equipment', pns: ['Harmony AW 46', 'Nuto H 46'] },
+];
+
+// ══════════════════════════════════════
+//  ADHESIVE LOOKUP DATA — MIL Spec / BMS → approved P/Ns
+//  Note: the source sheet listed "EC3532 → BMS5-105TY2CL-1" (product in the
+//  spec column, spec in the P/N column) — flipped below so the dropdown
+//  still works spec-first like every other category.
+// ══════════════════════════════════════
+const DEFAULT_ADHESIVE_MIL_SPECS = [
+  // ── 5.1 Films structuraux & mousses expansives ──
+  { spec: 'BMS5-101, TY2, GR5, 250°F cure', app: 'Structural film adhesive — metal bonding, thin scrim', pns: ['FA309'] },
+  { spec: 'BMS5-101, TY2, GR10, 250°F cure', app: 'Structural film adhesive — metal bonding, thick scrim (gap-filling)', pns: ['FA310'] },
+  { spec: 'BMS5-129G, TY4, GR5, 250°F cure', app: 'Structural film adhesive — composite/honeycomb bonding, thin scrim', pns: ['FA311'] },
+  { spec: 'BMS5-129G, TY4, GR10, 250°F cure', app: 'Structural film adhesive — composite/honeycomb bonding, thick scrim (gap-filling)', pns: ['FA312'] },
+  { spec: 'BMS5-154, TY2, CL1, GR5, 350°F cure', app: 'Structural film adhesive — composite bonding, high-temp cure', pns: ['FA313'] },
+  { spec: 'CPW 467 / PWC08-019', app: 'Epoxy reticulating film adhesive', pns: ['FM 24 U'] },
+  { spec: 'CPW 519-17 family / PWC08-033 / PWC08-033A', app: 'Epoxy reticulating film adhesive, scrim supported', pns: ['Hysol EA 9628 Unsupported', 'AF163K', 'AF163U'] },
+  { spec: 'CPW 576 / PWC08-031 / PWA 451', app: 'Epoxy foaming adhesive film/sheet', pns: ['CPW 576'] },
+  { spec: 'OMat 894 / MSRR 9024', app: 'Structural epoxy film adhesive (120°C cure)', pns: ['Redux 308'] },
+  { spec: 'OMat 894A / OMat 8/99', app: 'Modified epoxy structural film adhesive', pns: ['AF-163-2M'] },
+  { spec: 'OMat 8/60 / MSRR 9245', app: 'Structural film adhesive (high peel strength)', pns: ['Redux 322'] },
+  { spec: 'OMat 8/102 / MSRR 9174', app: 'Epoxy film adhesive (high service temperature)', pns: ['Redux 319', 'Redux 319A-400 (MSRR 9272)'] },
+  { spec: 'OMat 8/241 / MMM-A-132 / SAE-AMS-A-25463', app: 'Structural film adhesive with mat carrier', pns: ['FM300-2M 0.03', 'FM300-2M 0.06'] },
+  { spec: 'OMat 8/279 / MSRR 1050', app: 'Structural film adhesive, unsupported', pns: ['AF163-2U 0.06'] },
+  { spec: 'OMat 893 / OMat 893B / MSRR 9034', app: 'Epoxy foaming film adhesive (core splice)', pns: ['Redux 208/5 NA', 'AF-3024 50 mil'] },
+  { spec: 'OMat 8/224 / OMat 8/269 / MSRR 1097', app: 'Foaming film adhesive (high expansion)', pns: ['FM410-1', '3M AF 3090 TEF'] },
+
+  // ── 5.2 Pâtes structurales époxy bi-composants & polyuréthanes ──
+  { spec: 'BMS5-105, TY2, CL1', app: '2-part polyurethane structural paste adhesive — AOG/localized repairs', pns: ['EC-3532 B/A'] },
+  { spec: 'PWA 457-1 / PMC 79847 / CPW 876 / PWC08-016 / OMat 8/52 / MSRR 9328 / MMM-A-132 Type 1 Class 3', app: 'Asbestos-free epoxy paste adhesive (high strength at 177°C)', pns: ['EA 934 NA', 'Loctite EA934NA Aero'] },
+  { spec: 'PWA 457-2 / PMC 79940 / CPW 516-1 / PWC08-016A / OMat 8/154 / MSRR 1056 / MMM-A-132 Type 1 Class 3', app: 'High-strength structural epoxy paste adhesive', pns: ['EA 9394', 'Loctite EA 9394 Aero'] },
+  { spec: 'PWA 457-3 / CPW 516-5 / LCPMC 71830 / PWC08-024', app: 'High-temperature structural epoxy paste', pns: ['Hysol EA 9395'] },
+  { spec: 'CPW 516-2 / CPW 516-3 / PWC08-018 / PWC08-018A / OMat 8/197', app: 'Low viscosity structural laminating & injection epoxy', pns: ['Hysol EA 9396', 'Hysol EA 9396S'] },
+  { spec: 'CPW 516-5 / PWC08-030', app: 'Structural paste adhesive', pns: ['Hysol EA 9392'] },
+  { spec: 'CPW 463 / PWC08-011 / OMat 8/117', app: 'Two-component low-viscosity laminating epoxy', pns: ['EA956 (Hysol EA 956)'] },
+  { spec: 'CPW 769 / PMC 71866 / PWC08-026', app: 'Two-part rework adhesive paste', pns: ['EA 9891 RP'] },
+  { spec: 'LCPMC 85141 / CPW 525 / PWC08-006 / OMat 8/162', app: 'Two-part flexible epoxy adhesive', pns: ['Scotchweld EC-2216B/A Gray'] },
+  { spec: 'PWA 36023 / PMC 71820 / PWC08-007 / OMat 836 / OMat 8/163 / MSRR 9016', app: 'Heat curing epoxide resin adhesive (high-temp service)', pns: ['Eccobond 104', 'Loctite Ablestik 104 F', 'Ablestik 104 ST'] },
+  { spec: 'PMC 4098 / PWC08-008 / OMat 8/210 / MSRR 9036', app: 'Heat curing one-part structural epoxy paste', pns: ['Scotchweld Brand No. 2214 Non-metallic Filled', 'EC 2214HT Scotchweld'] },
+  { spec: 'PWA 421-422 / CPW 503 / CPW 513 / PWC08-012 / PWC08-013', app: 'Epoxy resin + amine curing agent U', pns: ['Epon 815 resin + Curing Agent U'] },
+  { spec: 'CPMC 80146 / PWC08-035', app: 'Structural epoxy adhesive kit', pns: ['Henkel OXY-BOND 109-DP (KIT)'] },
+  { spec: 'OMat 8/150 / OMat 8/156 / OMat 8/169 / MMM-A-132', app: 'Epoxy paste adhesives (high peel & shear)', pns: ['Hysol EA 9309.3NA', 'Hysol EA 9321', 'Hysol EA 9320NA'] },
+  { spec: 'OMat 8/179 / MSRR 9332', app: 'High chemical resistance two-part epoxy paste', pns: ['Araldite AV138M / AV138M-1 + Hardener HV998', 'Araldite 2004'] },
+  { spec: 'OMat 8/218', app: 'Multi-purpose 2-component epoxy paste', pns: ['Araldite 2011 (AW106 / HV953U)'] },
+  { spec: 'OMat 801A / OMat 802 / OMat 803 / MSRR 9265 / MSRR 9266 / MSRR 9217', app: 'Bisphenol A base epoxy laminating system', pns: ['Araldite DBF + Hardener HY951', 'Araldite MY.750'] },
+  { spec: 'OMat 805 / OMat 806 / MSRR 9026', app: 'Flexible epoxy bonding system (NML 35)', pns: ['Rengel SV.409 + Crayamid 140 (Versamid)'] },
+  { spec: 'PWC08-022 / OMat 8/104 / MSRR 9364 / AFS 1884', app: 'Flexible high-strength epoxy adhesive (harness & heat-shrink)', pns: ['Thermofit S-1125', 'Raychem S-1125 (RT-1011)'] },
+  { spec: 'OMat 874B / OMat 874E / MSRR 1002 / RRMS45002', app: 'Structural syntactic filler & edge potting (spatula / injection)', pns: ['Scotchweld 3524 B/A AF', 'Scotchweld EC-3515 B/A FR'] },
+  { spec: 'OMat 8/62 / MSRR 9150', app: 'Low-density syntactic core splicing paste', pns: ['Scotchweld EC 3500 B/A'] },
+  { spec: 'PWC08-020 / OMat 8/121 / OMat 8/121A / OMat 8/149 / MSRR 9396', app: 'Toughened acrylic structural paste adhesive', pns: ['CB200', 'Loctite AA F241 + Initiator No.5', 'Loctite F246', 'Loctite F245'] },
+  { spec: 'PWC08-015', app: 'Epoxy paste adhesive', pns: ['Scotchweld EC-2186'] },
+  { spec: 'PWC08-021', app: 'Electrically conductive epoxy adhesive', pns: ['Cho-bond 584-29'] },
+
+  // ── 5.3 Cyanoacrylates & primaires de collage ──
+  { spec: 'MIL-A-46050C Type I Class 2 / CPMC 77908 / PWC08-036 / OMat 828A / A-A-3097 Type 1', app: 'Cyanoacrylate instant bonding adhesive (methyl base)', pns: ['PERMABOND 910', 'Eastman 910 (PWC08-017)', 'Loctite C910'] },
+  { spec: 'OMat 828 / Def Stan 80-146 Type 1 / MSRR 9280 / BS 7969', app: 'Cyanoacrylate adhesive (metal bonding)', pns: ['Loctite 496'] },
+  { spec: 'A-A-3097 / PWC08-028 / PWC08-029 / OMat 8/159', app: 'Instant adhesive (surface insensitive / general ethyl)', pns: ['Loctite 406', 'Loctite 401', 'Loctite 495 Superbonder'] },
+  { spec: 'CPMC 77216 / PWC08-037', app: 'Gel cyanoacrylate bonding adhesive', pns: ['Loctite 454'] },
+  { spec: 'PMC 79907 / PWC08-014', app: 'Quick-set industrial adhesive', pns: ['Loctite Quick-Set 404'] },
+  { spec: 'OMat 8/159A / Def Stan 80-146 Type 2 / BS 7969', app: 'Ethyl cyanoacrylate instant adhesive', pns: ['Loctite 102 (was Permabond 102 / C2)'] },
+  { spec: 'PWC08-001 / OMat 851 / OMat 8/80 / AFS 2292 / DTD 900/6150', app: 'Activator / primer for anaerobic & cyanoacrylate', pns: ['Loctite Grade C Blue Primer (Loctite 495)', 'Loctite 7649', 'Loctite 7471 (Locquic Primer T)'] },
+
+  // ── 5.4 Adhésifs néoprène, élastomères & fluorosilicone ──
+  { spec: 'MIL-A-1154C / OMat 8/175', app: 'Neoprene contact adhesive — rubber/gasket bonding (de-ice boots)', pns: ['3M 1300L', 'Scotch-Weld EC1300L'] },
+  { spec: 'CPW 324 / PWC08-010 / PWC08-010A', app: 'Synthetic rubber contact adhesive', pns: ['EC1357', 'EC1368'] },
+  { spec: 'PMC 79924 / CPW 317 / PWA 36052 / PWC08-002 à 002B / OMat 8/46', app: 'Fluorosilicone contact adhesive', pns: ['DC RTV 730', 'FRV-1106', 'DC Q4-2817'] },
+  { spec: 'OMat 818 / OMat 818A / MSRR 9133 / MSRR 1058', app: 'General purpose nitrile / synthetic rubber adhesive', pns: ['Bostik 1777 (PEKAY GB623)', 'Bostik 1782'] },
+  { spec: 'OMat 834A / CSS 183', app: 'General purpose 1-part contact adhesive', pns: ['Evostik 528'] },
+
+  // ── 5.5 Ciments céramiques haute température & brasage ──
+  { spec: 'AMS 4772 / PWC08-005', app: 'Silver brazing filler metal (54Ag-40Cu-5Zn-1Ni) — rod/wire/foil', pns: ['(any AMS 4772-qualified rod/wire/foil)'] },
+  { spec: 'PWC08-009', app: 'Thermocouple sealing cement', pns: ['Sauereisen Filler No. 29 and Binder No. 29'] },
+  { spec: 'PMC 71833 / PWC08-027 à 027B / OMat 4/24', app: 'Synthetic ceramic cement (acid resistant, 1000°C+)', pns: ['Insa-Lute Adhesive Cement (Powder) No. P-1', '29 Low Expansion Cement', 'AL-Aluseal Adhesive Cement (Liquid)'] },
+  { spec: 'PWC08-023', app: 'Synthetic ceramic cement (thermocouple potting)', pns: ['Cotronics TBA'] },
+  { spec: 'OMat 869 / OMat 870 / OMat 8/250', app: 'Inorganic high temperature cement powder & binder', pns: ['Sauereisen No. 31 Powder + Liquid', 'Sauereisen No. 315'] },
+  { spec: 'OMat 8/127 / MSRR 9231', app: 'Refractory air setting cement', pns: ['RM51CW (Pinnaset RM 51)'] },
+];
+
+/* ────────────────────────────────────────────────────────────────
+   5) LUBRICANT (misc.) — NOUVELLE catégorie, colle tel quel comme
+   DEFAULT_LUBRICANT_MIL_SPECS. Source : Sect.06 lubpwc.pdf — un
+   fourre-tout P&WC (antigrippants, films secs, cires, graisses
+   spécifiques, agents de démoulage...).
+   ──────────────────────────────────────────────────────────────── */
+const DEFAULT_LUBRICANT_MIL_SPECS = [
+  // ── 6.1 Antigrippants & pâtes d'assemblage haute température ──
+  { spec: 'MIL-PRF-907 / MIL-PRF-907E / PWA 36053 / PMC 79966 / CPW 553 / PWC06-009 / OMat 4/23 / OMat 4/23A / MSRR 9409', app: 'High temperature anti-seize compound (pure nickel base)', pns: ['NEVER-SEEZ Pure Nickel Special (NSN-165 / NSN-16A)', 'Never Seez NG-165 Nuclear Grade', 'Ease-Off 990 (PWC06-032A)', 'Kaylube No. 3 (PWC06-032B)', 'LPS Nickel Anti-Seize', 'LPS All-Purpose Anti-Seize'] },
+  { spec: 'OMat 4/62 / MSRR 4008', app: 'High temperature anti-seize paste for stainless steels & Nimonic alloys', pns: ['Rocol Anti-Seize Stainless (ASC251 / ASC251T)'] },
+  { spec: 'OMat 4/56 / MSRR 9380 / AFS 1925', app: 'High temperature anti-seize paste (sub-assembly)', pns: ['Rocol 797'] },
+  { spec: 'OMat 4/90 / OMat 4/37 / MSRR 9379', app: 'Copper based anti-seize paste (up to 980°C)', pns: ['Bostik Never-Seez regular grade (copper)', 'Loctite C5-A'] },
+  { spec: 'PWA 36246 / PMC 79571 / CPW 571 / PWC06-036 / PWC06-036A / OMat 4/87 / MSRR 3019', app: 'Ultra-pure high temperature thread assembly paste (low sulphur/chlorine)', pns: ['Molykote P-37 (R-R code V102)', 'Tiodize T8E Paste'] },
+  { spec: 'PWA 587 / PMC 9549 / CPW 262 / PWC06-004 / PWC06-004C / OMat 4/49', app: 'Molybdenum disulfide assembly paste (heavy load)', pns: ['Dow Corning G-N Metal Assembly Paste', 'Loctite Moly Paste C-670', 'Molykote G-n Plus paste'] },
+  { spec: 'MIL-M-7866 / PWA 541 / PMC 9523 / CPW 329 / PWC06-004A / PWC06-004B / PWC06-047', app: 'Antiseize compound, molybdenum disulfide powder + Grade 1010 oil', pns: ['Dow Corning Z Moly Powder + Grade 1010 Oil', 'Aeroshell Compound 09', 'Royco 66MS'] },
+  { spec: 'OMat 4/50', app: 'Molybdenum disulfide extreme-pressure rapid assembly paste', pns: ['Molykote G rapid plus'] },
+  { spec: 'OMat 417A / OMat 417B / Def Stan 80-81 / NATO S-722 / DTD 900/5530', app: 'Anti-seize compound (MoS2 in mineral oil / lithium)', pns: ['Renolit Anti Seize Paste', 'GP 109 (ZX-38)'] },
+  { spec: 'AMS 2518 / MIL-T-5544 / PWC06-035 / PWC06-035A / OMat 432 / OMat 432A / Def Stan 80-80/1 / NATO S-720', app: 'Graphite petrolatum anti-seize thread compound', pns: ['ZX-13', 'Bonderite L-GP460 Aero AN (Acheson GP-460)', 'Nyco GN GA 47', 'ROYCO 44', 'Aeroshell Compound 08'] },
+  { spec: 'MIL-T-83483 / MIL-PRF-907E', app: 'Molybdenum disulfide petrolatum thread lubricant / anti-seize (-65°F to 750°F)', pns: ['Loctite Moly-50'] },
+  { spec: 'PWA 36001 / PMC 9940 / PWC06-023', app: 'Silver based anti-seize paste', pns: ['Silver Goop'] },
+  { spec: 'PWA 36545 / PMC 71456 / CPW 456 / PWC06-041', app: 'Antigalling compound, lead-free', pns: ['Esnalube 382'] },
+  { spec: 'PWC06-033 / MIL-G-2761 Type 1 (P&WC CML note)', app: 'High-temperature assembly paste (copper/graphite/solid lubricant)', pns: ['Dow 1000 (Molykote 1000)'] },
+  { spec: 'PWC06-010', app: 'Lubricating compound paste (part assembly)', pns: ['MOLYKOTE M-77'] },
+  { spec: 'MIL-C-11796 Class 3 / OMat 10/041 / OMat 10/041A / OMat 10/041B', app: 'Corrosion preventive compound (hot application) — Aid to assembly for Rolls-Royce BR 725', pns: ['Braycote 248', 'Nox-Rust', 'Tectyl 437D'] },
+  { spec: 'BMS 3-27 (substitut)', app: 'Corrosion inhibiting compound (cross-ref BMS 3-27) — also the replacement noted for obsolete Mastinox 6856K', pns: ['Zip Chem Cor-Ban 27L', 'GMS 4109'] },
+  { spec: 'BMS-3-29', app: 'Corrosion inhibiting compound (cross-ref BMS 3-29) — added from user reference', pns: ['LPS Procyon'] },
+  { spec: 'MIL-C-87252', app: 'Corrosion inhibitor — added from user reference', pns: ['Royco 602'] },
+  { spec: 'MIL-P-21035', app: 'Corrosion inhibitor, cold-galvanizing compound — added from user reference', pns: ['LPS Cold Galvanized'] },
+
+  // ── 6.2 Lubrifiants à film sec (Dry Film Lubricants - DFL) ──
+  { spec: 'MIL-PRF-46010 / OMat 4/43C / MSRR 3005 / NATO S-1738', app: 'Heat cured dry film lubricant (MoS2, lead-free)', pns: ['Molykote 3400A Lead Free'] },
+  { spec: 'PWA 36035 / PMC 79910 / CPW 323 / PWC06-007 / PWC06-007A / OMat 4/51 / MSRR 3014 / PW HS 12558', app: 'Air-drying MoS2 dry film lubricant spray/liquid', pns: ['Loctite Moly Dry Film P/N 39895', 'Loctite LB 8017 Moly Film', 'Dow Corning 321 Moly Spray (CPW 307)', 'Molykote D 321R'] },
+  { spec: 'CPW 375 / PWC06-008', app: 'Dry film lubricant', pns: ['HI-T-LUBE'] },
+  { spec: 'PMC 1714 / PWC06-043', app: 'Spray-type lubricant, low temperature', pns: ['Everlube 620C'] },
+  { spec: 'CPW 428 / PWA 36204 / LCPMC 79909-1 / PWC06-049', app: 'Lead-free solid film lubricant', pns: ['Everlube 9002 Solid Film Lubricant'] },
+  { spec: 'PMC 9934-1 / PWC06-040 / OMat 4/89', app: 'Dry film lubricant (CFC free) — do NOT use on magnesium alloy parts', pns: ['dgf-123 Stock No. K5200'] },
+  { spec: 'PWC06-052', app: 'Anti-friction liquid lubricant', pns: ['Molykote D-7409'] },
+  { spec: 'OMat 4/52 / OMat 4/53', app: 'Anti-scuffing air-drying MoS2 spray & paste', pns: ['Rocol Dry Moly Spray', 'Rocol Dry Moly Paste (ASP)'] },
+  { spec: 'OMat 4/63A / OMat 4/69 / MSRR 3017', app: 'Solid film bonded lubricant (MoS2 + graphite)', pns: ['Everlube LUBE-LOK 77-S', 'Everlube 10027'] },
+  { spec: 'OMat 444 / OMat 497 / MSRR 3004 / MSRR 3001', app: 'Colloidal graphite dry film lubricant in solvent', pns: ['Bonderite L-GP M 709 Acheson', 'Dag 580 (VWR)'] },
+  { spec: 'OMat 4/43 / OMat 4/44C / MSRR 9274 / MSRR 9276', app: 'Air & stoving dry film lubricants (MoS2/graphite)', pns: ['PL 237/R1 & R2', 'IP 9136R1 / R2 / R3'] },
+  { spec: 'OMat 4/36 / MSRR 9200', app: 'Boron nitride dry film anti-seize coating', pns: ['PL 181'] },
+  { spec: 'OMat 4/80 / MSRR 3016', app: 'Bonded Tungsten Disulfide (WS2) dry film lubricant', pns: ['IP 3016 Bonded Tungsten DiSulphide DFL'] },
+  { spec: 'OMat 4/58', app: 'Molybdenum disulfide penetrant (fan blade clapper lube on-wing)', pns: ['Dri-Slide'] },
+  { spec: 'OMat 10/051', app: 'MoS2 penetrating oil lubricant (disassembly aid for Trent 7000 EGB breather)', pns: ['SONAX MoS2 Oil'] },
+  { spec: 'OMat 1080 / OMat 1080A', app: 'Penetrating lubricant with PTFE', pns: ['Tri-Flow (with Teflon)', 'Rocol Sapphire Precision Lubricant with PTFE'] },
+  { spec: 'MIL-L-46147A TY2', app: 'Dry moly lubricant — added from user reference', pns: ['LPS Force 842'] },
+
+  // ── 6.3 Systèmes de re-lubrification rapide moteur Rolls-Royce ──
+  { spec: 'OMat 4/70 / OMat 4/71 / OMat 4/74 / OMat 4/76 / OMat 4/77 / OMat 4/78 / OMat 4/88 / OMat 4/92', app: 'Rolls-Royce Rapid Relubrication Kits (fan blades & disc roots)', pns: ['PL 470 Relube Kit', 'Trent 700 Kit', 'Trent 800 Kit', 'Trent 900 Kit', 'Trent 1000 Kit', 'BR 715 / V2500 Relube Kit (CoMat 04-017)', 'Trent XWB 84 Kit', 'Trent XWB 97 Kit'] },
+
+  // ── 6.4 Fluides d'assemblage & protections filmogènes ──
+  { spec: 'PWA 36500 / PMC 79934 / CPW 471 / PWC06-011 / OMat 1069 / OMat 1069A / MSRR 9295', app: 'Engine assembly fluid / O-ring assembly lubricant', pns: ['Ultrachem Assembly Fluid #1', 'Turbo 10'] },
+  { spec: 'PMC 79255 / CPW 764 / PWC06-045 / PWC06-045A / OMat 1042D / MIL-C-23411A', app: 'Greaseless film lubricant, aerosol/liquid', pns: ['LPS 1 Greaseless Lubricant'] },
+  { spec: 'MIL-PRF-16173 Gr.3 / MIL-C-81309 Ty.III / PWC06-046 / OMat 1078A', app: 'Film lubricant & corrosion preventative coating', pns: ['LPS 2 Aerosol', 'ACF-50', 'Zip-Chem D-5026NS (electrical connector / avionics corrosion preventive)'] },
+  { spec: 'MIL-C-16173D GR II / BMS 3-23G TY II CL1 GR A+B', app: 'Corrosion preventive, self-healing waxy anti-seize coating (2 yr protection)', pns: ['LPS 3'] },
+  { spec: 'OMat 1042E / Def Stan 68-10 / NATO C-634', app: 'Dewatering protective fluid', pns: ['PX-24'] },
+  { spec: 'PWC06-042 / OMat 1037', app: 'Silicone oil, high viscosity (preformed packing / O-ring lubrication only)', pns: ['Parker Super-O-Lube', 'Dow Corning 710'] },
+  { spec: 'OMat 1031 / DTD 900/4877A', app: 'Rubber sleeve & grommet lubricant', pns: ["Hellerine 'M' fluid"] },
+
+  // ── 6.5 Graisses spéciales perfluorées (PFPE) & diélectriques ──
+  { spec: 'MIL-G-27617 Type 1 / PWC06-006 (noté MIL-G-2761)', app: 'Antiseize grease, per-fluoro-ether (chemical & oxygen safe)', pns: ['Krytox 240AZ'] },
+  { spec: 'MIL-G-27617 Type 3 / PWC06-050 / OMat 10/046', app: 'Antiseize grease, dielectric per-fluoro-ether', pns: ['Krytox 240 AC', 'Christo-Lube MCG 111 (-60°C to +230°C)'] },
+  { spec: 'MIL-A-16146B / MIL-C-47113B', app: 'Heat sink lubricant (silicone compound, electronic/heat-sink interfaces) — added from user reference', pns: ['DC 340 (Dow Corning 340)'] },
+
+  // ── 6.6 Pétrolatums, cires & agents de démoulage ──
+  { spec: 'US Fed. AN-P-51 / PMC 9609 / PWC06-002 à 002C / OMat 402 / OMat 402A / OMat 402B / OMat 402C / Def Stan 91-38 / NATO S-743', app: 'White petrolatum, technical grade (vaseline)', pns: ['Vaseline', 'White Fonoline / White Protopet 1S', 'Penreco Regent / Penreco Snow', 'Nyco 65 Vaseline', 'Silkolene 775 (PX-7)'] },
+  { spec: 'OMat 4/82 / Def Stan 91-38', app: 'Technical hard petrolatum', pns: ['PX-6'] },
+  { spec: 'VV-P-236', app: 'Light grade technical petrolatum lubricating grease', pns: ['PETROLATUM VV-P-236'] },
+  { spec: 'PMC 79531 / PWC06-015 / PWC06-015A', app: 'Beeswax', pns: ['Dilwax No. 35 Amorphous', 'W-24 Natural GA 11-1'] },
+  { spec: 'PMC 9462 / PWC06-044', app: 'Paraffin blend wax (softer alt. to Dilwax No. 35)', pns: ['Schaefer Number 7 Wax (WX0107)'] },
+  { spec: 'PMC 79917 / PWC06-039', app: 'Low melting point wax', pns: ['Cerita Wax 09712'] },
+  { spec: 'CPMC 80160 / PWC06-053', app: 'Wax blend adhesive', pns: ['Schaefer WB17 Wax'] },
+  { spec: 'PMC 1111 / PMC 79904 / PWA 36007 / PWC06-005 à 005F / OMat 1068A / OMat 8/32B / OMat 8/32C', app: 'Mold release / dry lubricant, fluorocarbon (PTFE release agent)', pns: ['McLube 1782 (water-based)', 'TFL 50 Dry Lube', 'MS-122AD / MS-122ADL / MS-122XD / MS-122V', 'MS-143V / MS-143XD', 'RenLease 805-1'] },
+  { spec: 'PMC 1108 / PWC06-034', app: 'Mold release agent, composite parts (water-based)', pns: ['Water-Shield'] },
+  { spec: 'OMat 8/32D', app: 'Semi-permanent mould release agent', pns: ['Frekote NC44', 'Frekote 33'] },
+];
+
+
+/* ────────────────────────────────────────────────────────────────
+   6) CLEANER / SOLVENT — NOUVELLE catégorie, colle tel quel comme
+   DEFAULT_CLEANER_MIL_SPECS. Source : Sect.11 cleanerpwc.pdf.
+   La plus grosse liste — regroupée par application pour rester
+   gérable (~50 entrées au lieu des ~95 lignes brutes du PDF).
+   ──────────────────────────────────────────────────────────────── */
+const DEFAULT_CLEANER_MIL_SPECS = [
+  // ── 7.1 Lavage compresseur turbine en ligne & désémulsion (Gas Path Wash) ──
+  { spec: 'SPMC 87 family / PWC11-003 à 003E / PWC11-066 / OMat 1070 / OMat 1070P / CSS 260 / MSRR 9914 / MIL-C-85704', app: 'Turbine compressor wash fluid (biodegradable, water-based)', pns: ['ZOK 27 (SPMC 87-13)', 'ZOK mx', 'ZOK MX Gold', 'Ardrox 6345 (SPMC 87-2)', 'Ardrox 6367 / Turboclean 2 (SPMC 87-10A)', 'Ardrox 6368 / Turboclean 2 RTU (SPMC 87-10B)', 'Ardrox 6373 / Turboclean 2-RTU-W', 'B & B TC 100 (CPMC 79038)', 'T5884'] },
+  { spec: 'SPMC 87-9A / SPMC 87-9B / PWC11-001D / PWC11-001E / OMat 1070E / CSS 260', app: 'Alkaline cleaner — internal engine washing (ECT R-MC)', pns: ['ECT R-MC premixed (P/N 4070)', 'ECT R-MC concentrate (P/N 4072)', 'Rivanaes R-MC G21 / R-MC G21 C-6'] },
+  { spec: 'PWC11-001 à 001K', app: 'Internal engine washing cleaners (solvent/alkaline types)', pns: ['CLIX', 'Almon AL-333', 'Magnus 1214', 'B & B 3100', 'Turco 4217 Concentrate', 'Ardrox 624 Concentrate', 'Carbitol', 'Triethanolamine', 'Enbond NS-35 (PMC 1272)'] },
+  { spec: 'OMat 1070H / OMat 1070L / OMat 1070N / CSS 260', app: 'Aviation compressor washing fluids', pns: ['Turbo-K', 'Fyrewash F3', 'Ardrox 6375', 'JAD MA 109-C'] },
+  { spec: 'OMat 1070J / CSS 260 / MSRR 9914', app: 'Compressor washing fluid (dilution 1:4 with DI water)', pns: ['Protoklenz GT R/R'] },
+  { spec: 'OMat 1076', app: 'Antifreeze additive for compressor washing (low temp)', pns: ['MonoPropylene Glycol (1,2-propanediol)'] },
+
+  // ── 7.2 Nettoyants aqueux d'atelier & dégraissants alcalins ──
+  { spec: 'SPMC 170 / PMC 1250 / PWC11-018 / PWC11-018A / OMat 1/24F / OMat 1/24AC / OMat 1/24AN / OMat 1/24AU / CSS 204 Type A', app: 'Alkaline spray-wash cleaner, general purpose (low foam, borate-free)', pns: ['Ardrox 6333', 'Ardrox 6333A', 'Ardrox 6333B', 'Ardrox 6333C', 'Blue Gold Spray Wash (PMC 1250)'] },
+  { spec: 'PMC 1284 / SPMC 104 / SPMC 105 / PWC11-004 à 004B / OMat 1/24H / OMat 1/24J / OMat 1/24B / OMat 1/24K / CSS 204 Type A', app: 'Alkaline cleaner, general purpose multi-metal', pns: ['Blue Gold Industrial Cleaner (PMC 1284)', 'Cee-Bee A-7X7 (SPMC 104)', 'Turco 5948 DPM (SPMC 105)', 'Bonderite C-AK 5948DPM EU Aero'] },
+  { spec: 'OMat 1/24 / CSS 204 Type A & C', app: 'Primary alkaline aqueous cleaner', pns: ['Ardrox 6025A (DTD 5507B)'] },
+  { spec: 'OMat 1/24R / CSS 204 Type A', app: 'Aqueous engine & airframe cleaner', pns: ['Super Bee 300LF', 'Super Bee 300LFG'] },
+  { spec: 'OMat 1/24S / OMat 1/24AG / CSS 204', app: 'Aqueous degreaser (immersion & ultrasonic)', pns: ['Brulin Aquavantage 815GDNF', 'Brulin 1990GD'] },
+  { spec: 'OMat 1/24AP', app: 'Water-based aviation cleaner & heavy-duty degreaser', pns: ['Extreme Simple Green Aviation Cleaner'] },
+  { spec: 'OMat 1/24AT / OMat 1/24AV / CSS 204', app: 'Aqueous pre-saturated cleaning wipes', pns: ['ARROW WIPES Aqua wipes', 'WIPEMASTER WIPE 3'] },
+  { spec: 'SPMC 110 / PWC11-034 / PWC11-034A', app: 'Alkaline gel cleaner', pns: ['Avia Wash Green Gel', 'Ardrox 6085 Gel'] },
+  { spec: 'SPMC 113 / PWC11-054 / OMat 1/24P', app: 'Aqueous cleaner, low foam', pns: ['Mag-Chem DG Kleen (DG-Kleen)'] },
+  { spec: 'SPMC 178 / PWC11-055 / OMat 1/24T', app: 'Aqueous degreaser, wax remover', pns: ['Mag-Chem Soluwax'] },
+  { spec: 'SPMC 148 family / PWC11-069 à 069C / SPMC 207 / PWC11-088', app: 'Aqueous cleaner / window cleaner', pns: ['TURCO T-6780 Eco-Solv', 'Ardrox 6077 Window Cleaner Plus', 'MAG-CHEM Evasol', 'MC Spray and Whip', 'Ardrox 6376'] },
+  { spec: 'PMC 71254 / PWC11-033', app: 'Aqueous cleaner', pns: ['Soliterj-304'] },
+  { spec: 'PMC 79047 / PWC11-075', app: 'Alkaline cleaner, multi-purpose', pns: ['Daraclean 282GF'] },
+  { spec: 'PMC 79032 / PWC11-077', app: 'Liquid detergent', pns: ['Aerodet'] },
+  { spec: 'PMC 71271 / PWC11-058', app: 'Heavy duty cleaner', pns: ['Buckeye Shopmaster FF'] },
+  { spec: 'MXC 1921-25 / PMC 79099 / PWC11-070', app: 'Water-based cleaner, flushing fluid', pns: ['HDL-500FF'] },
+  { spec: 'MMC 20115 / PWC11-060', app: 'Oven cleaner', pns: ['Zep Oven Brite'] },
+  { spec: 'PMC 79049 / PMC 79783 / PWC11-062 / PWC11-031 / PWC11-067', app: 'Engine exterior & parts cleaner', pns: ['Environmental Care & Share', 'Tergit (PMC 79783)', 'De-Solv-It (PMC 1409)'] },
+  { spec: 'PWC11-068', app: 'Detergent cleaner for ultrasonic cleaners', pns: ['Dirl-Lim 603'] },
+  { spec: 'PWC11-078 à 081', app: 'General cleaning agents', pns: ['AUCO ALU B', 'RM 22 ASF', 'RM 55 ASF', 'SUR TEC 133'] },
+
+  // ── 7.3 Solvants de dégraissage, chiffonnage (Hand-Wipe) & lingettes ──
+  { spec: 'MIL-PRF-680 (Type I/II/III) / AMS 3160 / PMC 9001 / PMC 9010 / PWC11-027 à 027J / OMat 102 / OMat 102A / OMat 102D / OMat 102E / CSS 267', app: 'Petroleum solvent — degreasing (Stoddard / Varsol)', pns: ['Stoddard Petroleum Solvent', 'Varsol 140 / 60', 'Solvent 140', 'SAFETY-KLEEN Premium Solvent #6605', 'Ardrox 5412', 'Aliphatic Hydrocarbon Type 4', 'Van-Sol 142', 'Shell Sol 140/142', 'White spirit B.S. 245', 'Bonderite C-SO PD 680 TYII (Turco SS2)', 'Ardrox 5503'] },
+  { spec: 'OMat 1/257G / OMat 1/257H / OMat 1/257AO / CSS 255 Type A, B, D', app: 'High-flash non-chlorinated solvent & wipes (safe on all alloys)', pns: ['Lotoxane (FP 62°C)', 'Lotoxane Fast (FP 38°C)', 'Lotoxane XF (FP 27°C)', 'Lotoxane Wipes'] },
+  { spec: 'OMat 1/257L', app: 'Dielectric solvent & wipes (residue-free)', pns: ['Hyso F liquid & Socosat VP60 wipes', 'Hyso QD'] },
+  { spec: 'OMat 1/257S / PWC11-086 / CSS 255 Type A', app: 'Citrus-based precision cleaner liquid & wipes', pns: ['BIOACT 105'] },
+  { spec: 'OMat 1/257Y / OMat 1/257P / OMat 1/257AL / PWC11-083', app: 'Paint preparation & wipe degreasing solvent', pns: ['Diestone DLS', 'Diestone M-SK', 'Diestone D'] },
+  { spec: 'OMat 1/257Z', app: 'Sealant residue remover liquid & pre-saturated wipes', pns: ['Diestone SR liquid', 'Diestone SR Socosat VP60 wipes'] },
+  { spec: 'OMat 1/257AA', app: 'Bio-based non-flammable resin/sealant cleaning solvent', pns: ['SkyKleen 1000'] },
+  { spec: 'PMC 8928 / PWC11-071 / OMat 1/257 / OMat 1/257B / OMat 1/257C / CSS 255', app: 'Hand-wipe solvent (MEK replacement)', pns: ['DS-108F', 'Desoclean 45 (PMC 9060 / PWC11-025)', 'Metsolv 4019', 'Metsolv 4010', 'MS38 / MS56'] },
+  { spec: 'OMat 1/257AT / OMat 1/257AU / OMat 1/257AV / CSS 255', app: 'Pre-saturated isopropyl alcohol wipes (cleanroom/composite bonding)', pns: ['ARROWIPE IPA 70 WIPES', 'IPA Wipes B81080058', 'WIPEMASTER 12 WIPES'] },
+  { spec: 'PMC 8914 / PWC11-005', app: 'Solvent cleaner', pns: ['Envirosolv 655'] },
+  { spec: 'PMC 8904 / PWC11-023', app: 'Cleaning solvent', pns: ['Ardrox Leeder 1064K'] },
+  { spec: 'PMC 71269 / PWC11-041', app: 'Degreaser cleaner', pns: ['Actrel 3338L Cleaner'] },
+  { spec: 'PMC 79004 / PWC11-074', app: 'Non-aqueous solvent (bulk or aerosol)', pns: ['New ERA Degreasing Fluid'] },
+  { spec: 'PMC 79789 / PWC11-032', app: 'Degreaser solvent', pns: ['Magkleen 4'] },
+  { spec: 'PMC 79846 / PWC11-076', app: 'Industrial cleaner, oil based', pns: ['Bayol 35', 'Isopar M'] },
+  { spec: 'PMC 79014 / CPMC 79033 / PWC11-072 / PWC11-072A', app: 'Petroleum solvent, low odor', pns: ['Isopar K', 'X-800S Chem Jay Degreaser'] },
+  { spec: 'PWC11-045 / PWC11-087 / PWC11-089', app: 'Solvent cleaner (heavy duty degreaser)', pns: ['LPS Presolve Cleaner C01420', 'LPS Precision Clean (C02720 / C02728 / C02765)'] },
+  { spec: 'AMS 1525B / ASTM F-519 Type 1C / Learjet LES 1239', app: 'Solvent / degreaser (removes oil, grease, flux — safe on plastics)', pns: ['LPS F-104'] },
+  { spec: 'N/A', app: 'Heavy duty degreaser (replaces chlorinated solvents)', pns: ['LPS Zero Tri'] },
+  { spec: 'PWC11-038', app: 'Cleaning solvent / deoxidizer', pns: ['Deoxidine No. 624'] },
+  { spec: 'PWC11-042', app: 'Tape residue cleaner (including reflective tape residue)', pns: ['3M Citrus Base Cleaner'] },
+  { spec: 'PWC11-011', app: 'General spray cleaner', pns: ['Mirrorglaze M17'] },
+  { spec: 'D6-17487', app: 'Cleaner / degreaser — added from user reference', pns: ['LPS A151'] },
+  { spec: 'MIL-T-81533A', app: 'Degreaser — added from user reference', pns: ['LPS Instant Super Degreaser II'] },
+  { spec: 'N/A', app: 'Solvent cleaner / degreaser — added from user reference', pns: ['GAS115PC2'] },
+  { spec: 'OMat 101 / MIL-DTL-5624 / Def Stan 91-86 / NATO F-44', app: 'Kerosene cleaning solvent (OP 101)', pns: ['Jet Fuel JP-5', 'AVCAT/FSII', 'Exxsol D80 / D100', 'Safrasol-D80'] },
+
+  // ── 7.4 Solvants purs (Alcools & Cétones pour dégraissage technique) ──
+  { spec: 'TT-I-735 / PMC 9094 / PMC 9016 / PMC 79003 / CPMC 80104 / PWC11-014 à 014D / OMat 1/40 / OMat 1/119 / CSS 269 / BS 1595', app: 'Isopropyl alcohol (IPA) — technical, reagent & commercial grade', pns: ['Propanol (PMC 9016)', 'Isopropanol #1449 (PMC 79003)', 'R-503 Aerosol (PMC 9094)', 'IPA #1608 / 1608CP', 'Propan-2-ol Analar Normapur'] },
+  { spec: 'ASTM D740 / PMC 9076 / PMC 79908 / PWC11-022 / OMat 135 / CSS 178', app: 'Methyl ethyl ketone (MEK) pure solvent (purity >= 99.5%)', pns: ['2-Butanone Analar', 'MEK solvent'] },
+  { spec: 'PMC 9008 / LABMC 10479 / PWC11-012 / PWC11-012A / OMat 150 / OMat 1/176 / CSS 177', app: 'Acetone technical, Optima & analytical grade', pns: ['Acetone Analar (>99.5%)'] },
+  { spec: 'AMS 3180 / A-A-59107 / PMC 9072 / PWC11-030 / PWC11-030A / OMat 149 / CSS 295', app: 'Toluene pure solvent, industrial & analytical grade', pns: ['Toluene Technical / Analar'] },
+  { spec: 'AMS 3002 / PMC 9009 / PWC11-009', app: 'Ethyl alcohol denatured (Ethanol)', pns: ['10-E-760 TYPE III', 'MIL-STD-1201'] },
+  { spec: 'AMS 3004 / PMC 9089 / PWC11-010', app: 'Methyl alcohol (Methanol)', pns: ['O-M-232 Grade A'] },
+  { spec: 'ASTM D4081 / ASTM D4376 / PMC 9015 / PWC11-016', app: 'Perchloroethylene (inhibited vapour degreasing solvent)', pns: ['Vapor Degreaser Grade Perchloroethylene'] },
+
+  // ── 7.5 Décalaminants, décapants peinture & digesteurs élastomères ──
+  { spec: 'SPMC-12 / PWC11-013A', app: 'Carbon removing compound', pns: ['HDP 2888'] },
+  { spec: 'SPMC 136 / PWC11-056', app: 'Alkaline gel remover, carbon', pns: ['Turco 5805'] },
+  { spec: 'PMC 79781 / PWC11-020', app: 'Carbon removing solvent (replaced Magnus 755)', pns: ['Kemsol-556'] },
+  { spec: 'CPMC 71267 / PWC11-021C', app: 'Carbon remover cleaner', pns: ['Carbon X'] },
+  { spec: 'PWC11-037', app: 'Carbon removing solvent', pns: ['Ardrox 667'] },
+  { spec: 'PWC11-029', app: 'Solvent for removing RTV silicone compound', pns: ['Chlorothene SM'] },
+  { spec: 'OMat 154 / OMat 154A / OMat 154B / OMat 154C / CSS 235 Type C', app: 'Cold paint stripper (brush & immersion)', pns: ['Ardrox 20', 'Ardrox 2106', 'Cee-Bee A-292NC', 'Ardrox 204'] },
+  { spec: 'OMat 178 / OMat 178C / OMat 178D / CSS 235 Type E & G Class 1 / Def Stan 80-20', app: 'Cold solvent decarbonizer (immersion)', pns: ['Ardrox 666', 'Ardrox 664', 'Ardrox 266', 'Dasic D.53'] },
+  { spec: 'OMat 1/142 / OMat 1/142B / OMat 1/142E / OMat 1/142F / CSS 235 Type G Class 2', app: 'Polysulfide & rubber digester (sealant remover tank/brush)', pns: ['Cee Bee C105 HF', 'Bonderite C-MC 6045 (Turco 6045)', 'Silstrip NH', 'Ardrox 2312', 'Cee-Bee C105NC'] },
+  { spec: 'OMat 1/226 / OMat 1/226B / OMat 1/226F / OMat 1/226K / OMat 1/226R / CSS 235 Type F', app: 'Hot paint stripper (tank immersion 60-95°C)', pns: ['Bonderite S-ST 5668 Aero', 'Ardrox 2302', 'Cee-Bee A477', 'Kemstrip 596', 'Ardrox 2330'] },
+
+  // ── 7.6 Dérochants, décapants rouille & bains alcalins de désoxydation ──
+  { spec: 'SPMC 25 / PWC11-047', app: 'Alkaline rust remover', pns: ['DuStrypp'] },
+  { spec: 'SPMC 115 / SPMC 116 / SPMC 117 / SPMC 129 / PWC11-049 / PWC11-061 / PWC11-063 à 065 / PWC11-085 / OMat 173 / OMat 173B / OMat 173C / OMat 173D / OMat 173N / CSS 244 Type 2 / Def Stan 03-2', app: 'Alkaline rust remover & heavy deruster (powder / liquid)', pns: ['Ardrox 185', 'Ardrox 185L', 'MAG-CHEM HDL-202', 'Turco 4181 / 4181L', 'Turco 4781-7', 'Bonderite C-AK 4781-7', 'Bonderite C-AK 4181', 'Cee Bee C-180'] },
+  { spec: 'SPMC 156 / PWC11-048', app: 'Cleaner solvent, spray-on / wipe-off', pns: ['MAG-CHEM Diestone M-TK'] },
+  { spec: 'PS 200 / PWC11-039', app: 'Alkaline cleaner solution (light duty, see SPM 70-44-02)', pns: ['PS 200'] },
+  { spec: 'PS 254 / PWC11-043', app: 'Alkaline cleaner solution (see SPM 70-22-00)', pns: ['PS 254'] },
+  { spec: 'OMat 198 / OMat 198A / OMat 198B / OMat 198C / OMat 198L / CSS 249 Type 1', app: 'Alkaline permanganate scale conditioner (hot turbine descaling)', pns: ['Bonderite C-AK 4338-L', 'Bonderite C-AK 4338C Aero', 'Ardrox 188 / 188 RFU', 'Cee-Bee J88', 'Ardrox 1435'] },
+  { spec: 'OMat 1/152 / OMat 1/152A / OMat 1/152B / OMat 1/153', app: 'Acidic descaler for Nickel & Cobalt alloys', pns: ['Ardrox 1873A', 'Cee Bee J3', 'Bonderite C-IC Scale Gon 5 Aero', 'Eldorado AC111'] },
+
+  // ── 7.7 Conversion chimique d'aluminium (Touch-up & Alodine) ──
+  { spec: 'OMat 175 / OMat 175A / OMat 175F / OMat 175L / MIL-DTL-81706 / MIL-DTL-5541 / MIL-C-5541 / Def Stan 03-18', app: 'Chromate conversion coating for Aluminium (touch-up swab & brush)', pns: ['Alocrom 1200', 'Bonderite M-CR ALCRM1200 Aero', 'Alodine 1200S', 'Bonderite M-CR 600 Aero (Alodine 600)', 'Bonderite M-CR 1201 (Alodine 1201)'] },
+  { spec: 'N/A', app: 'Deoxidizer / conditioner for Aluminium (pre-treatment before Alodine)', pns: ['Alumiprep 33'] },
+
+  // ── 7.8 Nettoyants contacts électriques, électroniques & déshydratants ──
+  { spec: 'PMC 79019 / PWC11-035 / PWC11-035A / OMat 1/248', app: 'Electrical contact cleaning solvent (aerosol)', pns: ['LPS No Flash Electro-Contact Cleaner', 'LPS CFC Free Electro-Contact Cleaner', 'Electrolube ECSP200D'] },
+  { spec: 'PMC 79017 / PWC11-036 / PWC11-036A / OMat 1042D', app: 'Contact preservative / deoxidizer & conditioner aerosol', pns: ['CAIG ProGold G5', 'CAIG DeoxIT D5', 'LPS 1'] },
+  { spec: 'PWC11-051', app: 'Lubricant, sealer and preservative (electrical/electronics)', pns: ['CAIG PreservIT P5 Spray'] },
+  { spec: 'PWC11-052', app: 'Dielectric solvent, ultra-high purity', pns: ['POSITRON'] },
+  { spec: 'PWC11-053 / PWC11-053A', app: 'Contact cleaner / degreaser / defluxer aerosol', pns: ['CAIG CaiKleen 41', 'CAIG CaiKleen TRP'] },
+  { spec: 'PMC 71263 / PWC11-057', app: 'Spray cleaner, electrical contact', pns: ['Jet-Xtra Aircraft Cleaner'] },
+  { spec: 'PWC11-082', app: 'Cleaning agent, electrical contacts', pns: ['Aero Chem 90'] },
+  { spec: 'SPMC 124 / PWC11-073 / OMat 1036M / OMat 1036P / Def Stan 68-11', app: 'Dewatering fluid, corrosion inhibiting', pns: ['Ardrox 3968', 'Ardrox 3962 / 3962 HF (PX10)', 'Rustilo DWX30 (OMat 1036B)'] },
+  { spec: 'PWC11-084', app: 'Degreaser, water-repellent, inter-treatment', pns: ['HYSO 93'] },
+  { spec: 'MIL-PRF-25567E / MIL-L-25567E', app: 'Leak detector (oxygen & compressed gas lines, no oil/grease)', pns: ['Sherlock'] },
+  { spec: 'OMat 1082', app: 'Engine storage & preservation corrosion inhibiting compound', pns: ['Socopac 65H'] },
+  { spec: 'OMat 1015', app: 'Leak detection fluid (compressed gas & oxygen test)', pns: ["'SNOOP' (Swagelok)"] },
+];
+
+// ══════════════════════════════════════
+//  CONSUMABLE LOOKUPS (generic engine) — MIL Spec → approved P/Ns
+//  Same behaviour as the Sealant lookup above (source: 20-42-00), but
+//  data-driven: adding a future category (primer, coating, …) only needs a
+//  new entry below + a DEFAULT_..._MIL_SPECS array — no new UI/JS required.
+//  Sealant itself is left untouched on purpose (proven code, don't disturb it).
+// ══════════════════════════════════════
+const KO_LOOKUP_CATEGORIES = [
+  { key:'grease', label:'Grease', icon:'⚙️', accentBg:'#fdf6ec', accentBorder:'#eab676', accentText:'#7a4a00', firebasePath:'config/greaseMilSpecs', defaults: DEFAULT_GREASE_MIL_SPECS },
+  { key:'oil',    label:'Oil',    icon:'🛢️', accentBg:'#eaf6f6', accentBorder:'#7fc2c2', accentText:'#0f5c5c', firebasePath:'config/oilMilSpecs',    defaults: DEFAULT_OIL_MIL_SPECS },
+  { key:'hydraulic', label:'Hydraulic fluid', icon:'💧', accentBg:'#eef1fa', accentBorder:'#a9b8e0', accentText:'#33417a', firebasePath:'config/hydraulicMilSpecs', defaults: DEFAULT_HYDRAULIC_MIL_SPECS },
+  { key:'adhesive', label:'Adhesive', icon:'🔗', accentBg:'#f7f0ea', accentBorder:'#c9a37a', accentText:'#6b4423', firebasePath:'config/adhesiveMilSpecs', defaults: DEFAULT_ADHESIVE_MIL_SPECS },
+  { key:'lubricant', label:'Lubricant (misc.)', icon:'🧴', accentBg:'#fdf0f5', accentBorder:'#dba0bf', accentText:'#7a2a4d', firebasePath:'config/lubricantMilSpecs', defaults: DEFAULT_LUBRICANT_MIL_SPECS },
+  { key:'cleaner', label:'Cleaner / Solvent', icon:'🧽', accentBg:'#eafaf6', accentBorder:'#7fd4bd', accentText:'#0f6b52', firebasePath:'config/cleanerMilSpecs', defaults: DEFAULT_CLEANER_MIL_SPECS },
+];
+
+const KO_LOOKUP_STATE = {};
+KO_LOOKUP_CATEGORIES.forEach(c => { KO_LOOKUP_STATE[c.key] = { specs: [], cart: [] }; });
+
+function koLookupCat(key) { return KO_LOOKUP_CATEGORIES.find(c => c.key === key); }
+
+async function koLoadLookupCategory(cat) {
+  const st = KO_LOOKUP_STATE[cat.key];
+  try {
+    st.specs = await koLoadSeededList(cat.key, cat.firebasePath, cat.defaults);
+  } catch(e) {
+    console.warn('koLoadLookupCategory failed for ' + cat.key + ', using defaults:', e);
+    st.specs = cat.defaults;
+  }
+  koPopulateLookupSelect(cat.key);
+}
+
+async function koLoadAllLookupCategories() {
+  for (const cat of KO_LOOKUP_CATEGORIES) { await koLoadLookupCategory(cat); }
+}
+
+async function koSaveLookupSpecs(key) {
+  const cat = koLookupCat(key);
+  try { await set(ref(db, cat.firebasePath), KO_LOOKUP_STATE[key].specs); } catch(e) { console.warn(e); }
+}
+
+function koPopulateLookupSelect(key) {
+  const sel = document.getElementById('ko-lk-' + key + '-spec-sel');
+  if (!sel) return;
+  const specs = KO_LOOKUP_STATE[key].specs;
+  sel.innerHTML = '<option value="">— select MIL Spec / application —</option>' +
+    specs.map((s, i) => `<option value="${i}">${s.spec} — ${s.app}</option>`).join('');
+}
+
+function koRenderLookupCards() {
+  const container = document.getElementById('ko-lookup-cards');
+  if (!container) return;
+  container.innerHTML = KO_LOOKUP_CATEGORIES.map(cat => `
+    <div style="background:${cat.accentBg};border:1px solid ${cat.accentBorder};border-radius:var(--r);padding:8px 12px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <span style="font-size:12px;color:${cat.accentText};font-weight:600;flex:1">${cat.icon} ${cat.label} lookup — select a MIL Spec to see approved P/Ns</span>
+        <button class="btn" onclick="koManageLookup('${cat.key}')" style="font-size:11px;padding:4px 9px">⚙️ Manage list</button>
+      </div>
+      <select id="ko-lk-${cat.key}-spec-sel" onchange="koRenderLookupPns('${cat.key}')" style="width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;margin-bottom:8px">
+        <option value="">— select MIL Spec / application —</option>
+      </select>
+      <div id="ko-lk-${cat.key}-hint-row" style="display:none;font-size:11px;color:${cat.accentText};margin-bottom:6px">Select your P/Ns below. Leave "Required" if the item is always needed. Give the SAME group letter (A/B/C/D) to two or more items if only one of them is needed — they will be merged into a single "pick one" line.</div>
+      <div id="ko-lk-${cat.key}-pn-list" style="display:none;flex-direction:column;gap:5px;margin-bottom:8px"></div>
+      <div id="ko-lk-${cat.key}-cart-wrap" style="display:none;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:700;color:${cat.accentText};text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">Your selection</div>
+        <div id="ko-lk-${cat.key}-cart-list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px"></div>
+      </div>
+      <button class="btn" id="ko-lk-${cat.key}-add-btn" onclick="koAddSelectedLookup('${cat.key}')" style="display:none;font-size:12px;padding:5px 10px">+ Add selection to parts list</button>
+    </div>`).join('');
+  KO_LOOKUP_CATEGORIES.forEach(cat => koPopulateLookupSelect(cat.key));
+}
+
+function koRenderLookupCart(key) {
+  const wrap = document.getElementById('ko-lk-' + key + '-cart-wrap');
+  const list = document.getElementById('ko-lk-' + key + '-cart-list');
+  const btn = document.getElementById('ko-lk-' + key + '-add-btn');
+  if (!wrap || !list || !btn) return;
+  const cart = KO_LOOKUP_STATE[key].cart;
+  if (!cart.length) { wrap.style.display = 'none'; btn.style.display = 'none'; return; }
+  wrap.style.display = ''; btn.style.display = '';
+  list.innerHTML = cart.map((c, i) => koCartRowHtml(
+    c, 'ko-lk-' + key + '-cartqty-',
+    `koLookupSetQty('${key}','${c._cid}',this.value)`,
+    `koLookupSetGroup('${key}','${c._cid}',this.value)`,
+    `koRemoveLookupFromCart('${key}',${i})`
+  )).join('');
+}
+
+G.koRemoveLookupFromCart = function(key, i) {
+  KO_LOOKUP_STATE[key].cart.splice(i, 1);
+  koRenderLookupCart(key);
+};
+
+let _lookupManageKey = null;
+
+G.koManageLookup = function(key) {
+  _lookupManageKey = key;
+  const cat = koLookupCat(key);
+  document.getElementById('lookup-manage-title').textContent = cat.icon + ' Manage ' + cat.label.toLowerCase() + ' MIL Spec lookup';
+  renderLookupManageList();
+  openModal('modal-lookup-manage');
+};
+
+function renderLookupManageList() {
+  const list = document.getElementById('lookup-manage-list');
+  if (!list || !_lookupManageKey) return;
+  const specs = KO_LOOKUP_STATE[_lookupManageKey].specs;
+  list.innerHTML = specs.map((s, i) => `
+    <div style="display:flex;gap:6px;align-items:flex-start;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:6px 8px;margin-bottom:5px;flex-wrap:wrap">
+      <input type="text" value="${escAttr(s.spec||'')}" placeholder="MIL Spec" oninput="koLookupEdit(${i},'spec',this.value)" style="flex:1;min-width:110px;font-size:12px;padding:4px 6px"/>
+      <input type="text" value="${escAttr(s.app||'')}" placeholder="Application" oninput="koLookupEdit(${i},'app',this.value)" style="flex:2;min-width:160px;font-size:12px;padding:4px 6px"/>
+      <button onclick="koDeleteLookupSpec(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
+      ${koPnManageHtml('lookup', i, koPnList(s))}
+    </div>`).join('') || '<p style="font-size:12px;color:var(--g400)">No entries yet.</p>';
+}
+
+let _lkEditTimer = null;
+G.koLookupEdit = function(i, field, val) {
+  const specs = KO_LOOKUP_STATE[_lookupManageKey].specs;
+  if (!specs[i]) return;
+  specs[i][field] = val;
+  clearTimeout(_lkEditTimer);
+  const key = _lookupManageKey;
+  _lkEditTimer = setTimeout(() => { koSaveLookupSpecs(key); koPopulateLookupSelect(key); }, 600);
+};
+
+G.koDeleteLookupSpec = function(i) {
+  const key = _lookupManageKey;
+  KO_LOOKUP_STATE[key].specs.splice(i, 1);
+  renderLookupManageList();
+  koPopulateLookupSelect(key);
+  koSaveLookupSpecs(key);
+};
+
+// ══════════════════════════════════════
+//  CONSUMABLE SEARCH — une seule recherche sur TOUS les lookups
+//  (sealant + KO_LOOKUP_CATEGORIES) par MIL Spec, P/N ou application.
+//  L'index est reconstruit à chaque frappe : toujours à jour après un
+//  ajout/suppression via "Manage list", rien à re-synchroniser.
+// ══════════════════════════════════════
+let _koConsumableHits = [];
+
+// "MIL-PRF-81322", "mil prf 81322" et "milprf81322" doivent tous matcher.
+function koNormSearch(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function koConsumableIndex() {
+  const out = [];
+  const push = (catKey, catLabel, catIcon, s, specIdx) => {
+    koPnList(s).forEach(p => out.push({
+      catKey, catLabel, catIcon, specIdx,
+      spec: s.spec || '', app: s.app || '', pn: p.pn, prc: p.prc
+    }));
+  };
+  (SEALANT_MIL_SPECS || []).forEach((s, i) => push('sealant', 'Sealant', '🧪', s, i));
+  KO_LOOKUP_CATEGORIES.forEach(cat => {
+    (KO_LOOKUP_STATE[cat.key]?.specs || []).forEach((s, i) => push(cat.key, cat.label, cat.icon, s, i));
+  });
+  return out;
+}
+
+G.koConsumableSearchAdd = function(i) {
+  const it = _koConsumableHits[i];
+  if (!it) return;
+  G.koAddPartRow(it.pn, `${it.catLabel} — ${it.spec} — ${it.app}`, '', '1', 'Consumable', '', '');
+  koSortPartsTable();
+  koUpdatePreview();
+  koSaveState();
+};
+
+G.koConsumableSearchOpen = function(i) {
+  const it = _koConsumableHits[i];
+  if (!it) return;
+  const selId = it.catKey === 'sealant' ? 'ko-sealant-spec-sel' : 'ko-lk-' + it.catKey + '-spec-sel';
+  const sel = document.getElementById(selId);
+  if (!sel) return;
+  sel.value = String(it.specIdx);
+  if (it.catKey === 'sealant') G.koRenderSealantPns(); else G.koRenderLookupPns(it.catKey);
+  sel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+};
+
+// ══════════════════════════════════════
+//  Panier ("Your selection") — quantité visible et éditable.
+//  Un groupe A/B/C/D = un seul article au final, donc une seule quantité :
+//  elle est propagée aux autres membres du groupe. Rejoindre un groupe
+//  existant reprend la quantité déjà en place (pas l'inverse), pour ne
+//  jamais écraser silencieusement ce qui a été saisi avant.
+// ══════════════════════════════════════
+const KO_GROUP_COLORS = { A:'#3b82f6', B:'#f59e0b', C:'#8b5cf6', D:'#ef4444' };
+
+function koCartRowHtml(c, qtyIdPrefix, qtyHandler, groupHandler, removeHandler) {
+  const col = KO_GROUP_COLORS[c.setNum] || '#d1d5db';
+  return `
+    <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--g200);border-left:4px solid ${col};border-radius:var(--r);padding:6px 9px;flex-wrap:wrap">
+      <div style="flex:1;min-width:150px;font-size:12px">
+        <b>${escHtml(c.pn)}</b>${escHtml(koSealantTagStr(c))}${c.setNum ? ` <span style="font-size:10px;font-weight:700;color:${col}">· Group ${c.setNum} — merged into ONE line, shared qty</span>` : ''}
+        <div style="font-size:10px;color:var(--g600)">${escHtml(c.specLabel)}</div>
+      </div>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--g600);white-space:nowrap">
+        Qty
+        <input type="text" id="${qtyIdPrefix}${c._cid}" value="${escAttr(c.qty || '1')}" oninput="${qtyHandler}"
+          style="width:48px;font-size:11px;padding:3px 6px;border:1px solid var(--g200);border-radius:4px"/>
+      </label>
+      <select onchange="${groupHandler}" style="font-size:11px;padding:4px 7px;border:1px solid var(--g200);border-radius:4px;background:#fff">
+        <option value="">✅ Required — always needed, its own line</option>
+        <option value="A" ${c.setNum==='A'?'selected':''}>🅰️ Group A — interchangeable, pick ONLY ONE</option>
+        <option value="B" ${c.setNum==='B'?'selected':''}>🅱️ Group B — interchangeable, pick ONLY ONE</option>
+        <option value="C" ${c.setNum==='C'?'selected':''}>🇨 Group C — interchangeable, pick ONLY ONE</option>
+        <option value="D" ${c.setNum==='D'?'selected':''}>🇩 Group D — interchangeable, pick ONLY ONE</option>
+      </select>
+      <button onclick="${removeHandler}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
+    </div>`;
+}
+
+// Met à jour les autres membres du groupe SANS re-render, sinon le champ
+// perdrait le focus à chaque frappe.
+function koSyncGroupQty(cart, item, qtyIdPrefix) {
+  if (!item.setNum) return;
+  cart.forEach(c => {
+    if (c === item || c.setNum !== item.setNum) return;
+    c.qty = item.qty;
+    const el = document.getElementById(qtyIdPrefix + c._cid);
+    if (el && el.value !== item.qty) el.value = item.qty;
+  });
+}
+
+G.koSealantSetQty = function(cid, val) {
+  const item = koSealantCart.find(c => c._cid === cid);
+  if (!item) return;
+  item.qty = val;
+  koSyncGroupQty(koSealantCart, item, 'ko-sealant-cartqty-');
+};
+
+G.koLookupSetQty = function(key, cid, val) {
+  const cart = KO_LOOKUP_STATE[key].cart;
+  const item = cart.find(c => c._cid === cid);
+  if (!item) return;
+  item.qty = val;
+  koSyncGroupQty(cart, item, 'ko-lk-' + key + '-cartqty-');
+};
+
+G.koSealantSetGroup = function(cid, val) {
+  const item = koSealantCart.find(c => c._cid === cid);
+  if (!item) return;
+  item.setNum = val;
+  const peer = val ? koSealantCart.find(c => c !== item && c.setNum === val) : null;
+  if (peer) item.qty = peer.qty;
+  koRenderSealantCart();
+};
+
+G.koLookupSetGroup = function(key, cid, val) {
+  const cart = KO_LOOKUP_STATE[key].cart;
+  const item = cart.find(c => c._cid === cid);
+  if (!item) return;
+  item.setNum = val;
+  const peer = val ? cart.find(c => c !== item && c.setNum === val) : null;
+  if (peer) item.qty = peer.qty;
+  koRenderLookupCart(key);
+};
+
+// ══════════════════════════════════════
+//  P/N PRC (2 composants) vs le reste
+//  Un P/N est stocké soit en texte brut (ancien format), soit en objet
+//  { pn, prc }. Seuls les P/N marqués "prc" affichent Type / Size / Semkit
+//  au moment de la commande ; tous les autres n'ont qu'une quantité.
+//  Un ancien P/N encore en texte est deviné (PR…, CS…, AC-xxx, Proseal…)
+//  et reste corrigeable à tout moment via "⚙️ Manage list".
+// ══════════════════════════════════════
+const KO_PRC_GUESS_RE = /^(pr\s?-?\d|prc\b|cs-?\d|ac-?\d{3}|pro-?seal|semco)/i;
+
+function koPnEntry(x) {
+  if (x && typeof x === 'object') return { pn: x.pn || '', prc: !!x.prc };
+  const pn = String(x || '');
+  return { pn, prc: KO_PRC_GUESS_RE.test(pn.trim()) };
+}
+function koPnList(spec) { return (spec?.pns || []).map(koPnEntry); }
+// Convertit sur place les P/N encore en texte → objets, pour pouvoir les éditer.
+function koEnsurePnObjects(spec) { spec.pns = koPnList(spec); return spec.pns; }
+
+// Ligne d'options affichée sous un P/N au moment de la commande.
+function koPnOptionsHtml(idPrefix, i, prc) {
+  let html = `<input type="text" id="${idPrefix}-qty-${i}" value="1" title="Quantity" style="width:50px;font-size:11px;padding:3px 6px;border:1px solid var(--g200);border-radius:4px;background:#fff"/>`;
+  if (!prc) return html;
+  html += `
+    <select id="${idPrefix}-type-${i}" style="font-size:11px;padding:3px 6px;border:1px solid var(--g200);border-radius:4px;background:#fff">
+      <option value="">Type —</option>${SEALANT_TYPE_OPTIONS.map(t => `<option value="${t}">${t}</option>`).join('')}
+    </select>
+    <select id="${idPrefix}-size-${i}" style="font-size:11px;padding:3px 6px;border:1px solid var(--g200);border-radius:4px;background:#fff">
+      <option value="">Size —</option>${SEALANT_SIZE_OPTIONS.map(s => `<option value="${s}">${s}</option>`).join('')}
+    </select>
+    <label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer">
+      <input type="checkbox" id="${idPrefix}-semkit-${i}"/> Semkit
+    </label>`;
+  return html;
+}
+function koReadPnOptions(idPrefix, i, prc) {
+  const qty = (document.getElementById(idPrefix + '-qty-' + i)?.value || '').trim() || '1';
+  if (!prc) return { qty, type: '', size: '', semkit: false };
+  return {
+    qty,
+    type:   document.getElementById(idPrefix + '-type-' + i)?.value || '',
+    size:   document.getElementById(idPrefix + '-size-' + i)?.value || '',
+    semkit: document.getElementById(idPrefix + '-semkit-' + i)?.checked || false,
+  };
+}
+
+// ── Éditeur de P/N dans les modales "Manage list" (sealant + lookups) ──
+function koPnManageHtml(kind, i, pns) {
+  return `
+    <div style="flex:1 1 100%;border-top:1px dashed var(--g200);margin-top:5px;padding-top:6px">
+      <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">
+        P/Ns — tick "PRC" for 2-part products (adds Type / Size / Semkit when ordering)
+      </div>
+      ${pns.map((p, j) => `
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+          <input type="text" value="${escAttr(p.pn)}" oninput="koPnEditName('${kind}',${i},${j},this.value)" style="flex:1;min-width:110px;font-size:12px;padding:4px 6px"/>
+          <label style="display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap;cursor:pointer;color:${p.prc ? '#3730a3' : 'var(--g600)'}">
+            <input type="checkbox" ${p.prc ? 'checked' : ''} onchange="koPnTogglePrc('${kind}',${i},${j},this.checked)"/> PRC
+          </label>
+          <button onclick="koPnRemove('${kind}',${i},${j})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px">×</button>
+        </div>`).join('')}
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="text" id="${kind}-addpn-${i}" placeholder="Add a P/N…" style="flex:1;min-width:110px;font-size:12px;padding:4px 6px" onkeydown="if(event.key==='Enter'){event.preventDefault();koPnAdd('${kind}',${i})}"/>
+        <label style="display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap;cursor:pointer"><input type="checkbox" id="${kind}-addpn-prc-${i}"/> PRC</label>
+        <button class="btn" onclick="koPnAdd('${kind}',${i})" style="font-size:11px;padding:3px 9px">+</button>
+      </div>
+    </div>`;
+}
+
+function koPnCtx(kind) {
+  if (kind === 'sealant') return {
+    specs:  SEALANT_MIL_SPECS,
+    save:   () => { koSaveSealantMilSpecs(); koPopulateSealantSpecSelect(); },
+    render: renderSealantManageList
+  };
+  const key = _lookupManageKey;
+  return {
+    specs:  KO_LOOKUP_STATE[key].specs,
+    save:   () => { koSaveLookupSpecs(key); koPopulateLookupSelect(key); },
+    render: renderLookupManageList
+  };
+}
+
+let _koPnEditTimer = null;
+G.koPnEditName = function(kind, i, j, val) {
+  const c = koPnCtx(kind); const s = c.specs[i]; if (!s) return;
+  const pns = koEnsurePnObjects(s); if (!pns[j]) return;
+  pns[j].pn = val;
+  clearTimeout(_koPnEditTimer);
+  _koPnEditTimer = setTimeout(c.save, 600);   // pas de re-render : garde le focus dans le champ
+};
+G.koPnTogglePrc = function(kind, i, j, checked) {
+  const c = koPnCtx(kind); const s = c.specs[i]; if (!s) return;
+  const pns = koEnsurePnObjects(s); if (!pns[j]) return;
+  pns[j].prc = checked;
+  c.render(); c.save();
+};
+G.koPnRemove = function(kind, i, j) {
+  const c = koPnCtx(kind); const s = c.specs[i]; if (!s) return;
+  koEnsurePnObjects(s).splice(j, 1);
+  c.render(); c.save();
+};
+G.koPnAdd = function(kind, i) {
+  const c = koPnCtx(kind); const s = c.specs[i]; if (!s) return;
+  const val = (document.getElementById(kind + '-addpn-' + i)?.value || '').trim();
+  if (!val) return;
+  const prc = document.getElementById(kind + '-addpn-prc-' + i)?.checked || false;
+  koEnsurePnObjects(s).push({ pn: val, prc });
+  c.render(); c.save();
+};
+
+// ══════════════════════════════════════
+//  Surcharges — Type/Size/Semkit uniquement sur les P/N PRC, Qty partout
+// ══════════════════════════════════════
+G.koRenderSealantPns = function() {
+  const sel = document.getElementById('ko-sealant-spec-sel');
+  const wrap = document.getElementById('ko-sealant-pn-list');
+  if (!sel || !wrap) return;
+  const idx = sel.value;
+  if (idx === '') { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  const entry = SEALANT_MIL_SPECS[idx];
+  wrap.style.display = 'flex';
+  wrap.innerHTML = koPnList(entry).map((p, i) => `
+    <div style="display:flex;flex-direction:column;gap:5px;background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:6px 9px">
+      <div style="font-size:12px;font-weight:600">${escHtml(p.pn)}${p.prc ? ' <span style="font-size:9.5px;font-weight:700;color:#3730a3">PRC</span>' : ''}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        ${koPnOptionsHtml('ko-sealant', i, p.prc)}
+        <button class="btn" onclick="koAddSealantToCart(${idx},${i})" style="font-size:11px;padding:3px 10px;margin-left:auto">+ Add</button>
+      </div>
+    </div>`).join('');
+  document.getElementById('ko-sealant-hint-row').style.display = 'block';
+};
+
+G.koAddSealantToCart = function(specIdx, pnIdx) {
+  const entry = SEALANT_MIL_SPECS[specIdx];
+  const p = koPnList(entry)[pnIdx]; if (!p) return;
+  const o = koReadPnOptions('ko-sealant', pnIdx, p.prc);
+  koSealantCart.push({
+    _cid: 'sc_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    pn: p.pn, specLabel: `${entry.spec} — ${entry.app}`,
+    type: o.type, size: o.size, semkit: o.semkit, qty: o.qty, setNum: ''
+  });
+  koRenderSealantCart();
+};
+
+G.koAddSelectedSealants = function() {
+  if (!koSealantCart.length) { alert('Please add at least one P/N to your selection.'); return; }
+  const groups = {};
+  koSealantCart.forEach(p => {
+    const key = p.setNum ? ('grp_' + p.setNum) : ('single_' + p._cid);
+    (groups[key] = groups[key] || []).push(p);
+  });
+  Object.values(groups).forEach(group => {
+    if (group.length > 1) {
+      const specLabels = [...new Set(group.map(p => p.specLabel))].join(' / ');
+      const pnList = group.map(p => `${p.pn}${koSealantTagStr(p)}`).join(' OR ');
+      G.koAddPartRow(pnList, `Sealant — ${specLabels} — pick ONE of the P/Ns listed`, '', group[0].qty || '1', 'Consumable', '', '');
+    } else {
+      const p = group[0];
+      G.koAddPartRow(p.pn, `Sealant — ${p.specLabel}${koSealantTagStr(p)}`, '', p.qty || '1', 'Consumable', '', '');
+    }
+  });
+  koSortPartsTable(); koUpdatePreview(); koSaveState();
+  koSealantCart.length = 0;
+  koRenderSealantCart();
+  document.getElementById('ko-sealant-spec-sel').value = '';
+  document.getElementById('ko-sealant-pn-list').style.display = 'none';
+  document.getElementById('ko-sealant-pn-list').innerHTML = '';
+  document.getElementById('ko-sealant-hint-row').style.display = 'none';
 };
 
 G.koAddSealantSpec = function() {
   const spec = document.getElementById('sm-new-spec')?.value.trim();
   const app  = document.getElementById('sm-new-app')?.value.trim();
   const pnsRaw = document.getElementById('sm-new-pns')?.value.trim();
+  const prc = document.getElementById('sm-new-prc')?.checked || false;
   if (!app || !pnsRaw) { alert('Application and at least one P/N are required.'); return; }
-  const pns = pnsRaw.split(',').map(s => s.trim()).filter(Boolean);
-  SEALANT_MIL_SPECS.push({ spec: spec || 'N/A', app, pns });
-  document.getElementById('sm-new-spec').value = '';
-  document.getElementById('sm-new-app').value = '';
-  document.getElementById('sm-new-pns').value = '';
-  renderSealantManageList();
-  koPopulateSealantSpecSelect();
-  koSaveSealantMilSpecs();
+  SEALANT_MIL_SPECS.push({
+    spec: spec || 'N/A', app,
+    pns: pnsRaw.split(',').map(s => s.trim()).filter(Boolean).map(pn => ({ pn, prc }))
+  });
+  ['sm-new-spec','sm-new-app','sm-new-pns'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const cb = document.getElementById('sm-new-prc'); if (cb) cb.checked = false;
+  renderSealantManageList(); koPopulateSealantSpecSelect(); koSaveSealantMilSpecs();
 };
 
-G.koDeleteSealantSpec = function(i) {
-  SEALANT_MIL_SPECS.splice(i, 1);
-  renderSealantManageList();
-  koPopulateSealantSpecSelect();
-  koSaveSealantMilSpecs();
-};	
-	
+G.koRenderLookupPns = function(key) {
+  const sel = document.getElementById('ko-lk-' + key + '-spec-sel');
+  const wrap = document.getElementById('ko-lk-' + key + '-pn-list');
+  if (!sel || !wrap) return;
+  const idx = sel.value;
+  if (idx === '') { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  const entry = KO_LOOKUP_STATE[key].specs[idx];
+  wrap.style.display = 'flex';
+  wrap.innerHTML = koPnList(entry).map((p, i) => `
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:6px 9px">
+      <div style="flex:1;min-width:130px;font-size:12px;font-weight:600">${escHtml(p.pn)}${p.prc ? ' <span style="font-size:9.5px;font-weight:700;color:#3730a3">PRC</span>' : ''}</div>
+      ${koPnOptionsHtml('ko-lk-' + key, i, p.prc)}
+      <button class="btn" onclick="koAddLookupToCart('${key}',${idx},${i})" style="font-size:11px;padding:3px 10px">+ Add</button>
+    </div>`).join('');
+  document.getElementById('ko-lk-' + key + '-hint-row').style.display = 'block';
+};
+
+G.koAddLookupToCart = function(key, specIdx, pnIdx) {
+  const entry = KO_LOOKUP_STATE[key].specs[specIdx];
+  const p = koPnList(entry)[pnIdx]; if (!p) return;
+  const o = koReadPnOptions('ko-lk-' + key, pnIdx, p.prc);
+  KO_LOOKUP_STATE[key].cart.push({
+    _cid: 'lk_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    pn: p.pn, specLabel: `${entry.spec} — ${entry.app}`,
+    type: o.type, size: o.size, semkit: o.semkit, qty: o.qty, setNum: ''
+  });
+  koRenderLookupCart(key);
+};
+
+G.koAddSelectedLookup = function(key) {
+  const cat = koLookupCat(key);
+  const cart = KO_LOOKUP_STATE[key].cart;
+  if (!cart.length) { alert('Please add at least one P/N to your selection.'); return; }
+  const groups = {};
+  cart.forEach(p => {
+    const gkey = p.setNum ? ('grp_' + p.setNum) : ('single_' + p._cid);
+    (groups[gkey] = groups[gkey] || []).push(p);
+  });
+  Object.values(groups).forEach(group => {
+    if (group.length > 1) {
+      const specLabels = [...new Set(group.map(p => p.specLabel))].join(' / ');
+      const pnList = group.map(p => `${p.pn}${koSealantTagStr(p)}`).join(' OR ');
+      G.koAddPartRow(pnList, `${cat.label} — ${specLabels} — pick ONE of the P/Ns listed`, '', group[0].qty || '1', 'Consumable', '', '');
+    } else {
+      const p = group[0];
+      G.koAddPartRow(p.pn, `${cat.label} — ${p.specLabel}${koSealantTagStr(p)}`, '', p.qty || '1', 'Consumable', '', '');
+    }
+  });
+  koSortPartsTable(); koUpdatePreview(); koSaveState();
+  cart.length = 0;
+  koRenderLookupCart(key);
+  document.getElementById('ko-lk-' + key + '-spec-sel').value = '';
+  document.getElementById('ko-lk-' + key + '-pn-list').style.display = 'none';
+  document.getElementById('ko-lk-' + key + '-pn-list').innerHTML = '';
+  document.getElementById('ko-lk-' + key + '-hint-row').style.display = 'none';
+};
+
+G.koAddLookupSpec = function() {
+  const key = _lookupManageKey;
+  const spec = document.getElementById('lkm-new-spec')?.value.trim();
+  const app  = document.getElementById('lkm-new-app')?.value.trim();
+  const pnsRaw = document.getElementById('lkm-new-pns')?.value.trim();
+  const prc = document.getElementById('lkm-new-prc')?.checked || false;
+  if (!app || !pnsRaw) { alert('Application and at least one P/N are required.'); return; }
+  KO_LOOKUP_STATE[key].specs.push({
+    spec: spec || 'N/A', app,
+    pns: pnsRaw.split(',').map(s => s.trim()).filter(Boolean).map(pn => ({ pn, prc }))
+  });
+  ['lkm-new-spec','lkm-new-app','lkm-new-pns'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const cb = document.getElementById('lkm-new-prc'); if (cb) cb.checked = false;
+  renderLookupManageList(); koPopulateLookupSelect(key); koSaveLookupSpecs(key);
+};
+
+// Recherche globale : un P/N PRC ne peut pas être ajouté à l'aveugle
+// (il lui faut Type/Size) → on n'y propose que "↗ Open".
+G.koConsumableSearch = function(raw) {
+  const wrap = document.getElementById('ko-consumable-search-results');
+  if (!wrap) return;
+  const q = (raw || '').trim();
+  if (q.length < 2) { wrap.style.display = 'none'; wrap.innerHTML = ''; _koConsumableHits = []; return; }
+
+  const tokens = q.split(/\s+/).map(koNormSearch).filter(Boolean);
+  _koConsumableHits = koConsumableIndex().filter(it => {
+    const hay = koNormSearch(it.pn + ' ' + it.spec + ' ' + it.app + ' ' + it.catLabel);
+    return tokens.every(t => hay.includes(t));
+  });
+
+  const qn = koNormSearch(q);
+  _koConsumableHits.sort((a, b) => {
+    const aPn = koNormSearch(a.pn).startsWith(qn) ? 0 : 1;
+    const bPn = koNormSearch(b.pn).startsWith(qn) ? 0 : 1;
+    if (aPn !== bPn) return aPn - bPn;
+    return a.catLabel.localeCompare(b.catLabel) || a.pn.localeCompare(b.pn);
+  });
+
+  wrap.style.display = 'flex';
+  if (!_koConsumableHits.length) {
+    wrap.innerHTML = '<div style="font-size:12px;color:#9a3412;padding:6px 2px">No match — try the P/N, part of the MIL Spec, or a word from the application.</div>';
+    return;
+  }
+
+  const shown = _koConsumableHits.slice(0, 40);
+  wrap.innerHTML =
+    `<div style="font-size:10.5px;color:var(--g600);padding:0 2px 2px">${_koConsumableHits.length} result${_koConsumableHits.length > 1 ? 's' : ''}${_koConsumableHits.length > 40 ? ' — showing the first 40, refine your search' : ''}</div>` +
+    shown.map((it, i) => `
+      <div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:6px 9px;flex-wrap:wrap">
+        <div style="flex:1;min-width:170px">
+          <div style="font-size:12px;font-weight:700">${it.catIcon} ${escHtml(it.pn)}${it.prc ? ' <span style="font-size:9.5px;color:#3730a3">PRC</span>' : ''}</div>
+          <div style="font-size:10.5px;color:var(--g600)">${escHtml(it.catLabel)} · ${escHtml(it.spec)} — ${escHtml(it.app)}</div>
+        </div>
+        ${it.prc
+          ? `<button class="btn" onclick="koConsumableSearchOpen(${i})" style="font-size:11px;padding:3px 9px" title="PRC product — choose Type / Size / Semkit in its own block">↗ Open (Type / Size)</button>`
+          : `<button class="btn" onclick="koConsumableSearchOpen(${i})" style="font-size:11px;padding:3px 9px">↗ Open</button>
+             <button class="btn primary" onclick="koConsumableSearchAdd(${i})" style="font-size:11px;padding:3px 10px">+ Add</button>`}
+      </div>`).join('');
+};
+
 async function koSaveQuickPartsCatalog() {
   try { await set(ref(db, 'config/quickPartsCatalog'), KO_QUICKPARTS); } catch(e) { console.warn(e); }
 }
@@ -12322,23 +13573,6 @@ async function renderFSRList() {
   // Also refresh the FSR selector in kickoff
   koLoadFSRSelector();
 }
-
-G.addFSR = async function() {
-  const name  = document.getElementById('fsr_name_inp').value.trim();
-  const email = document.getElementById('fsr_email_inp').value.trim();
-  const errEl = document.getElementById('fsr-error');
-  errEl.textContent = '';
-  if (!name) { errEl.textContent = 'Name required.'; return; }
-  if (!email || !email.includes('@')) { errEl.textContent = 'Valid email required.'; return; }
-  const snap = await get(ref(db, 'fsrContacts'));
-  const current = snap.exists() ? snap.val() : [];
-  if (current.some(f => f.email === email)) { errEl.textContent = 'FSR with this email already exists.'; return; }
-  current.push({ name, email });
-  await set(ref(db, 'fsrContacts'), current);
-  document.getElementById('fsr_name_inp').value = '';
-  document.getElementById('fsr_email_inp').value = '';
-  renderFSRList();
-};
 
 G.deleteFSR = async function(i) {
   const snap = await get(ref(db, 'fsrContacts'));
@@ -12589,7 +13823,7 @@ G.koNewJob = async function(keepAircraftInfo = true) {
     document.getElementById('login-screen').style.display = '';
     document.getElementById('view-picker').style.display = 'none';
     document.getElementById('view-pin').style.display = '';
-    document.getElementById('pin-subtitle').textContent = `Welcome ${profile.name}! Choose your new 4-digit PIN:`;
+    document.getElementById('pin-subtitle').textContent = `Welcome ${pendingUserToLogin.name}! Choose your new 4-digit PIN:`;
     document.getElementById('pin-input').value = '';
     document.getElementById('pin-error').textContent = '';
     document.getElementById('btn-forgot-pin').style.display = 'none';
@@ -12682,7 +13916,6 @@ window.koRenderRecips = koRenderRecips;
 window.koRenderAllRecips = koRenderAllRecips;
 window.koRenderAirlines = koRenderAirlines;
 window.koRefreshHistorySelect = koRefreshHistorySelect;
-window.addFSR = G.addFSR;
 window.deleteFSR = G.deleteFSR;
 window.koApplyFSR = G.koApplyFSR;
 window.koApplyBulkSquawk = G.koApplyBulkSquawk;
