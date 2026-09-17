@@ -8437,7 +8437,12 @@ G.doBiometricLogin = window.doBiometricLogin = async function() {
       publicKey: {
         challenge: challengeBytes,
         rpId: location.hostname,
-        allowCredentials: [{ type: 'public-key', id: credIdBytes }],
+        // 'internal' forcé explicitement : sans ce champ, Chrome 153 (Android) remplit
+        // transports avec 'smart-card' par défaut — valeur que Google Play Services (GmsCore)
+        // ne sait pas décoder. La requête WebAuthn reste alors bloquée indéfiniment et
+        // aucune fenêtre d'empreinte n'apparaît jamais côté OS (bug Chrome, crbug 555599813,
+        // corrigé côté navigateur seulement à partir de Chrome 153.0.8010.47).
+        allowCredentials: [{ type: 'public-key', id: credIdBytes, transports: ['internal'] }],
         userVerification: 'required',
         timeout: 60000
       }
