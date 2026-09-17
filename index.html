@@ -896,12 +896,15 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       </div>
     </div>
     <div class="grid g2">
-      <div class="fg"><label>FAR / Certification</label><input type="text" id="f_far" placeholder="e.g. EASA" oninput="autosave()"/></div>
+      <div class="fg"><label>FAR / Certification</label><input type="text" id="f_far" placeholder="e.g. EASA" oninput="autosave();updatePart135UI()"/></div>
       <div class="fg"><label>Country of Registry</label><input type="text" id="f_country" placeholder="e.g. San Marino" oninput="autosave()"/></div>
       <div class="fg"><label>FBO / Support Location</label><input type="text" id="f_fbo" placeholder="e.g. FBO Universal" oninput="autosave()"/></div>
       <div class="fg"><label>PO Number</label><input type="text" id="f_po" placeholder="e.g. 17-26-REX" oninput="autosave()"/></div>
 	  <div class="fg"><label>A/C Hours</label><input type="text" id="f_ac_hours" placeholder="e.g. 2748:48" oninput="autosave()"/></div>
       <div class="fg"><label>A/C Cycles</label><input type="text" id="f_ac_cycles" placeholder="e.g. 1064" oninput="autosave()"/></div>		
+    </div>
+    <div id="f_far-part135-warning" style="display:none;margin-top:10px;background:#fef3c7;border:1px solid #d97706;border-radius:var(--r);padding:9px 12px;font-size:12px;color:#92400e;align-items:flex-start;gap:8px">
+      <span>⚠️</span> <span>This aircraft appears to be operated under <b>14 CFR Part 135</b> (the FAR / Certification field mentions "135"). Review training, roster and RTS-statement requirements with the operator in <b>Start Job</b>.</span>
     </div>
   </div>
 </div>
@@ -1301,6 +1304,18 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div class="ko-fg" style="margin-bottom:12px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:10px 12px">
         <label>✈️ My (or Engineer in charge) estimated arrival on site (ETA)</label>
         <input type="text" id="ko_eta" placeholder="e.g. 25 Jun 2026, 14:00 local — or leave blank / N/A if unknown"/>
+      </div>
+      <div class="ko-divider"></div>
+      <div id="ko-part135-section" style="display:none">
+        <div style="background:#fef3c7;border:1px solid #d97706;border-radius:var(--r);padding:10px 12px;margin-bottom:10px">
+          <div style="font-weight:700;color:#92400e;margin-bottom:6px">⚠️ Part 135 operation — the FAR / Certification field mentions "135"</div>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:#7a5a00"><input type="checkbox" id="koq_part135_training"/> Ask whether our engineer(s) need any operator-specific training before working on this aircraft</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:#7a5a00"><input type="checkbox" id="koq_part135_roster"/> Ask how to get our engineer(s) added to the operator's approved maintenance roster</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:#7a5a00"><input type="checkbox" id="koq_part135_rts"/> Ask for the exact Return-to-Service (RTS) statement required for this Part 135 operation</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:#7a5a00"><input type="checkbox" id="koq_part135_gmm"/> Ask for a copy of (or access to) the operator's maintenance program / GMM sections relevant to this work</label>
+          </div>
+        </div>
       </div>
       <div class="ko-divider"></div>
       <div class="ko-section-lbl">Admin & Import</div>
@@ -5558,7 +5573,7 @@ function fillFromProj(proj) {
   // Mettre à jour le bouton immédiatement
   const isAssist = (proj.rts_assist || 'RTS') === 'Assist';
   const btn = document.getElementById('btn-mark-rts');
-  if (btn) btn.textContent = isAssist ? '🤝 Assistance Provided' : '✅ Mark A/C RTS'; sv('f_far', proj.far); sv('f_country', proj.country); sv('f_fbo', proj.fbo); sv('f_po', proj.po);
+  if (btn) btn.textContent = isAssist ? '🤝 Assistance Provided' : '✅ Mark A/C RTS'; sv('f_far', proj.far); G.updatePart135UI(); sv('f_country', proj.country); sv('f_fbo', proj.fbo); sv('f_po', proj.po);
   sv('f_ac_hours', proj.ac_hours || ''); sv('f_ac_cycles', proj.ac_cycles || '');
   sv('f_erts', proj.erts || ''); sv('f_nxt', proj.nxt || ''); sv('f_retdate', proj.retdate || ''); sv('f_rettime', proj.rettime || ''); sv('f_info', proj.info || '');
   sv('f_site_arrival', proj.site_arrival || '');
@@ -5603,6 +5618,7 @@ function clearForm() {
   curProjSubjectTemplate = curProfile?.subjectTemplate || DEFAULT_SUBJECT_TEMPLATE;
   ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_site_arrival','f_job_desc','f_intro_msg','f_cust_name','f_cust_tel','f_cust_email','f_cust_company','f_cust_code','f_ac_hours','f_ac_cycles']
     .forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
+  G.updatePart135UI();
   document.getElementById('f_rts_assist').value = 'RTS';
   const btn = document.getElementById('btn-mark-rts');
   if (btn) btn.textContent = '✅ Mark A/C RTS';
@@ -7707,6 +7723,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
       const ctry = countryFromRegistration(regForCert);
       if (ctry) document.getElementById('f_country').value = ctry;
     }
+    G.updatePart135UI();
     const newItems = (parsed.work_items||[]).filter(it => it.label && it.label.trim().toUpperCase() !== 'EIE');
     if (!isFollowUp) {
       document.getElementById('items-container').innerHTML='';itemCount=0;
@@ -7829,6 +7846,17 @@ function certFromRegistration(reg) {
   };
   return special[country] || '';
 }
+
+// Avertit si le champ FAR / Certification indique une exploitation Part 135
+// (ex: "135", "FAR 135.411") — affiche un warning en Step 2 et révèle les
+// questions dédiées (training / roster / RTS statement) dans Start Job.
+G.updatePart135UI = function() {
+  const isPart135 = /135/.test(gv('f_far'));
+  const stepWarn = document.getElementById('f_far-part135-warning');
+  if (stepWarn) stepWarn.style.display = isPart135 ? 'flex' : 'none';
+  const koSection = document.getElementById('ko-part135-section');
+  if (koSection) koSection.style.display = isPart135 ? 'block' : 'none';
+};
 
 // ══════════════════════════════════════
 //  GENERATE TABLE
@@ -8619,7 +8647,7 @@ if ('serviceWorker' in navigator) {
 //  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
 //  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v27';
+const CURRENT_VERSION = 'v28';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -9041,6 +9069,7 @@ function koBuildStateSnapshot() {
     'koq_broker','koq_hours','koq_po','koq_next_flight','koq_keys','koq_fbo_name','koq_fbo_mail',
     'koq_contact','koq_login','koq_troubleshoot','koq_cas','koq_fhdb',
     'koq_techops','koq_self_parts','koq_handcarry','koq_order_before_tshoot',
+    'koq_part135_training','koq_part135_roster','koq_part135_rts','koq_part135_gmm',
     'kofbo_doc_passport','kofbo_doc_photo','kofbo_doc_ibac',
     'kofbo_doc_license','kofbo_doc_authorization','kofbo_doc_toolbox','kofbo_doc_visa'
   ];
@@ -9370,6 +9399,7 @@ G.openKickoff = async function(forceWo) {
     partPrioCb.onchange = () => { partPrioSel.style.display = partPrioCb.checked ? '' : 'none'; };
   }
   koUpdatePreview();
+  G.updatePart135UI();
   G.koApplyMobileState(true);
   koRefreshHistorySelect();
   G.koRefreshSquawkSelects();
@@ -10440,6 +10470,15 @@ function koBuildCustomerBody() {
   if (q('koq_self_parts'))        questions.push('- Could you confirm whether you have already sourced the parts required for this intervention? If so, please provide the corresponding release certificates (FAA 8130-3 / EASA Form 1) as soon as possible, along with the estimated delivery ETA.');
   if (q('koq_handcarry'))         questions.push('- Should hand carry be required to expedite parts delivery, do you approve this option? Please note that hand carry will incur additional costs compared to standard freight.');
   if (q('koq_order_before_tshoot')) questions.push('-Would you like us to proceed with ordering the required parts in parallel with troubleshooting, or would you prefer that we confirm the diagnosis first before placing any order? (Note: This will extend the intervention time as we will have to wait for the parts to arrive on-site).');
+  // Part 135 — adapts the subject (I / we / our engineer) based on "preparing this job for a colleague" and how many colleagues are on this project (Step 6)
+  const part135Colleagues = getColleagueSlots().length > 0;
+  const part135Who    = colleagueMode ? 'our engineer' : (part135Colleagues ? 'we' : 'I');
+  const part135WhoObj = colleagueMode ? 'our engineer' : (part135Colleagues ? 'us' : 'me');
+  const part135Do      = colleagueMode ? 'does' : 'do';
+  if (q('koq_part135_training')) questions.push(`- This aircraft appears to be operated under Part 135 — ${part135Do} ${part135Who} need any operator-specific training before working on it?`);
+  if (q('koq_part135_roster'))   questions.push(`- Could you please advise on the process for getting ${part135WhoObj} added to your approved maintenance personnel roster for this Part 135 operation?`);
+  if (q('koq_part135_rts'))      questions.push('- Could you please provide the exact Return-to-Service (RTS) statement / wording you require for this Part 135 aircraft?');
+  if (q('koq_part135_gmm'))      questions.push('- Could you please provide a copy of (or access to) the relevant sections of your maintenance program / General Maintenance Manual (GMM) covering this work?');
 
   // Engineer's own saved custom questions (checked ones only)
   (KO.customQuestions || []).forEach((text, i) => {
@@ -14009,6 +14048,7 @@ G.koNewJob = async function(keepAircraftInfo = true) {
     'koq_broker','koq_hours','koq_po','koq_next_flight','koq_keys','koq_fbo_name','koq_fbo_mail',
     'koq_contact','koq_pc_location','koq_software_location','koq_login','koq_troubleshoot','koq_cas','koq_fhdb',
     'koq_techops','koq_self_parts','koq_handcarry','koq_order_before_tshoot',
+    'koq_part135_training','koq_part135_roster','koq_part135_rts','koq_part135_gmm',
     'kofbo_doc_passport','kofbo_doc_photo','kofbo_doc_ibac',
     'kofbo_doc_license','kofbo_doc_authorization','kofbo_doc_toolbox','kofbo_doc_visa',
     'ko-qatar-toggle','ko-colleague-toggle'
