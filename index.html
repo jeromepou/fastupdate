@@ -906,6 +906,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div id="f_far-part135-warning" style="display:none;margin-top:10px;background:#fef3c7;border:1px solid #d97706;border-radius:var(--r);padding:9px 12px;font-size:12px;color:#92400e;align-items:flex-start;gap:8px">
       <span>⚠️</span> <span>This aircraft appears to be operated under <b>14 CFR Part 135</b> (the FAR / Certification field mentions "135"). Review training, roster and RTS-statement requirements with the operator in <b>Start Job</b>.</span>
     </div>
+    <div id="country-approval-warning" style="display:none"></div>
   </div>
 </div>
 
@@ -1133,8 +1134,9 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div class="ko-g3" style="margin-bottom:10px">
         <div class="ko-fg"><label>Aircraft type</label><input type="text" id="ko_model" placeholder="G650ER"/></div>
         <div class="ko-fg"><label>MSN</label><input type="text" id="ko_sn" placeholder="6527"/></div>
-        <div class="ko-fg"><label>Registration</label><input type="text" id="ko_reg" placeholder="T7-JMM" oninput="this.value=this.value.toUpperCase()"/></div>
+        <div class="ko-fg"><label>Registration</label><input type="text" id="ko_reg" placeholder="T7-JMM" oninput="this.value=this.value.toUpperCase();G.koCheckCountryApprovalKo()"/></div>
       </div>
+      <div id="ko-country-approval-warning" style="display:none"></div>
       <div class="ko-g2">
         <div class="ko-fg"><label>Work Order (WO)</label><input type="text" id="ko_wo" placeholder="FA32988" onblur="koCheckWoDraft(this.value)"/></div>
         <div class="ko-fg"><label>ICAO airport</label><input type="text" id="ko_icao" placeholder="LFPB" oninput="this.value=this.value.toUpperCase();koIcaoSuggestInput(this.value,'ko')"/>
@@ -1741,6 +1743,13 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       </div>
     </div>
 
+    <div style="background:#eef2ff;border:1px solid #a5b4fc;border-radius:var(--r);padding:12px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="font-size:12px;font-weight:700;color:#3730a3;flex:1">🌍 Country / Authority Approvals — where we're currently approved, and on which aircraft types</div>
+        <button class="btn primary" onclick="koManageCountryApprovals()" style="font-size:11px;padding:5px 12px">⚙️ Manage list</button>
+      </div>
+      <p style="font-size:11px;color:var(--g600);margin-bottom:0">Check this before accepting a job on an aircraft registered somewhere we haven't worked before. <span id="ca-summary-count" style="font-weight:600"></span></p>
+    </div>    
     <div id="team-list" style="max-height:220px;overflow-y:auto;margin-bottom:12px;padding-right:4px"></div>
 
     <div style="background:#f0f9f0;border:1px solid var(--gb);border-radius:var(--r);padding:12px;margin-bottom:14px">
@@ -1767,6 +1776,18 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <p style="color:var(--g400)">Loading…</p>
       </div>
     </div>
+
+    <!-- SUPER-ADMIN ONLY: user app/device diagnostics -->
+    <div id="device-log-section" style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--g200)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="font-size:12px;font-weight:700;color:#0f766e">📱 User app &amp; device</div>
+        <span id="device-log-count-badge" style="background:#ccfbf1;border:1px solid #99f6e4;color:#0f766e;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px">— users</span>
+        <button class="btn" onclick="renderDeviceLogs()" style="padding:3px 8px;font-size:11px;margin-left:auto">🔄 Refresh</button>
+      </div>
+      <p style="font-size:11px;color:var(--g600);margin-bottom:8px">Reported by each device the last time the app was open — refreshed automatically every 15 minutes while it stays open. A version badge highlighted in amber means that device hasn't picked up the current build yet. Visible to the super-admin account only.</p>
+      <div id="device-log-list" style="max-height:360px;overflow-y:auto;font-size:12px;display:flex;flex-direction:column;gap:6px"><p style="color:var(--g400)">Loading…</p></div>
+    </div>
+    
     <div style="padding-top:12px;border-top:1px solid var(--g200)">
       <div style="font-size:12px;font-weight:700;color:var(--g800);margin-bottom:8px">Add Team Member</div>
       <div class="grid g2">
@@ -2204,6 +2225,37 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 
+<!-- COUNTRY / AUTHORITY APPROVALS MANAGE MODAL -->
+<div class="modal-bg" id="modal-country-approvals">
+  <div class="modal" style="max-width:760px">
+    <h3>🌍 Country / Authority Approvals</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:2px">Shared with the whole team. Check this list before accepting a job on an aircraft registered in a country we haven't worked in before.</p>
+
+    <div class="lkm-hd">
+      <span class="lkm-hd-title">📋 Existing approvals</span>
+      <span class="lkm-hd-cnt" id="ca-count"></span>
+      <button class="btn" onclick="koJumpToNewCountryApproval()" style="margin-left:auto;font-size:11px;padding:4px 10px">➕ New entry</button>
+    </div>
+    <input type="text" class="lkm-filter" id="ca-filter" placeholder="🔍 Filter (country, authority, aircraft type…)" oninput="koFilterCountryApprovals(this.value)"/>
+    <div id="ca-list" class="lkm-list"></div>
+
+    <div class="lkm-new" id="ca-new-block">
+      <div class="lkm-new-hd">➕ Add a country / authority</div>
+      <div class="lkm-new-sub">Aircraft types: comma-separated. Leave blank if the full main Scope of Work applies (no country-specific restriction).</div>
+      <input type="text" class="lkm-new-f" id="ca-new-country" placeholder="Country (e.g. Morocco)"/>
+      <input type="text" class="lkm-new-f" id="ca-new-authority" placeholder="Authority + approval ref (e.g. Moroccan DAC — cert. no. XXXX)"/>
+      <textarea class="lkm-new-f" id="ca-new-types" placeholder="Aircraft types approved, comma-separated — leave blank for 'full Scope of Work'" style="min-height:44px"></textarea>
+      <textarea class="lkm-new-f" id="ca-new-notes" placeholder="Notes (operator restrictions, revision/date, things to double-check…)" style="min-height:44px"></textarea>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:#3730a3;margin-bottom:9px">
+        <input type="checkbox" id="ca-new-flagged"/> ⚠️ Flag this entry — always show a warning when this country is detected
+      </label>
+      <button class="btn primary" onclick="koAddCountryApproval()" style="width:100%;justify-content:center">+ Add this entry</button>
+    </div>
+
+    <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-country-approvals')">Done</button></div>
+  </div>
+</div>
+
 <!-- REPAIR TAG MODAL (GA 3671 — Unserviceable Tag) -->
 <div class="modal-bg" id="modal-repair-tag">
   <div class="modal" style="max-width:640px">
@@ -2534,6 +2586,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <ol>
         <li><strong>Engineers:</strong> use the tabs (FAST EMEA / FAST ASIA / OPS) or the search box to find your name, tap it, then enter your 4-digit PIN.</li>
         <li><strong>Biometric login (Face ID / Touch ID / Windows Hello):</strong> after your first successful PIN login on a supported device, a banner will offer to enable biometric authentication. Once set up, you can sign in with a single tap — no PIN required. You can enable or disable this at any time from your profile settings.</li>
+        <li><strong>New device?</strong> signing in with your PIN from a phone or computer the app doesn't recognise triggers a 6-digit code emailed to your address on file — enter it once and that device stays trusted for 90 days. <em>Example: you borrow a colleague's tablet to log a quick update — enter your PIN, then check your email for the code and type it in.</em></li>
         <li><strong>Forgot your PIN?</strong> tap "🔑 Forgot my PIN" and answer your security question (set up the first time you chose a PIN) to set a new one. After 5 incorrect attempts, your profile is locked for 15 minutes for security.</li>
         <li><strong>Admin:</strong> tap "Admin access" and sign in with the admin email/password.</li>
       </ol>
@@ -2548,6 +2601,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <li><strong>Start Job — fixed recipients:</strong> set the locked (blue-tag) recipients that appear on every engineer's Customer Update, Travel, Part Request and FBO drafts.</li>
         <li><strong>Qatar Executive — extra recipients:</strong> set the additional recipients added automatically to the Customer Update and Part Request drafts whenever an engineer ticks the ⭐ Qatar Executive toggle in Start Job.</li>
         <li><strong>FSR Database:</strong> remove outdated Gulfstream Field Service Representative contacts (engineers add new ones themselves from the Start Job panel).</li>
+        <li><strong>Two-factor authentication (mandatory for admins):</strong> on your first admin login, add the key shown on screen to an authenticator app (Google Authenticator, Authy, 1Password…) and confirm with a 6-digit code — every admin login after that asks for the current code from that app. If a colleague admin loses their device, open <strong>"🔐 Admin accounts"</strong> at the top of Manage Team and tap <strong>"🔄 Reset 2FA"</strong> next to their name (super-admin only) — they'll set it up again from scratch on their next login.</li>
       </ul>
     </div>
 
@@ -2556,6 +2610,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <ol>
         <li><strong>Step 1 — PDF upload (optional):</strong> drop an RFS, Work Order Detail or WCR PDF and tap "Extract data" — aircraft fields and work items are filled in automatically. Uploading a Work Order Detail or WCR after an RFS merges in new work items without overwriting fields you've already filled in.</li>
         <li><strong>Steps 2–3 — Aircraft details &amp; work items:</strong> check or complete the aircraft information, registration, ICAO, whether this is an RTS or Assist job, A/C hours and cycles, estimated RTS, next flight date, and the list of work items (squawks).</li>
+        <li><strong>Part 135 detection:</strong> if the FAR / Certification field contains "135" (e.g. "FAR 135.411"), a warning confirms this aircraft is operated under 14 CFR Part 135, and a matching set of questions (training, roster, RTS statement…) appears in Start Job's Customer Update questions — see below.</li>
         <li><strong>Step 4 — Daily updates:</strong> tap "+ Today", "+ Yesterday" or "+ Day before" to add a day. A new day automatically carries over any items already checked on the previous day (with their status), so you only need to update what changed. Check off each work item you worked on and set its status (Carried out, Waiting for part(s), Item MEL'd, Cancelled by customer, or In progress), then add a free-text note. Toggle "A/C RTS" on the day the aircraft returns to service. The progress bar on each day card shows how many items are checked. Ticking or changing an item's status on an earlier day also updates that item on every later day already created, so you don't need to repeat it manually.</li>
         <li><strong>Parts (optional):</strong> paste an email thread into the text area or upload it as a PDF, then tap "Extract parts from email" — part numbers, serials and descriptions are detected automatically. Review and confirm before they are added to the parts replaced list.</li>
         <li><strong>Step 5 — Closing details:</strong> job description suffix for the email subject, estimated RTS, next flight, return date and time, and any additional constraints or information.</li>
@@ -2569,12 +2624,28 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     </div>
 
     <div class="help-section">
+      <h4>📷 Scan a plate/tag — reading data plates with your camera</h4>
+      <p>Wherever you see a <strong>📷</strong> button — adding a new row to the parts table, filling the GA3671 tag form, or on an existing parts row — tap it to photograph (or pick from your gallery) a part's data plate or paperwork tag (an FAA 8130-3, EASA Form 1, or a metal plate riveted to the part). AI reads the nomenclature, part number and serial number and shows them for you to review before using.</p>
+      <p><em>Example: photograph the plate on a hydraulic pump you just removed — it reads back Nomenclature "HYD PUMP", P/N "123-4567", S/N "A9988", ready to use as the OFF (removed) part.</em></p>
+      <p>⚠️ Always double-check the read values against the physical plate before relying on them for traceability — a blank field or a <strong>"Low confidence read"</strong> banner means the photo wasn't clear enough to trust; fill that field manually rather than guess.</p>
+    </div>
+
+    <div class="help-section">
       <h4>🏷️ GA 3671 — Unserviceable Tag</h4>
       <p>Generates the official Gulfstream unserviceable tag as a filled, downloadable PDF. Open it either with the 🏷️ button next to a specific row in "Parts replaced" (pre-fills that part's name, P/N and S/N), or with the standalone <strong>"🏷️ Generate GA3671 tag (standalone)"</strong> button below the parts list if the part isn't in your table yet.</p>
       <p>Aircraft model, serial, registration, A/C hours &amp; cycles, GAC Work Order #, and customer company/code/contact/phone/email are pre-filled from Steps 2 and 6, and your <strong>Employee ID #</strong> is pre-filled from your profile's FN Number. <strong>A/C hours and cycles are shared across every GA3671 tag for the same job</strong> — enter them once (here or in Step 2) and every subsequent tag you generate for this job will already have them, whether typed manually or applied from a Reply Sync suggestion.</p>
       <p>Complete the rest as needed: reason for removal (can be pre-filled by linking a work item), work performed/resolution, fault codes, condition at time of failure, cruise altitude, whether the replacement solved the problem, and the Engine/APU section for engine-related squawks. Tap <strong>"Generate filled PDF"</strong> to download the completed tag.</p>
 	  <p>🖋️ <strong>Signature / Inspection Stamp:</strong> upload your stamp or signature once (PNG or JPG) from the tag form — it's saved to your profile and automatically embedded on every GA3671 tag you generate afterwards, in the designated stamp box on the form. Use "🔄 Change" to replace it or "🗑 Remove" to delete it from your profile at any time.</p>
       <p>The form stays open until you tap Cancel or Generate — clicking outside it will not close it or lose your entries.</p>
+    </div>
+
+    <div class="help-section">
+      <h4>🎨 Personalizing your emails</h4>
+      <p>Two buttons in the engineer bar customise every email the app generates for you:</p>
+      <ul>
+        <li><strong>✏️ Format</strong> — set your own subject line template using the tokens {TYPE} {WO} {MODEL} {SN} {REG} {LOC} {DESC}. <em>Example: the template <code>{TYPE} / {REG} / {WO} / {LOC}</code> produces "UPDATE / T7-MINT / FA33036 / LFMN" instead of the default order.</em> Applies to new projects and to Start Job's Customer Update / Part Request — a project already underway keeps its original format so the Gmail thread isn't split.</li>
+        <li><strong>✍️ Signature</strong> — set your closing phrase (e.g. "Kind regards") with optional bold/italic/underline and a colour, and the spacing before your name. Your mobile number, Head-Start Operations line and job title are always appended below and can't be changed. Applies to every Gmail draft the app creates for you.</li>
+      </ul>
     </div>
 
     <div class="help-section">
@@ -2622,6 +2693,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <li>A statement of the defect and an action plan — either typed manually in the Action plan field, or a generic line if left blank.</li>
         <li>Your <strong>ETA on site</strong> — if filled in, it appears as a sentence. Leave blank or write N/A to omit it. Write UNK for a generic "I will keep you informed" line.</li>
         <li>A list of <strong>questions to include</strong> — tick only the ones relevant to this job. Available questions: broker for import, aircraft hours and cycles, PO/WO number, <strong>next scheduled flight</strong> (pre-filled from the project's "Next Flight" field if available), <strong>JDM / IDM access</strong> to download the aircraft database update, keys location, FBO name, FBO authorisation email, local contact/crew details, troubleshooting already carried out, CAS messages / CMC faults, FHDB downloaded, Techops reply received, self-sourced parts certificates, hand carry approval, order before or after confirmed diagnosis.</li>
+        <li><strong>Part 135 questions</strong> (only shown if the FAR / Certification field mentions "135"): training needs, how to get added to the operator's maintenance roster, the exact RTS statement wording, drug/alcohol program proof, and access to the operator's GMM. The wording automatically switches between "I", "we" (if colleagues are added in Step 6) or "our engineer" (if you're preparing this job for a colleague).</li>
         <li>For troubleshooting questions (CAS, FHDB, Techops, previous troubleshooting): if you tick the question AND select specific work items in the sub-list that appears, the question is asked once per selected squawk — e.g. "Regarding item 2.1 (APU FAIL) — has any troubleshooting been carried out?". If no item is selected, the question is asked generically.</li>
         <li>Your <strong>own saved custom questions</strong> — add any recurring question you always ask via the "My custom questions" section (saved permanently to your profile, invisible to other engineers). Tick the ones to include per job.</li>
         <li>A free-text field for any other one-off question, one per line.</li>
@@ -2656,9 +2728,10 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <li><strong>Customer's broker</strong> — paste broker contact details if the customer has provided one for import.</li>
       </ul>
 
-	  <h4 style="margin-top:1rem">📋 Order templates, ⭐ Quick add &amp; 🧪 Consumable lookups</h4>
-	  <p>Above the parts table, three shared shortcuts help you fill it faster:</p>
+	  <h4 style="margin-top:1rem">🔧 AMM Task Reader, 📋 Order templates, ⭐ Quick add &amp; 🧪 Consumable lookups</h4>
+	  <p>Above the parts table, four shared shortcuts help you fill it faster:</p>
 	  <ul>
+	    <li><strong>🔧 AMM Task Reader</strong> — tap "📖 Read an AMM card" to photograph or upload an AMM task card; AI reads it and suggests the consumables, tools and related tasks it calls for, which you can then add straight into the parts table (optionally assigned to a squawk via the selector at the top). <em>Example: read the AMM card for a wheel change — it suggests the correct grease, retaining compound and torque value alongside the wheel itself.</em></li>
 	    <li><strong>📋 Order templates</strong> — full kits (e.g. main wheel change, brake change) saved per aircraft model. Filter by name with the search box, then tap a template to open it: mandatory lines are pre-ticked and always added, while lines marked <strong>"if required"</strong> are optional — tick them only if actually needed for this job. You can also assign the whole template to a squawk before adding it. Use <strong>"⚙️ Manage templates"</strong> to open the templates library — grouped by aircraft model and searchable, tap a template to expand and edit its lines. Use the <strong>"+ New template"</strong> button inside to create a new one (optionally pre-filled from an AMM card) or to manage the aircraft model list. <strong>⚠️ Always check the applicable AMM before ordering</strong> — part numbers, quantities and applicability can vary by aircraft configuration/effectivity; templates are a starting point, not a substitute for engineering documentation.</li>
 	    <li><strong>⭐ Quick add</strong> — one-tap chips for your team's frequently used tools and consumables (grouped by Parts/Consumables/Tools, filterable with the search box) — tapping a chip adds it straight to the table. Use its own <strong>"⚙️ Manage list"</strong> to add, edit or remove entries; shared with the whole team.</li>
 	    <li><strong>🧪 Sealant lookup</strong> — pick a MIL Spec / application (e.g. fuel tank sealant, firewall sealing) to see the approved part numbers. For each P/N you can specify a Type (A-1/2, A-1, A-2, B-1/2, B-1, B-2), a Size (2.5oz, 6oz) and whether it's a Semkit, then add it to your selection. If several P/Ns are interchangeable and only one is actually needed, give them the same group letter (A, B, C or D) — they'll be merged into a single "pick one of the following" line in the parts table instead of ordering all of them. Leave a P/N ungrouped if it's always required. Once ready, tap "+ Add selection to parts list". Use "⚙️ Manage list" to maintain the shared MIL Spec ↔ P/N reference.</li>
@@ -2775,6 +2848,11 @@ const db = getDatabase(app);
 // Exposed immediately — the subject-template helpers just below attach
 // themselves to G before the old "EXPOSE GLOBALS" block used to run.
 const G = window;
+
+// Inline HTML handlers (onclick="G.xxx()", oninput="G.xxx()") can't see a
+// module-scoped const, so G is also published on window.
+window.G = window;
+
 
 // ══════════════════════════════════════
 //  STATE
@@ -4691,22 +4769,37 @@ G.adminEmailLogin = async function() {
   }
 };
 
+function getDeviceDiagnostics() {
+  const ua = navigator.userAgent || '';
+  let deviceType = /iPad|Tablet|Android(?!.*Mobile)/i.test(ua) || (/Macintosh/i.test(ua) && 'ontouchend' in document) ? 'tablet' : (/Mobi|Android|iPhone|iPod|Windows Phone/i.test(ua) ? 'mobile' : 'computer');
+  let os = /iPhone|iPad|iPod/i.test(ua) ? 'iOS' : /Android/i.test(ua) ? 'Android' : /Windows NT/i.test(ua) ? 'Windows' : /Mac OS X/i.test(ua) ? 'macOS' : /CrOS/i.test(ua) ? 'ChromeOS' : /Linux/i.test(ua) ? 'Linux' : 'Unknown';
+  let browser = /Edg\//i.test(ua) ? 'Edge' : /OPR\//i.test(ua) ? 'Opera' : /SamsungBrowser\//i.test(ua) ? 'Samsung Internet' : /Firefox\//i.test(ua) ? 'Firefox' : /CriOS\//i.test(ua) || /Chrome\//i.test(ua) ? 'Chrome' : /Safari\//i.test(ua) ? 'Safari' : 'Unknown';
+  const versionMatch = ua.match(browser === 'Edge' ? /Edg\/([\d.]+)/i : browser === 'Opera' ? /OPR\/([\d.]+)/i : browser === 'Samsung Internet' ? /SamsungBrowser\/([\d.]+)/i : browser === 'Firefox' ? /Firefox\/([\d.]+)/i : browser === 'Chrome' ? /(?:CriOS|Chrome)\/([\d.]+)/i : /Version\/([\d.]+).*Safari\//i);
+  // Kept intentionally lean — just enough to answer "which version" and "which device":
+  // no CPU/RAM/pixel-ratio/language fingerprinting, this admin view doesn't need it.
+  return { appVersion: CURRENT_VERSION, deviceType, os, browser, browserVersion: versionMatch ? versionMatch[1] : '', screenWidth: screen.width || null, screenHeight: screen.height || null };
+}
+
 async function logLoginEvent(profile) {
   try {
     let location = '?';
-    try {
-      const r = await fetch('https://ipapi.co/json/');
-      const d = await r.json();
-      location = [d.city, d.country_name].filter(Boolean).join(', ');
-    } catch(e) {}
-    const entry = {
-      ts: Date.now(),
-      date: new Date().toISOString(),
-      location
-    };
-    await set(ref(db, 'logs/logins/' + Date.now() + '_' + Math.random().toString(36).slice(2,6)), entry);
+    try { const r = await fetch('https://ipapi.co/json/'); const d = await r.json(); location = [d.city, d.country_name].filter(Boolean).join(', '); } catch(e) {}
+    await set(ref(db, 'logs/logins/' + Date.now() + '_' + Math.random().toString(36).slice(2,6)), { ts: Date.now(), date: new Date().toISOString(), location });
+  } catch(e) {}
+  try {
+    if (!profile?.id) return;
+    await set(ref(db, 'logs/devices/' + profile.id), { ...getDeviceDiagnostics(), userId: profile.id, userName: profile.name || '', lastSeen: Date.now() });
+  } catch(e) { console.warn('Device diagnostics write failed:', e); }
+}
+
+let _deviceHeartbeatTimer = null;
+async function updateDeviceHeartbeat() {
+  try {
+    if (!curProfile?.id || !auth.currentUser) return;
+    await update(ref(db, 'logs/devices/' + curProfile.id), { ...getDeviceDiagnostics(), userId: curProfile.id, userName: curProfile.name || '', lastSeen: Date.now() });
   } catch(e) {}
 }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') updateDeviceHeartbeat(); });
 
 // ── Admin 2FA (TOTP) — required before showAdminPanel() ──
 async function startAdminTotpCheck(user) {
@@ -4824,7 +4917,8 @@ async function showAdminPanel() {
   await loadDefaultRecipients();
   renderDefaultRecipientTags();
   renderTeamAdminList();
-  renderAdminTotpList();  
+  renderAdminTotpList();
+  renderCountryApprovalsSummary();
 }
 
 // ── Session timeout — déconnexion automatique après 45 min d'inactivité ──
@@ -4875,7 +4969,11 @@ async function loginAs(profile, fromBiometric, firebaseCustomToken) {
   document.getElementById('sync-badge').style.display = '';
   
   await loadDefaultRecipients(); // <-- Downloads the latest global recipients
+  await koLoadCountryApprovals();
   logLoginEvent(profile);
+  clearInterval(_deviceHeartbeatTimer);
+  _deviceHeartbeatTimer = setInterval(updateDeviceHeartbeat, 15 * 60 * 1000);
+  updateDeviceHeartbeat();
   renderProjList();
   renderStep6Me();
   G.koShowBtn();
@@ -4893,6 +4991,7 @@ async function loginAs(profile, fromBiometric, firebaseCustomToken) {
 
 G.logout = async function() {
   stopIdleTimer();
+  clearInterval(_deviceHeartbeatTimer);
   if (_koSessionToken) {
     fetch(KO_WORKER + '/revoke-session', { method: 'POST', headers: { 'Authorization': 'Bearer ' + _koSessionToken } }).catch(() => {});
   }
@@ -5492,6 +5591,7 @@ function gatherData() {
 
 G.autosave = function() {
   if (!curProfile) return;
+  G.koCheckCountryApproval();
   setSyncBadge('pending');
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(doSave, 1200);
@@ -5574,6 +5674,7 @@ function fillFromProj(proj) {
   const isAssist = (proj.rts_assist || 'RTS') === 'Assist';
   const btn = document.getElementById('btn-mark-rts');
   if (btn) btn.textContent = isAssist ? '🤝 Assistance Provided' : '✅ Mark A/C RTS'; sv('f_far', proj.far); G.updatePart135UI(); sv('f_country', proj.country); sv('f_fbo', proj.fbo); sv('f_po', proj.po);
+  G.koCheckCountryApproval();
   sv('f_ac_hours', proj.ac_hours || ''); sv('f_ac_cycles', proj.ac_cycles || '');
   sv('f_erts', proj.erts || ''); sv('f_nxt', proj.nxt || ''); sv('f_retdate', proj.retdate || ''); sv('f_rettime', proj.rettime || ''); sv('f_info', proj.info || '');
   sv('f_site_arrival', proj.site_arrival || '');
@@ -5619,6 +5720,7 @@ function clearForm() {
   ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_site_arrival','f_job_desc','f_intro_msg','f_cust_name','f_cust_tel','f_cust_email','f_cust_company','f_cust_code','f_ac_hours','f_ac_cycles']
     .forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
   G.updatePart135UI();
+  G.koCheckCountryApproval();
   document.getElementById('f_rts_assist').value = 'RTS';
   const btn = document.getElementById('btn-mark-rts');
   if (btn) btn.textContent = '✅ Mark A/C RTS';
@@ -7802,29 +7904,33 @@ function countryFromRegistration(reg) {
   return '';
 }
 
+// EASA member states (EU + Iceland, Liechtenstein, Norway). Single source of
+// truth for certFromRegistration() and the country-approval check.
+// Switzerland is not in this set (it has its own FOCA case in certFromRegistration).
+const EASA_COUNTRIES = new Set([
+  'Austria','Belgium','Bulgaria','Croatia','Cyprus','Czech Republic','Denmark','Estonia',
+  'Finland','France','Germany','Greece','Hungary','Iceland','Ireland','Italy','Latvia',
+  'Liechtenstein','Lithuania','Luxembourg','Malta','Netherlands','Norway','Poland','Portugal',
+  'Romania','Slovakia','Slovenia','Spain','Sweden','Switzerland'
+]);
+
 // Maps an aircraft registration prefix to its civil aviation authority acronym.
 function certFromRegistration(reg) {
   const country = countryFromRegistration(reg);
-  const easaCountries = new Set([
-    'Austria','Belgium','Bulgaria','Croatia','Cyprus','Czech Republic','Denmark','Estonia',
-    'Finland','France','Germany','Greece','Hungary','Iceland','Ireland','Italy','Latvia',
-    'Liechtenstein','Lithuania','Luxembourg','Malta','Netherlands','Norway','Poland','Portugal',
-    'Romania','Slovakia','Slovenia','Spain','Sweden'
-  ]);
-  if (easaCountries.has(country)) return 'EASA';
+  if (EASA_COUNTRIES.has(country)) return 'EASA';
   const special = {
     'United States':'FAA',
     'United Kingdom':'UK CAA',
     'Qatar':'QCAA',
     'United Arab Emirates':'GCAA',
-    'San Marino':'San Marino CAA',
-    'Isle of Man':'Isle of Man CAA',
-    'Bermuda':'Bermuda CAA',
-    'Cayman Islands':'CICAA',
+    'San Marino':'SMAR CAA',
+    'Isle of Man':'IOMAR',
+    'Guernsey':'2-REG',
+    'Bermuda':'BCAA',
+    'Cayman Islands':'CAACI',
     'British Virgin Islands':'BVI CAA',
     'Aruba':'Aruba DCA',
     'Curaçao/Sint Maarten':'CCAA',
-    'Switzerland':'FOCA',
     'Canada':'TCCA',
     'China':'CAAC',
     'Taiwan':'CAA Taiwan',
@@ -7833,7 +7939,9 @@ function certFromRegistration(reg) {
     'India':'DGCA',
     'Brazil':'ANAC',
     'Australia':'CASA',
-    'New Zealand':'CAA NZ',
+    'New Zealand':'NZ CAA',
+    'Egypt':'ECAA',
+    'Tanzania':'TCAA',
     'South Africa':'SACAA',
     'Saudi Arabia':'GACA',
     'Singapore':'CAAS',
@@ -7843,6 +7951,14 @@ function certFromRegistration(reg) {
     'Russia':'Rosaviatsia',
     'Mexico':'AFAC',
     'Israel':'CAAI',
+    'Azerbaijan':'SCAA',
+    'Pakistan':'PCAA',
+    'Bahrain':'BCAA',
+    'Morocco':'DAC Morocco',
+    'Thailand':'CAAT',
+    'Uganda':'CAAU',
+    'Oman':'Oman CAA',
+    'Burundi':'AACB',
   };
   return special[country] || '';
 }
@@ -8011,7 +8127,12 @@ function buildInlinedTableClone(tbl) {
   // s'étirait à la largeur de la fenêtre du destinataire.
   // Proportions calquées sur ton gabarit Excel (B:121 C:117 D/E/F:59 ≈ 415px),
   // légèrement agrandies pour laisser de la place au padding de l'app.
-  const COL_WIDTHS = [126, 122, 122, 122, 122]; // px — calqué sur le gabarit Excel (B/C/D/E/F), total = 614
+  // -4px par colonne (= la bordure gauche+droite, 2px chacune) par rapport à la largeur
+  // visuelle voulue : sans box-sizing, la bordure s'ajoute désormais par-dessus la largeur
+  // (comme le padding, cf. plus bas), donc on la retranche ici pour retomber pile sur la
+  // taille du gabarit Excel — identique sous Gmail (aucun changement) et sous Outlook (corrigé).
+  const COL_WIDTHS = [122, 118, 118, 118, 118]; // px — cible visuelle 126/122/122/122/122, total = 594
+
   const TOTAL_WIDTH = COL_WIDTHS.reduce((a, b) => a + b, 0);
 
   tblClone.setAttribute('width', TOTAL_WIDTH);
@@ -8024,31 +8145,33 @@ function buildInlinedTableClone(tbl) {
     col.style.width = w + 'px';
   });
 
+  // FIX Outlook/Windows (moteur Word) : le padding passe sur un <div>
+  // interne au lieu d'être posé directement sur le <td> de largeur fixe.
+  // Outlook classique ignore box-sizing:border-box et rajoute padding +
+  // bordure PAR-DESSUS la largeur définie au lieu de l'inclure dedans ->
+  // chaque case ressort bien plus grande que prévu ("grosse case"). Un
+  // padding posé sur un div interne n'agrandit jamais le td qui le
+  // contient, quel que soit le client mail (Outlook, Gmail, Apple Mail...).
+
   tblClone.querySelectorAll('td').forEach(td => {
     const styleAttr = td.getAttribute('style') || '';
     const noTop = styleAttr.includes('border-top:none');
     const noBottom = styleAttr.includes('border-bottom:none');
+    const isThr = td.parentElement.classList.contains('thr');
+    const isLbl = td.classList.contains('lbl') || td.classList.contains('upd-lbl');
+    const isCtr = td.classList.contains('lbl-ctr');
+    const pad = isThr ? '8px 10px' : (isLbl ? '7px 10px' : (td.style.padding || '7px 10px'));
+    td.innerHTML = `<div style="padding:${pad}${isCtr ? ';text-align:center' : ''}">${td.innerHTML}</div>`;
     td.style.border = '2px solid #000000';
-    td.style.boxSizing = 'border-box';   // le padding/bordure n'ajoute plus de largeur en trop
-    td.style.padding = td.style.padding || '7px 10px';
+    td.style.padding = '0';
     td.style.verticalAlign = 'middle';
     td.style.color = td.style.color || '#000000';
-    td.style.wordWrap = 'break-word';    // évite le débordement hors des colonnes désormais figées
+    td.style.wordWrap = 'break-word';
     td.style.overflowWrap = 'break-word';
+    if (isThr) { td.style.background = '#a8d08d'; td.style.fontWeight = '700'; td.style.fontSize = '13px'; }
+    if (isLbl) { td.style.background = '#ffffff'; td.style.fontWeight = '700'; }
     if(noTop) td.style.borderTop = 'none';
     if(noBottom) td.style.borderBottom = 'none';
-  });
-  tblClone.querySelectorAll('.thr td').forEach(td => {
-    td.style.cssText = 'border:2px solid #000000;padding:8px 10px;background:#a8d08d;color:#000000;font-weight:700;font-size:13px;box-sizing:border-box;vertical-align:middle';
-  });
-  tblClone.querySelectorAll('.lbl').forEach(td => {
-    td.style.cssText = 'border:2px solid #000000;padding:7px 10px;background:#ffffff;font-weight:700;color:#000000;box-sizing:border-box;vertical-align:middle';
-  });
-  tblClone.querySelectorAll('.upd-lbl').forEach(td => {
-    td.style.cssText = 'border:2px solid #000000;padding:7px 10px;background:#ffffff;font-weight:700;color:#000000;box-sizing:border-box;vertical-align:middle';
-  });
-  tblClone.querySelectorAll('.lbl-ctr').forEach(td => {
-    td.style.textAlign = 'center';
   });
   return tblClone;
 }
@@ -8647,7 +8770,7 @@ if ('serviceWorker' in navigator) {
 //  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
 //  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v28';
+const CURRENT_VERSION = 'v29';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -9112,6 +9235,7 @@ let koOrderLoadedVersion = 0;
 // (2 onglets, 2 appareils, ou toi + un collègue) ouvertes sur le même WO
 // ne s'écrasent plus silencieusement l'une l'autre — voir koOrderLoadedVersion.
 async function koSaveState() {
+  G.koCheckCountryApprovalKo();
   const state = koBuildStateSnapshot();
   state.savedAt = Date.now();
   const wo = (document.getElementById('ko_wo')?.value || '').trim();
@@ -9404,6 +9528,7 @@ G.openKickoff = async function(forceWo) {
   koRefreshHistorySelect();
   G.koRefreshSquawkSelects();
   koSyncPartsToMainTable(); // NEW
+  G.koCheckCountryApprovalKo();
   window.scrollTo({top:0, behavior:'smooth'});
 };
 
@@ -9427,8 +9552,9 @@ G.koStartFromProject = async function(pid) {
   sv('ko_icao', proj.loc);
   sv('ko_defect', (proj.items && proj.items[0]?.label) || proj.job_desc || '');
   sv('ko_cust_name', proj.cust_name || '');
-
+  
   koUpdatePreview();
+  G.koCheckCountryApprovalKo();  
 };
 
 G.closeKickoff = function() {
@@ -11187,6 +11313,28 @@ G.clearLoginLogs = async function() {
   renderLoginLogs();
 };
 
+async function renderDeviceLogs() {
+  const MY_UID = '43oyona7f0SgVwWH6JZUp5rqIbI3';
+  const section = document.getElementById('device-log-section'), list = document.getElementById('device-log-list'), badge = document.getElementById('device-log-count-badge');
+  if (!section || !list) return;
+  if (auth.currentUser?.uid !== MY_UID) { section.style.display = 'none'; return; }
+  section.style.display = ''; list.innerHTML = '<p style="color:var(--g400)"><span class="spin"></span> Loading…</p>';
+  try {
+    const snap = await get(ref(db, 'logs/devices'));
+    if (!snap.exists()) { list.innerHTML = '<p style="color:var(--g400)">No device data yet.</p>'; if (badge) badge.textContent = '0 users'; return; }
+    const entries = Object.values(snap.val()).sort((a,b) => (b.lastSeen||0)-(a.lastSeen||0));
+    if (badge) badge.textContent = entries.length + ' user' + (entries.length > 1 ? 's' : '');
+    list.innerHTML = entries.map(e => {
+      const last = e.lastSeen ? new Date(e.lastSeen) : null; const lastStr = last ? last.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) + ' ' + last.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : '—';
+      const res = e.screenWidth && e.screenHeight ? `${e.screenWidth}×${e.screenHeight}` : '—';
+      const version = e.appVersion || '—';
+      const isCurrent = version === CURRENT_VERSION;
+      const vStyle = version === '—' ? 'background:var(--g100);color:var(--g600);border:1px solid var(--g200)' : (isCurrent ? 'background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7' : 'background:var(--al);color:var(--amb);border:1px solid #d4b800');
+      return `<div style="padding:8px 10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r)"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-weight:700;flex:1">${escHtml(e.userName || e.userId || 'Unknown user')}</span><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;${vStyle}">${escHtml(version)}</span><span style="font-size:10px;color:var(--g400);white-space:nowrap">${escHtml(lastStr)}</span></div><div style="font-size:11px;color:var(--g600);margin-top:4px">${escHtml(e.deviceType||'—')} · ${escHtml(e.os||'—')} · ${escHtml(e.browser||'—')}${e.browserVersion ? ' '+escHtml(e.browserVersion) : ''} · ${escHtml(res)}</div></div>`;
+    }).join('');
+  } catch(e) { list.innerHTML = `<p style="color:var(--red)">Error: ${escHtml(e.message)}</p>`; }
+}
+
 // ══════════════════════════════════════
 //  SQUAWK HISTORY
 // ══════════════════════════════════════
@@ -11689,6 +11837,7 @@ G.openModal = function(id) {
     koRenderAdminRecips();
     koRenderAdminQatar();
 	  renderLoginLogs();
+    renderDeviceLogs();
     renderSquawkHistory();
     renderFSRList();
   }
@@ -13951,6 +14100,225 @@ G.koAddFSRFromKickoff = async function() {
 window.koAddFSRFromKickoff = G.koAddFSRFromKickoff;
 
 // ══════════════════════════════════════
+//  COUNTRY / AUTHORITY APPROVALS
+//  Shared, admin-managed list — automatically checked against the
+//  Country of Registry (Step 2) and the Registration (Step 2 / Start
+//  Job) every time it changes, whether typed manually or filled in from
+//  a scanned RFS/WOD/WCR. Shows a warning banner telling the engineer to
+//  confirm with Quality when the country isn't on file, or is flagged
+//  for operator/type restrictions or other special conditions.
+//  Seeded once from the approval documents on file (Sept 2026); after
+//  that Firebase is authoritative and every edit/addition goes through
+//  the "Manage list" UI.
+// ══════════════════════════════════════
+let KO_COUNTRY_APPROVALS = [];
+let _caFilterQuery = '';
+
+const DEFAULT_COUNTRY_APPROVALS = [
+  { country: 'United Kingdom (home)', authority: 'UK CAA — Part-145 — UK.145.00883', aircraftTypes: ['G150','G200','G280','GIV (300/400)','GIV-X (G350/G450)','GV','GV-SP (G500/G550)','GVI (G650/G650ER)','GVII-G500','GVII-G600','GVIII-G700','GVIII-G800'], flagged: false, notes: 'Primary/home approval underlying every other supplement below. MOE Issue 11, March 2026 — Farnborough.' },
+  { country: 'EASA member states', authority: 'EASA — Part-145 — EASA.145.3119', aircraftTypes: ['G150','G200','G280','GIV/GIV-SP','GIV-X','GV','GV-SP','GVI (G650)','GVI (G650ER)','GVII-G500','GVII-G600','GVIII-G700','GVIII-G800'], flagged: false, notes: 'Held in parallel with the UK CAA approval. Covers EU states + Iceland, Liechtenstein, Norway, Switzerland. MOE Issue 1 Rev 4, April 2026 — Farnborough.' },
+  { country: 'United States', authority: 'FAA — 14 CFR Part 145 — Certificate MGTY330K', aircraftTypes: [], flagged: false, notes: 'Follows the main UK CAA Scope of Work — no type restriction. Supplement Issue 5, Jan 2026.' },
+  { country: 'Aruba', authority: 'DCA Aruba — DL-ACC-281', aircraftTypes: [], flagged: false, notes: 'Carried out in accordance with AUA-RLW. Release under EASA.145.3119.' },
+  { country: 'Australia', authority: 'CASA — CAR 42ZD (via EASA.145.3119)', aircraftTypes: [], flagged: false, notes: 'Maintenance pursuant to CAR 42ZD. Final CRS made under State of Registration national law (not an EASA release).' },
+  { country: 'Azerbaijan', authority: 'SCAA — AZ.145R.0015 (AAR-145)', aircraftTypes: ['G650 (BR725) — ASG Business Aviation only','G550 (BR710) — ASG Business Aviation only','G450 (TAY) — ASG Business Aviation only','G280 (Honeywell AS907) — ASG Business Aviation only','GVIII-G700 (BR700) — Azerbaijan Airlines only'], flagged: true, notes: 'Release per AAR-145 via EASA.145.3119. Restricted per operator — confirm operator.' },
+  { country: 'Bahrain', authority: 'Bahrain CAA — ALD/AIR/8/5.33 (ANTR-145)', aircraftTypes: ['GV-SP Series (G500/G550)','GVI Series (G650/G650ER)','GVII Series (G500/G600)','GVIII Series (G700/G800)'], flagged: true, notes: 'Release per ANTR-145 via EASA.145.3119. Does NOT cover G150/G200/G280/GIV/GIV-X.' },
+  { country: 'Barbados', authority: 'BCAA — AMO-001F', aircraftTypes: ['G650ER (RRD BR725)'], flagged: true, notes: 'Civil Aviation Regulations. Approval No. AMO-001F.' },
+  { country: 'Bermuda', authority: 'BCAA (OTAR Part 145) — BDA/AMO/017', aircraftTypes: [], flagged: false, notes: 'Air Navigation (Overseas Territories) Order.' },
+  { country: 'Brazil', authority: 'ANAC — 1604-33 (plus UK.145.00883)', aircraftTypes: [], flagged: false, notes: 'Carried out in accordance with ANAC airworthiness regulations & UK.145.00883.' },
+  { country: 'Burundi', authority: 'AACB — FAA Part 145 Basis (MGTY330K)', aircraftTypes: [], flagged: true, notes: '⚠️ Work repaired & inspected under FAA regulations / Part 91 / 135. Confirm current letter.' },
+  { country: 'Canada', authority: 'TCCA — CAR 573 — Approved T-AM Supplement (UK.145.00883)', aircraftTypes: [], flagged: false, notes: 'Release per approved T-AM supplement based on UK.145.00883.' },
+  { country: 'Cayman Islands', authority: 'CAACI (OTAR Part 145) — CAY-AMO-061174', aircraftTypes: [], flagged: false, notes: 'Air Navigation (Overseas Territories) Order. Approval CAY-AMO-061174.' },
+  { country: 'Egypt', authority: 'ECAA — ECAR PART 145', aircraftTypes: [], flagged: false, notes: 'Carried out in accordance with ECAR PART 145.' },
+  { country: 'Guernsey', authority: '2-REG — GAR 145 Approval No. 2-REG.145.27 (plus UK.145.00883)', aircraftTypes: [], flagged: false, notes: 'Air Navigation (Bailiwick of Guernsey) Law 2012 / GAR 145 using UK CAA Part 145 & 2-REG validation.' },
+  { country: 'Hong Kong', authority: 'HKCAD — HKAR-145 Approval No. AI/130/706', aircraftTypes: [], flagged: false, notes: 'Air Navigation (Hong Kong) Order 1995 / HKAR-145.' },
+  { country: 'India', authority: 'DGCA — IND.FAMO.0000000025 (CAR-145)', aircraftTypes: [], flagged: false, notes: 'Release per CAR-145 via EASA/UK CAA approval.' },
+  { country: 'Isle of Man', authority: 'IOMAR — Air Navigation (Isle of Man) Order 2015 (EASA or UK CAA variants)', aircraftTypes: [], flagged: false, notes: 'Release under Air Navigation (Isle of Man) Order 2015 using EASA.145.3119 or UK.145.00883.' },
+  { country: 'Kuwait', authority: 'DGCA (Kuwait) — KCASR 8 - Part 145 — DGCA/AMO/037', aircraftTypes: ['GV-SP (RRD BR710) — Kuwait Airways only','GVI (RRD BR725) — Kuwait Airways only'], flagged: true, notes: 'Operator-restricted to Kuwait Airways.' },
+  { country: 'Morocco', authority: 'DAC Morocco — Ministerial Order 1027-00 — CN-E 51/20', aircraftTypes: ['G280 (Honeywell AS907) — Winds Jet only','G550 RRD710 — Royal Moroccan Air Force only','G450 — MT Fly only','G450 — Regional Air only'], flagged: true, notes: 'Moroccan Civil Aviation Regulations in force. Operator-restricted.' },
+  { country: 'New Zealand', authority: 'NZ CAA — Civil Aviation Rule Part 43 (UK.145.00883)', aircraftTypes: [], flagged: false, notes: 'Carried out in accordance with NZ Civil Aviation Rule Part 43 & UK.145.00883.' },
+  { country: 'Nigeria', authority: 'NCAA — AMO/G/GAL', aircraftTypes: ['G150 (IAI)','GIV Series','GIV-X','GV Series','GV-SP','G200/Galaxy (IAI)'], flagged: true, notes: '⚠️ Approval AMO/G/GAL. Does NOT cover G650, G500/G600 or G700/G800.' },
+  { country: 'Oman', authority: 'Oman CAA — Base Maintenance Approval', aircraftTypes: ['G550 (GV-SP) — Base Maintenance only'], flagged: true, notes: 'Official via QIB No. 372 (Feb 2025). Restricted to G550 and Base Maintenance only.' },
+  { country: 'Pakistan', authority: 'PCAA — ANO 145 — PCAA.145.158', aircraftTypes: ['G150 (IAI)','G200','G280'], flagged: true, notes: 'Gulfstream Aerospace Limited Pakistan ANO 145. Approval No: PCAA.145.158.' },
+  { country: 'Qatar', authority: 'QCAA — QCAA/FAMO/186', aircraftTypes: [], flagged: false, notes: 'Part-145 approval QCAA/FAMO/186.' },
+  { country: 'San Marino', authority: 'SMAR CAA — CAR GEN Subpart C (EASA.145.3119)', aircraftTypes: [], flagged: false, notes: 'Carried out in accordance with Republic of San Marino CAR GEN Subpart C via EASA.145.3119. Final CRS is NOT under EASA.' },
+  { country: 'Saudi Arabia', authority: 'GACA — AMO-158FA', aircraftTypes: ['GIV (300/400)','GIV-X (G450)','GV','GV-SP (G500/G550)','GVI (G650)'], flagged: true, notes: 'GACA Regulation Part 125.541(b) / AMO-158FA. Article 83bis applies to several N-registered tails.' },
+  { country: 'Sweden', authority: 'Swedish Armed Forces (SE-EMAR 145) — SE.EMAR 145.085', aircraftTypes: ['GIV-SP','G550'], flagged: true, notes: 'Restricted to Swedish Air Force / military aircraft.' },
+  { country: 'Tanzania', authority: 'TCAA — Approval No. AI/CA/1.05', aircraftTypes: [], flagged: false, notes: 'Tanzania Civil Aviation Authority Approval No. AI/CA/1.05.' },
+  { country: 'Thailand', authority: 'CAAT — TCAR 8 Part 145 — CAAT.AMO.0532 (plus EASA.145.3119)', aircraftTypes: ['G200 (PWC PW306)','G650 (RRD BR725)','GV (RRD BR710)','GV-SP (RRD BR710)'], flagged: true, notes: 'TCAR 8 Part 145 & EASA.145.3119 dual reference. Limited to these four types.' },
+  { country: 'Turkey', authority: 'Turkey DGCA — SHT-145 — TR.145.F.0002', aircraftTypes: ['GIV/GIV-SP (RRD TAY)','GIV-X (RRD TAY)','GV-SP (RRD BR710)','GVI (RRD BR725)','GVII (PWC PW800GA)','GVIII (RRD BR700)'], flagged: true, notes: 'Carried out in accordance with SHT-145 via EASA.145.3119. Excludes G150/G200/G280.' },
+  { country: 'Uganda', authority: 'CAAU — Uganda AMO Approval UG/CAA/AMO/163', aircraftTypes: ['G550 (GV-SP, RRD BR710)'], flagged: true, notes: 'Restricted to G550 only.' },
+  { country: 'United Arab Emirates', authority: 'GCAA — CAR 145 — Approval No. UAE.145.1015', aircraftTypes: [], flagged: false, notes: 'Carried out in accordance with CAR 145. UAE GCAA AMO Approval UAE.145.1015.' },
+];
+
+async function koLoadCountryApprovals() {
+  try {
+    const snap = await get(ref(db, 'config/countryApprovals'));
+    if (snap.exists()) {
+      const raw = snap.val();
+      KO_COUNTRY_APPROVALS = Array.isArray(raw) ? raw : Object.values(raw);
+    } else {
+      KO_COUNTRY_APPROVALS = DEFAULT_COUNTRY_APPROVALS.map(c => ({ ...c }));
+      await set(ref(db, 'config/countryApprovals'), KO_COUNTRY_APPROVALS);
+    }
+  } catch(e) {
+    console.warn('koLoadCountryApprovals failed:', e);
+    KO_COUNTRY_APPROVALS = DEFAULT_COUNTRY_APPROVALS.map(c => ({ ...c }));
+  }
+}
+
+async function koSaveCountryApprovals() {
+  try { await set(ref(db, 'config/countryApprovals'), KO_COUNTRY_APPROVALS); } catch(e) { console.warn('koSaveCountryApprovals failed:', e); }
+}
+
+function renderCountryApprovalsManageList() {
+  const list = document.getElementById('ca-list');
+  if (!list) return;
+  const q = (_caFilterQuery || '').trim().toLowerCase();
+  const rows = KO_COUNTRY_APPROVALS
+    .map((c, i) => ({ c, i }))
+    .filter(({c}) => {
+      if (!q) return true;
+      const hay = [c.country, c.authority, (c.aircraftTypes||[]).join(' '), c.notes].join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+
+  const cnt = document.getElementById('ca-count');
+  if (cnt) cnt.textContent = q ? `— ${rows.length} of ${KO_COUNTRY_APPROVALS.length} shown` : `— ${KO_COUNTRY_APPROVALS.length}`;
+
+  if (!KO_COUNTRY_APPROVALS.length) { list.innerHTML = '<p class="lkm-empty">No entries yet — add the first one below.</p>'; return; }
+  if (!rows.length) { list.innerHTML = `<p class="lkm-empty">No entry matches "${escHtml(q)}".</p>`; return; }
+
+  list.innerHTML = rows.map(({c, i}) => `
+    <div class="lkm-entry" id="ca-entry-${i}" style="flex-direction:column;align-items:stretch;gap:6px;${c.flagged?'border-left:4px solid #d97706;':''}">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <input type="text" value="${escAttr(c.country||'')}" placeholder="Country" oninput="koCountryApprovalEdit(${i},'country',this.value)" style="flex:1;min-width:130px;font-size:13px;font-weight:700;padding:5px 8px"/>
+        <button onclick="koDeleteCountryApproval(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
+      </div>
+      <input type="text" value="${escAttr(c.authority||'')}" placeholder="Authority + approval ref" oninput="koCountryApprovalEdit(${i},'authority',this.value)" style="font-size:12px;padding:5px 8px"/>
+      <textarea placeholder="Aircraft types, comma-separated — blank = full Scope of Work" oninput="koCountryApprovalEdit(${i},'aircraftTypesRaw',this.value)" style="font-size:12px;padding:5px 8px;min-height:36px">${escHtml((c.aircraftTypes||[]).join(', '))}</textarea>
+      <textarea placeholder="Notes" oninput="koCountryApprovalEdit(${i},'notes',this.value)" style="font-size:11px;padding:5px 8px;min-height:32px;color:var(--g600)">${escHtml(c.notes||'')}</textarea>
+      <label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;color:#92400e">
+        <input type="checkbox" ${c.flagged?'checked':''} onchange="koCountryApprovalEdit(${i},'flagged',this.checked)"/> ⚠️ Flag this entry — always show the warning when this country is detected
+      </label>
+    </div>`).join('');
+}
+
+let _caEditTimer = null;
+G.koCountryApprovalEdit = function(i, field, val) {
+  if (!KO_COUNTRY_APPROVALS[i]) return;
+  if (field === 'aircraftTypesRaw') {
+    KO_COUNTRY_APPROVALS[i].aircraftTypes = val.split(',').map(s=>s.trim()).filter(Boolean);
+  } else {
+    KO_COUNTRY_APPROVALS[i][field] = val;
+  }
+  if (field === 'flagged') { renderCountryApprovalsManageList(); koSaveCountryApprovals(); return; }
+  clearTimeout(_caEditTimer);
+  _caEditTimer = setTimeout(koSaveCountryApprovals, 600);
+};
+
+G.koDeleteCountryApproval = function(i) {
+  const c = KO_COUNTRY_APPROVALS[i];
+  if (!confirm(`Remove "${c?.country || 'this entry'}" from the approvals list?`)) return;
+  KO_COUNTRY_APPROVALS.splice(i, 1);
+  renderCountryApprovalsManageList();
+  koSaveCountryApprovals();
+};
+
+G.koAddCountryApproval = function() {
+  const country = document.getElementById('ca-new-country')?.value.trim();
+  const authority = document.getElementById('ca-new-authority')?.value.trim();
+  const typesRaw = document.getElementById('ca-new-types')?.value.trim();
+  const notes = document.getElementById('ca-new-notes')?.value.trim();
+  const flagged = document.getElementById('ca-new-flagged')?.checked || false;
+  if (!country) { alert('Please enter a country.'); return; }
+  KO_COUNTRY_APPROVALS.push({
+    country, authority,
+    aircraftTypes: typesRaw ? typesRaw.split(',').map(s=>s.trim()).filter(Boolean) : [],
+    flagged, notes
+  });
+  ['ca-new-country','ca-new-authority','ca-new-types','ca-new-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value=''; });
+  const fcb = document.getElementById('ca-new-flagged'); if (fcb) fcb.checked = false;
+  renderCountryApprovalsManageList();
+  koSaveCountryApprovals();
+};
+
+G.koFilterCountryApprovals = function(val) {
+  _caFilterQuery = val || '';
+  renderCountryApprovalsManageList();
+};
+
+G.koJumpToNewCountryApproval = function() {
+  document.getElementById('ca-new-block')?.scrollIntoView({behavior:'smooth', block:'center'});
+  setTimeout(() => document.getElementById('ca-new-country')?.focus(), 350);
+};
+
+G.koManageCountryApprovals = async function() {
+  await koLoadCountryApprovals();
+  renderCountryApprovalsManageList();
+  openModal('modal-country-approvals');
+};
+
+async function renderCountryApprovalsSummary() {
+  await koLoadCountryApprovals();
+  const el = document.getElementById('ca-summary-count');
+  if (el) el.textContent = `(${KO_COUNTRY_APPROVALS.length} on file)`;
+}
+
+// Country names are compared on their base name, exactly: "United Kingdom (home)"
+// -> "united kingdom". Substring matching was too loose (Romania matched the Oman
+// entry, Niger matched Nigeria) and a wrong match can silently hide a warning.
+function koCountryKey(s) {
+  return String(s || '').toLowerCase().replace(/\s*\(.*?\)\s*/g, ' ').trim();
+}
+
+// ── The actual check — matches a country against the list above. No
+// fuzzy matching on aircraft type: naming varies too much between
+// documents (e.g. "G650ER (RRD BR725)" vs "GVI (G650ER)") to auto-clear
+// or auto-block reliably, so a flagged country always shows its full
+// type list and notes for a human to read and confirm with Quality.
+function koCountryApprovalMessage(country) {
+  const qc = koCountryKey(country);
+  if (!qc) return null;
+  // 1) an entry for exactly that country (Sweden, Thailand, United Kingdom...)
+  let match = KO_COUNTRY_APPROVALS.find(c => koCountryKey(c.country) === qc);
+  // 2) otherwise an EASA member state is covered by the "EASA member states" entry
+  if (!match && [...EASA_COUNTRIES].some(n => n.toLowerCase() === qc)) {
+    match = KO_COUNTRY_APPROVALS.find(c => /\beasa\b/i.test(c.country || ''));
+  }
+  if (!match) {
+    return { level: 'danger', html: `⚠️ <b>No approval on file for "${escHtml(country)}"</b> — check with Quality whether GAL currently holds an approval to work this aircraft here before accepting the job.` };
+  }
+  if (match.flagged) {
+    const typesLine = (match.aircraftTypes||[]).length ? ` Types on file: ${escHtml(match.aircraftTypes.join('; '))}.` : '';
+    return { level: 'warn', html: `⚠️ <b>${escHtml(match.country)} — restriction on file</b> (${escHtml(match.authority||'')}): ${escHtml(match.notes||'')}${typesLine} Confirm with Quality before proceeding.` };
+  }
+  return null;
+}
+
+function koRenderCountryApprovalBanner(elId, country) {
+  const banner = document.getElementById(elId);
+  if (!banner) return;
+  const msg = koCountryApprovalMessage(country);
+  if (!msg) { banner.style.display = 'none'; return; }
+  banner.style.cssText = 'margin-top:10px;border-radius:var(--r);padding:9px 12px;font-size:12px;display:flex;align-items:flex-start;gap:8px;' +
+    (msg.level === 'danger' ? 'background:var(--rl);border:1px solid #e8b8a0;color:var(--red)' : 'background:#fef3c7;border:1px solid #d97706;color:#92400e');
+  banner.innerHTML = msg.html;
+}
+
+G.koCheckCountryApproval = function() {
+  let country = (gv('f_country') || '').trim();
+  const reg = (gv('f_reg') || '').trim().toUpperCase();
+  if (!country && reg) country = countryFromRegistration(reg) || '';
+  koRenderCountryApprovalBanner('country-approval-warning', country);
+};
+
+G.koCheckCountryApprovalKo = function() {
+  const reg = (document.getElementById('ko_reg')?.value || '').trim().toUpperCase();
+  const country = reg ? (countryFromRegistration(reg) || '') : '';
+  koRenderCountryApprovalBanner('ko-country-approval-warning', country);
+};
+
+// ══════════════════════════════════════
 //  BULK SQUAWK ASSIGNMENT
 // ══════════════════════════════════════
 G.koApplyBulkSquawk = function() {
@@ -14112,6 +14480,7 @@ G.koNewJob = async function(keepAircraftInfo = true) {
   }
 
   koUpdatePreview();
+  G.koCheckCountryApprovalKo();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
@@ -14266,6 +14635,13 @@ window.koDeleteShipAddr = G.koDeleteShipAddr;
 window.koShipAddrEdit = G.koShipAddrEdit;
 window.koUseShipAddr = G.koUseShipAddr;
 window.koSyncPartsToMainTable = koSyncPartsToMainTable;
+window.renderDeviceLogs = renderDeviceLogs;
+// Bonus fix: this button already existed before the device-tracking feature,
+// but was never exposed to window — inside a <script type="module"> a bare
+// onclick="renderSquawkHistory()" can't resolve a module-scoped function, so
+// the Refresh button silently failed. One-line fix, no other change.
+window.renderSquawkHistory = renderSquawkHistory;
+
 
 </script>
 
