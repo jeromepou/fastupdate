@@ -279,7 +279,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-const AMM_CACHE_TTL_MS = 72 * 60 * 60 * 1000; // 72h — seul endroit à changer
+const AMM_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 jours — durée modifiable ici uniquement
+window.AMM_CACHE_TTL_MS = AMM_CACHE_TTL_MS; // exposé pour l'affichage dans le script principal (module ≠ global)
 
 function sanitize(s) {
   return (s || '').toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '_').replace(/_+/g, '_').slice(0, 120);
@@ -1662,6 +1663,13 @@ function ammCacheAgeLabel(ts) {
   if (hrs < 48) return hrs + 'h';
   return Math.round(hrs / 24) + ' d';
 }
+// Même logique d'affichage que ammCacheAgeLabel, mais pour le SEUIL
+// (AMM_CACHE_TTL_MS) plutôt que pour un âge — pour ne plus jamais avoir
+// à changer un texte en dur si la durée du cache est modifiée un jour.
+function ammCacheTtlLabel() {
+  const hrs = window.AMM_CACHE_TTL_MS / 3600000;
+  return hrs < 48 ? Math.round(hrs) + 'h' : Math.round(hrs / 24) + ' d';
+}
 let _ammLastCheckedRef = '';
 async function checkAmmCacheForRefField(refVal) {
   refVal = (refVal || document.getElementById('amm-ref').value || '').trim();
@@ -1682,7 +1690,7 @@ async function checkAmmCacheForRefField(refVal) {
   const ageLabel = ammCacheAgeLabel(hit.scannedAt);
   banner.innerHTML = `
     <div class="status show ${hit._fresh ? 'done' : 'warn'}">
-      ✅ <b>Already scanned</b>${hit.scannedBy ? ' by ' + escapeHtml(hit.scannedBy) : ''} — ${ageLabel}${hit._fresh ? '' : ' <b>(&gt;72h — verify before trusting)</b>'}.
+      ✅ <b>Already scanned</b>${hit.scannedBy ? ' by ' + escapeHtml(hit.scannedBy) : ''} — ${ageLabel}${hit._fresh ? '' : ` <b>(&gt;${ammCacheTtlLabel()} — verify before trusting)</b>`}.
       <div class="row" style="margin-top:8px">
         <button class="btn btn-primary btn-sm" onclick="loadAmmCacheIntoRoot(${jsArg(refVal)})">✅ Use this scan (0 tokens)</button>
         <button class="btn btn-ghost btn-sm" onclick="window._ammForceRescanRef=${jsArg(refVal)};document.getElementById('amm-cache-banner').style.display='none'">🔄 Scan anyway</button>
@@ -2691,7 +2699,7 @@ function renderScanWidget(key, nodeId, scan) {
     const ageLabel = ammCacheAgeLabel(scan.cacheHit.scannedAt);
     cacheHtml = `
       <div class="status show ${scan.cacheHit._fresh ? 'done' : 'warn'}" style="margin-bottom:10px">
-        ✅ Already scanned${scan.cacheHit.scannedBy ? ' by ' + escapeHtml(scan.cacheHit.scannedBy) : ''} — ${ageLabel}${scan.cacheHit._fresh ? '' : ' <b>(&gt;72h)</b>'}.
+        ✅ Already scanned${scan.cacheHit.scannedBy ? ' by ' + escapeHtml(scan.cacheHit.scannedBy) : ''} — ${ageLabel}${scan.cacheHit._fresh ? '' : ` <b>(&gt;${ammCacheTtlLabel()})</b>`}.
         <div class="row" style="margin-top:8px">
           <button class="btn btn-primary btn-sm" onclick="loadSubScanFromCache(${keyAttr})">✅ Use this scan</button>
         </div>
