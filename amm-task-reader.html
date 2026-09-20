@@ -715,6 +715,8 @@ If any related task you find matches one of these refs, still include it but set
 
 12. SOFTWARE LOADING: read the full procedure (steps, notes, Preliminary Requirements, Requirements After Job Completion, Reference Material). Set "software_loading.required" to true if the procedure explicitly requires loading, uploading, or updating aircraft system software / databases / operational program — via a Data Loader, a laptop/PC connected to the aircraft, or loadable media such as CD-ROM, DVD, or USB. This includes cases where the card simply cites another AMM task by name/reference for this purpose, such as "PlaneView System - Load Software, 20-22-01", "Modular Avionics Unit / Modular Radio Cabinet - Software Loading (Target Load), 20-22-00, Maintenance Practices", or "...Software Loading (Full Load), 20-22-00, Maintenance Practices" — these ARE software loading regardless of how tersely they are cited (even as a single line in Preliminary Requirements or Requirements After Job Completion). Do not set true just because a system happens to be electronic or the word "software" appears informationally. If true, "software_loading.note" briefly states what is loaded and how (e.g. "Cites PlaneView System - Load Software, 20-22-01 in Preliminary Requirements"), else "". This exists to remind the technician that the loading PC and its media are normally stored on board the aircraft, so the customer/crew may need to be asked where they are kept.
 
+13. REVISION DATE: read the footer printed on each page of this card and report the most recent such date found (format like "Month DD/YY", e.g. "February 28/25"), exactly as printed, in "revision_date". If genuinely not present anywhere on the card, use "".
+
 Do not invent quantities, part numbers, task numbers, or step references. If a step_reference is genuinely not determinable, use "".
 
 Reply ONLY with valid JSON, no markdown, in this exact shape:
@@ -722,6 +724,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
   "card_ref": "",
   "card_title": "",
   "aircraft_model": "",
+  "revision_date": "",
   "esd_warning": false,
   "esd_note": "",
   "gas_type": "oxygen|nitrogen_hp|nitrogen_lp|none",
@@ -765,6 +768,8 @@ For EACH item in tools, consumables, implicit_materials, access_panels, related_
 
 - Confirm "aircraft_model" matches what's stated in the card header/title block. Fix it if the first pass got it wrong or missed it.
 
+- Confirm "revision_date" matches the footer text printed on the card pages. Fix it if the first pass got it wrong or missed it.
+
 - OCR FIGURE GAP CHECK: this source text may come from OCR of a PDF containing exploded-view diagrams with reference labels (e.g. access panel IDs) printed directly on the image. If you find a reference to a figure (e.g. "see Figure X", "Figure 1, WTBFs, Access Doors and Panels") that is NOT accompanied by an explicit list of every label/identifier that figure should show, add a note to "verification_summary" flagging that specific figure (e.g. "Figure 1 referenced but no panel IDs listed nearby — possible OCR loss, verify against the source PDF") so the technician knows to check the original PDF directly instead of assuming nothing else was there.
 
 - For "gas_type": confirm it matches what the card explicitly states (title/subject/procedure content), not just guessed from the reference number. Fix if wrong. Must be "none" unless this genuinely is a chapter-12 gas-servicing card.
@@ -782,6 +787,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
   "card_ref": "",
   "card_title": "",
   "aircraft_model": "",
+  "revision_date": "",
   "esd_warning": false,
   "esd_note": "",
   "gas_type": "oxygen|nitrogen_hp|nitrogen_lp|none",
@@ -1522,6 +1528,24 @@ async function pdfToText(pdfB64) {
   return ocrData.pages.map(p => p.markdown).join('\n\n');
 }
 
+// Détection du card_ref SANS IA — le ref de la carte se répète dans le
+// pied de page de chaque page (contrairement à un ref simplement cité
+// une fois ailleurs sur la carte). On prend le format XX-XX-XX le plus
+// fréquent dans le texte. Retourne null si rien n'est trouvé — dans ce
+// cas on retombe simplement sur le comportement actuel (aucun call IA
+// économisé pour cette carte-là, mais rien ne casse).
+function detectCardRefFromText(sourceText) {
+  const matches = [...(sourceText || '').matchAll(/^(\d{2}-\d{2}-\d{2})[ \t]+[A-Z][^\n]{3,80}$/gm)];
+  if (!matches.length) return null;
+  const counts = new Map();
+  for (const m of matches) counts.set(m[1], (counts.get(m[1]) || 0) + 1);
+  let best = null, bestCount = 0;
+  for (const [refCandidate, count] of counts) {
+    if (count > bestCount) { best = refCandidate; bestCount = count; }
+  }
+  return best;
+}
+
 /* ============================================================
    ROOT SCAN FLOW
    ============================================================ */
@@ -1542,13 +1566,26 @@ async function analyzeAmm() {
   try {
     const ammText = isPdf ? await pdfToText(ammPdfB64) : pastedText;
 
-    setStep('step-extract', 'done'); setStep('step-verify', 'active');
-    setStatus('load', '<span class="spin spin-dark"></span> Self-checking — the AI is re-verifying every item against the source text…');
+    // ---------- vérifier le cache Firebase existant avant tout appel IA ----------
+    const manualRefEarly = document.getElementById('amm-ref').value.trim();
+    const autoRef = manualRefEarly || detectCardRefFromText(ammText);
+    const forceRescan = !!(autoRef && autoRef === window._ammForceRescanRef);
+    window._ammForceRescanRef = null; // ne s'applique qu'à ce clic
+    const cacheHit = (autoRef && !forceRescan) ? await window.ammCache.load(expectedModel, autoRef) : null;
 
-    const knownRefs = knownCards.map(c => c.ref);
-    const verified = await runScan(ammText, knownRefs);
+    let verified;
+    if (cacheHit) {
+      setStep('step-extract', 'done'); setStep('step-verify', 'done');
+      verified = cacheHit.data;
+    } else {
+      setStep('step-extract', 'done'); setStep('step-verify', 'active');
+      setStatus('load', '<span class="spin spin-dark"></span> Self-checking — the AI is re-verifying every item against the source text…');
 
-    setStep('step-verify', 'done');
+      const knownRefs = knownCards.map(c => c.ref);
+      verified = await runScan(ammText, knownRefs);
+
+      setStep('step-verify', 'done');
+    }
 
     const manualRef = document.getElementById('amm-ref').value.trim();
     if (manualRef) verified.card_ref = manualRef;
@@ -1604,7 +1641,11 @@ async function analyzeAmm() {
     }
     setStep('step-done', 'done');
 
-    setStatus('done', `✓ Analysis complete${verified.card_ref ? ' — card ' + escapeHtml(verified.card_ref) : ''}. Review items flagged "needs review" before sending.${relevanceNote}`);
+    const cacheNote = cacheHit
+      ? ` Loaded from team cache (scanned ${ammCacheAgeLabel(cacheHit.scannedAt)}${cacheHit.scannedBy ? ' by ' + escapeHtml(cacheHit.scannedBy) : ''}) — 0 tokens used for extraction. Card revision on file: <b>${escapeHtml(verified.revision_date || 'not detected')}</b> — compare it to your PDF. <button class="btn btn-ghost btn-sm" onclick="window._ammForceRescanRef=${jsArg(autoRef)};document.getElementById('btn-analyze').click()">🔄 Scan anyway</button>`
+      : '';
+
+    setStatus('done', `✓ Analysis complete${verified.card_ref ? ' — card ' + escapeHtml(verified.card_ref) : ''}.${cacheNote} Review items flagged "needs review" before sending.${relevanceNote}`);
   } catch (e) {
     setStep('step-extract', null); setStep('step-verify', null); setStep('step-relevance', null);
     setStatus('err', 'Error: ' + e.message);
@@ -1644,7 +1685,7 @@ async function checkAmmCacheForRefField(refVal) {
       ✅ <b>Already scanned</b>${hit.scannedBy ? ' by ' + escapeHtml(hit.scannedBy) : ''} — ${ageLabel}${hit._fresh ? '' : ' <b>(&gt;72h — verify before trusting)</b>'}.
       <div class="row" style="margin-top:8px">
         <button class="btn btn-primary btn-sm" onclick="loadAmmCacheIntoRoot(${jsArg(refVal)})">✅ Use this scan (0 tokens)</button>
-        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('amm-cache-banner').style.display='none'">🔄 Scan anyway</button>
+        <button class="btn btn-ghost btn-sm" onclick="window._ammForceRescanRef=${jsArg(refVal)};document.getElementById('amm-cache-banner').style.display='none'">🔄 Scan anyway</button>
       </div>
     </div>`;
 }
