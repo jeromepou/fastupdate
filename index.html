@@ -1750,6 +1750,13 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       </div>
       <p style="font-size:11px;color:var(--g600);margin-bottom:0">Check this before accepting a job on an aircraft registered somewhere we haven't worked before. <span id="ca-summary-count" style="font-weight:600"></span></p>
     </div>    
+    <div style="background:#fdf2f8;border:1px solid #f3b8d6;border-radius:var(--r);padding:12px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="font-size:12px;font-weight:700;color:#9d174d;flex:1">🏷️ Customer Code Registry — recognises special/restricted operators by their Account Code</div>
+        <button class="btn primary" onclick="koManageCustomerCodes()" style="font-size:11px;padding:5px 12px">⚙️ Manage list</button>
+      </div>
+      <p style="font-size:11px;color:var(--g600);margin-bottom:0">Feeds the operator check above — tells a civil Swedish aircraft and Swedish Air Force apart by their Account Code, not by the typed company name. <span id="cc-summary-count" style="font-weight:600"></span></p>
+    </div>
     <div id="team-list" style="max-height:220px;overflow-y:auto;margin-bottom:12px;padding-right:4px"></div>
 
     <div style="background:#f0f9f0;border:1px solid var(--gb);border-radius:var(--r);padding:12px;margin-bottom:14px">
@@ -2271,6 +2278,33 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     </div>
 
     <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-country-approvals')">Done</button></div>
+  </div>
+</div>
+
+<!-- CUSTOMER CODE REGISTRY MANAGE MODAL -->
+<div class="modal-bg" id="modal-customer-codes">
+  <div class="modal" style="max-width:620px">
+    <h3>🏷️ Customer Code Registry</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:2px">Shared with the whole team. Maps a Gulfstream Account Code (the RFS "Account ID" field, or the Work Order Detail "Account Code" field) to the exact operator name used in Country / Authority Approvals — e.g. a code → "Swedish Air Force". Once mapped, the approval check uses this name instead of the free-text Customer company field, so a civil Swedish aircraft and Swedish Air Force are told apart automatically, by their code, not by what was typed.</p>
+
+    <div class="lkm-hd">
+      <span class="lkm-hd-title">📋 Existing codes</span>
+      <span class="lkm-hd-cnt" id="cc-count"></span>
+      <button class="btn" onclick="koJumpToNewCustomerCode()" style="margin-left:auto;font-size:11px;padding:4px 10px">➕ New entry</button>
+    </div>
+    <input type="text" class="lkm-filter" id="cc-filter" placeholder="🔍 Filter (code, operator…)" oninput="koFilterCustomerCodes(this.value)"/>
+    <div id="cc-list" class="lkm-list"></div>
+
+    <div class="lkm-new" id="cc-new-block">
+      <div class="lkm-new-hd">➕ Add a customer code</div>
+      <div class="lkm-new-sub">Write the operator name exactly as it appears in Country / Authority Approvals (the text after "— … only"), so the two lists line up.</div>
+      <input type="text" class="lkm-new-f" id="cc-new-code" placeholder="Customer Code (e.g. GX040, BS427)"/>
+      <input type="text" class="lkm-new-f" id="cc-new-operator" placeholder="Operator name (e.g. Swedish Air Force)"/>
+      <textarea class="lkm-new-f" id="cc-new-notes" placeholder="Notes (optional)" style="min-height:44px"></textarea>
+      <button class="btn primary" onclick="koAddCustomerCode()" style="width:100%;justify-content:center">+ Add this entry</button>
+    </div>
+
+    <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-customer-codes')">Done</button></div>
   </div>
 </div>
 
@@ -9532,7 +9566,7 @@ if ('serviceWorker' in navigator) {
 //  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
 //  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v30';
+const CURRENT_VERSION = 'v31';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -12213,10 +12247,38 @@ G.koSearchSquawkFreeText = async function() {
   await squawkRunSearch(val);
 };
 
-// Recherche partagée dropdown + texte libre : combine chevauchement de
-// mots-clés (rapide, exact) et similarité sémantique (tolère une
-// formulation différente). Les deux scores s'additionnent.
-const SEMANTIC_MATCH_THRESHOLD = 0.68; // cosinus — à ajuster selon les retours terrain
+// Recherche partagée dropdown + texte libre : mots-clés pondérés par leur rareté dans l'historique
+// (un mot présent dans beaucoup de squawks compte peu — ex. « CAS », « AMBER », « ENGINE » — un mot
+// rare compte beaucoup, même principe que Smart Diagnosis) + similarité de sens jugée par z-score
+// plutôt qu'un seuil cosinus fixe. Cherche aussi dans troubleshootingKnowledge (cas avec pièces
+// réellement renseignées — les entrées issues des Daily Update n'en ont jamais) pour ne pas rater un
+// cas comme celui-ci simplement parce que les pièces n'ont pas été retaguées avec un squawk ici.
+const SQH_MIN_EMB_FOR_Z = 8;
+const SQH_SEM_Z_SUPPORT = 1.5;
+const SQH_SEM_Z_STRONG  = 2.5;
+const SQH_SEM_ABS_MIN   = 0.72;
+const SQH_COV_MIN       = 0.4;    // couverture mini (mots pondérés) pour retenir un résultat à 2+ mots
+
+// troubleshootingKnowledge → forme squawkHistory. Un seul cas par WO (le REX peut contenir 2 copies
+// du même job, tag GA3671 + Daily Update) ; on ne garde que les cas avec au moins une pièce réelle.
+function squawkFromTroubleshooting(tkVal) {
+  const byJob = new Map();
+  Object.values(tkVal || {}).forEach(e => {
+    const parts = (e.partsReplaced || []).filter(p => p && (p.pn || p.nom));
+    if (!parts.length) return;
+    const jobKey = (e.wo || '').trim().toUpperCase() || ('sq:' + String(e.squawk||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim());
+    if (!jobKey || byJob.has(jobKey)) return;
+    byJob.set(jobKey, {
+      acModel: e.model || '', acWO: e.wo || '', acSN: '', squawkRaw: e.squawk || '',
+      keywords: e.keywords || [], embedding: e.embedding || null,
+      lastUsed: e.ts || 0, addedBy: e.engineerName || '', usageCount: 1,
+      parts: parts.map(p => ({ cat: 'Part', desc: p.nom || '', pn: p.pn || '', sn: p.sn || '', qty: '' })),
+      tools: [], consumables: [], _src: 'troubleshooting',
+    });
+  });
+  return [...byJob.entries()].map(([k, v]) => ['tk_' + k, v]);
+}
+
 async function squawkRunSearch(queryText, opts = {}) {
   const q = (queryText || '').trim();
   if (!q) return;
@@ -12229,18 +12291,63 @@ async function squawkRunSearch(queryText, opts = {}) {
   if (hint && !opts.silent) hint.textContent = '';
 
   try {
-    const snap = await get(ref(db, 'squawkHistory'));
-    if (!snap.exists()) { if (!opts.silent) alert('No squawk history found yet.'); return; }
+    const [snap, tkSnap] = await Promise.all([get(ref(db, 'squawkHistory')), get(ref(db, 'troubleshootingKnowledge'))]);
+    if (!snap.exists() && !tkSnap.exists()) { if (!opts.silent) alert('No squawk history found yet.'); return; }
     if (opts.isCurrentGen && !opts.isCurrentGen()) return;
     const curModel = (document.getElementById('ko_model')?.value||'').trim().toUpperCase();
+    const curWo = (document.getElementById('ko_wo')?.value||'').trim().toUpperCase();
+
+    const entries = [
+      ...(snap.exists() ? Object.entries(snap.val()) : []),
+      ...squawkFromTroubleshooting(tkSnap.exists() ? tkSnap.val() : null),
+    ];
+    const n = Math.max(entries.length, 1);
+
+    // Rareté des mots dans l'historique combiné : un mot présent dans beaucoup de squawks pèse peu.
+    const df = new Map();
+    entries.forEach(([, entry]) => {
+      new Set((entry.keywords || []).map(t => String(t).toLowerCase())).forEach(t => df.set(t, (df.get(t) || 0) + 1));
+    });
+    const wt = t => Math.log(1 + n / (1 + (df.get(t) || 0)));
+    const wQ = tokens.reduce((s, t) => s + wt(t), 0);
+    const only = tokens.length === 1 ? tokens[0] : null;
+    const onlyDf = only ? (df.get(only) || 0) : 0;
+
+    // Similarité de sens vs tout l'historique combiné : z-score si assez d'entrées embeddées,
+    // sinon palier de similarité brute (même dégradation que Smart Diagnosis).
+    let mu = 0, sd = 0, haveStats = false;
+    if (queryEmbedding) {
+      const vals = [];
+      entries.forEach(([, entry]) => { if (entry.embedding) vals.push(cosineSimilarity(queryEmbedding, entry.embedding)); });
+      if (vals.length >= SQH_MIN_EMB_FOR_Z) {
+        mu = vals.reduce((a, b) => a + b, 0) / vals.length;
+        sd = Math.max(Math.sqrt(vals.reduce((a, b) => a + (b - mu) * (b - mu), 0) / vals.length), 0.03);
+        haveStats = true;
+      }
+    }
 
     const results = [];
-    Object.entries(snap.val()).forEach(([key, entry]) => {
-      const tokenScore = squawkScore(tokens, entry.keywords||[]);
+    entries.forEach(([key, entry]) => {
+      if (curWo && (entry.acWO||'').toUpperCase() === curWo) return;   // pas le job en cours
+
+      const setB = new Set((entry.keywords || []).map(t => String(t).toLowerCase()));
+      let wShared = 0, pts = 0;
+      tokens.forEach(t => { if (setB.has(t)) { wShared += wt(t); pts++; } });
+      const cov = wQ ? wShared / wQ : 0;
+      // Un mot unique ne suffit que s'il est rare (sinon « engine » ou « left » matcherait tout).
+      const single = !!only && setB.has(only) && onlyDf > 0 && onlyDf <= Math.max(2, Math.round(n * 0.05));
+
       const semScore = (queryEmbedding && entry.embedding) ? cosineSimilarity(queryEmbedding, entry.embedding) : 0;
-      if (tokenScore < 1 && semScore < SEMANTIC_MATCH_THRESHOLD) return;
-      const score = tokenScore + (semScore * 5);
-      results.push({key, entry, tokenScore, semScore, score});
+      const z = !entry.embedding ? null : haveStats ? (semScore - mu) / sd : (semScore >= 0.85 ? 3 : semScore >= 0.78 ? 2 : 0);
+      const semStrong  = z !== null && z >= SQH_SEM_Z_STRONG && semScore >= SQH_SEM_ABS_MIN;
+      const semSupport = z !== null && z >= SQH_SEM_Z_SUPPORT;
+
+      const keywordOk = tokens.length >= 2 ? (pts >= 1 && cov >= SQH_COV_MIN) : single;
+      if (!keywordOk && !semSupport && !semStrong) return;
+
+      const semPart = z === null ? 0 : Math.max(0, Math.min(z, 4)) / 4;
+      const score = cov * 2 + semPart + Math.min(pts, 4) * 0.05;
+      results.push({ key, entry, tokenScore: pts, semScore, score });
     });
 
     results.sort((a,b) => {
@@ -12341,7 +12448,7 @@ function squawkShowSuggestionModal(results, curModel, searchedLabel) {
       window._sqSuggestItems.push(...allItems.map(p=>({...p,srcKey:r.key})));
       const info=document.createElement('div');
       info.style.cssText='margin-bottom:8px;padding:8px 10px;background:#fff;border:1px solid var(--g200);border-radius:var(--r)';
-      info.innerHTML=`<div style="font-size:11px;color:var(--g600);margin-bottom:5px">${koFormatMatchLabel(r)} · used <b>${e.usageCount||1}</b>× · last ${d} · by ${escHtml(e.addedBy)||'?'}${e.acWO?' · <span style="font-weight:700;color:var(--gd)">WO: '+escHtml(e.acWO)+'</span>':''}${e.acSN?' · SN: '+escHtml(e.acSN):''}</div>${renderItems(e,'same-'+ri)}`;
+      info.innerHTML=`<div style="font-size:11px;color:var(--g600);margin-bottom:5px">${koFormatMatchLabel(r)}${e._src==='troubleshooting'?' · <span style="background:var(--bl);color:var(--blue);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">📋 From troubleshooting record</span>':''} · used <b>${e.usageCount||1}</b>× · last ${d} · by ${escHtml(e.addedBy)||'?'}${e.acWO?' · <span style="font-weight:700;color:var(--gd)">WO: '+escHtml(e.acWO)+'</span>':''}${e.acSN?' · SN: '+escHtml(e.acSN):''}</div>${renderItems(e,'same-'+ri)}`;
       sameEl.appendChild(info);
     });
   } else {
@@ -12364,7 +12471,7 @@ function squawkShowSuggestionModal(results, curModel, searchedLabel) {
       window._sqOtherItems.push(...allItems.map(p=>({...p,srcKey:r.key})));
       const warn=document.createElement('div');
       warn.style.cssText='margin-bottom:8px;padding:8px 10px;background:#fff;border:1px solid var(--g200);border-radius:var(--r);opacity:.85';
-      warn.innerHTML=`<div style="font-size:11px;margin-bottom:4px"><span style="background:var(--al);color:var(--amb);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">⚠️ ${escHtml(e.acModel)||'Unknown type'}</span> <span style="color:var(--g600)">· ${koFormatMatchLabel(r)} · used ${e.usageCount||1}× · last ${d}${e.acWO?' · <b>WO: '+escHtml(e.acWO)+'</b>':''}${e.acSN?' · SN: '+escHtml(e.acSN):''}</span></div><div style="font-size:11px;color:var(--amb);margin-bottom:5px">⚠️ Different aircraft type — verify P/N applicability before use</div>${renderItems(e,'other-'+ri)}`;
+      warn.innerHTML=`<div style="font-size:11px;margin-bottom:4px"><span style="background:var(--al);color:var(--amb);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">⚠️ ${escHtml(e.acModel)||'Unknown type'}</span> <span style="color:var(--g600)">· ${koFormatMatchLabel(r)}${e._src==='troubleshooting'?' · <span style="background:var(--bl);color:var(--blue);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">📋 From troubleshooting record</span>':''} · used ${e.usageCount||1}× · last ${d}${e.acWO?' · <b>WO: '+escHtml(e.acWO)+'</b>':''}${e.acSN?' · SN: '+escHtml(e.acSN):''}</span></div><div style="font-size:11px;color:var(--amb);margin-bottom:5px">⚠️ Different aircraft type — verify P/N applicability before use</div>${renderItems(e,'other-'+ri)}`;
       otherEl.appendChild(warn);
     });
   } else {
@@ -15415,7 +15522,7 @@ function koEvalApprovalEntry(entry, ac, operator, mainScope) {
         out = res('ok', 'covered', `${ac.label} is covered (${best.r.raw}) — the operator matches.`);
       } else if (best.kind === 'operator') {
         const ops = [...new Set(scored.filter(s => s.kind === 'operator').map(s => s.r.operator))];
-        out = res('warn', 'operator', `${ac.label} is covered, but only for: ${ops.join(' / ')}. ${operator ? `This job's customer company is "${operator}"` : 'No customer company is filled in for this job'} — confirm with Quality that it is that operator.`);
+        out = res('warn', 'operator', `${ac.label} is covered, but only for: ${ops.join(' / ')}. ${operator ? `This job's operator is "${operator}"` : 'No operator is filled in for this job (Customer company or Customer Code)'} — confirm with Quality that it is that operator.`);
       } else if (best.kind === 'scope') {
         out = res('warn', 'scope', `${ac.label} is covered, restricted to ${best.r.scope} only. Confirm that this job qualifies.`);
       } else if (best.m === 'partial' && ac.twins.length) {
@@ -15459,7 +15566,10 @@ function koApprovalVerdict(input) {
   const reg      = clean(input.reg).toUpperCase();
   const model    = clean(input.model);
   const sn       = clean(input.sn);
-  const operator = clean(input.operator);
+  const custCode = clean(input.custCode);
+  const codeHit  = custCode ? koLookupCustomerCode(custCode) : null;
+  const rawOperator = clean(input.operator);                    // what's actually typed in Customer company — kept aside so a mismatch with the Customer Code gets flagged below instead of silently overridden
+  const operator = codeHit ? codeHit.operator : rawOperator;    // a matched Customer Code is a stable identifier and drives the approval decision itself
   if (!declared && !reg && !model && !sn) return null;          // blank form: nothing to say yet
 
   const regCountry  = koRegCountry(reg);
@@ -15496,7 +15606,19 @@ function koApprovalVerdict(input) {
   const mainScope = koMainScope();
   const evals = entries.map(e => koEvalApprovalEntry(e, ac, operator, mainScope));
   const sev = { ok: 0, warn: 1, danger: 2 };
-  const best = evals.slice().sort((a, b) => sev[a.level] - sev[b.level])[0];   // stable: the state's own entry wins ties
+  let best = evals.slice().sort((a, b) => sev[a.level] - sev[b.level])[0];   // stable: the state's own entry wins ties
+  // A state's own entry can restrict one type to a single operator (Sweden: GIV-SP / G550 → Swedish Air
+  // Force only) while the SAME type is ALSO covered with no restriction at all by a broader entry (EASA).
+  // These are two different, mutually exclusive regulatory bases (civil vs military, say), not redundant
+  // coverage of the same thing — so with the operator still unconfirmed, the unrestricted entry must not
+  // silently outrank the OTHER entry's unresolved operator/scope restriction for the same aircraft
+  // ("silence never means approved"). Once an operator IS known (typed, or resolved via a Customer Code)
+  // and clearly does NOT match the restriction, this no longer applies — a named, different operator is
+  // itself informative, not silence.
+  if (!operator && best.level === 'ok' && (best.kind === 'covered' || best.kind === 'full-scope')) {
+    const uncertain = evals.find(e => e !== best && (e.kind === 'operator' || e.kind === 'scope'));
+    if (uncertain) best = uncertain;
+  }
   const isEasa = /\beasa\b/i.test(best.name) && koNormCountry(best.name) !== koNormCountry(countryName);
   const v = {
     level: best.level,
@@ -15507,6 +15629,14 @@ function koApprovalVerdict(input) {
   };
 
   let conflict = false;
+  if (codeHit) {
+    if (rawOperator && !koOperatorMatches(codeHit.operator, rawOperator)) {
+      v.soft.push(`⚠ Customer Code ${custCode.toUpperCase()} identifies the operator as "${codeHit.operator}", but Customer company says "${rawOperator}" — check which one is right (the approval above used the Customer Code).`);
+      conflict = true;
+    } else {
+      v.soft.push(`Operator "${codeHit.operator}" recognised from Customer Code ${custCode.toUpperCase()}${rawOperator ? '' : ' — Customer company is empty'}.`);
+    }
+  }
   if (!declared && regCountry) v.soft.push(`State of registry taken from registration ${reg}.`);
   if (viaReg) v.soft.push(`The Country field "${declared}" isn't in the list — the state was taken from registration ${reg} (${regCountry}).`);
   else if (declared && regCountry && koNormCountry(declared) !== koNormCountry(regCountry)) {
@@ -15567,7 +15697,8 @@ function koRenderApprovalBanner(elId, input, target) {
 // Step 2 (aircraft & order details) — runs on every autosave, so it also fires right after a PDF scan.
 G.koCheckCountryApproval = function() {
   koRenderApprovalBanner('country-approval-warning', {
-    country: gv('f_country'), reg: gv('f_reg'), model: gv('f_model'), sn: gv('f_sn'), operator: gv('f_cust_company')
+    country: gv('f_country'), reg: gv('f_reg'), model: gv('f_model'), sn: gv('f_sn'),
+    operator: gv('f_cust_company'), custCode: gv('f_cust_code')
   }, 'step2');
 };
 
@@ -15581,7 +15712,8 @@ G.koCheckCountryApprovalKo = function() {
     reg,
     model:    val('ko_model') || (sameJob ? gv('f_model') : ''),
     sn:       val('ko_sn')    || (sameJob ? gv('f_sn')    : ''),
-    operator: sameJob ? gv('f_cust_company') : ''
+    operator: sameJob ? gv('f_cust_company') : '',
+    custCode: sameJob ? gv('f_cust_code') : ''
   }, 'ko');
 };
 
@@ -15604,6 +15736,122 @@ G.koResetCountryApprovals = async function() {
   if (el) el.textContent = koApprovalsSummaryText();
   G.koCheckCountryApproval();
 };
+
+// ══════════════════════════════════════
+//  CUSTOMER CODE REGISTRY — recognise special/restricted operators (e.g.
+//  Swedish Air Force) by their Gulfstream Account Code/ID instead of
+//  matching free-text company names. A code is a stable identifier — a
+//  typed company name isn't (translations, abbreviations, typos…) — so a
+//  civil Swedish aircraft and Swedish Air Force are told apart reliably.
+//  Feeds ONLY the operator side of the Country / Authority Approvals check
+//  (koApprovalVerdict): a future special operator is one data row here,
+//  never new matching code.
+// ══════════════════════════════════════
+let KO_CUSTOMER_CODES = [];   // [{ code:'XXXXX', operator:'Swedish Air Force', notes:'' }]
+let _ccFilterQuery = '';
+
+async function koLoadCustomerCodes() {
+  try {
+    const snap = await get(ref(db, 'config/customerCodes'));
+    const raw = snap.exists() ? snap.val() : [];
+    KO_CUSTOMER_CODES = Array.isArray(raw) ? raw : Object.values(raw);
+  } catch(e) {
+    console.warn('koLoadCustomerCodes failed:', e);
+    KO_CUSTOMER_CODES = [];
+  }
+}
+
+async function koSaveCustomerCodes() {
+  try { await set(ref(db, 'config/customerCodes'), KO_CUSTOMER_CODES); } catch(e) { console.warn('koSaveCustomerCodes failed:', e); }
+}
+
+function koNormCustomerCode(s) {
+  return String(s || '').trim().toUpperCase().replace(/\s+/g, '');
+}
+
+function koLookupCustomerCode(code) {
+  const key = koNormCustomerCode(code);
+  if (!key) return null;
+  const list = Array.isArray(KO_CUSTOMER_CODES) ? KO_CUSTOMER_CODES : [];
+  return list.find(c => koNormCustomerCode(c.code) === key) || null;
+}
+
+function renderCustomerCodesManageList() {
+  const list = document.getElementById('cc-list');
+  if (!list) return;
+  const q = (_ccFilterQuery || '').trim().toLowerCase();
+  const rows = KO_CUSTOMER_CODES
+    .map((c, i) => ({ c, i }))
+    .filter(({c}) => !q || [c.code, c.operator, c.notes].join(' ').toLowerCase().includes(q));
+
+  const cnt = document.getElementById('cc-count');
+  if (cnt) cnt.textContent = q ? `— ${rows.length} of ${KO_CUSTOMER_CODES.length} shown` : `— ${KO_CUSTOMER_CODES.length}`;
+
+  if (!KO_CUSTOMER_CODES.length) { list.innerHTML = '<p class="lkm-empty">No codes yet — add the first one below.</p>'; return; }
+  if (!rows.length) { list.innerHTML = `<p class="lkm-empty">No entry matches "${escHtml(q)}".</p>`; return; }
+
+  list.innerHTML = rows.map(({c, i}) => `
+    <div class="lkm-entry" id="cc-entry-${i}" style="flex-direction:column;align-items:stretch;gap:6px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <input type="text" value="${escAttr(c.code||'')}" placeholder="Customer Code" oninput="koCustomerCodeEdit(${i},'code',this.value)" style="flex:0 0 140px;font-size:13px;font-weight:700;padding:5px 8px"/>
+        <input type="text" value="${escAttr(c.operator||'')}" placeholder="Operator name" oninput="koCustomerCodeEdit(${i},'operator',this.value)" style="flex:1;min-width:160px;font-size:12px;padding:5px 8px"/>
+        <button onclick="koDeleteCustomerCode(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
+      </div>
+      <textarea placeholder="Notes (optional)" oninput="koCustomerCodeEdit(${i},'notes',this.value)" style="font-size:11px;padding:5px 8px;min-height:32px;color:var(--g600)">${escHtml(c.notes||'')}</textarea>
+    </div>`).join('');
+}
+
+let _ccEditTimer = null;
+G.koCustomerCodeEdit = function(i, field, val) {
+  if (!KO_CUSTOMER_CODES[i]) return;
+  KO_CUSTOMER_CODES[i][field] = val;
+  clearTimeout(_ccEditTimer);
+  _ccEditTimer = setTimeout(koSaveCustomerCodes, 600);
+};
+
+G.koDeleteCustomerCode = function(i) {
+  const c = KO_CUSTOMER_CODES[i];
+  if (!confirm(`Remove customer code "${c?.code || 'this entry'}"?`)) return;
+  KO_CUSTOMER_CODES.splice(i, 1);
+  renderCustomerCodesManageList();
+  koSaveCustomerCodes();
+};
+
+G.koAddCustomerCode = function() {
+  const code = (document.getElementById('cc-new-code')?.value || '').trim();
+  const operator = (document.getElementById('cc-new-operator')?.value || '').trim();
+  const notes = (document.getElementById('cc-new-notes')?.value || '').trim();
+  if (!code || !operator) { alert('Please enter both a Customer Code and an Operator name.'); return; }
+  if (koLookupCustomerCode(code)) { alert(`Customer Code "${code}" is already mapped.`); return; }
+  KO_CUSTOMER_CODES.push({ code: code.toUpperCase(), operator, notes });
+  ['cc-new-code','cc-new-operator','cc-new-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  renderCustomerCodesManageList();
+  koSaveCustomerCodes();
+  G.koCheckCountryApproval();     // refresh the live banner right away if a job happens to be loaded
+  G.koCheckCountryApprovalKo();
+};
+
+G.koFilterCustomerCodes = function(val) {
+  _ccFilterQuery = val || '';
+  renderCustomerCodesManageList();
+};
+
+G.koJumpToNewCustomerCode = function() {
+  document.getElementById('cc-new-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(() => document.getElementById('cc-new-code')?.focus(), 350);
+};
+
+G.koManageCustomerCodes = async function() {
+  await koLoadCustomerCodes();
+  renderCustomerCodesManageList();
+  openModal('modal-customer-codes');
+};
+
+async function renderCustomerCodesSummary() {
+  await koLoadCustomerCodes();
+  const el = document.getElementById('cc-summary-count');
+  if (el) el.textContent = `(${KO_CUSTOMER_CODES.length} code${KO_CUSTOMER_CODES.length === 1 ? '' : 's'} mapped)`;
+}
 
 // ══════════════════════════════════════
 //  BULK SQUAWK ASSIGNMENT
