@@ -1861,9 +1861,22 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   <div class="modal">
     <h3 id="modal-rts-title">Mark A/C as RTS?</h3>
     <p style="font-size:13px;color:var(--g600);margin-bottom:1rem" id="modal-rts-sub">The project will be archived.</p>
+
+    <div id="rts-tags-section" style="display:none;margin-bottom:1rem">
+      <div class="ko-section-lbl" style="margin-bottom:6px">🏷️ GA3671 tags saved for this job</div>
+      <div style="background:var(--bl);border:1px solid #b8d0e8;border-radius:var(--r);padding:8px 10px;font-size:12px;line-height:1.45;color:var(--g800);margin-bottom:8px">
+        <strong style="color:var(--blue)">💡 Why this matters</strong><br>
+        Your GA3671 tags feed the team's REX (Smart Diagnosis). Each tag with a “Work Performed” becomes a “similar case solved” that colleagues see on future squawks, with your name, the WO and the fix. A tag prepared in advance but never used would suggest a repair that was never actually done — so keep only the tags that were really used on this aircraft.
+      </div>
+      <p style="font-size:12px;color:var(--g600);margin-bottom:4px">Tick the tags that were <strong>actually used</strong>. Unticked tags are deleted from the database <strong>and</strong> from the REX.</p>
+      <div id="rts-tags-list"></div>
+      <div id="rts-tags-summary" style="font-size:12px;font-weight:600;margin-top:6px"></div>
+    </div>
+    <div class="err-msg" id="rts-tags-error"></div>
+
     <div class="modal-btns">
       <button class="btn" onclick="closeModal('modal-rts')">Cancel</button>
-      <button class="btn primary" onclick="confirmRTS()">Confirm RTS</button>
+      <button class="btn primary" id="btn-confirm-rts" onclick="confirmRTS()">Confirm RTS</button>
     </div>
   </div>
 </div>
@@ -2234,20 +2247,25 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <div class="lkm-hd">
       <span class="lkm-hd-title">📋 Existing approvals</span>
       <span class="lkm-hd-cnt" id="ca-count"></span>
-      <button class="btn" onclick="koJumpToNewCountryApproval()" style="margin-left:auto;font-size:11px;padding:4px 10px">➕ New entry</button>
+      <button class="btn" onclick="koResetCountryApprovals()" title="Re-seed the list from the reference list (your edits are lost)" style="margin-left:auto;font-size:11px;padding:4px 10px">↺ Reset to reference list</button>
+      <button class="btn" onclick="koJumpToNewCountryApproval()" style="font-size:11px;padding:4px 10px">➕ New entry</button>
     </div>
     <input type="text" class="lkm-filter" id="ca-filter" placeholder="🔍 Filter (country, authority, aircraft type…)" oninput="koFilterCountryApprovals(this.value)"/>
     <div id="ca-list" class="lkm-list"></div>
 
     <div class="lkm-new" id="ca-new-block">
       <div class="lkm-new-hd">➕ Add a country / authority</div>
-      <div class="lkm-new-sub">Aircraft types: comma-separated. Leave blank if the full main Scope of Work applies (no country-specific restriction).</div>
+      <div class="lkm-new-sub">Aircraft types: comma-separated. Leave blank if the state has no type list of its own: it then follows the main Scope of Work (the United Kingdom line) and the aircraft is checked against that line. Write each type like in Admin → Gulfstream models (e.g. GVII-G600, GVI (G650ER)); a new aircraft is not covered by a family mention ("GVII") — write it out ("GVII-G400"). Restrict a type to an operator or a scope with "— … only", e.g. "G650 — Kuwait Airways only" or "G550 — Base Maintenance only".</div>
       <input type="text" class="lkm-new-f" id="ca-new-country" placeholder="Country (e.g. Morocco)"/>
       <input type="text" class="lkm-new-f" id="ca-new-authority" placeholder="Authority + approval ref (e.g. Moroccan DAC — cert. no. XXXX)"/>
+      <select class="lkm-new-f" id="ca-new-basis">
+        <option value="approval">✅ Dedicated GAL approval — checked automatically</option>
+        <option value="release-only">ℹ️ No dedicated approval — release statement only (always warns)</option>
+      </select>
       <textarea class="lkm-new-f" id="ca-new-types" placeholder="Aircraft types approved, comma-separated — leave blank for 'full Scope of Work'" style="min-height:44px"></textarea>
       <textarea class="lkm-new-f" id="ca-new-notes" placeholder="Notes (operator restrictions, revision/date, things to double-check…)" style="min-height:44px"></textarea>
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:#3730a3;margin-bottom:9px">
-        <input type="checkbox" id="ca-new-flagged"/> ⚠️ Flag this entry — always show a warning when this country is detected
+        <input type="checkbox" id="ca-new-flagged"/> ⚠️ Flag this entry — always warn, even when the type / operator / scope check passes (use only for conditions the app can't check by itself)
       </label>
       <button class="btn primary" onclick="koAddCountryApproval()" style="width:100%;justify-content:center">+ Add this entry</button>
     </div>
@@ -2262,98 +2280,115 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <h3>🏷️ GA 3671 — Unserviceable Tag</h3>
     <p style="font-size:12px;color:var(--g600);margin-bottom:12px">Pre-filled from the project — check and complete before generating.</p>
 
+    <div id="rtag-saved-bar" style="display:none;margin-bottom:12px;padding:8px 10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r)">
+      <div class="ko-section-lbl" id="rtag-saved-title" style="margin-bottom:6px">📂 Saved tags for this job</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <select id="rtag-saved-sel" style="flex:1;min-width:200px;width:auto"></select>
+        <button type="button" class="btn" onclick="rtagLoadSelected()">📂 Load</button>
+        <button type="button" class="btn danger" onclick="rtagDeleteSelected()" title="Delete the selected saved tag">🗑</button>
+      </div>
+    </div>
+    <div class="ko-status ko-s-done" id="rtag-saved-banner" style="display:none;align-items:center;margin:0 0 12px">
+      <span id="rtag-saved-banner-txt" style="flex:1"></span>
+      <button type="button" class="btn" id="rtag-saved-banner-blank" onclick="rtagStartBlank()" style="padding:3px 10px;font-size:11px;white-space:nowrap">Start blank</button>
+    </div>
+
     <div class="grid g3" style="margin-bottom:10px">
-      <div class="fg"><label>Aircraft Model</label><input type="text" id="rtag_model"/></div>
-      <div class="fg"><label>Aircraft Serial #</label><input type="text" id="rtag_sn"/></div>
-      <div class="fg"><label>Registration #</label><input type="text" id="rtag_reg"/></div>
+      <div class="fg"><label>Aircraft Model</label><input type="text" id="rtag_model" oninput="autosave()"/></div>
+      <div class="fg"><label>Aircraft Serial #</label><input type="text" id="rtag_sn" oninput="autosave()"/></div>
+      <div class="fg"><label>Registration #</label><input type="text" id="rtag_reg" oninput="autosave()"/></div>
     </div>
     <div class="grid g3" style="margin-bottom:10px">
       <div class="fg"><label>A/C Hours</label><input type="text" id="rtag_hours" placeholder="e.g. 2748:48" oninput="rtagSyncHoursCycles()"/></div>
       <div class="fg"><label>A/C Cycles</label><input type="text" id="rtag_cycles" placeholder="e.g. 1064" oninput="rtagSyncHoursCycles()"/></div>
-      <div class="fg"><label>Date</label><input type="text" id="rtag_date"/></div>
+      <div class="fg"><label>Date</label><input type="text" id="rtag_date" oninput="autosave()"/></div>
     </div>
     <button type="button" class="btn" onclick="koOpenScanCapture('ga3671')" style="margin-bottom:8px;font-size:12px">📷 Scan a plate/tag to fill these fields</button>
     <div class="grid g3" style="margin-bottom:10px">
-      <div class="fg"><label>Part Name</label><input type="text" id="rtag_partname"/></div>
-      <div class="fg"><label>Part Number</label><input type="text" id="rtag_pn"/></div>
-      <div class="fg"><label>Serial Number</label><input type="text" id="rtag_partsn"/></div>
+      <div class="fg"><label>Part Name</label><input type="text" id="rtag_partname" oninput="autosave()"/></div>
+      <div class="fg"><label>Part Number</label><input type="text" id="rtag_pn" oninput="autosave()"/></div>
+      <div class="fg"><label>Serial Number</label><input type="text" id="rtag_partsn" oninput="autosave()"/></div>
     </div>
     <div class="fg" style="margin-bottom:12px;max-width:120px">
-      <label>Quantity</label><input type="text" id="rtag_qty" value="1"/>
+      <label>Quantity</label><input type="text" id="rtag_qty" value="1" oninput="autosave()"/>
     </div>
 
     <div class="ko-divider"></div>
     <div class="ko-section-lbl">Life Status Data <span style="font-weight:400;color:var(--g600)">(AMM Ch.5 life-limited parts — fill fields that apply)</span></div>
+    <div class="ko-toggles" style="margin-bottom:4px">
+      <span class="ko-pill" id="rtag-since-delivery" onclick="rtagToggleSinceDelivery()" title="Part on the aircraft since delivery — Time / Cycles Since New = A/C hours &amp; cycles">✈️ Since Delivery</span>
+    </div>
+    <div id="rtag-since-delivery-note" style="display:none;font-size:11px;margin-bottom:6px"></div>
     <div class="tpl-group-hd">Time and Cycles Since New</div>
     <div class="grid g3" style="margin-bottom:8px">
-      <div class="fg"><label>Time Since New</label><input type="text" id="rtag_ls_time_new"/></div>
-      <div class="fg"><label>Cycles Since New</label><input type="text" id="rtag_ls_cyc_new"/></div>
-      <div class="fg"><label>Yrs/Mths Since New</label><input type="text" id="rtag_ls_ym_new"/></div>
+      <div class="fg"><label>Time Since New</label><input type="text" id="rtag_ls_time_new" oninput="autosave()"/></div>
+      <div class="fg"><label>Cycles Since New</label><input type="text" id="rtag_ls_cyc_new" oninput="autosave()"/></div>
+      <div class="fg"><label>Yrs/Mths Since New</label><input type="text" id="rtag_ls_ym_new" oninput="autosave()"/></div>
     </div>
     <div class="tpl-group-hd">Time and Cycles Since Overhaul / Restore (OH / Res)</div>
     <div class="grid g3" style="margin-bottom:8px">
-      <div class="fg"><label>Time Since OH/Res</label><input type="text" id="rtag_ls_time_oh"/></div>
-      <div class="fg"><label>Cycles Since OH/Res</label><input type="text" id="rtag_ls_cyc_oh"/></div>
-      <div class="fg"><label>Yrs/Mths Since OH/Res</label><input type="text" id="rtag_ls_ym_oh"/></div>
+      <div class="fg"><label>Time Since OH/Res</label><input type="text" id="rtag_ls_time_oh" oninput="autosave()"/></div>
+      <div class="fg"><label>Cycles Since OH/Res</label><input type="text" id="rtag_ls_cyc_oh" oninput="autosave()"/></div>
+      <div class="fg"><label>Yrs/Mths Since OH/Res</label><input type="text" id="rtag_ls_ym_oh" oninput="autosave()"/></div>
     </div>
     <div class="tpl-group-hd">Total Life / Installed Life</div>
     <div class="grid g2" style="margin-bottom:12px">
-      <div class="fg"><label>Total Life Yrs/Mths</label><input type="text" id="rtag_ls_total_ym"/></div>
-      <div class="fg"><label>Installed Life Yrs/Mths</label><input type="text" id="rtag_ls_installed_ym"/></div>
-    </div>    
+      <div class="fg"><label>Total Life Yrs/Mths</label><input type="text" id="rtag_ls_total_ym" oninput="autosave()"/></div>
+      <div class="fg"><label>Installed Life Yrs/Mths</label><input type="text" id="rtag_ls_installed_ym" oninput="autosave()"/></div>
+    </div>   
 
     <div class="ko-divider"></div>
     <div class="ko-section-lbl">Customer info</div>
     <div class="grid g2" style="margin-bottom:10px">
-      <div class="fg"><label>Customer Company Name</label><input type="text" id="rtag_cust_company"/></div>
-      <div class="fg"><label>Customer Code</label><input type="text" id="rtag_cust_code"/></div>
+      <div class="fg"><label>Customer Company Name</label><input type="text" id="rtag_cust_company" oninput="autosave()"/></div>
+      <div class="fg"><label>Customer Code</label><input type="text" id="rtag_cust_code" oninput="autosave()"/></div>
     </div>
     <div class="grid g3" style="margin-bottom:12px">
-      <div class="fg"><label>Customer Contact Name</label><input type="text" id="rtag_cust_contact"/></div>
-      <div class="fg"><label>Customer Phone</label><input type="text" id="rtag_cust_phone"/></div>
-      <div class="fg"><label>Customer Email</label><input type="text" id="rtag_cust_email"/></div>
+      <div class="fg"><label>Customer Contact Name</label><input type="text" id="rtag_cust_contact" oninput="autosave()"/></div>
+      <div class="fg"><label>Customer Phone</label><input type="text" id="rtag_cust_phone" oninput="autosave()"/></div>
+      <div class="fg"><label>Customer Email</label><input type="text" id="rtag_cust_email" oninput="autosave()"/></div>
     </div>
 
     <div class="ko-divider"></div>
     <div class="ko-section-lbl">Check all that apply</div>
     <div class="ko-toggles" style="margin-bottom:12px">
-      <span class="ko-pill" data-rtagtype="scheduled_removal" onclick="this.classList.toggle('active-green')">Scheduled Removal</span>
-      <span class="ko-pill" data-rtagtype="customer_repair" onclick="this.classList.toggle('active-green')">Customer Repair</span>
-      <span class="ko-pill" data-rtagtype="rental_return" onclick="this.classList.toggle('active-green')">Rental Return (Complete Rental Section)</span>
-      <span class="ko-pill" data-rtagtype="qa_eval" onclick="this.classList.toggle('active-green')">QA Material Evaluation</span>
-      <span class="ko-pill" data-rtagtype="warranty_core" onclick="this.classList.toggle('active-green')">Warranty Core</span>
-      <span class="ko-pill" data-rtagtype="special_missions" onclick="this.classList.toggle('active-green')">Special Missions Aircraft (e.g., SEMA)</span>
-      <span class="ko-pill" data-rtagtype="oem_equip" onclick="this.classList.toggle('active-green')">Original Aircraft Equipment</span>
-      <span class="ko-pill" data-rtagtype="aos_parts" onclick="this.classList.toggle('active-green')">AOS/Plane Parts</span>
-      <span class="ko-pill" data-rtagtype="exchange_core" onclick="this.classList.toggle('active-green')">Exchange Core</span>
-      <span class="ko-pill" data-rtagtype="unused_credit" onclick="this.classList.toggle('active-green')">Unused Return for Credit</span>
+      <span class="ko-pill" data-rtagtype="scheduled_removal" onclick="this.classList.toggle('active-green');autosave()">Scheduled Removal</span>
+      <span class="ko-pill" data-rtagtype="customer_repair" onclick="this.classList.toggle('active-green');autosave()">Customer Repair</span>
+      <span class="ko-pill" data-rtagtype="rental_return" onclick="this.classList.toggle('active-green');autosave()">Rental Return (Complete Rental Section)</span>
+      <span class="ko-pill" data-rtagtype="qa_eval" onclick="this.classList.toggle('active-green');autosave()">QA Material Evaluation</span>
+      <span class="ko-pill" data-rtagtype="warranty_core" onclick="this.classList.toggle('active-green');autosave()">Warranty Core</span>
+      <span class="ko-pill" data-rtagtype="special_missions" onclick="this.classList.toggle('active-green');autosave()">Special Missions Aircraft (e.g., SEMA)</span>
+      <span class="ko-pill" data-rtagtype="oem_equip" onclick="this.classList.toggle('active-green');autosave()">Original Aircraft Equipment</span>
+      <span class="ko-pill" data-rtagtype="aos_parts" onclick="this.classList.toggle('active-green');autosave()">AOS/Plane Parts</span>
+      <span class="ko-pill" data-rtagtype="exchange_core" onclick="this.classList.toggle('active-green');autosave()">Exchange Core</span>
+      <span class="ko-pill" data-rtagtype="unused_credit" onclick="this.classList.toggle('active-green');autosave()">Unused Return for Credit</span>
     </div>
 
     <div class="ko-divider"></div>
     <div class="ko-section-lbl">Complete if Engine Related Squawk</div>
     <div class="ko-toggles" style="margin-bottom:8px">
-      <span class="ko-pill" data-rtagengine="engine" onclick="this.classList.toggle('active-green')">Engine</span>
-      <span class="ko-pill" data-rtagengine="apu" onclick="this.classList.toggle('active-green')">APU</span>
+      <span class="ko-pill" data-rtagengine="engine" onclick="this.classList.toggle('active-green');autosave()">Engine</span>
+      <span class="ko-pill" data-rtagengine="apu" onclick="this.classList.toggle('active-green');autosave()">APU</span>
     </div>
     <div class="grid g2" style="margin-bottom:12px">
-      <div class="fg"><label>Engine Model</label><input type="text" id="rtag_engine_model"/></div>
-      <div class="fg"><label>Engine Time</label><input type="text" id="rtag_engine_time"/></div>
-      <div class="fg"><label>Engine S/N</label><input type="text" id="rtag_engine_sn"/></div>
-      <div class="fg"><label>Engine Cycles</label><input type="text" id="rtag_engine_cycles"/></div>
+      <div class="fg"><label>Engine Model</label><input type="text" id="rtag_engine_model" oninput="autosave()"/></div>
+      <div class="fg"><label>Engine Time</label><input type="text" id="rtag_engine_time" oninput="autosave()"/></div>
+      <div class="fg"><label>Engine S/N</label><input type="text" id="rtag_engine_sn" oninput="autosave()"/></div>
+      <div class="fg"><label>Engine Cycles</label><input type="text" id="rtag_engine_cycles" oninput="autosave()"/></div>
     </div>
 
     <div class="fg" style="margin-bottom:6px">
       <label>Link to a work item (optional — pre-fills the reason)</label>
-      <select id="rtag_item_link" onchange="rtagFillReasonFromItem(this)"><option value="">— none —</option></select>
+      <select id="rtag_item_link" onchange="rtagFillReasonFromItem(this);autosave()"><option value="">— none —</option></select>
     </div>
     <div class="fg" style="margin-bottom:12px">
       <label>Reason for Part Removal</label>
-      <textarea id="rtag_reason" style="min-height:60px"></textarea>
+      <textarea id="rtag_reason" style="min-height:60px" oninput="autosave()"></textarea>
     </div>
 	<div class="fg" style="margin-bottom:12px">
       <label>Work Performed / Resolution</label>
-      <textarea id="rtag_workperf" style="min-height:60px" placeholder="e.g. Cleaned and re-pinned connector, replaced relay, ops checked good..."></textarea>
-    </div>  
+      <textarea id="rtag_workperf" style="min-height:60px" placeholder="e.g. Cleaned and re-pinned connector, replaced relay, ops checked good..." oninput="autosave()"></textarea>
+    </div>
 
     <div class="ko-divider"></div>
     <div class="ko-section-lbl">Are fault codes available?</div>
@@ -2362,23 +2397,23 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <span class="ko-pill" id="rtag-fault-no" onclick="rtagToggleFault(this,'no')">No</span>
     </div>
     <div class="grid g2" style="margin-bottom:12px">
-      <div class="fg"><label>Code</label><input type="text" id="rtag_code1"/></div>
-      <div class="fg"><label>Code</label><input type="text" id="rtag_code2"/></div>
+      <div class="fg"><label>Code</label><input type="text" id="rtag_code1" oninput="autosave()"/></div>
+      <div class="fg"><label>Code</label><input type="text" id="rtag_code2" oninput="autosave()"/></div>
     </div>
 
     <div class="ko-divider"></div>
     <div class="ko-section-lbl">Condition at Time of Failure — check all that apply</div>
     <div class="ko-toggles" style="margin-bottom:8px">
-      <span class="ko-pill" data-rtagcond="onground" onclick="this.classList.toggle('active-green')">On ground</span>
-      <span class="ko-pill" data-rtagcond="inflight" onclick="this.classList.toggle('active-green')">In Flight</span>
-      <span class="ko-pill" data-rtagcond="firstpowerup" onclick="this.classList.toggle('active-green')">At first power up</span>
-      <span class="ko-pill" data-rtagcond="climb" onclick="this.classList.toggle('active-green')">Climb</span>
-      <span class="ko-pill" data-rtagcond="anypowerup" onclick="this.classList.toggle('active-green')">At any power up</span>
-      <span class="ko-pill" data-rtagcond="descent" onclick="this.classList.toggle('active-green')">Descent</span>
-      <span class="ko-pill" data-rtagcond="landing" onclick="this.classList.toggle('active-green')">Landing</span>
+      <span class="ko-pill" data-rtagcond="onground" onclick="this.classList.toggle('active-green');autosave()">On ground</span>
+      <span class="ko-pill" data-rtagcond="inflight" onclick="this.classList.toggle('active-green');autosave()">In Flight</span>
+      <span class="ko-pill" data-rtagcond="firstpowerup" onclick="this.classList.toggle('active-green');autosave()">At first power up</span>
+      <span class="ko-pill" data-rtagcond="climb" onclick="this.classList.toggle('active-green');autosave()">Climb</span>
+      <span class="ko-pill" data-rtagcond="anypowerup" onclick="this.classList.toggle('active-green');autosave()">At any power up</span>
+      <span class="ko-pill" data-rtagcond="descent" onclick="this.classList.toggle('active-green');autosave()">Descent</span>
+      <span class="ko-pill" data-rtagcond="landing" onclick="this.classList.toggle('active-green');autosave()">Landing</span>
     </div>
     <div class="fg" style="margin-bottom:12px;max-width:200px">
-      <label>Cruise Altitude</label><input type="text" id="rtag_time" placeholder="e.g. FL350"/>
+      <label>Cruise Altitude</label><input type="text" id="rtag_time" placeholder="e.g. FL350" oninput="autosave()"/>
     </div>
 
     <div class="ko-divider"></div>
@@ -2389,15 +2424,17 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     </div>
 
     <div class="ko-divider"></div>
-    <div class="grid g3" style="margin-bottom:8px">
-      <div class="fg"><label>Tag Originator Name</label><input type="text" id="rtag_originator"/></div>
-      <div class="fg"><label>GAC Work Order #</label><input type="text" id="rtag_gac_wo"/></div>
-      <div class="fg"><label>Employee ID # (FN)</label><input type="text" id="rtag_employee_id"/></div>
+    <div class="grid g2" style="margin-bottom:8px">
+      <div class="fg"><label>GAC Sales Order #</label><input type="text" id="rtag_gac_so" oninput="autosave()"/></div>
+      <div class="fg"><label>GAC Work Order #</label><input type="text" id="rtag_gac_wo" oninput="autosave()"/></div>
+      <div class="fg"><label>Tag Originator Name</label><input type="text" id="rtag_originator" oninput="autosave()"/></div>
+      <div class="fg"><label>Employee ID # (FN)</label><input type="text" id="rtag_employee_id" oninput="autosave()"/></div>
     </div>
 
 	<div class="ko-divider"></div>
 	<div class="ko-section-lbl">🖋️ Signature / Inspection Stamp (optional)</div>
 	<p style="font-size:12px;color:var(--g600);margin-bottom:8px">Upload your stamp once — it will be saved to your profile and automatically applied to all your GA3671 tags.</p>
+	<p style="font-size:12px;color:var(--g600);margin-bottom:8px">✍️ No stamp uploaded? The “Inspection Stamp” box on the PDF stays an empty signature field, ready to be digitally signed and locked in Adobe Acrobat. A locked PDF can’t be edited — to correct one, re-open its saved tag here, fix it and generate a new PDF.</p>
 	<input type="file" id="rtag-stamp-file" accept="image/png,image/jpeg" style="display:none" onchange="rtagStampFileSelected(this)"/>
 	<div id="rtag-stamp-preview-wrap" style="display:none;align-items:center;gap:10px;margin-bottom:10px">
 	  <img id="rtag-stamp-preview" style="max-width:110px;max-height:60px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;padding:3px"/>
@@ -2408,8 +2445,9 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 	<div id="rtag-stamp-status" style="font-size:11px;color:var(--g600);margin-top:6px"></div>  
 
     <div class="err-msg" id="rtag-error"></div>
-    <div class="modal-btns">
+    <div class="modal-btns" style="flex-wrap:wrap">
       <button class="btn" onclick="closeModal('modal-repair-tag')">Cancel</button>
+      <button class="btn" id="rtag-save-btn" onclick="rtagSaveDraft()" title="Keep everything you typed on this job, so you can re-open and re-generate this tag later">💾 Save</button>
       <button class="btn primary" id="rtag-gen-btn" onclick="generateRepairTag()">📄 Generate filled PDF</button>
     </div>
   </div>
@@ -2635,7 +2673,11 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <p>Generates the official Gulfstream unserviceable tag as a filled, downloadable PDF. Open it either with the 🏷️ button next to a specific row in "Parts replaced" (pre-fills that part's name, P/N and S/N), or with the standalone <strong>"🏷️ Generate GA3671 tag (standalone)"</strong> button below the parts list if the part isn't in your table yet.</p>
       <p>Aircraft model, serial, registration, A/C hours &amp; cycles, GAC Work Order #, and customer company/code/contact/phone/email are pre-filled from Steps 2 and 6, and your <strong>Employee ID #</strong> is pre-filled from your profile's FN Number. <strong>A/C hours and cycles are shared across every GA3671 tag for the same job</strong> — enter them once (here or in Step 2) and every subsequent tag you generate for this job will already have them, whether typed manually or applied from a Reply Sync suggestion.</p>
       <p>Complete the rest as needed: reason for removal (can be pre-filled by linking a work item), work performed/resolution, fault codes, condition at time of failure, cruise altitude, whether the replacement solved the problem, and the Engine/APU section for engine-related squawks. Tap <strong>"Generate filled PDF"</strong> to download the completed tag.</p>
+      <p>✈️ <strong>Since Delivery:</strong> in <em>Life Status Data</em>, tick <strong>Since Delivery</strong> when the part has been on the aircraft since it was delivered new. <em>Time Since New</em> and <em>Cycles Since New</em> are then filled automatically with the A/C hours and cycles from Step 2 — nothing to type, and they follow if you change the A/C hours or cycles. Untick it to enter your own values.</p>
+      <p>💾 <strong>Save &amp; re-generate:</strong> tap <strong>Save</strong> in the tag form to keep everything you typed (generating the PDF saves it too). Saved tags belong to the job: open the 🏷️ of the same part again and your tag comes back automatically, or pick any saved tag of the job in the <em>Saved tags</em> list at the top of the form. Saving updates the loaded tag instead of creating a copy — use <strong>Start blank</strong> if you want a fresh one.</p>
+      <p>🧹 <strong>Clean-up at RTS:</strong> when you mark a job RTS, the app lists the GA3671 tags saved for it and asks which ones were actually used. The others are deleted from the database <em>and</em> from the team REX, so Smart Diagnosis only suggests repairs that were really carried out.</p>
 	  <p>🖋️ <strong>Signature / Inspection Stamp:</strong> upload your stamp or signature once (PNG or JPG) from the tag form — it's saved to your profile and automatically embedded on every GA3671 tag you generate afterwards, in the designated stamp box on the form. Use "🔄 Change" to replace it or "🗑 Remove" to delete it from your profile at any time.</p>
+      <p>✍️ <strong>Signing in Adobe Acrobat?</strong> If no stamp is uploaded, the "Inspection Stamp" box on the generated PDF stays an empty signature field, ready to be digitally signed and locked in Adobe Acrobat. A locked PDF can't be edited: to correct a signed tag, re-open it here (see <em>Save &amp; re-generate</em> above), fix it, generate a new PDF and sign that one.</p>
       <p>The form stays open until you tap Cancel or Generate — clicking outside it will not close it or lose your entries.</p>
     </div>
 
@@ -2763,10 +2805,19 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <p><strong>Important:</strong> the history is a starting point only. Always cross-check any suggested part number against the current AMM, IPC, and applicable release documentation before ordering or installing.</p>
     </div>
 
-    <div class="help-section">
+    <div class="help-section" id="help-smart-diag">
       <h4>💡 Smart Diagnosis — troubleshooting suggestions from past squawks</h4>
-      <p>As you type a work item description in <strong>Step 3</strong>, the app quietly checks it against every past resolved defect logged by the whole team (same aircraft family weighted first). If a good match is found, a small <strong>"💡 N similar case(s) resolved"</strong> pill appears under the item — tap it to see what actually fixed the problem (resolution, and any parts replaced), with the Work Order, date and engineer who logged it. A <strong>"📝 Reprendre l'action dans le Daily Update"</strong> button lets you insert that resolution straight into today's Daily Update note for that item and mark it carried out.</p>
-      <p>This knowledge base fills itself automatically, with no extra typing: every time you generate a <strong>GA 3671 tag</strong> with a "Work Performed / Resolution" filled in, and every time you mark an aircraft <strong>RTS</strong> with a work item checked "Carried out" and a note attached, that resolution is saved for the whole team to benefit from on future jobs.</p>
+      <p>As you type a work item description in <strong>Step 3</strong>, the app quietly compares it with the defects your colleagues already closed (the team's REX). When it finds a real match, a small blue pill appears under the item: <strong>"💡 N similar case(s) solved on the fleet"</strong>. Tap <strong>Show</strong> to read the past squawk, what fixed it, the parts replaced, and the Work Order, date and engineer who logged it. This is reference only — nothing is added to your Daily Update automatically.</p>
+      <p><strong>How a case is chosen</strong></p>
+      <ul>
+        <li><strong>Specific words:</strong> your item is compared with past squawks on its specific words (system, part name, fault code). Generic words such as "inop", "failed", "replaced" or "check" are ignored, so one common word is never enough. The words that matched are listed on each case.</li>
+        <li><strong>Meaning:</strong> an AI check confirms cases that mean the same thing even when they are worded differently.</li>
+        <li><strong>Close match</strong> = the case covers most of the specific words of your item (or its only specific word). <strong>Possible match</strong> = weaker; shown alone, and only when nothing closer exists.</li>
+        <li>At most <strong>3 cases</strong> are shown. The same job logged twice (GA3671 tag + Daily Update) counts once, and cases from the Work Order you are working on are never suggested.</li>
+        <li>Cases from the same aircraft family as your job come first; other families are labelled <strong>Other model</strong>.</li>
+        <li><strong>Routine tasks</strong> (downloads, charts / database / software updates, walkaround, servicing, sumping, cleaning…) never trigger suggestions and are not saved to the REX.</li>
+      </ul>
+      <p>This knowledge base fills itself automatically, with no extra typing: every time you generate a <strong>GA 3671 tag</strong> with a "Work Performed / Resolution" filled in, and every time you mark an aircraft <strong>RTS</strong> with a work item checked "Carried out" and a note attached (routine tasks excluded), that resolution is saved for the whole team to benefit from on future jobs. GA 3671 tags that were prepared but not actually used are removed again when you mark the job RTS — you choose which ones to keep.</p>
     </div>
 
     <div class="help-section">
@@ -5585,7 +5636,8 @@ function gatherData() {
     cust_name: gv('f_cust_name'), cust_tel: gv('f_cust_tel'), cust_email: gv('f_cust_email'),
     cust_company: gv('f_cust_company'), cust_code: gv('f_cust_code'),
     leadEngId: document.getElementById('lead-eng-sel')?.value || '',  // ← nouveau
-    items: getItems(), parts: getParts(), colleagues: getColleagueSlots(), updates: getUpdatesData()
+    items: getItems(), parts: getParts(), colleagues: getColleagueSlots(), updates: getUpdatesData(),
+    repairTagDraft: rtagGatherDraft()   // filet de sécurité : brouillon GA3671 non sauvegardé (voir plus bas)
   };
 }
 
@@ -5643,7 +5695,10 @@ async function doSaveInner() {
     ...d
   };
   try {
-    await set(ref(db, 'team/' + curProfile.id + '/projects/' + curProj), toSave);
+    // update() et non set() : ne réécrit que les clés du projet, jamais une copie périmée de
+    // ga3671Tags (fiches GA3671 sauvegardées, écrites à part — parfois pendant cette sauvegarde).
+    delete toSave.ga3671Tags;
+    await update(ref(db, 'team/' + curProfile.id + '/projects/' + curProj), toSave);
     setSyncBadge('ok');
     const _scrollY = window.scrollY;
     await renderProjList();
@@ -5668,6 +5723,7 @@ const sv = (id, v) => { const e = document.getElementById(id); if (e && v != nul
 
 function fillFromProj(proj) {
   curProjSubjectTemplate = proj.subjectTemplateUsed || DEFAULT_SUBJECT_TEMPLATE;
+  G._rtagDraft = proj.repairTagDraft || null;   // brouillon GA3671 non sauvegardé, le cas échéant
   sv('f_wo', proj.wo); sv('f_model', proj.model); sv('f_sn', proj.sn); sv('f_reg', proj.reg); sv('f_loc', proj.loc);
   sv('f_rts_assist', proj.rts_assist || 'RTS');
   // Mettre à jour le bouton immédiatement
@@ -5709,6 +5765,7 @@ function fillFromProj(proj) {
   document.getElementById('updates-container').classList.remove('has-items');
   document.getElementById('updates-container').innerHTML = '';
   const updates = Array.isArray(proj.updates) ? proj.updates : Object.values(proj.updates || {});
+  G.koCheckCountryApproval(); // approvals: re-check once every field (incl. customer company) is loaded
   if (updates.length) updates.forEach(u => renderUpdateBlock(u));
   else document.getElementById('updates-container').innerHTML = '<p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet</p>';
 
@@ -5717,6 +5774,7 @@ function fillFromProj(proj) {
 
 function clearForm() {
   curProjSubjectTemplate = curProfile?.subjectTemplate || DEFAULT_SUBJECT_TEMPLATE;
+  G._rtagDraft = null;
   ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_site_arrival','f_job_desc','f_intro_msg','f_cust_name','f_cust_tel','f_cust_email','f_cust_company','f_cust_code','f_ac_hours','f_ac_cycles']
     .forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
   G.updatePart135UI();
@@ -5934,9 +5992,10 @@ function syncNewItemToExistingUpdateDays() {
 //  fiches GA3671 et les Daily Updates marqués "Carried out"
 // ══════════════════════════════════════
 
-async function saveTroubleshootingEntry({ squawk, resolution, rootCause = '', parts = [], faultCodes = [], wiringResetOnly = false, model = null, wo = null }) {
+async function saveTroubleshootingEntry({ squawk, resolution, rootCause = '', parts = [], faultCodes = [], wiringResetOnly = false, model = null, wo = null, entryId: presetId = null }) {
   if (!squawk || !resolution) return;
-  const entryId = 'entry_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  // presetId : permet à une fiche GA3671 régénérée de mettre à jour son entrée au lieu d'en créer une de plus
+  const entryId = presetId || ('entry_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8));
   // model/wo peuvent être passés explicitement : au passage RTS, clearForm()
   // vide le formulaire pendant que la boucle attend encore les embeddings, donc
   // les lire ici à la volée donnait des entrées sans modèle ni WO à partir de
@@ -5944,8 +6003,7 @@ async function saveTroubleshootingEntry({ squawk, resolution, rootCause = '', pa
   const currentModel = (model ?? (gv('f_model') || gv('ko_model') || '')).trim().toUpperCase();
   const currentWo    = (wo    ?? (gv('f_wo')    || gv('ko_wo')    || '')).trim().toUpperCase();
 
-  const familyMatch = currentModel.match(/G\d{3,4}|GV|GIV/i);
-  const modelFamily = familyMatch ? familyMatch[0].toUpperCase() : currentModel;
+  const modelFamily = smartDiagFamily(currentModel);   // G700 pour « G700 » comme pour « GVIII-G700 » ; '' si non reconnu
 
   // Même infra que squawkHistorySave() : mots-clés + embedding sémantique,
   // pour que la recherche retrouve un cas même formulé différemment.
@@ -5971,6 +6029,7 @@ async function saveTroubleshootingEntry({ squawk, resolution, rootCause = '', pa
 
   try {
     await set(ref(db, 'troubleshootingKnowledge/' + entryId), payload);
+    smartDiagKb = null;   // le REX vient de changer : la prochaine recherche le relit
   } catch (err) {
     console.warn('Smart Diagnosis: failed to persist knowledge entry', err);
   }
@@ -5994,8 +6053,9 @@ async function saveTroubleshootingFromDailyUpdates() {
     for (const it of items) {
       const iu = latestByItem[it.id];
       if (!iu || iu.status !== 'done') continue;
+      if (smartDiagIsRoutine(it.label)) continue;   // tâche de routine (download, charts update, walkaround…) : pas une panne résolue
       const plainDetail = rteToPlainText(iu.detail);
-      if (!plainDetail) continue;
+      if (plainDetail.length < 12) continue;         // note trop courte pour aider quelqu'un (« done », « OK »…)
       await saveTroubleshootingEntry({
         squawk: it.label,
         resolution: plainDetail,
@@ -6003,7 +6063,9 @@ async function saveTroubleshootingFromDailyUpdates() {
         parts: [],
         faultCodes: [],
         wiringResetOnly: true,
-        model, wo
+        model, wo,
+        // ID stable par job + item : refaire la capture met l'entrée à jour au lieu d'en ajouter une de plus
+        entryId: 'entry_du_' + (String(wo || '').toUpperCase().replace(/[^A-Z0-9]/g, '') || 'NOWO') + '_' + smartDiagNorm(it.label).replace(/ /g, '_').slice(0, 80)
       });
     }
   } catch (err) {
@@ -6011,7 +6073,257 @@ async function saveTroubleshootingFromDailyUpdates() {
   }
 }
 
+// ── Réglages Smart Diagnosis : tout ce qui se règle est ici ───────────────────
+// Principe : mieux vaut ne rien afficher qu'afficher du bruit. Un cas n'est proposé que s'il
+// partage des mots SPÉCIFIQUES avec l'item (mots génériques ignorés) et/ou a un sens très proche.
+const SMART_DIAG_MAX_CASES     = 3;              // cas affichés au maximum
+const SMART_DIAG_REL_CUTOFF    = 0.6;            // un cas doit atteindre 60 % du score du meilleur
+const SMART_DIAG_COV_CLOSE     = 0.66;           // « Close match » : ≥ 2/3 de l'info de l'item retrouvée (mots pondérés par leur rareté)
+const SMART_DIAG_COV_POSSIBLE  = 0.4;            // « Possible match » : au moins 40 %
+const SMART_DIAG_KB_TTL_MS     = 3 * 60 * 1000;  // REX gardé en mémoire 3 min (évite de retélécharger tout le REX à chaque frappe)
+// Similarité de sens (embeddings Mistral) : la « ligne de base » est très haute — deux textes sans
+// rapport dépassent souvent 0.7 — donc on juge chaque entrée par rapport à ce que le REX renvoie
+// pour CETTE requête (z-score = écart à la moyenne, en écarts-types), pas par un seuil fixe.
+const SMART_DIAG_SEM_Z_SUPPORT = 1.5;            // le sens « ressort du lot » : renforce un indice de mots
+const SMART_DIAG_SEM_Z_STRONG  = 2.5;            // sens quasi identique : peut suffire (avec le plancher ci-dessous)
+const SMART_DIAG_SEM_ABS_MIN   = 0.72;           // plancher de similarité brute pour un match « sens seul »
+const SMART_DIAG_MIN_EMB_FOR_Z = 8;              // en dessous, pas assez d'entrées pour un z-score fiable
+
+// Mots trop vagues pour identifier une panne (ignorés en plus de SQUAWK_STOP_WORDS).
+const SMART_DIAG_GENERIC_WORDS = new Set([
+  // état / symptôme sans contenu
+  'inop','inoperative','inoperable','unserviceable','defective','faulty','broken','damaged','damage',
+  'working','work','operate','operating','operation','issue','problem','intermittent','abnormal','erratic',
+  'unable','cannot','does','doesn','didn','isn','won','open','close','closed','need','needs','needed',
+  'required','request','requested','done','also','still','again','new','message','code','fault','fail','failure',
+  // actions de maintenance génériques (surtout présentes dans les résolutions)
+  'replace','replaced','replacement','repair','repaired','install','installed','remove','removed',
+  'inspect','inspection','test','tested','testing','reset','clean','cleaned','service','check','checked',
+  'carried','performed','completed','complete','satisfactory','satis','success','successfully','confirmed',
+  'applied','functional','operational','normal','rts','ops',
+  // mots creux / localisation ultra-générique
+  'item','unit','part','system','aircraft','when','due','this','that','there',
+  'left','right','front','rear','upper','lower','side','aft','fwd','forward'
+]);
+
+// Tâches de routine : ce ne sont pas des pannes, donc rien à diagnostiquer (et rien à sauver au REX).
+// Un mot de panne dans le libellé (failed, fault, inop…) annule ce filtre : « CMC DOWNLOAD FAILS » reste diagnostiqué.
+const SMART_DIAG_ROUTINE_RE = new RegExp([
+  '\\b(?:download|upload)\\b',
+  '\\bwalk-?\\s?around\\b',
+  '\\b(?:pre|post)-?\\s?flight\\b',
+  '\\bdaily\\s+(?:check|inspection)\\b',
+  '\\bsump(?:ing|s)?\\b',
+  '\\b(?:servicing|top-?\\s?up|refill(?:ing)?)\\b',
+  '\\b(?:wash|washing|polish|polishing|detailing|cleaning)\\b',
+  '\\b(?:repellent|repellant|rain-?\\s?repel\\w*)\\b',
+  '\\b(?:charts?|nav(?:igation)?\\s*data(?:base)?|data\\s?base|jeppesen|software|firmware)\\b.*\\b(?:update|upgrade|load(?:ing)?)\\b',
+  '\\b(?:update|upgrade|load(?:ing)?)\\b.*\\b(?:charts?|nav(?:igation)?\\s*data(?:base)?|data\\s?base|jeppesen|software|firmware)\\b',
+  '\\b(?:meeting|briefing|hand-?\\s?over)\\b'
+].join('|'), 'i');
+const SMART_DIAG_DEFECT_RE = /\b(?:fail\w*|fault\w*|error|inop\w*|unable|defect\w*|not\s+work\w*|malfunction\w*|abnormal|intermittent|caution|warning)\b/i;
+
 let smartDiagTimers = {};
+let smartDiagSeq = {};                 // itemId → n° de la recherche la plus récente (ignore les réponses en retard)
+let smartDiagKb = null;                // { ts, entries, df, n } — REX préparé, gardé en mémoire
+let smartDiagKbPromise = null;
+const smartDiagEmbCache = new Map();   // libellé normalisé → embedding (évite de rappeler le Worker pour le même texte)
+
+function smartDiagNorm(s) {
+  return String(s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function smartDiagIsRoutine(label) {
+  const s = String(label ?? '');
+  return SMART_DIAG_ROUTINE_RE.test(s) && !SMART_DIAG_DEFECT_RE.test(s);
+}
+
+// Famille d'avion : G700 pour « G700 » comme pour « GVIII-G700 » (l'ancienne regex rendait « GV » pour ce dernier).
+// Modèle non reconnu (ex. texte parasite) → '' plutôt que le texte brut.
+function smartDiagFamily(model) {
+  const m = String(model ?? '').toUpperCase();
+  const g = m.match(/G\d{3,4}/);
+  if (g) return g[0];
+  const r = m.match(/\bG(?:IV|V|III|II)\b/);
+  return r ? r[0] : '';
+}
+
+// Mots-clés « discriminants » : minuscules, singulier simple, sans mots génériques.
+function smartDiagStem(w) {
+  if (w.length >= 7 && w.endsWith('ing')) return w.slice(0, -3);       // squeaking → squeak
+  if (w.length >= 6 && w.endsWith('ies')) return w.slice(0, -3) + 'y';  // batteries → battery
+  if (w.length >= 5 && w.endsWith('s') && !/(?:ss|us|is)$/.test(w)) return w.slice(0, -1); // doors → door
+  return w;
+}
+function smartDiagTokens(text) {
+  const out = new Set();
+  for (const raw of squawkTokenize(text)) {
+    const w = smartDiagStem(raw);
+    if (w.length < 3 || SQUAWK_STOP_WORDS.has(w) || SMART_DIAG_GENERIC_WORDS.has(w)) continue;
+    out.add(w);
+  }
+  return out;
+}
+// Code de panne / référence (ex. 274000016hs, c15172) : signal très spécifique.
+function smartDiagIsCodeLike(t) {
+  return /^(?=.*\d)(?=.*[a-z])[a-z0-9]{5,}$/.test(t);
+}
+function smartDiagArr(x) {
+  return Array.isArray(x) ? x : (x && typeof x === 'object' ? Object.values(x) : []);
+}
+// Texte d'affichage : espaces propres, pas de lignes vides en série.
+function smartDiagClean(s) {
+  return String(s ?? '').replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').replace(/\n{2,}/g, '\n').trim();
+}
+function smartDiagShort(s, max) {
+  const t = smartDiagClean(s).replace(/\n/g, ' ');
+  return t.length > max ? t.slice(0, max - 1).trimEnd() + '…' : t;
+}
+
+// Prépare le REX pour la recherche : mots-clés par entrée, et regroupement « une fiche par job »
+// (même WO ; sans WO : même texte de squawk, même ingénieur, même jour). Un même job saisi deux fois
+// (fiche GA3671 + Daily Update, ou fiche régénérée) ne compte donc qu'une fois.
+function smartDiagBuildKb(rawEntries, ts) {
+  const entries = [];
+  const groups = new Map();
+  for (const [id, e] of rawEntries) {
+    if (!e || !e.squawk || !e.resolution) continue;
+    const wo = String(e.wo || '').trim().toUpperCase();
+    const codes = smartDiagArr(e.faultCodes).join(' ');
+    const tokens = smartDiagTokens([e.squawk, e.rootCause, codes].filter(Boolean).join(' '));
+    const fixTokens = new Set();
+    smartDiagTokens(e.resolution).forEach(t => { if (!tokens.has(t)) fixTokens.add(t); });
+    const parts = smartDiagArr(e.partsReplaced).filter(p => p && (p.pn || p.nom));
+    const key = wo ? 'wo:' + wo : 'sq:' + smartDiagNorm(e.squawk) + '|' + smartDiagNorm(e.engineerName) + '|' + smartDiagNorm(e.date);
+    const it = {
+      id, e, wo, key, tokens, fixTokens, hasParts: parts.length > 0,
+      family: smartDiagFamily(e.model) || smartDiagFamily(e.modelFamily),
+      emb: Array.isArray(e.embedding) && e.embedding.length ? e.embedding : null
+    };
+    entries.push(it);
+    if (!groups.has(key)) groups.set(key, new Set());
+    tokens.forEach(t => groups.get(key).add(t));
+  }
+  const df = new Map();                  // nombre de jobs dont le squawk contient le mot (rareté)
+  groups.forEach(set => set.forEach(t => df.set(t, (df.get(t) || 0) + 1)));
+  return { ts, entries, df, n: groups.size };
+}
+
+// Classement (fonction pure : pas de DOM, pas de réseau). Retourne les cas à afficher,
+// du plus au moins pertinent : chaque cas = { entry, level: 'close' | 'possible', matched, sameFamily, semOk, … }.
+function smartDiagRank(query, queryEmb, kb, opts = {}) {
+  const Q = smartDiagTokens(query);
+  const N = Math.max(kb.n, 1);
+  const wt = t => Math.log(1 + N / (1 + (kb.df.get(t) || 0)));   // mot rare = plus de poids
+  const wQ = [...Q].reduce((s, t) => s + wt(t), 0);
+  const targetFamily = opts.targetFamily || '';
+  const currentWo = opts.currentWo || '';
+
+  // Similarité de sens de chaque entrée avec la requête, puis z-score par rapport au reste du REX.
+  const sims = new Map();
+  let mu = 0, sd = 0, haveStats = false;
+  if (queryEmb) {
+    const vals = [];
+    for (const it of kb.entries) {
+      if (!it.emb) continue;
+      const s = cosineSimilarity(queryEmb, it.emb);
+      sims.set(it, s); vals.push(s);
+    }
+    if (vals.length >= SMART_DIAG_MIN_EMB_FOR_Z) {
+      mu = vals.reduce((a, b) => a + b, 0) / vals.length;
+      sd = Math.max(Math.sqrt(vals.reduce((a, b) => a + (b - mu) * (b - mu), 0) / vals.length), 0.03);
+      haveStats = true;
+    }
+  }
+
+  const rows = [];
+  for (const it of kb.entries) {
+    if (currentWo && it.wo === currentWo) continue;   // jamais le job en cours : on cherche l'expérience des AUTRES
+
+    // Mots communs : ceux du squawk / de la cause comptent 1, ceux trouvés seulement dans la résolution 0,5.
+    const shared = [];
+    let wShared = 0, pts = 0;
+    for (const t of Q) {
+      if (it.tokens.has(t)) { shared.push(t); wShared += wt(t); pts += 1; }
+      else if (it.fixTokens.has(t)) { shared.push(t); wShared += wt(t) * 0.5; pts += 0.5; }
+    }
+    if (shared.some(smartDiagIsCodeLike)) pts += 1;    // même code de panne = signal très fort
+    const cov = wQ ? wShared / wQ : 0;                 // part de l'info de l'item retrouvée dans ce cas
+
+    const sem = sims.has(it) ? sims.get(it) : null;
+    let z = null;
+    if (sem !== null) z = haveStats ? (sem - mu) / sd : (sem >= 0.85 ? 3 : sem >= 0.78 ? 2 : 0);
+    const semStrong  = z !== null && z >= SMART_DIAG_SEM_Z_STRONG && sem >= SMART_DIAG_SEM_ABS_MIN;
+    const semSupport = z !== null && z >= SMART_DIAG_SEM_Z_SUPPORT;
+    // Item à un seul mot spécifique (ex. « FOOTREST ») : ce mot suffit s'il est rare dans le REX.
+    const only = Q.size === 1 ? [...Q][0] : null;
+    const single = !!only && it.tokens.has(only) && (kb.df.get(only) || 0) <= Math.max(2, Math.round(N * 0.05));
+
+    let level = null;
+    if ((pts >= 2 && cov >= SMART_DIAG_COV_CLOSE) || single || (shared.length >= 1 && semStrong)) level = 'close';
+    else if ((pts >= 2 && cov >= SMART_DIAG_COV_POSSIBLE) || (shared.length >= 1 && semSupport) || semStrong) level = 'possible';
+    if (!level && !opts.debug) continue;
+
+    const sameFamily = targetFamily && it.family ? it.family === targetFamily : null;
+    const semPart = z === null ? 0 : Math.max(0, Math.min(z, 4)) / 4;
+    const score = (level === 'close' ? 2 : level === 'possible' ? 1 : 0) + cov * 2 + semPart
+                + (sameFamily ? 0.3 : 0) + Math.min(pts, 4) * 0.05;
+    rows.push({
+      item: it, entry: it.e, id: it.id, level, score, cov, sem, z, sameFamily,
+      semOk: semSupport || semStrong,
+      matched: shared.slice().sort((a, b) => wt(b) - wt(a)).slice(0, 5)
+    });
+  }
+
+  // Une seule fiche par job : la plus pertinente ; à égalité proche, celle qui porte les pièces.
+  const byKey = new Map();
+  rows.forEach(r => { const l = byKey.get(r.item.key); if (l) l.push(r); else byKey.set(r.item.key, [r]); });
+  const picked = [];
+  byKey.forEach(list => {
+    list.sort((a, b) => b.score - a.score);
+    let best = list[0];
+    if (!best.item.hasParts) {
+      const alt = list.find(r => r.item.hasParts && r.level === best.level && r.score >= best.score - 0.2);
+      if (alt) best = alt;
+    }
+    picked.push(best);
+  });
+  picked.sort((a, b) => b.score - a.score);
+  if (opts.debug) return picked;
+
+  // Affichage : les « close » (3 max, dans les 60 % du meilleur) ; à défaut UN SEUL « possible ».
+  const close = picked.filter(r => r.level === 'close');
+  if (close.length) return close.filter(r => r.score >= close[0].score * SMART_DIAG_REL_CUTOFF).slice(0, SMART_DIAG_MAX_CASES);
+  return picked.slice(0, 1);
+}
+
+// Charge le REX une fois puis le garde 3 min. Les appels simultanés (ex. ouverture d'un job
+// avec 10 items) partagent la même requête au lieu de retélécharger le REX 10 fois.
+async function smartDiagLoadKb(force = false) {
+  const now = Date.now();
+  if (!force && smartDiagKb && now - smartDiagKb.ts < SMART_DIAG_KB_TTL_MS) return smartDiagKb;
+  if (smartDiagKbPromise) return smartDiagKbPromise;
+  smartDiagKbPromise = (async () => {
+    try {
+      const snap = await get(ref(db, 'troubleshootingKnowledge'));
+      smartDiagKb = smartDiagBuildKb(snap.exists() ? Object.entries(snap.val() || {}) : [], Date.now());
+      return smartDiagKb;
+    } finally { smartDiagKbPromise = null; }
+  })();
+  return smartDiagKbPromise;
+}
+
+async function smartDiagGetEmbedding(text) {
+  const key = smartDiagNorm(text);
+  if (!key) return null;
+  if (smartDiagEmbCache.has(key)) return smartDiagEmbCache.get(key);
+  const emb = await koGetEmbedding(text);
+  if (emb) {
+    if (smartDiagEmbCache.size >= 60) smartDiagEmbCache.delete(smartDiagEmbCache.keys().next().value);
+    smartDiagEmbCache.set(key, emb);
+  }
+  return emb;
+}
 
 G.triggerSmartDiagSearch = function(inputEl, itemId) {
   const query = (inputEl.value || '').trim();
@@ -6019,64 +6331,64 @@ G.triggerSmartDiagSearch = function(inputEl, itemId) {
   if (!container) return;
 
   clearTimeout(smartDiagTimers[itemId]);
-  if (query.length < 4) {
-    container.style.display = 'none';
-    container.innerHTML = '';
-    return;
-  }
+  const seq = smartDiagSeq[itemId] = (smartDiagSeq[itemId] || 0) + 1;
+  const hide = () => { container.style.display = 'none'; container.innerHTML = ''; };
+
+  // Rien à diagnostiquer : texte trop court, uniquement des mots vagues, ou tâche de routine.
+  if (query.length < 4 || smartDiagIsRoutine(query) || !smartDiagTokens(query).size) { hide(); return; }
 
   smartDiagTimers[itemId] = setTimeout(async () => {
-    const currentModel = (gv('f_model') || '').trim();
-    const familyMatch = currentModel.match(/G\d{3,4}|GV|GIV/i);
-    const targetFamily = familyMatch ? familyMatch[0].toUpperCase() : '';
-
     try {
-      // Même hybride mots-clés + embedding que la recherche pièces (squawkRunSearch)
-      const [snap, queryEmbedding] = await Promise.all([
-        get(ref(db, 'troubleshootingKnowledge')),
-        koGetEmbedding(query)
-      ]);
-      if (!snap.exists()) return;
-
-      const entries = Object.values(snap.val());
-      const queryTokens = squawkTokenize(query);
-
-      const matches = entries.map(entry => {
-        const entryTokens = entry.keywords || squawkTokenize(entry.squawk || '');
-        const tokenScore = queryTokens.filter(t => entryTokens.includes(t)).length;
-        const semScore = (queryEmbedding && entry.embedding) ? cosineSimilarity(queryEmbedding, entry.embedding) : 0;
-        if (tokenScore < 1 && semScore < SEMANTIC_MATCH_THRESHOLD) return null;
-        let score = tokenScore + (semScore * 5);
-        if (targetFamily && entry.modelFamily === targetFamily) score += 3;
-        return { entry, score };
-      }).filter(Boolean)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 2);
-
-      if (!matches.length) {
-        container.style.display = 'none';
-        container.innerHTML = '';
-        return;
-      }
-
-      renderSmartDiagPill(container, matches.map(m => m.entry), itemId);
+      const [kb, queryEmb] = await Promise.all([smartDiagLoadKb(), smartDiagGetEmbedding(query)]);
+      if (seq !== smartDiagSeq[itemId] || !container.isConnected) return;   // frappe plus récente, ou item supprimé entre-temps
+      const cases = smartDiagRank(query, queryEmb, kb, {
+        targetFamily: smartDiagFamily(gv('f_model')),
+        currentWo: gv('f_wo').trim().toUpperCase()
+      });
+      if (!cases.length) { hide(); return; }
+            renderSmartDiagPill(container, cases, itemId);
     } catch (e) {
       console.warn('Smart Diagnosis lookup failed:', e);
     }
   }, 400);
 };
 
-function renderSmartDiagPill(container, entries, itemId) {
+// Réglage des seuils depuis la console du navigateur :  smartDiagDebug('HSTA RVDT FAULT')
+// → tableau de tous les candidats avec niveau, score, mots communs, couverture, cosinus et z-score.
+G.smartDiagDebug = async function(text) {
+  const kb = await smartDiagLoadKb(true);
+  const emb = await smartDiagGetEmbedding(text);
+  const rows = smartDiagRank(text, emb, kb, {
+    targetFamily: smartDiagFamily(gv('f_model')), currentWo: gv('f_wo').trim().toUpperCase(), debug: true
+  });
+  console.log('Routine task:', smartDiagIsRoutine(text), '| specific words:', [...smartDiagTokens(text)].join(', ') || '—');
+  console.table(rows.map(r => ({
+    level: r.level || '—', score: +r.score.toFixed(2), WO: r.entry.wo || '', squawk: String(r.entry.squawk || '').slice(0, 50),
+    shared: r.matched.join(', '), cov: +r.cov.toFixed(2),
+    cos: r.sem === null ? '' : +r.sem.toFixed(3), z: r.z === null ? '' : +r.z.toFixed(2)
+  })));
+  return rows;
+};
+
+G.smartDiagOpenHelp = function() {
+  openModal('modal-help');
+  setTimeout(() => document.getElementById('help-smart-diag')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+};
+
+function renderSmartDiagPill(container, cases, itemId) {
   container.style.display = 'block';
-  const count = entries.length;
+  const count = cases.length;
+  const possibleOnly = cases[0].level === 'possible';
+  const title = possibleOnly
+    ? 'Possible related case on the fleet (weaker match).'
+    : `${count} similar case${count > 1 ? 's' : ''} solved on the fleet.`;
+  const pill = (bg, fg, txt) => `<span style="display:inline-block;font-size:9.5px;font-weight:700;padding:1px 7px;border-radius:10px;background:${bg};color:${fg};white-space:nowrap">${txt}</span>`;
 
   container.innerHTML = `
     <div style="background:#f0f7ff;border:1px solid #b8d0e8;border-radius:6px;padding:6px 10px;font-size:11px">
       <div style="display:flex;align-items:center;gap:6px;cursor:pointer" onclick="toggleDiagDetail(${itemId})">
         <span style="font-size:13px">💡</span>
-        <strong style="color:var(--blue);flex:1">
-          ${count} similar case${count > 1 ? 's' : ''} solved on the fleet.
-        </strong>
+        <strong style="color:var(--blue);flex:1">${title}</strong>
         <span id="smart-diag-toggle-${itemId}" style="color:var(--blue);font-weight:700">Show ▼</span>
       </div>
 
@@ -6085,30 +6397,46 @@ function renderSmartDiagPill(container, entries, itemId) {
           ⚠️ For reference only — past field feedback may be outdated or specific to a different aircraft configuration. Always confirm the cause and procedure using the applicable AMM.
         </div>
 
-        ${entries.map(e => `
+        ${cases.map((c, i) => {
+          const e = c.entry;
+          const parts = smartDiagArr(e.partsReplaced).filter(p => p && (p.pn || p.nom));
+          const badges = [
+            c.level === 'close' ? pill('var(--gl)', 'var(--gd)', 'Close match') : pill('var(--al)', 'var(--amb)', 'Possible match'),
+            c.sameFamily === true ? pill('var(--bl)', 'var(--blue)', 'Same model') : (c.sameFamily === false ? pill('var(--g100)', 'var(--g600)', 'Other model') : '')
+          ].filter(Boolean).join(' ');
+          const why = [c.matched.length ? 'Matched on: ' + c.matched.map(m => escHtml(m.toUpperCase())).join(', ') : '', c.semOk ? 'similar meaning' : '']
+            .filter(Boolean).join(' · ');
+          return `
           <div style="margin-bottom:8px;background:#fff;border:1px solid #e0e8f0;border-radius:4px;padding:8px">
-            <div style="display:flex;justify-content:space-between;font-weight:700;color:var(--gd);margin-bottom:3px">
-              <span>✈️ ${escHtml(e.model)} — WO ${escHtml(e.wo)}</span>
-              <span style="font-weight:400;color:var(--g600)">${escHtml(e.date)} (${escHtml(e.engineerName)})</span>
+            <div style="display:flex;justify-content:space-between;gap:8px;font-weight:700;color:var(--gd);margin-bottom:3px">
+              <span>✈️ ${escHtml(e.model || e.modelFamily || '—')} — WO ${escHtml(e.wo || '—')}</span>
+              <span style="font-weight:400;color:var(--g600);text-align:right">${escHtml(e.date)} (${escHtml(e.engineerName)})</span>
             </div>
 
-            <div style="color:var(--g800);margin-bottom:4px">
-              <b>Troubleshooting:</b> ${escHtml(e.resolution)}
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-bottom:5px">
+              ${badges}
+              ${why ? `<span style="font-size:10px;color:var(--g600)">${why}</span>` : ''}
             </div>
 
-            ${e.partsReplaced && e.partsReplaced.length ? `
+            <div style="color:var(--g600);margin-bottom:4px">
+              <b>Past squawk:</b> ${escHtml(smartDiagShort(e.squawk, 220))}
+            </div>
+
+            <div style="color:var(--g800);margin-bottom:4px;white-space:pre-line">
+              <b>Troubleshooting:</b> ${escHtml(smartDiagClean(e.resolution))}
+            </div>
+
+            ${parts.length ? `
               <div style="font-size:10.5px;color:#1e40af;margin-bottom:4px">
-                📦 <b>Parts:</b> ${e.partsReplaced.map(p => `${escHtml(p.nom)} (P/N: ${escHtml(p.pn)})`).join(', ')}
-              </div>` : '<div style="font-size:10.5px;color:#065f46">⚡ Resolved without part removal (wiring / connector / reset)</div>'}
+                📦 <b>Parts:</b> ${parts.map(p => `${escHtml(p.nom || '')}${p.pn ? ` (P/N: ${escHtml(p.pn)})` : ''}`).join(', ')}
+              </div>` : '<div style="font-size:10.5px;color:var(--g600)">ℹ️ No part recorded for this case</div>'}
+          </div>`;
+        }).join('')}
 
-            <div style="display:flex;gap:6px;margin-top:6px">
-              <button class="btn" style="font-size:10px;padding:3px 8px" 
-                      onclick="applyDiagResolutionToNote(${itemId}, '${escAttr(e.resolution)}')">
-                📝 Add action to Daily Update
-              </button>
-            </div>
-          </div>
-        `).join('')}
+        <div style="font-size:10px;color:var(--g600)">
+          Cases already closed by the team, shown only when they share specific words or clearly the same meaning as this work item.
+          <a href="#" style="color:var(--blue);font-weight:700" onclick="smartDiagOpenHelp();return false">How does this work?</a>
+        </div>
       </div>
     </div>
   `;
@@ -6121,32 +6449,6 @@ G.toggleDiagDetail = function(itemId) {
   const isHidden = detail.style.display === 'none';
   detail.style.display = isHidden ? 'block' : 'none';
   if (toggleLbl) toggleLbl.textContent = isHidden ? 'Hide ▲' : 'Show ▼';
-};
-
-G.applyDiagResolutionToNote = function(itemId, resolutionText) {
-  let todayBlock = Array.from(document.querySelectorAll('.update-day')).find(d => d.dataset.date === todayLabel());
-  if (!todayBlock) {
-    G.addTodayUpdate();
-    todayBlock = Array.from(document.querySelectorAll('.update-day')).find(d => d.dataset.date === todayLabel());
-  }
-  if (!todayBlock) return;
-
-  const itemBlock = todayBlock.querySelector(`.upd-item-block[data-item-id="${itemId}"]`);
-  if (!itemBlock) return;
-
-  const editor = itemBlock.querySelector('.rte-editable');
-  if (editor) {
-    if (editor.textContent.trim()) editor.appendChild(document.createElement('br'));
-    editor.appendChild(document.createTextNode('Per past REX: ' + resolutionText));
-    editor.dispatchEvent(new Event('input'));
-  }
-
-  const chk = itemBlock.querySelector('input[type=checkbox]');
-  if (chk) { chk.checked = true; chk.dispatchEvent(new Event('change')); }
-
-  itemBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  itemBlock.style.outline = '2px solid var(--gd)';
-  setTimeout(() => { itemBlock.style.outline = ''; }, 2000);
 };
 
 // ══════════════════════════════════════
@@ -6902,6 +7204,13 @@ function koSyncPartsToMainTable() {
 // ══════════════════════════════════════
 let rtagFaultState = '';   // 'yes' | 'no' | ''
 let rtagSolvedState = '';  // 'yes' | 'no' | ''
+let rtagSinceDelivery = false;  // case "Since Delivery" (Life Status Data) cochée ?
+let rtagCurrentTagId = null;    // id de la fiche sauvegardée actuellement chargée / mise à jour
+let _rtagRow = null;            // .part-row qui a ouvert la fiche (null = bouton autonome)
+let _rtagSrcKey = '';           // clé "PN|SN" de cette ligne, pour retrouver sa fiche sauvegardée
+let _rtagSaved = {};            // cache { tagId: fiche } du job courant
+let _rtagDirty = false;         // l'utilisateur a-t-il touché à la fiche depuis l'ouverture ?
+let _rtagOpenToken = 0;         // invalide un chargement async si la fiche a été rouverte entre-temps
 
 function rtagTodayFormatted() {
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -6909,11 +7218,11 @@ function rtagTodayFormatted() {
   return String(d.getDate()).padStart(2,'0') + '-' + months[d.getMonth()] + '-' + d.getFullYear();
 }
 
-G.openRepairTagModal = function(btnEl) {
-  // btnEl est optionnel désormais : si appelé sans argument (bouton autonome),
-  // row reste null et Part Name / PN / SN restent vides pour saisie manuelle.
-  const row = btnEl ? btnEl.closest('.part-row') : null;
-
+// Remet la fiche dans son état d'ouverture : pré-remplie depuis le projet et,
+// si row est fourni, depuis la ligne de pièce. Partagée par l'ouverture de la
+// fiche et par "Start blank". Sans row (bouton autonome), Part Name / PN / SN
+// restent vides pour saisie manuelle.
+function rtagPrefillForm(row) {
   sv('rtag_model', gv('f_model'));
   sv('rtag_sn', gv('f_sn'));
   sv('rtag_reg', gv('f_reg'));
@@ -6930,6 +7239,7 @@ G.openRepairTagModal = function(btnEl) {
   sv('rtag_code2', '');
   sv('rtag_time', '');
   sv('rtag_originator', curProfile?.name || '');
+  sv('rtag_gac_so', '');
   sv('rtag_gac_wo', gv('f_wo'));
   sv('rtag_employee_id', curProfile?.fnNumber || '');
   sv('rtag_cust_company', gv('f_cust_company'));
@@ -6961,8 +7271,23 @@ G.openRepairTagModal = function(btnEl) {
   const items = getItems();
   sel.innerHTML = '<option value="">— none —</option>' + items.map(it => `<option value="${it.num}">${it.num} — ${it.label}</option>`).join('');
 
+  rtagSetSinceDelivery(false);
+}
+
+G.openRepairTagModal = function(btnEl) {
+  // btnEl est optionnel : si appelé sans argument (bouton autonome), row reste null.
+  const row = btnEl ? btnEl.closest('.part-row') : null;
+  _rtagRow = row;
+  _rtagSrcKey = rtagRowKey(row);
+  rtagCurrentTagId = null; _rtagDirty = false; _rtagSaved = {};
+  const token = ++_rtagOpenToken;
+
+  rtagPrefillForm(row);
+  rtagHideBanner();
+  rtagRenderSavedList();
   rtagRenderStampUI();
   openModal('modal-repair-tag');
+  rtagLoadSavedList(token);   // async, non bloquant : n'empêche jamais l'ouverture de la fiche
 };
 
 // Heures & cycles saisis dans UNE fiche (ou en Step 2) sont partagés par tout
@@ -6970,6 +7295,7 @@ G.openRepairTagModal = function(btnEl) {
 G.rtagSyncHoursCycles = function() {
   sv('f_ac_hours', gv('rtag_hours'));
   sv('f_ac_cycles', gv('rtag_cycles'));
+  rtagApplySinceDelivery();   // si "Since Delivery" est cochée, Since New suit les heures / cycles A/C
   G.autosave();
 };
 	
@@ -6985,6 +7311,7 @@ G.rtagToggleFault = function(el, val) {
   document.getElementById('rtag-fault-no').classList.remove('active-blue');
   rtagFaultState = wasActive ? '' : val;
   if (!wasActive) el.classList.add('active-blue');
+  autosave();
 };
 
 G.rtagToggleSolved = function(el, val) {
@@ -6993,7 +7320,317 @@ G.rtagToggleSolved = function(el, val) {
   document.getElementById('rtag-solved-no').classList.remove('active-blue');
   rtagSolvedState = wasActive ? '' : val;
   if (!wasActive) el.classList.add('active-blue');
+  autosave();
 };
+// ══════════════════════════════════════
+//  "SINCE DELIVERY" + SAUVEGARDE / RECHARGEMENT DES FICHES
+// ══════════════════════════════════════
+
+// Tous les champs texte de la fiche (ids du modal) — utilisés pour sauvegarder / restaurer.
+const RTAG_TEXT_IDS = [
+  'rtag_model','rtag_sn','rtag_reg','rtag_hours','rtag_cycles','rtag_date',
+  'rtag_partname','rtag_pn','rtag_partsn','rtag_qty',
+  'rtag_ls_time_new','rtag_ls_cyc_new','rtag_ls_ym_new',
+  'rtag_ls_time_oh','rtag_ls_cyc_oh','rtag_ls_ym_oh',
+  'rtag_ls_total_ym','rtag_ls_installed_ym',
+  'rtag_cust_company','rtag_cust_code','rtag_cust_contact','rtag_cust_phone','rtag_cust_email',
+  'rtag_engine_model','rtag_engine_time','rtag_engine_sn','rtag_engine_cycles',
+  'rtag_reason','rtag_workperf','rtag_code1','rtag_code2','rtag_time',
+  'rtag_originator','rtag_gac_so','rtag_gac_wo','rtag_employee_id'
+];
+
+// ── Since Delivery ──────────────────────
+// Pièce montée sur l'avion depuis sa livraison : Time / Cycles Since New = heures /
+// cycles de l'avion (déjà saisis en Step 2 et repris dans rtag_hours / rtag_cycles).
+function rtagUpdateSinceDeliveryNote() {
+  const note = document.getElementById('rtag-since-delivery-note');
+  if (!note) return;
+  if (!rtagSinceDelivery) { note.style.display = 'none'; note.textContent = ''; return; }
+  const h = gv('rtag_hours').trim(), c = gv('rtag_cycles').trim();
+  note.style.display = '';
+  if (h && c) {
+    note.style.color = 'var(--g600)';
+    note.textContent = `Time & Cycles Since New = A/C total time and cycles (${h} h / ${c} cyc) — filled automatically.`;
+  } else {
+    note.style.color = 'var(--amb)';
+    note.textContent = '⚠️ A/C Hours and/or Cycles are empty — fill them in above (or in Step 2) and they will be copied here automatically.';
+  }
+}
+
+// Recopie les heures / cycles A/C dans Time / Cycles Since New quand la case est cochée.
+function rtagApplySinceDelivery() {
+  if (rtagSinceDelivery) {
+    sv('rtag_ls_time_new', gv('rtag_hours'));
+    sv('rtag_ls_cyc_new', gv('rtag_cycles'));
+  }
+  rtagUpdateSinceDeliveryNote();
+}
+
+function rtagSetSinceDelivery(on) {
+  rtagSinceDelivery = !!on;
+  document.getElementById('rtag-since-delivery')?.classList.toggle('active-green', rtagSinceDelivery);
+  ['rtag_ls_time_new', 'rtag_ls_cyc_new'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.readOnly = rtagSinceDelivery;
+    el.style.background = rtagSinceDelivery ? 'var(--g100)' : '';
+    el.title = rtagSinceDelivery ? 'Filled automatically from the A/C hours & cycles (Since Delivery)' : '';
+  });
+  rtagApplySinceDelivery();
+}
+
+G.rtagToggleSinceDelivery = function() {
+  const wasOn = rtagSinceDelivery;
+  rtagSetSinceDelivery(!wasOn);
+  // Décochée à la main : on vide les 2 champs remplis automatiquement, pour ne pas laisser
+  // traîner des valeurs qui ne seraient plus vraies (la pièce n'est peut-être pas d'origine).
+  if (wasOn) { sv('rtag_ls_time_new', ''); sv('rtag_ls_cyc_new', ''); }
+  _rtagDirty = true;
+};
+
+// ── Sauvegarde / rechargement des fiches ──────────────────────
+// Stockage : team/{profil}/projects/{projet}/ga3671Tags/{tagId}. Dans le projet, donc déjà couvert
+// par les règles Firebase (propriétaire du projet), la fiche suit le projet lors d'un transfert et
+// disparaît avec lui à la suppression. doSaveInner() utilise update() (et non set()) pour ne
+// jamais réécrire ga3671Tags avec une copie périmée.
+const rtagTagRef = (id) => ref(db, 'team/' + curProfile.id + '/projects/' + curProj + '/ga3671Tags' + (id ? '/' + id : ''));
+
+// Clé "PN|SN" (PN OFF / SN OFF) de la ligne de pièce qui ouvre la fiche.
+function rtagRowKey(row) {
+  if (!row) return '';
+  const norm = v => (v || '').trim().toUpperCase();
+  const pn = norm(row.querySelector('.p-pnoff')?.value), sn = norm(row.querySelector('.p-snoff')?.value);
+  return (pn || sn) ? pn + '|' + sn : '';
+}
+
+// JJ-Mon-AAAA HH:MM — même style que la date de la fiche (rtagTodayFormatted), identique sur tous les appareils
+function rtagFmtWhen(ts) {
+  if (!ts) return '';
+  const d = new Date(ts), p = n => String(n).padStart(2, '0');
+  const mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+  return `${p(d.getDate())}-${mon}-${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function rtagPartLabel(rec) {
+  const f = rec?.f || {};
+  return [f.rtag_partname, f.rtag_pn, f.rtag_partsn ? 'S/N ' + f.rtag_partsn : ''].filter(Boolean).join(' · ') || '(untitled tag)';
+}
+
+function rtagRecLabel(rec) {
+  return rtagPartLabel(rec) + ' — ' + rtagFmtWhen(rec?.savedAt);
+}
+
+function rtagCollectState() {
+  const f = {};
+  RTAG_TEXT_IDS.forEach(id => { const v = gv(id); if (v) f[id] = v; });
+  const active = attr => Array.from(document.querySelectorAll('[data-' + attr + ']'))
+    .filter(el => el.classList.contains('active-green')).map(el => el.dataset[attr]);
+  return {
+    f,
+    types: active('rtagtype'), engine: active('rtagengine'), cond: active('rtagcond'),
+    fault: rtagFaultState, solved: rtagSolvedState,
+    sinceDelivery: rtagSinceDelivery,
+    itemLink: gv('rtag_item_link')
+  };
+}
+
+function rtagApplyState(rec) {
+  const st = rec || {};
+  const f = st.f || {};
+  RTAG_TEXT_IDS.forEach(id => sv(id, f[id] || ''));
+  // Firebase renvoie parfois un tableau sous forme d'objet — on accepte les deux
+  const asList = v => Array.isArray(v) ? v : Object.values(v || {});
+  [['rtagtype', st.types], ['rtagengine', st.engine], ['rtagcond', st.cond]].forEach(([attr, list]) => {
+    const on = asList(list);
+    document.querySelectorAll('[data-' + attr + ']').forEach(el => el.classList.toggle('active-green', on.includes(el.dataset[attr])));
+  });
+  rtagFaultState = st.fault || ''; rtagSolvedState = st.solved || '';
+  ['yes', 'no'].forEach(v => {
+    document.getElementById('rtag-fault-' + v)?.classList.toggle('active-blue', rtagFaultState === v);
+    document.getElementById('rtag-solved-' + v)?.classList.toggle('active-blue', rtagSolvedState === v);
+  });
+  // Lien vers un work item : la liste est reconstruite à l'ouverture — on ne restaure
+  // le choix que si l'item existe encore.
+  const sel = document.getElementById('rtag_item_link');
+  if (sel) sel.value = Array.from(sel.options).some(o => o.value === (st.itemLink || '')) ? (st.itemLink || '') : '';
+  rtagSetSinceDelivery(!!st.sinceDelivery);
+}
+
+// ── Brouillon (filet de sécurité, indépendant des fiches sauvegardées) ──
+// gatherData() appelle ceci à CHAQUE autosave (debounce 1,2 s) tant que la modale GA3671 a déjà
+// servi pour ce projet — pour ne rien perdre entre deux "💾 Save" (appli fermée/tuée en pleine
+// saisie sur le terrain). Ignoré tant qu'aucun champ "métier" n'a de contenu, pour ne pas polluer
+// le projet avec un brouillon qui ne serait que le pré-remplissage automatique.
+function rtagGatherDraft() {
+  const st = rtagCollectState();
+  const touched = ['rtag_partname', 'rtag_pn', 'rtag_reason', 'rtag_workperf'].some(id => st.f[id]);
+  if (!touched) return null;
+  const pn = (st.f.rtag_pn || '').trim().toUpperCase(), sn = (st.f.rtag_partsn || '').trim().toUpperCase();
+  return { key: (pn || sn) ? pn + '|' + sn : '', tagId: rtagCurrentTagId, savedAt: Date.now(), ...st };
+}
+
+function rtagShowBanner(rec, how) {
+  const box = document.getElementById('rtag-saved-banner');
+  if (!box) return;
+  const when = rtagFmtWhen(rec?.savedAt);
+  document.getElementById('rtag-saved-banner-txt').textContent = how === 'saved'
+    ? `💾 Saved on ${when} — it will come back next time you open this tag for this job.`
+    : how === 'draft'
+    ? `↩️ Restored unsaved changes from ${when} — tap 💾 Save to keep them, or "Start blank" to discard.`
+    : `📂 Saved tag loaded (${when}) — the form below is what you saved. Saving again updates it.`;
+  const blank = document.getElementById('rtag-saved-banner-blank');
+  if (blank) blank.style.display = how === 'saved' ? 'none' : '';
+  box.style.display = 'flex';
+}
+
+function rtagHideBanner() {
+  const box = document.getElementById('rtag-saved-banner');
+  if (box) box.style.display = 'none';
+}
+
+function rtagRenderSavedList(selectId) {
+  const bar = document.getElementById('rtag-saved-bar');
+  const sel = document.getElementById('rtag-saved-sel');
+  if (!bar || !sel) return;
+  const recs = Object.values(_rtagSaved || {}).filter(r => r && r.f);
+  recs.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+  bar.style.display = recs.length ? '' : 'none';
+  sel.innerHTML = '<option value="">— pick a saved tag —</option>' +
+    recs.map(r => `<option value="${escAttr(r.id)}">${escHtml(rtagRecLabel(r))}</option>`).join('');
+  sel.value = (selectId && _rtagSaved[selectId]) ? selectId : '';
+}
+
+// Fiche déjà sauvegardée pour la pièce (ligne) qui ouvre la fiche : la plus récente.
+function rtagFindSavedForRow() {
+  if (!_rtagSrcKey) return null;
+  const norm = v => (v || '').trim().toUpperCase();
+  const hits = Object.values(_rtagSaved || {}).filter(r => r && r.f && (
+    r.srcKey === _rtagSrcKey || (norm(r.f.rtag_pn) + '|' + norm(r.f.rtag_partsn)) === _rtagSrcKey
+  ));
+  hits.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+  return hits[0] || null;
+}
+
+async function rtagLoadSavedList(token) {
+  if (!curProfile || !curProj) return;
+  try {
+    const snap = await get(rtagTagRef());
+    if (token !== _rtagOpenToken) return;   // fiche rouverte entre-temps
+    _rtagSaved = snap.exists() ? (snap.val() || {}) : {};
+    rtagRenderSavedList(rtagCurrentTagId);
+    // Ouverture depuis la ligne d'une pièce déjà sauvegardée : on restaure sa fiche, sauf si
+    // l'utilisateur a déjà commencé à taper (on ne lui écrase jamais sa saisie).
+    if (!_rtagDirty && !rtagCurrentTagId) {
+      const hit = rtagFindSavedForRow();
+      // Un brouillon non sauvegardé (autosave) l'emporte s'il est plus récent que la dernière
+      // sauvegarde explicite pour cette même pièce — sinon la fiche sauvegardée fait foi.
+      const draft = (_rtagSrcKey && G._rtagDraft && G._rtagDraft.key === _rtagSrcKey) ? G._rtagDraft : null;
+      if (draft && (!hit || (draft.savedAt || 0) > (hit.savedAt || 0))) {
+        rtagApplyState(draft);
+        rtagCurrentTagId = draft.tagId || null;
+        rtagRenderSavedList(rtagCurrentTagId);
+        rtagShowBanner(draft, 'draft');
+      } else if (hit) {
+        rtagApplyState(hit);
+        rtagCurrentTagId = hit.id;
+        rtagRenderSavedList(hit.id);
+        rtagShowBanner(hit, 'loaded');
+      }
+    }
+  } catch (e) {
+    console.warn('GA3671: saved tags not loaded —', e.message);
+  }
+}
+
+// Enregistre la fiche. Fiche chargée => mise à jour ; sinon nouvelle fiche (jamais d'écrasement
+// silencieux d'une autre). `kb` = { id, sig } de l'entrée Smart Diagnosis liée à cette fiche ;
+// `generated` = le PDF vient d'être généré (permet à la revue RTS de distinguer « générée » de « sauvée »).
+async function rtagPersist({ kb = null, generated = false } = {}) {
+  if (!curProfile) throw new Error('Not signed in.');
+  // Job pas encore enregistré : on force une sauvegarde du projet (le crée si WO / modèle / SN saisis)
+  // et on attend qu'elle aboutisse — doSave() rend la main tout de suite si une autre est en cours.
+  if (!curProj) {
+    await doSave();
+    for (let i = 0; !curProj && _saveInFlight && i < 20; i++) await new Promise(r => setTimeout(r, 150));
+  }
+  if (!curProj) throw new Error('fill in the WO #, aircraft model or S/N on the first page first — saved tags are kept with the job.');
+  const prev = rtagCurrentTagId ? _rtagSaved[rtagCurrentTagId] : null;
+  const id = rtagCurrentTagId || ('t_' + Date.now());
+  const rec = JSON.parse(JSON.stringify({
+    id, savedAt: Date.now(), savedBy: curProfile.name || '',
+    srcKey: _rtagSrcKey || prev?.srcKey || '',
+    ...rtagCollectState(),
+    kbEntryId: kb?.id ?? prev?.kbEntryId ?? null,
+    kbSig: kb?.sig ?? prev?.kbSig ?? null,
+    generatedAt: generated ? Date.now() : (prev?.generatedAt ?? null)
+  }));
+  await set(rtagTagRef(id), rec);
+  rtagCurrentTagId = id;
+  _rtagSaved[id] = rec;
+  rtagRenderSavedList(id);
+  return rec;
+}
+
+G.rtagSaveDraft = async function() {
+  const errEl = document.getElementById('rtag-error');
+  const btn = document.getElementById('rtag-save-btn');
+  errEl.textContent = '';
+  const origLabel = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Saving…';
+  try {
+    const rec = await rtagPersist();
+    rtagShowBanner(rec, 'saved');
+    btn.textContent = '✅ Saved';
+  } catch (e) {
+    errEl.textContent = '❌ Could not save the tag: ' + e.message;
+    btn.textContent = origLabel;
+  }
+  setTimeout(() => { btn.textContent = origLabel; btn.disabled = false; }, 1800);
+};
+
+G.rtagLoadSelected = function() {
+  const rec = _rtagSaved[document.getElementById('rtag-saved-sel')?.value];
+  if (!rec) return;
+  rtagApplyState(rec);
+  rtagCurrentTagId = rec.id;
+  document.getElementById('rtag-error').textContent = '';
+  rtagShowBanner(rec, 'loaded');
+};
+
+G.rtagDeleteSelected = async function() {
+  const id = document.getElementById('rtag-saved-sel')?.value;
+  const rec = _rtagSaved[id];
+  if (!rec) return;
+  const withRex = !!rec.kbEntryId;
+  if (!confirm('Delete this saved tag?\n' + rtagRecLabel(rec) + (withRex ? '\n\nIts REX entry (Smart Diagnosis) will be deleted too.' : ''))) return;
+  const errEl = document.getElementById('rtag-error');
+  errEl.textContent = '';
+  try {
+    if (withRex) await remove(ref(db, 'troubleshootingKnowledge/' + rec.kbEntryId));   // REX d'abord : sans la fiche, plus aucun moyen de le retrouver
+    await remove(rtagTagRef(id));
+    delete _rtagSaved[id];
+    if (rtagCurrentTagId === id) { rtagCurrentTagId = null; rtagHideBanner(); }
+    rtagRenderSavedList(rtagCurrentTagId);
+  } catch (e) {
+    errEl.textContent = '❌ Could not delete the saved tag: ' + e.message;
+  }
+};
+
+G.rtagStartBlank = function() {
+  rtagPrefillForm(_rtagRow);
+  rtagCurrentTagId = null;
+  rtagHideBanner();
+  rtagRenderSavedList();
+};
+
+// Dès que l'utilisateur touche à la fiche, un chargement automatique tardif ne l'écrase plus.
+(() => {
+  const m = document.getElementById('modal-repair-tag');
+  if (!m) return;
+  m.addEventListener('input', () => { _rtagDirty = true; });
+  m.addEventListener('click', e => { if (e.target.closest('.ko-pill')) _rtagDirty = true; });
+})();
+
 function rtagRenderStampUI() {
   const has = !!curProfile?.stampImage;
   const uploadBtn = document.getElementById('rtag-stamp-upload-btn');
@@ -7185,6 +7822,7 @@ G.generateRepairTag = async function() {
     const setText = (name, val) => { try { form.getTextField(name).setText(val || ''); } catch(e) { console.warn('Field not found:', name); } };
     const setCheck = (name, checked) => { try { const cb = form.getCheckBox(name); checked ? cb.check() : cb.uncheck(); } catch(e) { console.warn('Checkbox not found:', name); } };
 
+    rtagApplySinceDelivery();   // Since New = heures / cycles A/C à jour, même si modifiés en dernier
     setText('Text Field0',  gv('rtag_date'));
     setText('Text Field1',  gv('rtag_qty'));
     setText('Text Field2',  gv('rtag_model'));
@@ -7201,6 +7839,7 @@ G.generateRepairTag = async function() {
     setText('Text Field12', gv('rtag_code2'));
     setText('Text Field13', gv('rtag_time'));
     setText('Text Field15', gv('rtag_originator'));
+    setText('Texte1',       gv('rtag_gac_so'));
     setText('Text Field14', gv('rtag_gac_wo'));
     setText('Text Field16', gv('rtag_employee_id'));
     setText('Texte7',  gv('rtag_cust_code'));
@@ -7259,20 +7898,32 @@ G.generateRepairTag = async function() {
       } catch(e) { console.warn('Stamp embed failed:', e); }
     }  
 	  
-    // Smart Diagnosis — capture best-effort du REX, ne bloque jamais la génération du tag
+    // Smart Diagnosis — capture best-effort du REX, ne bloque jamais la génération du tag.
+    // Une fiche régénérée met à jour SA MÊME entrée du REX (même entryId) au lieu d'en créer
+    // une de plus, et ne refait rien si le squawk et la résolution n'ont pas changé.
     const diagParts = [];
     const diagPnOff = gv('rtag_pn');
     if (diagPnOff) {
       diagParts.push({ nom: gv('rtag_partname'), pn: diagPnOff, sn: gv('rtag_partsn') });
     }
-    saveTroubleshootingEntry({
-      squawk: gv('rtag_reason') || gv('rtag_partname'),
-      resolution: gv('rtag_workperf'),
-      rootCause: gv('rtag_reason'),
-      parts: diagParts,
-      faultCodes: [gv('rtag_code1'), gv('rtag_code2')].filter(Boolean),
-      wiringResetOnly: diagParts.length === 0
-    });    
+    const kbSquawk = gv('rtag_reason') || gv('rtag_partname');
+    const kbSig = (kbSquawk + '||' + gv('rtag_workperf')).trim().toLowerCase();
+    const prevTag = rtagCurrentTagId ? _rtagSaved[rtagCurrentTagId] : null;
+    let kbInfo = null;
+    if (kbSquawk && gv('rtag_workperf')) {
+      kbInfo = { id: prevTag?.kbEntryId || ('entry_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8)), sig: kbSig };
+      if (prevTag?.kbSig !== kbSig) {
+        saveTroubleshootingEntry({
+          squawk: kbSquawk,
+          resolution: gv('rtag_workperf'),
+          rootCause: gv('rtag_reason'),
+          parts: diagParts,
+          faultCodes: [gv('rtag_code1'), gv('rtag_code2')].filter(Boolean),
+          wiringResetOnly: diagParts.length === 0,
+          entryId: kbInfo.id
+        });
+      }
+    }
 
     const pdfBytes = await pdfDoc.save();
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
@@ -7284,7 +7935,13 @@ G.generateRepairTag = async function() {
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
 
-    btn.textContent = '✅ Downloaded!';
+    // Sauvegarde automatique de la fiche (best-effort) : permet de la régénérer plus tard sans
+    // tout ressaisir. N'invalide jamais le PDF déjà téléchargé.
+    let tagSaved = false;
+    try { await rtagPersist({ kb: kbInfo, generated: true }); tagSaved = true; }
+    catch (e) { console.warn('GA3671: auto-save failed —', e.message); }
+
+    btn.textContent = tagSaved ? '✅ Downloaded & saved!' : '✅ Downloaded!';
     setTimeout(() => { btn.textContent = origLabel; btn.disabled = false; }, 2500);
   } catch(e) {
     errEl.textContent = '❌ ' + e.message;
@@ -7900,7 +8557,16 @@ function countryFromRegistration(reg) {
     [/^CX-/,'Uruguay'],[/^UK/,'Uzbekistan'],[/^YJ-/,'Vanuatu'],[/^YV/,'Venezuela'],
     [/^VN-/,'Vietnam'],
   ];
+  reg = String(reg || '').toUpperCase().replace(/\s+/g, '');
   for (const [re, country] of map) if (re.test(reg)) return country;
+  // Registrations often arrive without their hyphen ("4KAI700", "T7000"): retry with it inserted after 2, 1, then 3 characters.
+  if (reg && !reg.includes('-')) {
+    for (const n of [2, 1, 3]) {
+      if (reg.length <= n) continue;
+      const withDash = reg.slice(0, n) + '-' + reg.slice(n);
+      for (const [re, country] of map) if (re.test(withDash)) return country;
+    }
+  }
   return '';
 }
 
@@ -8344,15 +9010,111 @@ function buildRfc2822(toAddrs, subject, htmlBody, replyTo) {
   const raw = lines.join('\r\n');
   return btoa(raw).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
+// ══════════════════════════════════════
+//  RTS — REVUE DES FICHES GA3671 SAUVEGARDÉES
+// ══════════════════════════════════════
+// À la clôture du job, on demande quelles fiches ont réellement servi. Les autres sont supprimées
+// de la base ET du REX (Smart Diagnosis) : le REX de l'équipe ne doit contenir que des réparations
+// réellement effectuées, pas des fiches préparées à l'avance puis abandonnées.
+let _rtsTags = {};           // { tagId: fiche } du job, chargées à l'ouverture de la modale RTS
+let _rtsTagsPromise = null;  // chargement en cours (confirmRTS l'attend avant de supprimer)
+let _rtsToken = 0;           // invalide un chargement tardif si la modale a été rouverte entre-temps
+let _rtsBusy = false;        // une seule clôture à la fois (double-clic)
+
+function rtsRenderTagReview() {
+  const sec = document.getElementById('rts-tags-section');
+  const box = document.getElementById('rts-tags-list');
+  if (!sec || !box) return;
+  const recs = Object.values(_rtsTags || {}).filter(r => r && r.f);
+  recs.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+  sec.style.display = recs.length ? '' : 'none';
+  // Tout est coché par défaut (rien n'est supprimé par inadvertance) : on décoche les fiches non utilisées.
+  box.innerHTML = recs.map(r => {
+    const generated = !!(r.generatedAt || r.kbEntryId);
+    const meta = [generated ? '📄 PDF generated' : '💾 Saved only', r.kbEntryId ? '🧠 In REX' : '', rtagFmtWhen(r.savedAt)].filter(Boolean).join(' · ');
+    return `<label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;font-weight:400;color:var(--g800);text-transform:none;letter-spacing:0;line-height:1.4;cursor:pointer;padding:6px 0;border-top:1px solid var(--g200)">
+      <input type="checkbox" class="rts-tag-cb" value="${escAttr(r.id)}" checked onchange="rtsUpdateTagSummary()" style="width:auto;margin-top:3px;flex:none">
+      <span><strong>${escHtml(rtagPartLabel(r))}</strong><br><span style="font-size:11px;color:var(--g600)">${escHtml(meta)}</span></span>
+    </label>`;
+  }).join('');
+  G.rtsUpdateTagSummary();
+}
+
+G.rtsUpdateTagSummary = function() {
+  const el = document.getElementById('rts-tags-summary');
+  if (!el) return;
+  const cbs = Array.from(document.querySelectorAll('#rts-tags-list .rts-tag-cb'));
+  const drop = cbs.filter(c => !c.checked).length;
+  const keep = cbs.length - drop;
+  el.style.color = drop ? 'var(--red)' : 'var(--g600)';
+  el.textContent = drop
+    ? `🗑 ${drop} tag${drop > 1 ? 's' : ''} will be deleted (database + REX) · ${keep} kept`
+    : `✅ All ${keep} tag${keep > 1 ? 's' : ''} kept`;
+};
+
+// Charge (en tâche de fond) les fiches sauvegardées du job. Ne bloque jamais la clôture : sans la
+// liste, rien n'est supprimé.
+function rtsBeginTagReview() {
+  _rtsTags = {};
+  const sec = document.getElementById('rts-tags-section');
+  if (sec) sec.style.display = 'none';
+  const err = document.getElementById('rts-tags-error');
+  if (err) err.textContent = '';
+  const token = ++_rtsToken;
+  if (!curProfile || !curProj) { _rtsTagsPromise = null; return; }
+  _rtsTagsPromise = (async () => {
+    try {
+      const snap = await get(rtagTagRef());
+      if (token !== _rtsToken) return;
+      _rtsTags = snap.exists() ? (snap.val() || {}) : {};
+      rtsRenderTagReview();
+    } catch (e) {
+      console.warn('RTS: saved GA3671 tags not loaded —', e.message);
+    }
+  })();
+}
+
+// Supprime les fiches décochées : d'abord leur entrée du REX (sans la fiche, plus aucun moyen de la
+// retrouver), puis la fiche elle-même. Lève une erreur au moindre échec.
+async function rtsApplyTagReview() {
+  if (_rtsTagsPromise) await _rtsTagsPromise;
+  const drop = Array.from(document.querySelectorAll('#rts-tags-list .rts-tag-cb'))
+    .filter(c => !c.checked).map(c => c.value);
+  for (const id of drop) {
+    const rec = _rtsTags[id];
+    if (!rec) continue;
+    if (rec.kbEntryId) await remove(ref(db, 'troubleshootingKnowledge/' + rec.kbEntryId));
+    await remove(rtagTagRef(id));
+    delete _rtsTags[id];
+  }
+}
+
 G.markRTS = function() {
   const isAssist = gv('f_rts_assist') === 'Assist';
   document.getElementById('modal-rts-title').textContent = isAssist ? 'Mark Assistance as Provided?' : 'Mark A/C as RTS?';
   document.getElementById('modal-rts-sub').textContent = isAssist ? 'The project will be archived — assistance provided.' : 'The project will be archived as RTS.';
   document.getElementById('btn-mark-rts').textContent = isAssist ? '🤝 Assistance Provided' : '✅ Mark A/C RTS';
+  rtsBeginTagReview();   // fiches GA3671 sauvegardées du job (s'il y en a) — chargées en tâche de fond
   openModal('modal-rts');
 };
 G.confirmRTS = async function() {
   if(!curProj||!curProfile){closeModal('modal-rts');return;}
+  if (_rtsBusy) return;   // double-clic : une seule clôture à la fois
+  _rtsBusy = true;
+  try {
+    // GA3671 : on supprime d'abord les fiches non utilisées (base + REX). Au moindre échec on
+    // n'archive pas à moitié : message clair, l'utilisateur peut réessayer.
+    try { await rtsApplyTagReview(); }
+    catch (e) {
+      const el = document.getElementById('rts-tags-error');
+      if (el) el.textContent = '❌ Could not delete the unused GA3671 tags (' + e.message + '). The project was not archived — please try again.';
+      return;
+    }
+    await rtsArchiveProject();
+  } finally { _rtsBusy = false; }
+};
+// Clôture d'origine (inchangée) : archive le projet en RTS.
+async function rtsArchiveProject() {
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; } // évite qu'une sauvegarde différée réécrive rts:false juste après
   await doSave();
   saveTroubleshootingFromDailyUpdates(); // Smart Diagnosis — capture best-effort des items "Carried out" avec note  
@@ -8365,7 +9127,7 @@ G.confirmRTS = async function() {
   setStatus('done','✅ Project archived as RTS.');
   curProj=null; clearForm();
   projTab='archive'; G.switchProjTab('archive');
-};
+}
 
 // Modal stack: always move the modal being opened to the end of <body>.
 // This is important for nested modals (e.g. GA3671 -> Scan source): both
@@ -8770,7 +9532,7 @@ if ('serviceWorker' in navigator) {
 //  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
 //  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v29';
+const CURRENT_VERSION = 'v30';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -14114,40 +14876,49 @@ window.koAddFSRFromKickoff = G.koAddFSRFromKickoff;
 let KO_COUNTRY_APPROVALS = [];
 let _caFilterQuery = '';
 
+// Reference list — GAL holds 25 approvals: the UK CAA one + the 24 "Foreign Supplements" of the QA folder.
+//   basis: 'approval'     = one of those 25 → checked automatically (aircraft model / operator / scope).
+//   basis: 'release-only' = state that only has a release-statement template, NO dedicated approval → always warns.
+//   flagged: true         = only for conditions the app can't check by itself (it always warns, even if the type matches).
+// Type strings follow one convention:  "<type, free text> — <operator or scope> only"
+//   Write the types like in Admin → Gulfstream models (GVII-G600, GVI (G650ER), GV-SP (G550)…). A NEW aircraft has to be written out
+//   ("GVII-G400"): a family mention such as "GVII" does not cover it.
+//   An EMPTY type list = no restriction of its own: the state follows the main Scope of Work, i.e. the United Kingdom line below,
+//   and the aircraft is checked against that line. To accept a new aircraft in all those states at once, add it to the United Kingdom line.
 const DEFAULT_COUNTRY_APPROVALS = [
-  { country: 'United Kingdom (home)', authority: 'UK CAA — Part-145 — UK.145.00883', aircraftTypes: ['G150','G200','G280','GIV (300/400)','GIV-X (G350/G450)','GV','GV-SP (G500/G550)','GVI (G650/G650ER)','GVII-G500','GVII-G600','GVIII-G700','GVIII-G800'], flagged: false, notes: 'Primary/home approval underlying every other supplement below. MOE Issue 11, March 2026 — Farnborough.' },
-  { country: 'EASA member states', authority: 'EASA — Part-145 — EASA.145.3119', aircraftTypes: ['G150','G200','G280','GIV/GIV-SP','GIV-X','GV','GV-SP','GVI (G650)','GVI (G650ER)','GVII-G500','GVII-G600','GVIII-G700','GVIII-G800'], flagged: false, notes: 'Held in parallel with the UK CAA approval. Covers EU states + Iceland, Liechtenstein, Norway, Switzerland. MOE Issue 1 Rev 4, April 2026 — Farnborough.' },
-  { country: 'United States', authority: 'FAA — 14 CFR Part 145 — Certificate MGTY330K', aircraftTypes: [], flagged: false, notes: 'Follows the main UK CAA Scope of Work — no type restriction. Supplement Issue 5, Jan 2026.' },
-  { country: 'Aruba', authority: 'DCA Aruba — DL-ACC-281', aircraftTypes: [], flagged: false, notes: 'Carried out in accordance with AUA-RLW. Release under EASA.145.3119.' },
-  { country: 'Australia', authority: 'CASA — CAR 42ZD (via EASA.145.3119)', aircraftTypes: [], flagged: false, notes: 'Maintenance pursuant to CAR 42ZD. Final CRS made under State of Registration national law (not an EASA release).' },
-  { country: 'Azerbaijan', authority: 'SCAA — AZ.145R.0015 (AAR-145)', aircraftTypes: ['G650 (BR725) — ASG Business Aviation only','G550 (BR710) — ASG Business Aviation only','G450 (TAY) — ASG Business Aviation only','G280 (Honeywell AS907) — ASG Business Aviation only','GVIII-G700 (BR700) — Azerbaijan Airlines only'], flagged: true, notes: 'Release per AAR-145 via EASA.145.3119. Restricted per operator — confirm operator.' },
-  { country: 'Bahrain', authority: 'Bahrain CAA — ALD/AIR/8/5.33 (ANTR-145)', aircraftTypes: ['GV-SP Series (G500/G550)','GVI Series (G650/G650ER)','GVII Series (G500/G600)','GVIII Series (G700/G800)'], flagged: true, notes: 'Release per ANTR-145 via EASA.145.3119. Does NOT cover G150/G200/G280/GIV/GIV-X.' },
-  { country: 'Barbados', authority: 'BCAA — AMO-001F', aircraftTypes: ['G650ER (RRD BR725)'], flagged: true, notes: 'Civil Aviation Regulations. Approval No. AMO-001F.' },
-  { country: 'Bermuda', authority: 'BCAA (OTAR Part 145) — BDA/AMO/017', aircraftTypes: [], flagged: false, notes: 'Air Navigation (Overseas Territories) Order.' },
-  { country: 'Brazil', authority: 'ANAC — 1604-33 (plus UK.145.00883)', aircraftTypes: [], flagged: false, notes: 'Carried out in accordance with ANAC airworthiness regulations & UK.145.00883.' },
-  { country: 'Burundi', authority: 'AACB — FAA Part 145 Basis (MGTY330K)', aircraftTypes: [], flagged: true, notes: '⚠️ Work repaired & inspected under FAA regulations / Part 91 / 135. Confirm current letter.' },
-  { country: 'Canada', authority: 'TCCA — CAR 573 — Approved T-AM Supplement (UK.145.00883)', aircraftTypes: [], flagged: false, notes: 'Release per approved T-AM supplement based on UK.145.00883.' },
-  { country: 'Cayman Islands', authority: 'CAACI (OTAR Part 145) — CAY-AMO-061174', aircraftTypes: [], flagged: false, notes: 'Air Navigation (Overseas Territories) Order. Approval CAY-AMO-061174.' },
-  { country: 'Egypt', authority: 'ECAA — ECAR PART 145', aircraftTypes: [], flagged: false, notes: 'Carried out in accordance with ECAR PART 145.' },
-  { country: 'Guernsey', authority: '2-REG — GAR 145 Approval No. 2-REG.145.27 (plus UK.145.00883)', aircraftTypes: [], flagged: false, notes: 'Air Navigation (Bailiwick of Guernsey) Law 2012 / GAR 145 using UK CAA Part 145 & 2-REG validation.' },
-  { country: 'Hong Kong', authority: 'HKCAD — HKAR-145 Approval No. AI/130/706', aircraftTypes: [], flagged: false, notes: 'Air Navigation (Hong Kong) Order 1995 / HKAR-145.' },
-  { country: 'India', authority: 'DGCA — IND.FAMO.0000000025 (CAR-145)', aircraftTypes: [], flagged: false, notes: 'Release per CAR-145 via EASA/UK CAA approval.' },
-  { country: 'Isle of Man', authority: 'IOMAR — Air Navigation (Isle of Man) Order 2015 (EASA or UK CAA variants)', aircraftTypes: [], flagged: false, notes: 'Release under Air Navigation (Isle of Man) Order 2015 using EASA.145.3119 or UK.145.00883.' },
-  { country: 'Kuwait', authority: 'DGCA (Kuwait) — KCASR 8 - Part 145 — DGCA/AMO/037', aircraftTypes: ['GV-SP (RRD BR710) — Kuwait Airways only','GVI (RRD BR725) — Kuwait Airways only'], flagged: true, notes: 'Operator-restricted to Kuwait Airways.' },
-  { country: 'Morocco', authority: 'DAC Morocco — Ministerial Order 1027-00 — CN-E 51/20', aircraftTypes: ['G280 (Honeywell AS907) — Winds Jet only','G550 RRD710 — Royal Moroccan Air Force only','G450 — MT Fly only','G450 — Regional Air only'], flagged: true, notes: 'Moroccan Civil Aviation Regulations in force. Operator-restricted.' },
-  { country: 'New Zealand', authority: 'NZ CAA — Civil Aviation Rule Part 43 (UK.145.00883)', aircraftTypes: [], flagged: false, notes: 'Carried out in accordance with NZ Civil Aviation Rule Part 43 & UK.145.00883.' },
-  { country: 'Nigeria', authority: 'NCAA — AMO/G/GAL', aircraftTypes: ['G150 (IAI)','GIV Series','GIV-X','GV Series','GV-SP','G200/Galaxy (IAI)'], flagged: true, notes: '⚠️ Approval AMO/G/GAL. Does NOT cover G650, G500/G600 or G700/G800.' },
-  { country: 'Oman', authority: 'Oman CAA — Base Maintenance Approval', aircraftTypes: ['G550 (GV-SP) — Base Maintenance only'], flagged: true, notes: 'Official via QIB No. 372 (Feb 2025). Restricted to G550 and Base Maintenance only.' },
-  { country: 'Pakistan', authority: 'PCAA — ANO 145 — PCAA.145.158', aircraftTypes: ['G150 (IAI)','G200','G280'], flagged: true, notes: 'Gulfstream Aerospace Limited Pakistan ANO 145. Approval No: PCAA.145.158.' },
-  { country: 'Qatar', authority: 'QCAA — QCAA/FAMO/186', aircraftTypes: [], flagged: false, notes: 'Part-145 approval QCAA/FAMO/186.' },
-  { country: 'San Marino', authority: 'SMAR CAA — CAR GEN Subpart C (EASA.145.3119)', aircraftTypes: [], flagged: false, notes: 'Carried out in accordance with Republic of San Marino CAR GEN Subpart C via EASA.145.3119. Final CRS is NOT under EASA.' },
-  { country: 'Saudi Arabia', authority: 'GACA — AMO-158FA', aircraftTypes: ['GIV (300/400)','GIV-X (G450)','GV','GV-SP (G500/G550)','GVI (G650)'], flagged: true, notes: 'GACA Regulation Part 125.541(b) / AMO-158FA. Article 83bis applies to several N-registered tails.' },
-  { country: 'Sweden', authority: 'Swedish Armed Forces (SE-EMAR 145) — SE.EMAR 145.085', aircraftTypes: ['GIV-SP','G550'], flagged: true, notes: 'Restricted to Swedish Air Force / military aircraft.' },
-  { country: 'Tanzania', authority: 'TCAA — Approval No. AI/CA/1.05', aircraftTypes: [], flagged: false, notes: 'Tanzania Civil Aviation Authority Approval No. AI/CA/1.05.' },
-  { country: 'Thailand', authority: 'CAAT — TCAR 8 Part 145 — CAAT.AMO.0532 (plus EASA.145.3119)', aircraftTypes: ['G200 (PWC PW306)','G650 (RRD BR725)','GV (RRD BR710)','GV-SP (RRD BR710)'], flagged: true, notes: 'TCAR 8 Part 145 & EASA.145.3119 dual reference. Limited to these four types.' },
-  { country: 'Turkey', authority: 'Turkey DGCA — SHT-145 — TR.145.F.0002', aircraftTypes: ['GIV/GIV-SP (RRD TAY)','GIV-X (RRD TAY)','GV-SP (RRD BR710)','GVI (RRD BR725)','GVII (PWC PW800GA)','GVIII (RRD BR700)'], flagged: true, notes: 'Carried out in accordance with SHT-145 via EASA.145.3119. Excludes G150/G200/G280.' },
-  { country: 'Uganda', authority: 'CAAU — Uganda AMO Approval UG/CAA/AMO/163', aircraftTypes: ['G550 (GV-SP, RRD BR710)'], flagged: true, notes: 'Restricted to G550 only.' },
-  { country: 'United Arab Emirates', authority: 'GCAA — CAR 145 — Approval No. UAE.145.1015', aircraftTypes: [], flagged: false, notes: 'Carried out in accordance with CAR 145. UAE GCAA AMO Approval UAE.145.1015.' },
+  { country: 'United Kingdom (home)', basis: 'approval', authority: 'UK CAA — Part-145 — UK.145.00883', aircraftTypes: ['G150','G200','G280','GIV (300/400)','GIV-X (G350/G450)','GV','GV-SP (G500/G550)','GVI (G650/G650ER)','GVII-G500','GVII-G600','GVIII-G700','GVIII-G800'], flagged: false, notes: 'Primary/home approval underlying every other supplement below. MOE Issue 11, March 2026 — Farnborough.' },
+  { country: 'EASA member states', basis: 'approval', authority: 'EASA — Part-145 — EASA.145.3119', aircraftTypes: ['G150','G200','G280','GIV/GIV-SP','GIV-X','GV','GV-SP','GVI (G650)','GVI (G650ER)','GVII-G500','GVII-G600','GVIII-G700','GVIII-G800'], flagged: false, notes: 'Held in parallel with the UK CAA approval. Covers EU states + Iceland, Liechtenstein, Norway, Switzerland. MOE Issue 1 Rev 4, April 2026 — Farnborough.' },
+  { country: 'United States', basis: 'approval', authority: 'FAA — 14 CFR Part 145 — Certificate MGTY330K', aircraftTypes: [], flagged: false, notes: 'Follows the main UK CAA Scope of Work — no type restriction. Supplement Issue 5, Jan 2026.' },
+  { country: 'Aruba', basis: 'approval', authority: 'DCA Aruba — DL-ACC-281', aircraftTypes: [], flagged: false, notes: 'Carried out in accordance with AUA-RLW. Release under EASA.145.3119.' },
+  { country: 'Australia', basis: 'release-only', authority: 'CASA — CAR 42ZD (via EASA.145.3119)', aircraftTypes: [], flagged: false, notes: 'Maintenance pursuant to CAR 42ZD. Final CRS made under State of Registration national law (not an EASA release).' },
+  { country: 'Azerbaijan', basis: 'approval', authority: 'SCAA — AZ.145R.0015 (AAR-145)', aircraftTypes: ['G650 (BR725) — ASG Business Aviation only','G550 (BR710) — ASG Business Aviation only','G450 (TAY) — ASG Business Aviation only','G280 (Honeywell AS907) — ASG Business Aviation only','GVIII-G700 (BR700) — Azerbaijan Airlines only'], flagged: false, notes: 'Release per AAR-145 via EASA.145.3119. Restricted per operator.' },
+  { country: 'Bahrain', basis: 'approval', authority: 'Bahrain CAA — ALD/AIR/8/5.33 (ANTR-145)', aircraftTypes: ['GV-SP Series (G500/G550)','GVI Series (G650/G650ER)','GVII Series (G500/G600)','GVIII Series (G700/G800)'], flagged: false, notes: 'Release per ANTR-145 via EASA.145.3119. Does NOT cover G150/G200/G280/GIV/GIV-X.' },
+  { country: 'Barbados', basis: 'approval', authority: 'BCAA — AMO-001F', aircraftTypes: ['G650ER (RRD BR725)'], flagged: false, notes: 'Civil Aviation Regulations. Approval No. AMO-001F.' },
+  { country: 'Bermuda', basis: 'approval', authority: 'BCAA (OTAR Part 145) — BDA/AMO/017', aircraftTypes: [], flagged: false, notes: 'Air Navigation (Overseas Territories) Order.' },
+  { country: 'Brazil', basis: 'approval', authority: 'ANAC — 1604-33 (plus UK.145.00883)', aircraftTypes: [], flagged: false, notes: 'Carried out in accordance with ANAC airworthiness regulations & UK.145.00883.' },
+  { country: 'Burundi', basis: 'approval', authority: 'AACB — FAA Part 145 Basis (MGTY330K)', aircraftTypes: [], flagged: true, notes: '⚠️ Work repaired & inspected under FAA regulations / Part 91 / 135. Confirm current letter.' },
+  { country: 'Canada', basis: 'approval', authority: 'TCCA — CAR 573 — Approved T-AM Supplement (UK.145.00883)', aircraftTypes: [], flagged: false, notes: 'Release per approved T-AM supplement based on UK.145.00883.' },
+  { country: 'Cayman Islands', basis: 'approval', authority: 'CAACI (OTAR Part 145) — CAY-AMO-061174', aircraftTypes: [], flagged: false, notes: 'Air Navigation (Overseas Territories) Order. Approval CAY-AMO-061174.' },
+  { country: 'Egypt', basis: 'release-only', authority: 'ECAA — ECAR PART 145', aircraftTypes: [], flagged: false, notes: 'Carried out in accordance with ECAR PART 145.' },
+  { country: 'Guernsey', basis: 'release-only', authority: '2-REG — GAR 145 Approval No. 2-REG.145.27 (plus UK.145.00883)', aircraftTypes: [], flagged: false, notes: 'Air Navigation (Bailiwick of Guernsey) Law 2012 / GAR 145 using UK CAA Part 145 & 2-REG validation.' },
+  { country: 'Hong Kong', basis: 'release-only', authority: 'HKCAD — HKAR-145 Approval No. AI/130/706', aircraftTypes: [], flagged: false, notes: 'Air Navigation (Hong Kong) Order 1995 / HKAR-145.' },
+  { country: 'India', basis: 'approval', authority: 'DGCA — IND.FAMO.0000000025 (CAR-145)', aircraftTypes: [], flagged: false, notes: 'Release per CAR-145 via EASA/UK CAA approval.' },
+  { country: 'Isle of Man', basis: 'release-only', authority: 'IOMAR — Air Navigation (Isle of Man) Order 2015 (EASA or UK CAA variants)', aircraftTypes: [], flagged: false, notes: 'Release under Air Navigation (Isle of Man) Order 2015 using EASA.145.3119 or UK.145.00883.' },
+  { country: 'Kuwait', basis: 'approval', authority: 'DGCA (Kuwait) — KCASR 8 - Part 145 — DGCA/AMO/037', aircraftTypes: ['GV-SP (RRD BR710) — Kuwait Airways only','GVI (RRD BR725) — Kuwait Airways only'], flagged: false, notes: 'Operator-restricted to Kuwait Airways.' },
+  { country: 'Morocco', basis: 'approval', authority: 'DAC Morocco — Ministerial Order 1027-00 — CN-E 51/20', aircraftTypes: ['G280 (Honeywell AS907) — Winds Jet only','G550 RRD710 — Royal Moroccan Air Force only','G450 — MT Fly only','G450 — Regional Air only'], flagged: false, notes: 'Moroccan Civil Aviation Regulations in force. Operator-restricted.' },
+  { country: 'New Zealand', basis: 'release-only', authority: 'NZ CAA — Civil Aviation Rule Part 43 (UK.145.00883)', aircraftTypes: [], flagged: false, notes: 'Carried out in accordance with NZ Civil Aviation Rule Part 43 & UK.145.00883.' },
+  { country: 'Nigeria', basis: 'approval', authority: 'NCAA — AMO/G/GAL', aircraftTypes: ['G150 (IAI)','GIV Series','GIV-X','GV Series','GV-SP','G200/Galaxy (IAI)'], flagged: false, notes: 'Approval AMO/G/GAL. Does NOT cover G650, G500/G600 or G700/G800.' },
+  { country: 'Oman', basis: 'approval', authority: 'Oman CAA — Base Maintenance Approval', aircraftTypes: ['G550 (GV-SP) — Base Maintenance only'], flagged: false, notes: 'Official via QIB No. 372 (Feb 2025). Restricted to G550 and Base Maintenance only.' },
+  { country: 'Pakistan', basis: 'approval', authority: 'PCAA — ANO 145 — PCAA.145.158', aircraftTypes: ['G150 (IAI)','G200','G280'], flagged: false, notes: 'Gulfstream Aerospace Limited Pakistan ANO 145. Approval No: PCAA.145.158.' },
+  { country: 'Qatar', basis: 'approval', authority: 'QCAA — QCAA/FAMO/186', aircraftTypes: [], flagged: false, notes: 'Part-145 approval QCAA/FAMO/186.' },
+  { country: 'San Marino', basis: 'release-only', authority: 'SMAR CAA — CAR GEN Subpart C (EASA.145.3119)', aircraftTypes: [], flagged: false, notes: 'Carried out in accordance with Republic of San Marino CAR GEN Subpart C via EASA.145.3119. Final CRS is NOT under EASA.' },
+  { country: 'Saudi Arabia', basis: 'approval', authority: 'GACA — AMO-158FA', aircraftTypes: ['GIV (300/400)','GIV-X (G450)','GV','GV-SP (G500/G550)','GVI (G650)'], flagged: false, notes: 'GACA Regulation Part 125.541(b) / AMO-158FA. Article 83bis applies to several N-registered tails.' },
+  { country: 'Sweden', basis: 'approval', authority: 'Swedish Armed Forces (SE-EMAR 145) — SE.EMAR 145.085', aircraftTypes: ['GIV-SP — Swedish Air Force only','G550 — Swedish Air Force only'], flagged: false, notes: 'Restricted to Swedish Air Force / military aircraft. Civil SE- aircraft fall under the EASA entry.' },
+  { country: 'Tanzania', basis: 'release-only', authority: 'TCAA — Approval No. AI/CA/1.05', aircraftTypes: [], flagged: false, notes: 'Tanzania Civil Aviation Authority Approval No. AI/CA/1.05.' },
+  { country: 'Thailand', basis: 'approval', authority: 'CAAT — TCAR 8 Part 145 — CAAT.AMO.0532 (plus EASA.145.3119)', aircraftTypes: ['G200 (PWC PW306)','G650 (RRD BR725)','GV (RRD BR710)','GV-SP (RRD BR710)'], flagged: false, notes: 'TCAR 8 Part 145 & EASA.145.3119 dual reference. Limited to these four types.' },
+  { country: 'Turkey', basis: 'approval', authority: 'Turkey DGCA — SHT-145 — TR.145.F.0002', aircraftTypes: ['GIV/GIV-SP (RRD TAY)','GIV-X (RRD TAY)','GV-SP (RRD BR710)','GVI (RRD BR725)','GVII (PWC PW800GA)','GVIII (RRD BR700)'], flagged: false, notes: 'Carried out in accordance with SHT-145 via EASA.145.3119. Excludes G150/G200/G280.' },
+  { country: 'Uganda', basis: 'approval', authority: 'CAAU — Uganda AMO Approval UG/CAA/AMO/163', aircraftTypes: ['G550 (GV-SP, RRD BR710)'], flagged: false, notes: 'Restricted to G550 only.' },
+  { country: 'United Arab Emirates', basis: 'approval', authority: 'GCAA — CAR 145 — Approval No. UAE.145.1015', aircraftTypes: [], flagged: false, notes: 'Carried out in accordance with CAR 145. UAE GCAA AMO Approval UAE.145.1015.' },
 ];
 
 async function koLoadCountryApprovals() {
@@ -14195,10 +14966,14 @@ function renderCountryApprovalsManageList() {
         <button onclick="koDeleteCountryApproval(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
       </div>
       <input type="text" value="${escAttr(c.authority||'')}" placeholder="Authority + approval ref" oninput="koCountryApprovalEdit(${i},'authority',this.value)" style="font-size:12px;padding:5px 8px"/>
+      <select onchange="koCountryApprovalEdit(${i},'basis',this.value)" style="font-size:12px;padding:5px 8px">
+        <option value="approval" ${koApprovalBasis(c)==='approval'?'selected':''}>✅ Dedicated GAL approval — type · operator · scope are checked automatically</option>
+        <option value="release-only" ${koApprovalBasis(c)==='release-only'?'selected':''}>ℹ️ No dedicated approval — release statement only (always warns)</option>
+      </select>
       <textarea placeholder="Aircraft types, comma-separated — blank = full Scope of Work" oninput="koCountryApprovalEdit(${i},'aircraftTypesRaw',this.value)" style="font-size:12px;padding:5px 8px;min-height:36px">${escHtml((c.aircraftTypes||[]).join(', '))}</textarea>
       <textarea placeholder="Notes" oninput="koCountryApprovalEdit(${i},'notes',this.value)" style="font-size:11px;padding:5px 8px;min-height:32px;color:var(--g600)">${escHtml(c.notes||'')}</textarea>
       <label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;color:#92400e">
-        <input type="checkbox" ${c.flagged?'checked':''} onchange="koCountryApprovalEdit(${i},'flagged',this.checked)"/> ⚠️ Flag this entry — always show the warning when this country is detected
+        <input type="checkbox" ${c.flagged?'checked':''} onchange="koCountryApprovalEdit(${i},'flagged',this.checked)"/> ⚠️ Flag this entry — always warn, even when the type / operator / scope check passes (use only for conditions the app can't check by itself)
       </label>
     </div>`).join('');
 }
@@ -14234,7 +15009,8 @@ G.koAddCountryApproval = function() {
   KO_COUNTRY_APPROVALS.push({
     country, authority,
     aircraftTypes: typesRaw ? typesRaw.split(',').map(s=>s.trim()).filter(Boolean) : [],
-    flagged, notes
+    flagged, notes,
+    basis: document.getElementById('ca-new-basis')?.value || 'approval'
   });
   ['ca-new-country','ca-new-authority','ca-new-types','ca-new-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value=''; });
   const fcb = document.getElementById('ca-new-flagged'); if (fcb) fcb.checked = false;
@@ -14261,7 +15037,7 @@ G.koManageCountryApprovals = async function() {
 async function renderCountryApprovalsSummary() {
   await koLoadCountryApprovals();
   const el = document.getElementById('ca-summary-count');
-  if (el) el.textContent = `(${KO_COUNTRY_APPROVALS.length} on file)`;
+  if (el) el.textContent = koApprovalsSummaryText();
 }
 
 // Country names are compared on their base name, exactly: "United Kingdom (home)"
@@ -14271,51 +15047,562 @@ function koCountryKey(s) {
   return String(s || '').toLowerCase().replace(/\s*\(.*?\)\s*/g, ' ').trim();
 }
 
-// ── The actual check — matches a country against the list above. No
-// fuzzy matching on aircraft type: naming varies too much between
-// documents (e.g. "G650ER (RRD BR725)" vs "GVI (G650ER)") to auto-clear
-// or auto-block reliably, so a flagged country always shows its full
-// type list and notes for a human to read and confirm with Quality.
-function koCountryApprovalMessage(country) {
-  const qc = koCountryKey(country);
-  if (!qc) return null;
-  // 1) an entry for exactly that country (Sweden, Thailand, United Kingdom...)
-  let match = KO_COUNTRY_APPROVALS.find(c => koCountryKey(c.country) === qc);
-  // 2) otherwise an EASA member state is covered by the "EASA member states" entry
-  if (!match && [...EASA_COUNTRIES].some(n => n.toLowerCase() === qc)) {
-    match = KO_COUNTRY_APPROVALS.find(c => /\beasa\b/i.test(c.country || ''));
-  }
-  if (!match) {
-    return { level: 'danger', html: `⚠️ <b>No approval on file for "${escHtml(country)}"</b> — check with Quality whether GAL currently holds an approval to work this aircraft here before accepting the job.` };
-  }
-  if (match.flagged) {
-    const typesLine = (match.aircraftTypes||[]).length ? ` Types on file: ${escHtml(match.aircraftTypes.join('; '))}.` : '';
-    return { level: 'warn', html: `⚠️ <b>${escHtml(match.country)} — restriction on file</b> (${escHtml(match.authority||'')}): ${escHtml(match.notes||'')}${typesLine} Confirm with Quality before proceeding.` };
-  }
-  return null;
+// ══════════════════════════════════════
+//  APPROVAL CHECK v2 — state of registry + aircraft model + operator   (rev 3)
+//
+//  Levels : ok (green) · warn (amber) · danger (red) · info (blue = cannot verify yet)
+//  Rule   : silence never means "approved". A green line only appears when the state IS one of the
+//           approvals on file AND the model / operator / scope were actually checked.
+//
+//  Inputs
+//   • state of registry : "Country of Registry" (RFS)  →  registration prefix (RFS / WCR / typed)
+//   • model             : the Model field and nothing else (RFS / WCR / typed / picked with a "Use …" button).
+//                         The S/N never decides a verdict: it only SUGGESTS a model (buttons) and flags a conflict.
+//                         A WOD has neither model nor registration → the banner asks for both.
+//   • operator          : Customer company (RFS Account / WOD Customer / WCR Customer)
+//  "FAR / Certification" is deliberately NOT used: it is often blank and it doesn't identify the state of registry.
+//
+//  A state with no type list of its own (blank in Manage list) follows the main Scope of Work = the
+//  "United Kingdom (home)" line: the aircraft type is checked against that line, never waved through.
+//
+//  This file = the (rev 3) logic above, with 2 changes ported in after comparing it against a second,
+//  independently-written proposal on the same 65 real projects (see guide §8 for the full comparison):
+//   • koParseApprovalType / koScoreRules: a type-list entry written as a bare shared name with no
+//     disambiguating context (e.g. "G500" alone) now still warns ('ambiguous-list') even when the
+//     aircraft being checked resolves unambiguously — the list entry's own wording needs a human too.
+//   • A brand-new aircraft not yet named by ANY approval (sibling match, viaFamily:false) is now 'danger'
+//     (red) instead of 'warn' (amber), to match "red everywhere until an admin adds it" everywhere else.
+// ══════════════════════════════════════
+
+// ── Aircraft models ─────────────────────────────────────────────────────────
+// HOW TO ADD AN AIRCRAFT (a future G300, a G900…)
+//   • To be READ it needs nothing: any "G###" that is not in the table is read as a type of its own, so writing
+//     "G900" in the Model field and in the type list of the approvals that cover it (Manage list) is enough for them to match.
+//   • Add a line to KO_MODELS to give it a family ("same family, other variant" warnings, family mentions such as "GVI Series")
+//     and the exact designation written by the "Use …" button (the ones of Admin → Gulfstream models, e.g. "GVII-G400").
+//   • Add a line to KO_SN_RANGES once its serial numbers are known (suggestion + conflict detection only).
+//   • A NEW aircraft that is on no approval yet gets viaFamily:false: a family mention such as "GVII" in an approval
+//     does not cover it until that approval names it ("GVII-G400").
+// Columns — code: internal id · family: siblings + family mentions · designation: what "Use …" writes in the Model field
+//           match: how documents write it (null = handled by KO_TWINS / KO_FAMILY_NAMES) · viaFamily:false → no family-level coverage
+//           pending:true → announced but no designation published yet (a bare name stays ambiguous)
+const KO_MODELS = [
+  { code: 'G650ER', family: 'GVI',   designation: 'GVI (G650ER)',             match: /\bG[\s-]?650[\s-]?ER\b/ },
+  { code: 'G650',   family: 'GVI',   designation: 'GVI (G650)',               match: /\bG[\s-]?650\b/ },
+  { code: 'G550',   family: 'GV-SP', designation: 'GV-SP (G550)',             match: /\bG[\s-]?550\b/ },
+  { code: 'G500SP', family: 'GV-SP', designation: 'GV-SP (G500-5000 Series)', match: null },                     // the older G500, a GV-SP — see KO_TWINS
+  { code: 'G500',   family: 'GVII',  designation: 'GVII-G500',                match: null },                     // the new G500 — see KO_TWINS
+  { code: 'G600',   family: 'GVII',  designation: 'GVII-G600',                match: /\bG[\s-]?600\b/ },
+  { code: 'G400',   family: 'GVII',  designation: 'GVII-G400',                match: null, viaFamily: false },  // new, not delivered yet — see KO_TWINS
+  { code: 'G700',   family: 'GVIII', designation: 'GVIII-G700',               match: /\bG[\s-]?700\b/ },
+  { code: 'G800',   family: 'GVIII', designation: 'GVIII-G800',               match: /\bG[\s-]?800\b/ },
+  { code: 'G450',   family: 'GIV-X', designation: 'GIV-X (G450)',             match: /\bG[\s-]?450\b/ },
+  { code: 'G350',   family: 'GIV-X', designation: 'GIV-X (G350)',             match: /\bG[\s-]?350\b/ },
+  { code: 'G280',   family: 'G280',  designation: 'G280 (G-VPA)',             match: /\bG[\s-]?280\b/ },
+  { code: 'G200',   family: 'G200',  designation: 'G200 (G-1159D)',           match: /\b(?:G[\s-]?200|GALAXY)\b/ },
+  { code: 'G150',   family: 'G150',  designation: 'G150 (G-1159C)',           match: /\bG[\s-]?150\b/ },
+  { code: 'G100',   family: 'G100',  designation: 'G100',                     match: /\b(?:G[\s-]?100|ASTRA)\b/ },   // on no GAL approval
+  { code: 'GIV',    family: 'GIV',   designation: 'GIV',                      match: null },                     // GIV, GIV-SP, GIV-SR and the older G300 / G400 — see KO_TWINS + KO_FAMILY_NAMES
+  { code: 'GV',     family: 'GV',    designation: 'GV',                       match: null },                     // see KO_FAMILY_NAMES
+  { code: 'G300',   family: 'G300',  designation: 'G300',                     match: null, viaFamily: false, pending: true },  // new, not delivered yet, designation not published — see KO_TWINS
+  { code: 'GIII',   family: 'GIII',  designation: 'GIII',                     match: /\bG[\s-]?III\b/ },            // on no GAL approval
+  { code: 'GII',    family: 'GII',   designation: 'GII',                      match: /\bG[\s-]?II(?:B)?\b/ }        // on no GAL approval
+];
+
+const KO_MODEL_BY_CODE = {};
+const KO_MODEL_FAMILY  = {};
+const KO_FAMILY_ALL    = {};   // family → every code of the family
+const KO_FAMILY_VIA    = {};   // family → the codes a family-level mention covers
+KO_MODELS.forEach(m => {
+  KO_MODEL_BY_CODE[m.code] = m;
+  KO_MODEL_FAMILY[m.code] = m.family;
+  (KO_FAMILY_ALL[m.family] = KO_FAMILY_ALL[m.family] || []).push(m.code);
+  if (m.viaFamily !== false) (KO_FAMILY_VIA[m.family] = KO_FAMILY_VIA[m.family] || []).push(m.code);
+});
+const koFamilyOf = c => KO_MODEL_FAMILY[c] || c;   // an aircraft the table doesn't know is its own family
+
+// How a family is written in documents ("GVII", "GVI Series", "GV-SP"…). Longest first.
+const KO_FAMILY_NAMES = [
+  ['GVIII', /\bGVIII\b/], ['GVII', /\bGVII\b/], ['GVI', /\bGVI\b/], ['GV-SP', /\bGV[\s-]?SP\b/],
+  ['GIV-X', /\bGIV[\s-]?X\b/], ['GIV', /\bGIV(?:[\s-]?S[PR])?\b/], ['GV', /\bGV\b/]
+];
+
+// A name Gulfstream used twice: an older aircraft and a newer one. The text decides ("GVII-G500" = new, "GV-SP (G500-5000 Series)"
+// = older); a bare name stays ambiguous (both codes) until the S/N says which generation.
+const KO_TWINS = [
+  { name: 'G500', token: /\bG[\s-]?500\b/, legacy: 'G500SP', legacyCtx: /\bGV[\s-]?SP\b|\bGV\b/,  next: 'G500', nextCtx: /\bGVII\b/ },
+  { name: 'G400', token: /\bG[\s-]?400\b/, legacy: 'GIV',    legacyCtx: /\bGIV\b(?![\s-]?X\b)/, next: 'G400', nextCtx: /\bGVII\b/ },
+  { name: 'G300', token: /\bG[\s-]?300\b/, legacy: 'GIV',    legacyCtx: /\bGIV\b(?![\s-]?X\b)/, next: 'G300', nextCtx: /\bGVII\b/ }
+];
+
+// Text → the models it can mean.  { codes: [...], bare: [twin names left ambiguous], clash: [family that contradicts the model] }
+function koModelCodes(text) {
+  const src = ' ' + String(text || '').toUpperCase().replace(/[^A-Z0-9\s\-\/]/g, ' ') + ' ';
+  let t = src;
+  const explicit = new Set();
+  const bare = [];
+  const eat = (re, code) => { if (re.test(t)) { explicit.add(code); t = t.replace(re, ' '); } };
+
+  KO_TWINS.forEach(w => {
+    if (!w.token.test(t)) return;
+    t = t.replace(w.token, ' ');
+    if (w.nextCtx.test(src)) explicit.add(w.next);
+    else if (w.legacyCtx.test(src)) explicit.add(w.legacy);
+    else { explicit.add(w.legacy); explicit.add(w.next); bare.push(w.name); }
+  });
+  KO_MODELS.forEach(m => { if (m.match) eat(m.match, m.code); });
+  // any other "G###" is an aircraft this table doesn't know yet: a type of its own (never "unrecognised", never silently OK)
+  for (let g; (g = /\bG[\s-]?(\d{3})\b/.exec(t)); ) { explicit.add('G' + g[1]); t = t.replace(/\bG[\s-]?(\d{3})\b/, ' '); }
+
+  const families = [];
+  KO_FAMILY_NAMES.forEach(([name, re]) => { if (re.test(t)) { families.push(name); t = t.replace(re, ' '); } });
+  const codes = new Set(explicit);
+  const clash = [];
+  families.forEach(f => {
+    // "GVI (G650)" names one variant → only that one. "GVI Series" alone → the whole family (except viaFamily:false models).
+    if ((KO_FAMILY_ALL[f] || []).some(c => explicit.has(c))) return;
+    // "GVII-G700": the family contradicts the model (a G700 is a GVIII). The model is the more specific → keep it, and say so.
+    if (explicit.size) { clash.push({ family: f, codes: [...explicit] }); return; }
+    (KO_FAMILY_VIA[f] || []).forEach(c => codes.add(c));
+  });
+  return { codes: [...codes], bare, clash };
 }
 
-function koRenderCountryApprovalBanner(elId, country) {
-  const banner = document.getElementById(elId);
-  if (!banner) return;
-  const msg = koCountryApprovalMessage(country);
-  if (!msg) { banner.style.display = 'none'; return; }
-  banner.style.cssText = 'margin-top:10px;border-radius:var(--r);padding:9px 12px;font-size:12px;display:flex;align-items:flex-start;gap:8px;' +
-    (msg.level === 'danger' ? 'background:var(--rl);border:1px solid #e8b8a0;color:var(--red)' : 'background:#fef3c7;border:1px solid #d97706;color:#92400e');
-  banner.innerHTML = msg.html;
+// The exact designation to write in the Model field: the one of Admin → Gulfstream models (part templates) when it reads as this
+// model and nothing else, otherwise the built-in one.
+function koDesignation(code) {
+  let list = [];
+  try { list = Array.isArray(KO_GSMODELS) ? KO_GSMODELS : Object.values(KO_GSMODELS || {}); } catch (e) { list = []; }
+  const fits = list.filter(d => typeof d === 'string').filter(d => { const r = koModelCodes(d); return r.codes.length === 1 && r.codes[0] === code && !r.bare.length; });
+  fits.sort((a, b) => a.length - b.length);
+  return fits[0] || (KO_MODEL_BY_CODE[code] && KO_MODEL_BY_CODE[code].designation) || code;
 }
 
-G.koCheckCountryApproval = function() {
-  let country = (gv('f_country') || '').trim();
-  const reg = (gv('f_reg') || '').trim().toUpperCase();
-  if (!country && reg) country = countryFromRegistration(reg) || '';
-  koRenderCountryApprovalBanner('country-approval-warning', country);
+// ── Serial numbers ──────────────────────────────────────────────────────────
+// Gulfstream's own numbering only (4–5 digits, plus the GV's 501–699). The IAI aircraft (G100 / G150 / G200) have overlapping
+// 3-digit numbers — the same number exists on a G150 and on a G200 — so they get NO range: the Model must be filled in.
+// A range never decides a verdict: it proposes buttons and flags a conflict with the Model.
+const KO_SN_RANGES = [
+  // from,  to,   possible models (one button each),  text shown in the banner
+  [72000, 72999, ['G500'],           'G500 (72xxx)'],
+  [73000, 73999, ['G600'],           'G600 (73xxx)'],
+  [87000, 87999, ['G700'],           'G700 (87xxx)'],
+  [88000, 88999, ['G800'],           'G800 (88xxx)'],
+  [6000,  6999,  ['G650', 'G650ER'], 'G650 / G650ER (6xxx)'],
+  [5000,  5999,  ['G550', 'G500SP'], 'G550 / GV-SP (5xxx)'],
+  [4000,  4999,  ['G450', 'G350'],   'G450 / G350 (4xxx)'],
+  [2000,  2999,  ['G280'],           'G280 (2xxx)'],
+  [1000,  1999,  ['GIV'],            'GIV (1xxx)'],
+  [501,   699,   ['GV'],             'GV (5xx)']
+];
+function koModelFromSerial(sn) {
+  const m = String(sn || '').match(/(?:^|\D)(\d{3,5})(?!\d)/);       // a 3–5 digit number on its own (no look-behind: older Safari can't parse it)
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  const hit = KO_SN_RANGES.find(r => n >= r[0] && n <= r[1]);
+  return hit ? { sn: m[1], codes: hit[2].slice(), range: hit[3], options: hit[2].map(code => ({ code, designation: koDesignation(code) })) } : null;
+}
+
+// Model typed / scanned (+ S/N only to settle a twin name and to spot a conflict) → what the aircraft can be.
+function koResolveAircraft(model, sn) {
+  const text = String(model || '').trim();
+  const fromText = koModelCodes(text);
+  const snInfo = koModelFromSerial(sn);
+  let codes = fromText.codes.slice();
+  const twins = [];
+  fromText.bare.forEach(name => {                 // "G500" / "G400" / "G300" alone: the S/N generation says which one
+    const w = KO_TWINS.find(x => x.name === name);
+    if (snInfo && snInfo.codes.includes(w.legacy)) codes = codes.filter(c => c !== w.next);
+    else if (snInfo && snInfo.codes.includes(w.next)) codes = codes.filter(c => c !== w.legacy);
+    else twins.push(w);
+  });
+  const grp = c => { const f = koFamilyOf(c); return f === 'GV-SP' ? 'GV' : f; };
+  const mismatch = !!snInfo && codes.length > 0 && !codes.some(c => snInfo.codes.some(s => grp(s) === grp(c)));
+  return {
+    codes, twins, snInfo, mismatch, text, label: text, clash: fromText.clash,
+    unrecognized: !!text && !codes.length,
+    suggest: !codes.length && snInfo ? { text, snInfo } : null      // Model empty / unreadable: the S/N only SUGGESTS (buttons)
+  };
+}
+
+// ── Approval type strings ───────────────────────────────────────────────────
+// Convention used in the list:  "<type, free text> — <operator or scope> only"
+//   "GVIII-G700 (BR700) — Azerbaijan Airlines only"  → G700, operator restriction
+//   "G550 (GV-SP) — Base Maintenance only"           → G550, scope restriction
+function koParseApprovalType(str) {
+  let s = String(str || '');
+  let operator = '', scope = '';
+  const m = s.match(/\s+[—–-]+\s+(.+?)\s+only\b/i);
+  if (m) {
+    s = s.replace(m[0], ' ');
+    if (/\b(?:base|line)\s+maintenance\b/i.test(m[1])) scope = m[1].trim(); else operator = m[1].trim();
+  }
+  const scan = koModelCodes(s);
+  // Codes present ONLY because the type-list text itself names a shared name with no disambiguating context
+  // ("G500" alone can mean the older GV-SP or the new GVII-G500): the entry's own wording is ambiguous, so
+  // even an aircraft that resolves to one of them unambiguously still needs a human to confirm it (koScoreRules).
+  const bareCodes = new Set();
+  scan.bare.forEach(name => { const w = KO_TWINS.find(x => x.name === name); if (w) { bareCodes.add(w.legacy); bareCodes.add(w.next); } });
+  return { raw: String(str || '').trim(), codes: new Set(scan.codes), bareCodes, operator, scope };
+}
+
+// 'ok'      every possible model of the aircraft is covered
+// 'partial' only some of the possible models are covered (e.g. "G400" alone = older GIV or new G400, approval lists the GIV only)
+// 'sibling' same family but not that variant (approval lists G650ER, aircraft is G650)
+// 'none'    not covered
+function koMatchModel(acCodes, covered) {
+  if (acCodes.every(c => covered.has(c))) return 'ok';
+  if (acCodes.some(c => covered.has(c))) return 'partial';
+  const coveredFams = new Set([...covered].map(koFamilyOf));
+  return acCodes.some(c => coveredFams.has(koFamilyOf(c))) ? 'sibling' : 'none';
+}
+
+function koRulesOf(entry) {
+  const raw = Array.isArray(entry.aircraftTypes) ? entry.aircraftTypes : Object.values(entry.aircraftTypes || {});
+  return raw.map(koParseApprovalType);
+}
+
+// Best reading of the aircraft against a list of type rules (operator / scope restrictions included).
+function koScoreRules(ac, rules, operator) {
+  const scored = [];
+  let unreadable = 0;
+  for (const r of rules) {
+    if (!r.codes.size) { unreadable++; continue; }
+    const m = koMatchModel(ac.codes, r.codes);
+    if (m === 'none') continue;
+    if (m !== 'ok') { scored.push({ rank: 2, kind: 'variant', r, m }); continue; }
+    if (r.bareCodes && r.bareCodes.size && ac.codes.every(c => r.bareCodes.has(c))) { scored.push({ rank: 2, kind: 'ambiguous-list', r }); continue; }
+    if (r.scope) scored.push({ rank: 1, kind: 'scope', r });
+    else if (r.operator) {
+      const hit = koOperatorMatches(r.operator, operator);
+      scored.push({ rank: hit ? 0 : 1, kind: hit ? 'operator-ok' : 'operator', r });
+    } else scored.push({ rank: 0, kind: 'covered', r });
+  }
+  scored.sort((a, b) => a.rank - b.rank);
+  // An ambiguous name can be covered by several unrestricted lines together ("G500" = GV-SP or new: "GV-SP (G500/G550)" + "GVII-G500")
+  if (!scored.some(s => s.rank === 0) && ac.codes.length > 1) {
+    const plain = rules.filter(r => !r.operator && !r.scope && r.codes.size);
+    const union = new Set();
+    plain.forEach(r => r.codes.forEach(c => union.add(c)));
+    if (ac.codes.every(c => union.has(c))) {
+      const raw = plain.filter(r => ac.codes.some(c => r.codes.has(c))).map(r => r.raw).join(' + ');
+      scored.unshift({ rank: 0, kind: 'covered', r: { raw, codes: union, operator: '', scope: '' } });
+    }
+  }
+  return { best: scored[0], scored, unreadable };
+}
+
+// The main Scope of Work = the "United Kingdom (home)" line. A state with no type list of its own follows it.
+// → { entry, rules } (rules is empty when that line has no type restriction) · null when the line isn't in the list.
+function koMainScope() {
+  const list = Array.isArray(KO_COUNTRY_APPROVALS) ? KO_COUNTRY_APPROVALS : [];
+  const uk = list.find(c => koNormCountry(c.country) === 'united kingdom' && koApprovalBasis(c) === 'approval');
+  return uk ? { entry: uk, rules: koRulesOf(uk) } : null;
+}
+
+// Operator names are compared with every non-alphanumeric character removed, so "Winds Jet" = "WindsJet Aviation Ltd".
+function koCompact(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+}
+function koOperatorMatches(restriction, operator) {
+  const r = koCompact(restriction), o = koCompact(operator);
+  if (!r || !o) return false;
+  return o.includes(r) || (o.length >= 5 && r.includes(o));
+}
+
+// ── States ──────────────────────────────────────────────────────────────────
+const KO_COUNTRY_ALIASES = {
+  'usa': 'united states', 'u.s.a.': 'united states', 'us': 'united states', 'u.s.': 'united states',
+  'united states of america': 'united states', 'america': 'united states',
+  'uk': 'united kingdom', 'u.k.': 'united kingdom', 'great britain': 'united kingdom', 'england': 'united kingdom',
+  'uae': 'united arab emirates', 'u.a.e.': 'united arab emirates',
+  'ksa': 'saudi arabia', 'kingdom of saudi arabia': 'saudi arabia', 'saudi arabian': 'saudi arabia',
+  'indian': 'india', 'republic of india': 'india', 'barbadian': 'barbados',
+  'turkiye': 'turkey', 'türkiye': 'turkey', 'republic of turkey': 'turkey',
+  'cayman': 'cayman islands', 'hong kong sar': 'hong kong', 'republic of san marino': 'san marino'
+};
+function koNormCountry(s) {
+  const k = koCountryKey(s);
+  return KO_COUNTRY_ALIASES[k] || k;
+}
+
+// States that appear in the list but are NOT one of the 25 approvals (UK CAA + 24 foreign supplements):
+// they only have a release-statement template. Used ONLY for entries saved before the "basis" field existed;
+// the Manage list writes an explicit basis, which always wins.
+const KO_RELEASE_ONLY_DEFAULT = new Set(['australia', 'egypt', 'guernsey', 'hong kong', 'isle of man', 'new zealand', 'san marino', 'tanzania']);
+function koApprovalBasis(entry) {
+  if (entry && (entry.basis === 'approval' || entry.basis === 'release-only')) return entry.basis;
+  return KO_RELEASE_ONLY_DEFAULT.has(koNormCountry(entry && entry.country)) ? 'release-only' : 'approval';
+}
+
+function koApprovalsSummaryText() {
+  const list = Array.isArray(KO_COUNTRY_APPROVALS) ? KO_COUNTRY_APPROVALS : [];
+  const n = list.filter(c => koApprovalBasis(c) === 'approval').length;
+  return `(${n} approvals · ${list.length - n} release-only)`;
+}
+
+// Registration → state. Guards the "N" prefix: "N/A" or "NONE" must never read as a US tail number.
+function koRegCountry(reg) {
+  const r = String(reg || '').toUpperCase().replace(/[\s-]/g, '');
+  if (!r) return '';
+  if (r[0] === 'N' && !/^N[1-9][0-9A-Z]{0,4}$/.test(r)) return '';
+  return countryFromRegistration(String(reg).toUpperCase()) || '';
+}
+
+// Entries that apply to a state: its own entry, plus the EASA one when the state is an EASA member
+// (Sweden has a military-only entry, but a civil SE- aircraft is covered by EASA — the best verdict wins).
+function koFindApprovalEntries(countryName) {
+  const list = Array.isArray(KO_COUNTRY_APPROVALS) ? KO_COUNTRY_APPROVALS : [];
+  const key = koNormCountry(countryName);
+  if (!key) return [];
+  const found = [];
+  const own = list.find(c => koNormCountry(c.country) === key);
+  if (own) found.push(own);
+  if ([...EASA_COUNTRIES].some(n => n.toLowerCase() === key)) {
+    const easa = list.find(c => c !== own && /\beasa\b/i.test(c.country || ''));
+    if (easa) found.push(easa);
+  }
+  return found;
+}
+
+// ── Verdict for ONE list entry ──────────────────────────────────────────────
+const KO_APPROVAL_HEAD = {
+  'covered': 'approved', 'full-scope': 'approved', 'release-only': 'no dedicated GAL approval',
+  'type-not-covered': 'aircraft type NOT covered', 'model-unknown': 'model needed to verify',
+  'operator': 'operator restriction', 'scope': 'scope restriction', 'variant': 'verify the variant',
+  'types-unreadable': "type list can't be read automatically", 'flagged': 'special conditions',
+  'main-missing': 'main Scope of Work missing from the list', 'ambiguous-list': 'verify the model'
 };
 
+function koEvalApprovalEntry(entry, ac, operator, mainScope) {
+  const res = (level, kind, detail) => ({ level, kind, entry, name: entry.country || '', detail });
+
+  if (koApprovalBasis(entry) === 'release-only') {
+    return res('warn', 'release-only',
+      'Not one of the approvals on file: work would rely on the UK CAA / EASA approval plus the state-of-registry release wording. Confirm with Quality before accepting the job.');
+  }
+
+  let rules = koRulesOf(entry);
+  let viaMain = false;
+  let out;
+
+  if (!rules.length && !mainScope) {
+    out = res('warn', 'main-missing', 'This state has no type list of its own, so the main Scope of Work (the "United Kingdom (home)" line) applies — but that line is missing from the list, so the aircraft type cannot be checked. Admin → Manage list → Reset to reference list.');
+  } else if (!rules.length && !mainScope.rules.length) {
+    out = res('ok', 'full-scope', 'Full Scope of Work — no type restriction.');
+  } else {
+    if (!rules.length) { rules = mainScope.rules; viaMain = true; }   // no list of its own → the aircraft must be in the main Scope of Work
+    const typesLine = rules.map(r => r.raw).join('; ');
+    const whose = viaMain ? 'the main Scope of Work (the UK CAA line)' : 'this approval';
+    const follows = viaMain ? ', which this state follows' : '';
+
+    if (!ac.codes.length) {
+      const need = ac.unrecognized
+        ? `The model "${ac.text}" isn't recognised — check it (e.g. GVII-G600, GVI (G650)) or pick it from the Gulfstream models list.`
+        : "The Model field is empty — fill it in to check the aircraft type (the S/N alone isn't used to decide).";
+      out = res('warn', 'model-unknown', `${viaMain ? 'This state has no type list of its own: the main Scope of Work applies. ' : 'Type-restricted approval. '}${need} ${viaMain ? 'Types in the main Scope of Work' : 'Types on file'}: ${typesLine}.`);
+    } else {
+      const { best, scored, unreadable } = koScoreRules(ac, rules, operator);
+      if (!best) {
+        out = unreadable
+          ? res('warn', 'types-unreadable', `${ac.label} wasn't found in the type list, but ${unreadable} type entr${unreadable > 1 ? 'ies' : 'y'} couldn't be read automatically — verify manually. Types on file: ${typesLine}.`)
+          : res('danger', 'type-not-covered', `${ac.label} is NOT covered by ${whose}${follows}. Covered types: ${typesLine}. Do not accept the job without Quality's go-ahead.`);
+      } else if (best.kind === 'covered') {
+        out = viaMain
+          ? res('ok', 'full-scope', `${ac.label} is covered by ${whose}${follows}.`)
+          : res('ok', 'covered', `${ac.label} is covered (${best.r.raw}).`);
+      } else if (best.kind === 'operator-ok') {
+        out = res('ok', 'covered', `${ac.label} is covered (${best.r.raw}) — the operator matches.`);
+      } else if (best.kind === 'operator') {
+        const ops = [...new Set(scored.filter(s => s.kind === 'operator').map(s => s.r.operator))];
+        out = res('warn', 'operator', `${ac.label} is covered, but only for: ${ops.join(' / ')}. ${operator ? `This job's customer company is "${operator}"` : 'No customer company is filled in for this job'} — confirm with Quality that it is that operator.`);
+      } else if (best.kind === 'scope') {
+        out = res('warn', 'scope', `${ac.label} is covered, restricted to ${best.r.scope} only. Confirm that this job qualifies.`);
+      } else if (best.m === 'partial' && ac.twins.length) {
+        const w = ac.twins[0];
+        const nextDes = KO_MODEL_BY_CODE[w.next] && KO_MODEL_BY_CODE[w.next].pending ? 'not delivered yet' : koDesignation(w.next);
+        out = res('warn', 'variant', `"${w.name}" on its own can be the older aircraft (${koDesignation(w.legacy)}) or the new one (${nextDes}), and ${whose} covers only one of them (${best.r.raw}). Write the full designation or fill in the S/N.`);
+      } else if (best.kind === 'ambiguous-list') {
+        out = res('warn', 'ambiguous-list', `${whose === 'this approval' ? 'This approval' : 'The main Scope of Work'} lists "${best.r.raw}", which can mean more than one model — confirm with Quality that it covers ${ac.label}.`);
+      } else if (best.m === 'sibling' && ac.codes.some(c => KO_MODEL_BY_CODE[c] && KO_MODEL_BY_CODE[c].viaFamily === false)) {
+        const nc = ac.codes.find(c => KO_MODEL_BY_CODE[c] && KO_MODEL_BY_CODE[c].viaFamily === false);
+        out = res('danger', 'type-not-covered', `${ac.label} is a new aircraft that ${whose} doesn't name yet (closest: "${best.r.raw}"). Do not accept the job without Quality's go-ahead — once it is covered, an admin adds "${koDesignation(nc)}" to the type list (Manage list).`);
+      } else {
+        out = res('warn', 'variant', best.m === 'partial'
+          ? `The model is only known as "${ac.label}" and ${whose} covers only some variants (${best.r.raw}). Fill in the exact model (e.g. G650 vs G650ER) to verify.`
+          : `${viaMain ? 'The main Scope of Work' : 'The approval'} lists "${best.r.raw}", not ${ac.label} — same family, but confirm with Quality that this variant is covered.`);
+      }
+    }
+  }
+
+  if (out.level === 'ok' && entry.flagged) {
+    out = { ...out, level: 'warn', kind: 'flagged', detail: `${out.detail} Flagged in the approvals list: special conditions apply (see below).` };
+  }
+  return out;
+}
+
+// Notes about an empty Model whose S/N can't help (no range): the Model has to be typed.
+function koModelNotes(ac, sn) {
+  const notes = ac.clash.map(x => `"${ac.text}" mixes ${x.family} with ${x.codes.join(' / ')} (a ${koFamilyOf(x.codes[0])}) — read as ${x.codes.join(' / ')}; check the Model.`);
+  if (ac.codes.length || ac.text || !sn || ac.suggest) return notes;
+  const digits = (String(sn).match(/(?:^|\D)(\d{3,5})(?!\d)/) || [])[1] || '';
+  const n = parseInt(digits, 10);
+  return notes.concat([`S/N ${sn} doesn't identify the model${n && n < 501 ? ' (G150, G200 and older types share these numbers)' : ''} — fill in the Model.`]);
+}
+
+// ── Full verdict ────────────────────────────────────────────────────────────
+// input: { country, reg, model, sn, operator }  →  { level, head, detail, soft[], meta, suggest } | null (blank form)
+function koApprovalVerdict(input) {
+  const PLACEHOLDER = /^(?:n\/?a|tbd|tbc|unk(?:wn|nown)?|none|nil|-+|—|\?+)$/i;
+  const clean = s => { const t = String(s || '').trim(); return PLACEHOLDER.test(t) ? '' : t; };
+  const declared = clean(input.country);
+  const reg      = clean(input.reg).toUpperCase();
+  const model    = clean(input.model);
+  const sn       = clean(input.sn);
+  const operator = clean(input.operator);
+  if (!declared && !reg && !model && !sn) return null;          // blank form: nothing to say yet
+
+  const regCountry  = koRegCountry(reg);
+  const countryName = declared || regCountry;
+  const ac = koResolveAircraft(model, sn);
+  const suggest = ac.suggest;
+  const modelNotes = koModelNotes(ac, sn);
+
+  if (!countryName) {
+    return { level: 'info', head: 'Approval check not possible yet', soft: modelNotes, meta: '', suggest,
+      detail: reg
+        ? `Registration "${reg}" isn't recognised and no Country of Registry is filled in — fix the registration or fill in the country to check the GAL approvals.${ac.codes.length ? '' : ' The Model is needed too.'}`
+        : `No Country of Registry and no registration yet, so the state of registry can't be checked against the GAL approvals. Fill in the registration (or the country)${ac.codes.length ? '.' : ' and the Model.'}` };
+  }
+
+  const list = Array.isArray(KO_COUNTRY_APPROVALS) ? KO_COUNTRY_APPROVALS : [];
+  if (!list.length) {
+    return { level: 'info', head: 'Approvals list is empty', soft: [], meta: '', suggest,
+      detail: "The GAL approvals list has no entry (not loaded yet, or emptied in the admin panel), so nothing can be checked. Admin → Manage list → Reset to reference list." };
+  }
+  const nApprovals = list.filter(c => koApprovalBasis(c) === 'approval').length;
+  let entries = koFindApprovalEntries(countryName);
+  let viaReg = false;
+  // The declared name isn't in the list (spelling, "Czechia"…) but the registration prefix is: the prefix is reliable.
+  if (!entries.length && declared && regCountry && koNormCountry(declared) !== koNormCountry(regCountry)) {
+    const alt = koFindApprovalEntries(regCountry);
+    if (alt.length) { entries = alt; viaReg = true; }
+  }
+  if (!entries.length) {
+    return { level: 'danger', head: `No GAL approval on file for "${countryName}"`, soft: [], meta: '', suggest: null,
+      detail: `Only ${nApprovals} approvals are on file (UK CAA + foreign supplements). Check with Quality whether GAL can work this aircraft before accepting the job.` };
+  }
+
+  const mainScope = koMainScope();
+  const evals = entries.map(e => koEvalApprovalEntry(e, ac, operator, mainScope));
+  const sev = { ok: 0, warn: 1, danger: 2 };
+  const best = evals.slice().sort((a, b) => sev[a.level] - sev[b.level])[0];   // stable: the state's own entry wins ties
+  const isEasa = /\beasa\b/i.test(best.name) && koNormCountry(best.name) !== koNormCountry(countryName);
+  const v = {
+    level: best.level,
+    head: `${isEasa ? `${countryName} (${best.name})` : best.name} — ${KO_APPROVAL_HEAD[best.kind] || ''}`,
+    detail: best.detail,
+    meta: [best.entry.authority, best.entry.notes].filter(Boolean).join(' — '),
+    soft: [], suggest
+  };
+
+  let conflict = false;
+  if (!declared && regCountry) v.soft.push(`State of registry taken from registration ${reg}.`);
+  if (viaReg) v.soft.push(`The Country field "${declared}" isn't in the list — the state was taken from registration ${reg} (${regCountry}).`);
+  else if (declared && regCountry && koNormCountry(declared) !== koNormCountry(regCountry)) {
+    v.soft.push(`⚠ The Country field says "${declared}" but registration ${reg} points to ${regCountry} — check which one is right.`);
+    conflict = true;
+  }
+  if (ac.mismatch) {
+    v.soft.push(`⚠ S/N ${ac.snInfo.sn} is in the ${ac.snInfo.range} range but the Model says "${ac.text}" — check both.`);
+    conflict = true;
+  }
+  modelNotes.forEach(n => v.soft.push(n));
+  evals.filter(e => e !== best && e.level !== 'ok').forEach(e => {
+    v.soft.push(`Also on file for this state: ${e.name} — ${e.entry.notes || e.entry.authority || ''}`);
+  });
+  if (conflict && v.level === 'ok') v.level = 'warn';
+  return v;
+}
+
+// ── Rendering ───────────────────────────────────────────────────────────────
+function koApprovalHtml(v, target) {
+  const icon = { ok: '✅', warn: '⚠️', danger: '⛔', info: 'ℹ️' }[v.level] || '';
+  const small = 'font-size:11px;opacity:.9';
+  let h = `<span style="flex-shrink:0">${icon}</span><div style="flex:1;min-width:0"><b>${escHtml(v.head)}</b>`;
+  if (v.detail) h += `<br>${escHtml(v.detail)}`;
+  (v.soft || []).forEach(s => { h += `<br><span style="${small}">${escHtml(s)}</span>`; });
+  if (v.suggest) {
+    const s = v.suggest;
+    h += `<br><span style="${small}">${s.text ? `Model "${escHtml(s.text)}" isn't recognised` : 'Model field is empty'} — S/N ${escHtml(s.snInfo.sn)} falls in the ${escHtml(s.snInfo.range)} range. The S/N only suggests, pick the model:</span> `;
+    s.snInfo.options.forEach(o => {
+      h += `<button type="button" onclick="koUseDerivedModel('${escAttr(o.designation)}','${escAttr(target)}')" style="font-size:11px;padding:2px 9px;border-radius:20px;border:1px solid currentColor;background:#fff;color:inherit;cursor:pointer;font-weight:700;margin:2px 4px 0 0">Use ${escHtml(o.designation)}</button>`;
+    });
+  }
+  if (v.meta) h += `<br><span style="${small}">${escHtml(v.meta)}</span>`;
+  return h + '</div>';
+}
+
+// Runs inside autosave(): whatever happens here must never stop a project from being saved.
+function koRenderApprovalBanner(elId, input, target) {
+  const banner = document.getElementById(elId);
+  if (!banner) return;
+  try {
+    const v = koApprovalVerdict(input);
+    if (!v) { banner.style.display = 'none'; return; }
+    const palette = {
+      ok:     'background:var(--gl);border:1px solid var(--gb);color:var(--gd)',
+      warn:   'background:#fef3c7;border:1px solid #d97706;color:#92400e',
+      danger: 'background:var(--rl);border:1px solid #e8b8a0;color:var(--red)',
+      info:   'background:var(--bl);border:1px solid #b8d0e8;color:var(--blue)'
+    };
+    banner.style.cssText = 'margin-top:10px;border-radius:var(--r);padding:9px 12px;font-size:12px;display:flex;align-items:flex-start;gap:8px;' + palette[v.level];
+    banner.innerHTML = koApprovalHtml(v, target);
+  } catch (e) {
+    console.warn('Approval check failed:', e);
+    banner.style.display = 'none';
+  }
+}
+
+// Step 2 (aircraft & order details) — runs on every autosave, so it also fires right after a PDF scan.
+G.koCheckCountryApproval = function() {
+  koRenderApprovalBanner('country-approval-warning', {
+    country: gv('f_country'), reg: gv('f_reg'), model: gv('f_model'), sn: gv('f_sn'), operator: gv('f_cust_company')
+  }, 'step2');
+};
+
+// Start Job — uses its own aircraft fields; Step 2 data (country, operator) only when it is the same aircraft.
 G.koCheckCountryApprovalKo = function() {
-  const reg = (document.getElementById('ko_reg')?.value || '').trim().toUpperCase();
-  const country = reg ? (countryFromRegistration(reg) || '') : '';
-  koRenderCountryApprovalBanner('ko-country-approval-warning', country);
+  const val = id => (document.getElementById(id)?.value || '').trim();
+  const reg = val('ko_reg').toUpperCase();
+  const sameJob = !!reg && reg === gv('f_reg').trim().toUpperCase();
+  koRenderApprovalBanner('ko-country-approval-warning', {
+    country:  sameJob ? gv('f_country') : '',
+    reg,
+    model:    val('ko_model') || (sameJob ? gv('f_model') : ''),
+    sn:       val('ko_sn')    || (sameJob ? gv('f_sn')    : ''),
+    operator: sameJob ? gv('f_cust_company') : ''
+  }, 'ko');
+};
+
+// "Use GV-SP (G550)"-style button of the banner — writes the chosen designation in the Model field (the S/N only suggests).
+G.koUseDerivedModel = function(label, target) {
+  const el = document.getElementById(target === 'ko' ? 'ko_model' : 'f_model');
+  if (!el) return;
+  el.value = label;
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  if (target === 'ko') G.koCheckCountryApprovalKo(); else G.koCheckCountryApproval();
+};
+
+// Admin → Manage list → "Reset to reference list": re-seeds from DEFAULT_COUNTRY_APPROVALS.
+G.koResetCountryApprovals = async function() {
+  if (!confirm('Replace the whole list with the reference list?\n\n• the 25 approvals (UK CAA + 24 foreign supplements) with their type / operator / scope restrictions\n• 8 extra states marked "release-only" (no dedicated approval)\n\nEvery edit made in this list will be lost.')) return;
+  KO_COUNTRY_APPROVALS = DEFAULT_COUNTRY_APPROVALS.map(c => ({ ...c, aircraftTypes: [...(c.aircraftTypes || [])] }));
+  await koSaveCountryApprovals();
+  renderCountryApprovalsManageList();
+  const el = document.getElementById('ca-summary-count');
+  if (el) el.textContent = koApprovalsSummaryText();
+  G.koCheckCountryApproval();
 };
 
 // ══════════════════════════════════════
