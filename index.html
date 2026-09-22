@@ -8363,7 +8363,7 @@ function setStatus(type,msg){const el=document.getElementById('status');el.class
 
 G.extractPDF = async function() {
   if(!pdfB64){setStatus('err','No PDF loaded.');return;}
-  extractBtn.disabled=true;setStatus('load','<span class="spin"></span> Sending PDF to Mistral…');
+  extractBtn.disabled=true;setStatus('load','<span class="spin"></span> Extracting data from PDF…');
   const prompt=`You will receive ONE PDF that is ONE of these three Gulfstream document types. First identify which type it is, then extract accordingly.
 
 DOCUMENT TYPE 1 — "RFS" (Request For Service / quote-style document with fields like A/C Registry, Model/SN, FBO, Customer info, work scope items):
