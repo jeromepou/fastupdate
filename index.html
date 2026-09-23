@@ -2100,23 +2100,15 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 
 <!-- GULFSTREAM MODELS LIST MODAL -->
 <div class="modal-bg" id="modal-gsmodels">
-  <div class="modal" style="max-width:640px">
+  <div class="modal" style="max-width:440px">
     <h3>✈️ Manage Gulfstream models list</h3>
-    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">Shared with the whole team — the one list used everywhere a model must be selected, <b>and</b> the one the approval check itself reads (Country / Authority Approvals). Edit here to keep everything consistent — nothing else needs a code change to recognise a normal new model.</p>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-      <input type="text" id="gsm-filter" placeholder="Filter…" oninput="renderGsModelsManageList()" style="flex:1;font-size:12px;padding:5px 8px"/>
-      <span id="gsm-count" style="font-size:11px;color:var(--g500)"></span>
-      <button class="btn" onclick="koResetGsModels()" title="Re-seed the list from the reference list (your edits are lost)" style="font-size:11px;padding:4px 10px">↺ Reset to reference list</button>
-    </div>
-    <div id="gsmodels-manage-list" style="max-height:360px;overflow-y:auto;margin-bottom:12px"></div>
-    <div class="lkm-new" id="gsm-new-block" style="display:flex;gap:6px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--g200)">
-      <input type="text" id="gsm-new-name" placeholder="Name, as written in documents (e.g. G600)" style="flex:1;min-width:220px;font-size:12px;padding:5px 8px"/>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">Shared with the whole team — real FAA/EASA type-certificate designations. This is the fixed list used everywhere a model must be selected; edit here to keep it consistent (no free typing elsewhere).</p>
+    <div id="gsmodels-manage-list" style="max-height:320px;overflow-y:auto;margin-bottom:12px"></div>
+    <div style="display:flex;gap:6px;padding-top:10px;border-top:1px solid var(--g200)">
+      <input type="text" id="gsm-new-name" placeholder="e.g. GVII-G600" style="flex:1;font-size:12px;padding:5px 8px"/>
       <button class="btn primary" onclick="koAddGsModel()">+ Add</button>
     </div>
     <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-gsmodels')">Done</button></div>
-  </div>
-</div>
-<div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-gsmodels')">Done</button></div>
   </div>
 </div>
 
@@ -10292,7 +10284,6 @@ G.openKickoff = async function(forceWo) {
   await koLoadFSRSelector();
   await koLoadQuickPartsCatalog();
   await koLoadGsModels();
-  await koLoadCustomerCodes();   // was missing here: without this, a Customer Code never matched for anyone who had not opened Manage Customer Codes first
   await koLoadPartTplCatalog();
   await koLoadShipAddrCatalog();
   await koLoadSealantMilSpecs();
@@ -13031,77 +13022,37 @@ G.koApplyIcaoSuggestion = function(idx, context) {
 };
 
 // ══════════════════════════════════════
-//  GULFSTREAM MODELS — the one list used everywhere a model is picked, AND the one the approval check
-//  (approval-v2-logic.js, koRebuildModelIndex) reads its aircraft catalog from. Edit it from
-//  Admin → Manage Team → ✈️ Gulfstream models — no code change needed for a normal new model.
+//  GULFSTREAM MODELS — fixed shared list, real FAA/EASA type-certificate designations
 // ══════════════════════════════════════
-let KO_GSMODELS = [];   // [{ name, designation, family, aliases, snFrom, snTo, isNew, showInPartOrders }, ...]
+let KO_GSMODELS = [];   // ['GVII-G600', 'GV-SP (G550)', ...]
 
 // Sources: FAA TCDS A12EA (GIV-X/GV-SP family), FAA TCDS T00015AT (GVI/G650 family),
 // EASA.IM.A.595 (GVII-G500/G600), TCCA A-226 / GVIII (G700/G800), legacy G150/G200/G280.
-// See approval-check-v2-guide.md §9 for what each field does and how to add a new aircraft.
 const KO_GSMODELS_DEFAULT = [
-  { name: 'G650ER', designation: 'GVI (G650ER)',             family: 'GVI',   snFrom: 6000,  snTo: 6999,  showInPartOrders: true },
-  { name: 'G650',   designation: 'GVI (G650)',               family: 'GVI',   snFrom: 6000,  snTo: 6999,  showInPartOrders: true },
-  { name: 'G550',   designation: 'GV-SP (G550)',             family: 'GV-SP', snFrom: 5000,  snTo: 5999,  showInPartOrders: true },
-  { name: 'G500',   code: 'G500SP', designation: 'GV-SP (G500-5000 Series)', family: 'GV-SP', snFrom: 5000, snTo: 5999, showInPartOrders: true },
-  { name: 'G500',   code: 'G500',   designation: 'GVII-G500', family: 'GVII', snFrom: 72000, snTo: 72999, showInPartOrders: true },
-  { name: 'G600',   designation: 'GVII-G600',                family: 'GVII',  snFrom: 73000, snTo: 73999, showInPartOrders: true },
-  { name: 'G400',   designation: 'GVII-G400',                family: 'GVII',  isNew: true,  showInPartOrders: false },
-  { name: 'G700',   designation: 'GVIII-G700',               family: 'GVIII', snFrom: 87000, snTo: 87999, showInPartOrders: true },
-  { name: 'G800',   designation: 'GVIII-G800',               family: 'GVIII', snFrom: 88000, snTo: 88999, showInPartOrders: true },
-  { name: 'G450',   designation: 'GIV-X (G450)',             family: 'GIV-X', snFrom: 4000,  snTo: 4999,  showInPartOrders: true },
-  { name: 'G350',   designation: 'GIV-X (G350)',             family: 'GIV-X', snFrom: 4000,  snTo: 4999,  showInPartOrders: true },
-  { name: 'G280',   designation: 'G280 (G-VPA)',             family: 'G280',  snFrom: 2000,  snTo: 2999,  showInPartOrders: true },
-  { name: 'G200',   designation: 'G200 (G-1159D)',           family: 'G200',  aliases: ['GALAXY'], showInPartOrders: true },
-  { name: 'G150',   designation: 'G150 (G-1159C)',           family: 'G150',  showInPartOrders: true },
-  { name: 'G100',   designation: 'G100',                     family: 'G100',  aliases: ['ASTRA'], showInPartOrders: false },
-  { name: 'GIV',    designation: 'GIV',                      family: 'GIV',   snFrom: 1000,  snTo: 1999,  showInPartOrders: false },
-  { name: 'GV',     designation: 'GV',                       family: 'GV',    snFrom: 501,   snTo: 699,   showInPartOrders: false },
-  { name: 'G300',   designation: '',                         family: 'G300',  isNew: true,  showInPartOrders: false },
-  { name: 'GIII',   designation: 'GIII',                     family: 'GIII',  showInPartOrders: false },
-  { name: 'GII',    designation: 'GII',                      family: 'GII',   aliases: ['GIIB'], showInPartOrders: false }
+  'G150 (G-1159C)',
+  'G200 (G-1159D)',
+  'G280 (G-VPA)',
+  'GIV-X (G350)',
+  'GIV-X (G450)',
+  'GV-SP (G500-5000 Series)',
+  'GV-SP (G550)',
+  'GVII-G500',
+  'GVII-G600',
+  'GVI (G650)',
+  'GVI (G650ER)',
+  'GVIII-G700',
+  'GVIII-G800'
 ];
-
-// Converts whatever was saved under config/gulfstreamModels into the current shape. Handles 3 cases:
-//  • nothing saved yet → null (the caller seeds the full reference list)
-//  • the old shape from before this list also fed the approval check (a plain array of designation strings)
-//    → each string is matched against the reference list to recover its family / S/N range / etc.; a string
-//    that isn't in the reference list (a model an admin had already added by hand) becomes a plain entry with
-//    just that name, still fully usable, just without the extra metadata until someone fills it in
-//  • either way, any reference model the saved list doesn't have yet is appended (hidden from the part-order
-//    list, exactly as it was before) so the approval check keeps recognising every aircraft it already could —
-//    the older / not-yet-delivered types (GIV, GV, GIII, GII, G100, G300, G400) were never in the old plain
-//    list (it only ever fed the part-order dropdown) but the approval check's own hardcoded catalog did know
-//    them, and this keeps it that way after the two are merged into one.
-function koMigrateGsModels(raw) {
-  const arr = Array.isArray(raw) ? raw : (raw ? Object.values(raw) : []);
-  if (!arr.length) return null;
-  const migrated = (typeof arr[0] === 'object' && arr[0] !== null) ? arr.slice() : arr.map(str => {
-    const ref = KO_GSMODELS_DEFAULT.find(d => d.designation === str || d.name === str);
-    return ref ? { ...ref } : { name: String(str), designation: String(str), showInPartOrders: true };
-  });
-  const known = new Set(migrated.map(m => String(m.code || m.name || '').toUpperCase()));
-  KO_GSMODELS_DEFAULT.forEach(ref => {
-    const key = String(ref.code || ref.name || '').toUpperCase();
-    if (!known.has(key)) migrated.push({ ...ref, showInPartOrders: false });
-  });
-  return migrated;
-}
 
 async function koLoadGsModels() {
   try {
     const snap = await get(ref(db, 'config/gulfstreamModels'));
-    const migrated = snap.exists() ? koMigrateGsModels(snap.val()) : null;
-    if (migrated) {
-      KO_GSMODELS = migrated;
-      if (JSON.stringify(snap.val()) !== JSON.stringify(migrated)) koSaveGsModels();   // persist the one-time shape conversion
-    } else {
-      KO_GSMODELS = KO_GSMODELS_DEFAULT.map(m => ({ ...m }));
+    KO_GSMODELS = snap.exists() ? snap.val() : [];
+    if (!KO_GSMODELS.length) {
+      KO_GSMODELS = [...KO_GSMODELS_DEFAULT];
       koSaveGsModels();
     }
-  } catch(e) { KO_GSMODELS = KO_GSMODELS_DEFAULT.map(m => ({ ...m })); }
-  G.koRebuildModelIndex();
+  } catch(e) { KO_GSMODELS = [...KO_GSMODELS_DEFAULT]; }
   koRenderGsModelSelect();
   renderGsModelsManageList();
 }
@@ -13114,80 +13065,43 @@ function koRenderGsModelSelect() {
   const sel = document.getElementById('pt-new-model');
   if (!sel) return;
   const prev = sel.value;
-  const items = KO_GSMODELS.filter(m => m.showInPartOrders !== false && (m.designation || m.name)).map(m => m.designation || m.name).sort();
+  const sorted = [...KO_GSMODELS].sort();
   sel.innerHTML = '<option value="">Select model…</option>' +
-    items.map(m => `<option value="${m.replace(/"/g,'&quot;')}" ${m===prev?'selected':''}>${m}</option>`).join('');
+    sorted.map(m => `<option value="${m.replace(/"/g,'&quot;')}" ${m===prev?'selected':''}>${m}</option>`).join('');
 }
 
 G.koManageGsModels = function() { renderGsModelsManageList(); openModal('modal-gsmodels'); };
 
-let _gsEditTimer = null;
 function renderGsModelsManageList() {
   const list = document.getElementById('gsmodels-manage-list');
   if (!list) return;
-  const q = (document.getElementById('gsm-filter')?.value || '').trim().toLowerCase();
-  const cnt = document.getElementById('gsm-count');
-  const rows = KO_GSMODELS.map((m, i) => ({ m, i })).filter(({ m }) =>
-    !q || (m.name||'').toLowerCase().includes(q) || (m.designation||'').toLowerCase().includes(q) || (m.family||'').toLowerCase().includes(q));
-  if (cnt) cnt.textContent = `${rows.length} of ${KO_GSMODELS.length}`;
   if (!KO_GSMODELS.length) { list.innerHTML = '<p style="font-size:12px;color:var(--g400)">No models yet.</p>'; return; }
-  list.innerHTML = rows.sort((a, b) => (a.m.name||'').localeCompare(b.m.name||'')).map(({ m, i }) => `
-    <div class="lkm-entry" style="margin-bottom:8px">
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <input value="${escAttr(m.name||'')}" oninput="koGsModelEdit(${i},'name',this.value)" placeholder="Name (as in documents)" style="width:150px;font-size:12px;padding:5px 8px"/>
-        <input value="${escAttr(m.designation||'')}" oninput="koGsModelEdit(${i},'designation',this.value)" placeholder="Full designation (optional)" style="width:190px;font-size:12px;padding:5px 8px"/>
-        <input value="${escAttr(m.family||'')}" oninput="koGsModelEdit(${i},'family',this.value)" placeholder="Family (optional)" style="width:90px;font-size:12px;padding:5px 8px"/>
-        <button onclick="koDeleteGsModel(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:5px">
-        <input value="${escAttr((m.aliases||[]).join(', '))}" oninput="koGsModelEdit(${i},'aliases',this.value)" placeholder="Also written as (optional, comma-separated)" style="width:230px;font-size:12px;padding:5px 8px"/>
-        <input type="number" value="${m.snFrom ?? ''}" oninput="koGsModelEdit(${i},'snFrom',this.value)" placeholder="S/N from" style="width:80px;font-size:12px;padding:5px 8px"/>
-        <input type="number" value="${m.snTo ?? ''}" oninput="koGsModelEdit(${i},'snTo',this.value)" placeholder="S/N to" style="width:80px;font-size:12px;padding:5px 8px"/>
-      </div>
-      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:5px">
-        <label style="font-size:11px;color:var(--g600);display:flex;align-items:center;gap:4px"><input type="checkbox" ${m.isNew?'checked':''} onchange="koGsModelEdit(${i},'isNew',this.checked)"/> New aircraft — not yet named by any approval</label>
-        <label style="font-size:11px;color:var(--g600);display:flex;align-items:center;gap:4px"><input type="checkbox" ${m.showInPartOrders!==false?'checked':''} onchange="koGsModelEdit(${i},'showInPartOrders',this.checked)"/> Show in part-order list</label>
-      </div>
-    </div>`).join('');
+  const sorted = [...KO_GSMODELS].sort();
+  list.innerHTML = sorted.map(m => {
+    const i = KO_GSMODELS.indexOf(m);
+    return `<div style="display:flex;align-items:center;gap:8px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:6px 8px;margin-bottom:5px">
+      <span style="flex:1;font-size:13px">✈️ ${m}</span>
+      <button onclick="koDeleteGsModel(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
+    </div>`;
+  }).join('');
 }
-
-G.koGsModelEdit = function(i, field, value) {
-  const m = KO_GSMODELS[i];
-  if (!m) return;
-  if (field === 'aliases') m.aliases = String(value).split(',').map(s => s.trim()).filter(Boolean);
-  else if (field === 'snFrom' || field === 'snTo') m[field] = value === '' ? null : Number(value);
-  else m[field] = value;
-  clearTimeout(_gsEditTimer);
-  _gsEditTimer = setTimeout(() => { G.koRebuildModelIndex(); koRenderGsModelSelect(); koSaveGsModels(); }, 400);
-};
 
 G.koAddGsModel = function() {
   const el = document.getElementById('gsm-new-name');
   const name = (el?.value || '').trim();
   if (!name) return;
-  if (KO_GSMODELS.some(m => (m.name||'').toLowerCase() === name.toLowerCase())) { alert('This model is already in the list.'); return; }
-  KO_GSMODELS.push({ name, designation: '', family: '', aliases: [], snFrom: null, snTo: null, isNew: true, showInPartOrders: true });
+  if (KO_GSMODELS.some(m => m.toLowerCase() === name.toLowerCase())) { alert('This model is already in the list.'); return; }
+  KO_GSMODELS.push(name);
   el.value = '';
-  G.koRebuildModelIndex();
   renderGsModelsManageList(); koRenderGsModelSelect(); koRenderPartTplChips(); koSaveGsModels();
 };
 
 G.koDeleteGsModel = function(i) {
   const removed = KO_GSMODELS[i];
-  const label = (removed && (removed.designation || removed.name)) || '';
-  const usedByTemplate = KO_PARTTPL.some(t => t.model === label);
-  if (usedByTemplate && !confirm(`"${label}" is used by at least one saved template. Delete it from the list anyway? Existing templates will keep the old value but it will no longer be selectable for new ones.`)) return;
+  const usedByTemplate = KO_PARTTPL.some(t => t.model === removed);
+  if (usedByTemplate && !confirm(`"${removed}" is used by at least one saved template. Delete it from the list anyway? Existing templates will keep the old value but it will no longer be selectable for new ones.`)) return;
   KO_GSMODELS.splice(i, 1);
-  G.koRebuildModelIndex();
   renderGsModelsManageList(); koRenderGsModelSelect(); koRenderPartTplChips(); koSaveGsModels();
-};
-
-G.koResetGsModels = async function() {
-  if (!confirm('Replace the whole list with the reference list? Every edit made in this list will be lost.')) return;
-  KO_GSMODELS = KO_GSMODELS_DEFAULT.map(m => ({ ...m }));
-  G.koRebuildModelIndex();
-  renderGsModelsManageList(); koRenderGsModelSelect(); koRenderPartTplChips();
-  await koSaveGsModels();
 };
 
 // ══════════════════════════════════════
@@ -15279,20 +15193,46 @@ function koCountryKey(s) {
 // Columns — code: internal id · family: siblings + family mentions · designation: what "Use …" writes in the Model field
 //           match: how documents write it (null = handled by KO_TWINS / KO_FAMILY_NAMES) · viaFamily:false → no family-level coverage
 //           pending:true → announced but no designation published yet (a bare name stays ambiguous)
-// KO_MODELS / KO_MODEL_BY_CODE / KO_FAMILY_* / KO_SN_RANGES below are no longer hardcoded: koRebuildModelIndex()
-// (further down) rebuilds all of them from the SAME list used everywhere else a model is picked — Admin →
-// Manage Team → ✈️ Gulfstream models (KO_GSMODELS, loaded from Firebase). Adding a normal new model there is now
-// enough on its own; no code edit needed. The only exception is a name Gulfstream reused for two different
-// aircraft (KO_TWINS, just below) — that stays a short hardcoded table because it is genuinely rare.
-let KO_MODELS = [];
+const KO_MODELS = [
+  { code: 'G650ER', family: 'GVI',   designation: 'GVI (G650ER)',             match: /\bG[\s-]?650[\s-]?ER\b/ },
+  { code: 'G650',   family: 'GVI',   designation: 'GVI (G650)',               match: /\bG[\s-]?650\b/ },
+  { code: 'G550',   family: 'GV-SP', designation: 'GV-SP (G550)',             match: /\bG[\s-]?550\b/ },
+  { code: 'G500SP', family: 'GV-SP', designation: 'GV-SP (G500-5000 Series)', match: null },                     // the older G500, a GV-SP — see KO_TWINS
+  { code: 'G500',   family: 'GVII',  designation: 'GVII-G500',                match: null },                     // the new G500 — see KO_TWINS
+  { code: 'G600',   family: 'GVII',  designation: 'GVII-G600',                match: /\bG[\s-]?600\b/ },
+  { code: 'G400',   family: 'GVII',  designation: 'GVII-G400',                match: null, viaFamily: false },  // new, not delivered yet — see KO_TWINS
+  { code: 'G700',   family: 'GVIII', designation: 'GVIII-G700',               match: /\bG[\s-]?700\b/ },
+  { code: 'G800',   family: 'GVIII', designation: 'GVIII-G800',               match: /\bG[\s-]?800\b/ },
+  { code: 'G450',   family: 'GIV-X', designation: 'GIV-X (G450)',             match: /\bG[\s-]?450\b/ },
+  { code: 'G350',   family: 'GIV-X', designation: 'GIV-X (G350)',             match: /\bG[\s-]?350\b/ },
+  { code: 'G280',   family: 'G280',  designation: 'G280 (G-VPA)',             match: /\bG[\s-]?280\b/ },
+  { code: 'G200',   family: 'G200',  designation: 'G200 (G-1159D)',           match: /\b(?:G[\s-]?200|GALAXY)\b/ },
+  { code: 'G150',   family: 'G150',  designation: 'G150 (G-1159C)',           match: /\bG[\s-]?150\b/ },
+  { code: 'G100',   family: 'G100',  designation: 'G100',                     match: /\b(?:G[\s-]?100|ASTRA)\b/ },   // on no GAL approval
+  { code: 'GIV',    family: 'GIV',   designation: 'GIV',                      match: null },                     // GIV, GIV-SP, GIV-SR and the older G300 / G400 — see KO_TWINS + KO_FAMILY_NAMES
+  { code: 'GV',     family: 'GV',    designation: 'GV',                       match: null },                     // see KO_FAMILY_NAMES
+  { code: 'G300',   family: 'G300',  designation: 'G300',                     match: null, viaFamily: false, pending: true },  // new, not delivered yet, designation not published — see KO_TWINS
+  { code: 'GIII',   family: 'GIII',  designation: 'GIII',                     match: /\bG[\s-]?III\b/ },            // on no GAL approval
+  { code: 'GII',    family: 'GII',   designation: 'GII',                      match: /\bG[\s-]?II(?:B)?\b/ }        // on no GAL approval
+];
 
-let KO_MODEL_BY_CODE = {};
-let KO_MODEL_FAMILY  = {};
-let KO_FAMILY_ALL    = {};   // family → every code of the family
-let KO_FAMILY_VIA    = {};   // family → the codes a family-level mention covers
-let KO_FAMILY_NAMES  = [];   // how a family is written in documents ("GVII", "GV-SP"…) — built below, longest first
-let KO_SN_RANGES     = [];   // [from, to, [codes...], label] — built below from each model's own S/N range
+const KO_MODEL_BY_CODE = {};
+const KO_MODEL_FAMILY  = {};
+const KO_FAMILY_ALL    = {};   // family → every code of the family
+const KO_FAMILY_VIA    = {};   // family → the codes a family-level mention covers
+KO_MODELS.forEach(m => {
+  KO_MODEL_BY_CODE[m.code] = m;
+  KO_MODEL_FAMILY[m.code] = m.family;
+  (KO_FAMILY_ALL[m.family] = KO_FAMILY_ALL[m.family] || []).push(m.code);
+  if (m.viaFamily !== false) (KO_FAMILY_VIA[m.family] = KO_FAMILY_VIA[m.family] || []).push(m.code);
+});
 const koFamilyOf = c => KO_MODEL_FAMILY[c] || c;   // an aircraft the table doesn't know is its own family
+
+// How a family is written in documents ("GVII", "GVI Series", "GV-SP"…). Longest first.
+const KO_FAMILY_NAMES = [
+  ['GVIII', /\bGVIII\b/], ['GVII', /\bGVII\b/], ['GVI', /\bGVI\b/], ['GV-SP', /\bGV[\s-]?SP\b/],
+  ['GIV-X', /\bGIV[\s-]?X\b/], ['GIV', /\bGIV(?:[\s-]?S[PR])?\b/], ['GV', /\bGV\b/]
+];
 
 // A name Gulfstream used twice: an older aircraft and a newer one. The text decides ("GVII-G500" = new, "GV-SP (G500-5000 Series)"
 // = older); a bare name stays ambiguous (both codes) until the S/N says which generation.
@@ -15301,67 +15241,6 @@ const KO_TWINS = [
   { name: 'G400', token: /\bG[\s-]?400\b/, legacy: 'GIV',    legacyCtx: /\bGIV\b(?![\s-]?X\b)/, next: 'G400', nextCtx: /\bGVII\b/ },
   { name: 'G300', token: /\bG[\s-]?300\b/, legacy: 'GIV',    legacyCtx: /\bGIV\b(?![\s-]?X\b)/, next: 'G300', nextCtx: /\bGVII\b/ }
 ];
-const KO_TWIN_CODES = new Set();
-KO_TWINS.forEach(w => { KO_TWIN_CODES.add(w.legacy); KO_TWIN_CODES.add(w.next); });
-
-// Builds a safe "how this is written in a document" pattern straight from a plain name — no admin-written regex.
-// Escapes it, then allows an optional space/hyphen right after a leading "G" and between a letter run and a digit
-// run: "G650ER" → /\bG[\s-]?650[\s-]?ER\b/ · "GALAXY" → /\bGALAXY\b/ · "GIIB" → /\bG[\s-]?IIB\b/.
-function koBuildMatcher(names) {
-  const alts = (names || []).map(raw => {
-    const s = String(raw || '').trim().toUpperCase();
-    if (!s) return null;
-    let rest = s, parts = [];
-    if (/^G(?=\d|[IVX])/.test(rest)) { parts.push('G'); rest = rest.slice(1); }
-    (rest.match(/\d+|[A-Z]+/g) || [rest]).forEach(p => p && parts.push(p));
-    return parts.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[\\s-]?');
-  }).filter(Boolean);
-  return alts.length ? new RegExp('\\b(?:' + alts.join('|') + ')\\b') : null;
-}
-
-// Rebuilds everything above from KO_GSMODELS (Admin → Gulfstream models). Called once it has loaded, and again
-// after any add / edit / delete there, so the approval check always reads what is currently in memory.
-function koRebuildModelIndex() {
-  KO_MODELS = []; KO_MODEL_BY_CODE = {}; KO_MODEL_FAMILY = {}; KO_FAMILY_ALL = {}; KO_FAMILY_VIA = {};
-  const snRaw = [];
-  const source = Array.isArray(KO_GSMODELS) ? KO_GSMODELS : (KO_GSMODELS ? Object.values(KO_GSMODELS) : []);
-  source.forEach(raw => {
-    const name = String((raw && raw.name) || '').trim();
-    if (!name) return;
-    const code = String((raw && raw.code) || '').trim() || name.toUpperCase().replace(/[\s-]/g, '');
-    const family = String((raw && raw.family) || '').trim() || code;
-    const names = [name].concat(Array.isArray(raw.aliases) ? raw.aliases.filter(Boolean) : []);
-    const m = {
-      code, family, designation: String((raw && raw.designation) || '').trim(),
-      match: KO_TWIN_CODES.has(code) ? null : koBuildMatcher(names),
-      viaFamily: raw.isNew !== true,
-      pending: !String((raw && raw.designation) || '').trim()
-    };
-    KO_MODELS.push(m);
-    KO_MODEL_BY_CODE[code] = m;
-    KO_MODEL_FAMILY[code] = family;
-    (KO_FAMILY_ALL[family] = KO_FAMILY_ALL[family] || []).push(code);
-    if (m.viaFamily) (KO_FAMILY_VIA[family] = KO_FAMILY_VIA[family] || []).push(code);
-    if (Number.isFinite(raw.snFrom) && Number.isFinite(raw.snTo) && raw.snTo >= raw.snFrom) snRaw.push([raw.snFrom, raw.snTo, code]);
-  });
-
-  // A family gets its own "family mention" pattern when either 2+ models share it (e.g. "GVII Series" should
-  // reach all of them), or its one model has no direct match of its own, deferred to KO_TWINS instead (e.g. a
-  // bare "GIV" is only ever recognised through the family name).
-  KO_FAMILY_NAMES = Object.keys(KO_FAMILY_ALL)
-    .filter(f => KO_FAMILY_ALL[f].length > 1 || (KO_MODEL_BY_CODE[f] && KO_MODEL_BY_CODE[f].match === null))
-    .sort((a, b) => b.length - a.length)
-    .map(f => [f, koBuildMatcher([f])]);
-
-  // Models sharing the same S/N range become one entry offering one button per model (e.g. G650 / G650ER).
-  KO_SN_RANGES = [];
-  snRaw.forEach(([from, to, code]) => {
-    const hit = KO_SN_RANGES.find(r => r[0] === from && r[1] === to);
-    if (hit) hit[2].push(code); else KO_SN_RANGES.push([from, to, [code]]);
-  });
-  KO_SN_RANGES.forEach(r => { r[3] = r[2].map(koDesignation).join(' / ') + ` (${r[0]}–${r[1]})`; });
-}
-
 
 // Text → the models it can mean.  { codes: [...], bare: [twin names left ambiguous], clash: [family that contradicts the model] }
 function koModelCodes(text) {
@@ -15396,17 +15275,33 @@ function koModelCodes(text) {
   return { codes: [...codes], bare, clash };
 }
 
-// The exact designation to write in the Model field — comes straight from Admin → Gulfstream models.
+// The exact designation to write in the Model field: the one of Admin → Gulfstream models (part templates) when it reads as this
+// model and nothing else, otherwise the built-in one.
 function koDesignation(code) {
-  const m = KO_MODEL_BY_CODE[code];
-  return (m && m.designation) || code;
+  let list = [];
+  try { list = Array.isArray(KO_GSMODELS) ? KO_GSMODELS : Object.values(KO_GSMODELS || {}); } catch (e) { list = []; }
+  const fits = list.filter(d => typeof d === 'string').filter(d => { const r = koModelCodes(d); return r.codes.length === 1 && r.codes[0] === code && !r.bare.length; });
+  fits.sort((a, b) => a.length - b.length);
+  return fits[0] || (KO_MODEL_BY_CODE[code] && KO_MODEL_BY_CODE[code].designation) || code;
 }
 
 // ── Serial numbers ──────────────────────────────────────────────────────────
-// Gulfstream's own numbering only (4–5 digits, plus the GV's 501–699). The IAI aircraft (G100 / G150 / G200) have
-// overlapping 3-digit numbers — the same number exists on a G150 and on a G200 — so they get no range there: the
-// Model field must be filled in. A range never decides a verdict on its own — see koRebuildModelIndex, above —
-// it only proposes buttons and flags a conflict with the Model.
+// Gulfstream's own numbering only (4–5 digits, plus the GV's 501–699). The IAI aircraft (G100 / G150 / G200) have overlapping
+// 3-digit numbers — the same number exists on a G150 and on a G200 — so they get NO range: the Model must be filled in.
+// A range never decides a verdict: it proposes buttons and flags a conflict with the Model.
+const KO_SN_RANGES = [
+  // from,  to,   possible models (one button each),  text shown in the banner
+  [72000, 72999, ['G500'],           'G500 (72xxx)'],
+  [73000, 73999, ['G600'],           'G600 (73xxx)'],
+  [87000, 87999, ['G700'],           'G700 (87xxx)'],
+  [88000, 88999, ['G800'],           'G800 (88xxx)'],
+  [6000,  6999,  ['G650', 'G650ER'], 'G650 / G650ER (6xxx)'],
+  [5000,  5999,  ['G550', 'G500SP'], 'G550 / GV-SP (5xxx)'],
+  [4000,  4999,  ['G450', 'G350'],   'G450 / G350 (4xxx)'],
+  [2000,  2999,  ['G280'],           'G280 (2xxx)'],
+  [1000,  1999,  ['GIV'],            'GIV (1xxx)'],
+  [501,   699,   ['GV'],             'GV (5xx)']
+];
 function koModelFromSerial(sn) {
   const m = String(sn || '').match(/(?:^|\D)(\d{3,5})(?!\d)/);       // a 3–5 digit number on its own (no look-behind: older Safari can't parse it)
   if (!m) return null;
@@ -15800,8 +15695,6 @@ function koRenderApprovalBanner(elId, input, target) {
 }
 
 // Step 2 (aircraft & order details) — runs on every autosave, so it also fires right after a PDF scan.
-G.koRebuildModelIndex = koRebuildModelIndex;
-
 G.koCheckCountryApproval = function() {
   koRenderApprovalBanner('country-approval-warning', {
     country: gv('f_country'), reg: gv('f_reg'), model: gv('f_model'), sn: gv('f_sn'),
