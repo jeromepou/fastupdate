@@ -1008,7 +1008,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <h2>Onsite FAST engineers & customer</h2>
   </div>
   <div class="card-body">
-    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">You are automatically assigned as Lead Engineer. Add colleagues if assisting.</p>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">You are automatically assigned as Lead Engineer — reassigning it gives that person full access to this project too. Add colleagues if assisting — they will see this project in their own list and can update it and create GA3671 tags.</p>
     <div id="poc-me-container" class="poc-block me"></div>
     <div id="poc-colleagues-container"></div>
     <div style="display:flex;justify-content:flex-end;margin:4px 0 10px">
@@ -1748,7 +1748,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <div style="font-size:12px;font-weight:700;color:#166534;flex:1">✈️ Gulfstream models — the one aircraft list (templates + approval check)</div>
         <button class="btn primary" onclick="koManageGsModels()" style="font-size:11px;padding:5px 12px">⚙️ Manage list</button>
       </div>
-      <p style="font-size:11px;color:var(--g600);margin-bottom:0">Add a new aircraft, fix a designation or an S/N range here — Manage templates and the approval check below both read this list. Engineers can't edit it.</p>
+      <p style="font-size:11px;color:var(--g600);margin-bottom:0">Add a new aircraft, fix a designation or an S/N range here — Manage templates and the approval check below both read this list. Engineers can't edit it. <span id="gsm-summary-count" style="font-weight:600"></span></p>
     </div>
     <div style="background:#eef2ff;border:1px solid #a5b4fc;border-radius:var(--r);padding:12px;margin-bottom:14px">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
@@ -1855,6 +1855,21 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
   
+<!-- SAVE CONFLICT MODAL -->
+<div class="modal-bg" id="modal-save-conflict">
+  <div class="modal" style="max-width:480px">
+    <h3>⚠️ Save Conflict</h3>
+    <p style="font-size:13px;color:var(--g600);margin-bottom:10px" id="save-conflict-msg">A colleague saved changes to this project since you opened it.</p>
+    <div style="font-size:12px;color:var(--g600);margin-bottom:10px;display:none" id="save-conflict-updates-hint"></div>
+    <div class="modal-btns" style="flex-wrap:wrap">
+      <button class="btn" onclick="resolveSaveConflict('cancel')">Cancel — don't save yet</button>
+      <button class="btn" onclick="resolveSaveConflict('theirs')">Load their version</button>
+      <button class="btn danger" onclick="resolveSaveConflict('mine')">Keep mine (overwrite)</button>
+      <button class="btn primary" onclick="resolveSaveConflict('merge')">Merge: keep mine + add their new updates</button>
+    </div>
+  </div>
+</div>
+
 <!-- RESET PIN MODAL -->
 <div class="modal-bg" id="modal-reset-pin">
   <div class="modal" style="max-width:340px;text-align:center">
@@ -2698,7 +2713,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <li><strong>Step 4 — Daily updates:</strong> tap "+ Today", "+ Yesterday" or "+ Day before" to add a day. A new day automatically carries over any items already checked on the previous day (with their status), so you only need to update what changed. Check off each work item you worked on and set its status (Carried out, Waiting for part(s), Item MEL'd, Cancelled by customer, or In progress), then add a free-text note. Toggle "A/C RTS" on the day the aircraft returns to service. The progress bar on each day card shows how many items are checked. Ticking or changing an item's status on an earlier day also updates that item on every later day already created, so you don't need to repeat it manually.</li>
         <li><strong>Parts (optional):</strong> paste an email thread into the text area or upload it as a PDF, then tap "Extract parts from email" — part numbers, serials and descriptions are detected automatically. Review and confirm before they are added to the parts replaced list.</li>
         <li><strong>Step 5 — Closing details:</strong> job description suffix for the email subject, estimated RTS, next flight, return date and time, and any additional constraints or information.</li>
-        <li><strong>Step 6 — Onsite engineers &amp; customer:</strong> you are automatically listed as Lead Engineer — use the dropdown to reassign it to a colleague if needed. Add up to 2 assisting colleagues. Fill in the customer's name, phone, email, company, and customer code for the FAST Update table footer and for pre-filling GA3671 tags.</li>
+        <li><strong>Step 6 — Onsite engineers &amp; customer:</strong> you are automatically listed as Lead Engineer — reassigning it gives full project access to whoever you pick. Add up to 2 assisting colleagues — the project then appears in their own list (🤝/👑 tag) and they can edit it, add daily updates and create GA3671 tags; removing someone here (or reassigning the lead away from them) removes their access. Fill in the customer's name, phone, email, company, and customer code for the FAST Update table footer and for pre-filling GA3671 tags.</li>
       </ol>
     </div>
 
@@ -2956,6 +2971,13 @@ window.G = window;
 // ══════════════════════════════════════
 let curProfile = null;   // engineer profile object (from DB)
 let curProj = null;      // current project ID string
+// ── Projets partagés (Assist Engineer / Lead Engineer réassigné) ──
+let _sharedOwners     = {};       // { projId: uid du propriétaire } — projets d'un collègue où j'ai accès (Assist ou Lead)
+let _sharedOwnerNames = {};       // { projId: nom du propriétaire } — utilisé quand j'écris moi-même un pointeur (pas seulement le propriétaire)
+let _pendingLeadId    = null;     // lead enregistré du projet ouvert, appliqué par renderStep6Me() une fois la liste d'équipe chargée
+let _projBaseRev      = 0;        // révision du projet telle que je l'ai chargée / sauvegardée (garde anti-écrasement)
+const _accessGranted  = new Set(); // "projId|uid" dont le pointeur d'accès a déjà été écrit pendant cette session
+let _conflictResolve  = null;     // résout la Promise de la modale de conflit d'enregistrement (voir askSaveConflict)
 let isAdmin = false;
 let pdfB64 = null;
 let itemCount = 0, partCount = 0, colleagueSlotCount = 0;
@@ -5016,6 +5038,7 @@ async function showAdminPanel() {
   renderTeamAdminList();
   renderAdminTotpList();
   renderCountryApprovalsSummary();
+  renderGsModelsSummary();  
   renderCustomerCodesSummary();
 }
 
@@ -5095,6 +5118,7 @@ G.logout = async function() {
     fetch(KO_WORKER + '/revoke-session', { method: 'POST', headers: { 'Authorization': 'Bearer ' + _koSessionToken } }).catch(() => {});
   }
   curProfile = null; curProj = null; curProjSubjectTemplate = null; pendingUserToLogin = null; isAdmin = false;
+  _sharedOwners = {}; _sharedOwnerNames = {}; _pendingLeadId = null; _projBaseRev = 0; _accessGranted.clear(); _conflictResolve = null;
   _koSessionToken = null;
   document.getElementById('poc-colleagues-container').innerHTML = ''; colleagueSlotCount = 0;
   document.getElementById('sync-badge').style.display = 'none';
@@ -5290,6 +5314,100 @@ G.switchProjTab = function(tab) {
   renderProjList();
 };
 
+// Chemin Firebase d'un projet : le mien, ou celui du collègue/propriétaire qui m'a donné accès (Assist ou Lead).
+const projPath = (pid) => 'team/' + (_sharedOwners[pid] || curProfile.id) + '/projects/' + pid;
+
+// Firebase renvoie parfois un tableau sous forme d'objet — on accepte les deux.
+function projColleagueIds(p) {
+  const cols = Array.isArray(p?.colleagues) ? p.colleagues : Object.values(p?.colleagues || {});
+  return cols.map(c => c && c.id).filter(Boolean);
+}
+
+// Écrit un pointeur sharedProjects/{uid}/{projet} pour chaque Assist Engineer + le Lead Engineer (s'il diffère du
+// propriétaire), afin que le projet apparaisse dans LEUR liste. Appelable par le propriétaire OU par n'importe quel
+// collègue/lead déjà autorisé sur ce projet (il faut déjà avoir accès pour pouvoir en donner — voir règles Firebase).
+// L'accès en écriture, lui, découle uniquement de `colleagues`/`leadEngId` sur le projet : retirer quelqu'un de
+// Step 6 (ou réassigner le lead ailleurs) lui retire l'accès, et son pointeur est nettoyé de son côté au prochain
+// chargement (voir loadSharedProjects) — aucune action du propriétaire n'est requise pour cette partie.
+function shareProjectWith(pid, ids) {
+  if (!curProfile || !pid) return;
+  const ownerId   = _sharedOwners[pid] || curProfile.id;
+  const ownerName = _sharedOwners[pid] ? (_sharedOwnerNames[pid] || '') : (curProfile.name || '');
+  const want = new Set((ids || []).filter(id => id && id !== ownerId));
+  for (const k of Array.from(_accessGranted)) {               // quelqu'un retiré puis rajouté : son pointeur doit pouvoir être réécrit
+    if (k.startsWith(pid + '|') && !want.has(k.slice(pid.length + 1))) _accessGranted.delete(k);
+  }
+  want.forEach(id => {
+    const k = pid + '|' + id;
+    if (_accessGranted.has(k)) return;
+    _accessGranted.add(k);
+    set(ref(db, 'sharedProjects/' + id + '/' + pid), { ownerId, ownerName })
+      .catch(e => { _accessGranted.delete(k); console.warn('shareProjectWith failed', id, e); });
+  });
+}
+
+// Rattrapage : les projets actifs déjà en cours (créés avant cette fonction) reçoivent leurs pointeurs dès que le
+// propriétaire ouvre l'appli — sans quoi les collègues/lead déjà listés ne verraient rien.
+function ensureOwnProjectsAccess(projsObj) {
+  Object.values(projsObj || {}).forEach(p => {
+    if (p && !p.transferred && !p.rts) shareProjectWith(p.id, [...projColleagueIds(p), p.leadEngId]);
+  });
+}
+
+// Projets d'un collègue sur lesquels j'ai accès — Assist Engineer OU Lead Engineer réassigné (index
+// sharedProjects/{mon uid}, écrit par le propriétaire ou par un autre collègue/lead déjà autorisé). Renvoie les
+// projets « vivants » (lus chez le propriétaire) marqués `_shared`, et met à jour _sharedOwners/_sharedOwnerNames.
+async function loadSharedProjects(mine) {
+  if (!curProfile) return [];
+  const me = curProfile.id, next = {}, nextNames = {}, out = [];
+  if (curProj && _sharedOwners[curProj]) { next[curProj] = _sharedOwners[curProj]; nextNames[curProj] = _sharedOwnerNames[curProj]; }   // projet ouvert : on garde sa cible même si l'accès vient d'être retiré
+  try {
+    const snap = await get(ref(db, 'sharedProjects/' + me));
+    const ptrs = snap.exists() ? snap.val() : {};
+    await Promise.all(Object.keys(ptrs).map(async pid => {
+      const drop = () => remove(ref(db, 'sharedProjects/' + me + '/' + pid)).catch(() => {});
+      try {
+        if (mine && mine[pid]) return drop();                  // déjà dans mon arbre (ex. projet qui m'a été transféré) : pointeur inutile
+        let ownerId = ptrs[pid] && ptrs[pid].ownerId, ownerName = (ptrs[pid] && ptrs[pid].ownerName) || '';
+        if (!ownerId) return;
+        let ps = await get(ref(db, 'team/' + ownerId + '/projects/' + pid));
+        let p = ps.exists() ? ps.val() : null;
+        if (p && p.transferred && p.transferredTo) {           // le propriétaire l'a transféré : on suit le projet chez son nouveau propriétaire
+          ownerId = p.transferredTo; ownerName = p.transferredToName || '';
+          ps = await get(ref(db, 'team/' + ownerId + '/projects/' + pid));
+          p = ps.exists() ? ps.val() : null;
+        }
+        if (!p) return drop();                                  // projet supprimé
+        if (ownerId === me) return;                             // transféré vers moi : il figure déjà dans mon propre arbre
+        if (!projColleagueIds(p).includes(me) && p.leadEngId !== me) return drop();   // je n'ai plus accès (ni Assist ni Lead) sur ce projet
+        next[pid] = ownerId; nextNames[pid] = ownerName;
+        out.push({ ...p, _shared: { ownerId, ownerName } });
+      } catch (e) { console.warn('renderProjList: shared project not loaded', pid, e); }
+    }));
+  } catch (e) { console.warn('renderProjList: shared projects not loaded', e); }
+  _sharedOwners = next; _sharedOwnerNames = nextNames;
+  return out;
+}
+
+// ── Conflit d'enregistrement (voir doSaveInner) : un collègue/lead a sauvegardé depuis mon dernier chargement ──
+function askSaveConflict(who, at, theirNewDates) {
+  return new Promise(resolve => {
+    _conflictResolve = resolve;
+    const msg = document.getElementById('save-conflict-msg');
+    if (msg) msg.textContent = '⚠️ ' + who + ' saved changes to this project' + at + '. Only Daily Updates can be merged automatically — other fields (items, parts, job info…) will follow whichever choice you pick below.';
+    const hint = document.getElementById('save-conflict-updates-hint');
+    if (hint) {
+      if (theirNewDates.length) { hint.style.display = ''; hint.textContent = 'Their new Daily Update(s): ' + theirNewDates.join(', '); }
+      else { hint.style.display = 'none'; hint.textContent = ''; }
+    }
+    openModal('modal-save-conflict');
+  });
+}
+G.resolveSaveConflict = function(choice) {
+  closeModal('modal-save-conflict');
+  if (_conflictResolve) { const r = _conflictResolve; _conflictResolve = null; r(choice); }
+};
+
 async function renderProjList() {
   const list = document.getElementById('proj-list');
   const alreadyHasContent = list.children.length > 0;
@@ -5306,7 +5424,9 @@ async function renderProjList() {
     return;
   }
 
-  const all = Object.values(projsObj);
+  ensureOwnProjectsAccess(projsObj);                              // pointeurs d'accès de mes Assist Engineer + Lead (rattrape aussi les projets déjà en cours)
+  const shared = await loadSharedProjects(projsObj);              // projets d'un collègue où j'ai accès (Assist ou Lead)
+  const all = [...Object.values(projsObj), ...shared];
   const filtered = all.filter(p => projTab === 'archive' ? p.rts : !p.rts);
   if (!filtered.length) {
     list.innerHTML = `<div class="proj-empty">${projTab === 'archive' ? 'No archived projects.' : 'No active projects — create one or upload a PDF.'}</div>`;
@@ -5346,7 +5466,9 @@ async function renderProjList() {
 
     // Un projet transféré n'est plus le tien : pas de Start Job ni de
     // suppression directe (ça supprimerait le pointeur, pas le vrai projet).
-    const actionsHtml = proj.transferred
+    // Projet partagé par un collègue (Assist ou Lead) : Start Job seulement (transfert / suppression restent réservés au propriétaire)
+    const startJobBtn = `<button class="btn-start-job" style="padding:5px 10px;font-size:11px" onclick="event.stopPropagation();koStartFromProject('${proj.id}')">🚀 Start Job</button>`;
+    const actionsHtml = proj._shared ? startJobBtn : proj.transferred
       ? ''
       : `<button class="btn-start-job" style="padding:5px 10px;font-size:11px" onclick="event.stopPropagation();koStartFromProject('${proj.id}')">🚀 Start Job</button>
          <button class="btn" onclick="event.stopPropagation();openTransferModal('${proj.id}')" style="padding:4px 8px;font-size:11px" title="Transfer this project to a colleague">🔄</button>
@@ -5354,7 +5476,7 @@ async function renderProjList() {
 
     div.innerHTML = `
       <div class="proj-item-info">
-        <div class="proj-item-wo">${escHtml(wo)||'(no WO)'} ${tagHtml}</div>
+        <div class="proj-item-wo">${escHtml(wo)||'(no WO)'} ${tagHtml}${proj._shared ? ' <span class="tag-arch">' + (proj.leadEngId === curProfile?.id ? '👑 Lead · ' : '🤝 ') + (escHtml(proj._shared.ownerName) || 'Shared') + '</span>' : ''}</div>
         <div class="proj-item-sub">${[model, sn, reg, loc].map(escHtml).filter(Boolean).join(' · ')}</div>
       </div>
       <div class="proj-item-date">${ds}</div>
@@ -5373,7 +5495,7 @@ G.newProject = function() {
 };
 
 G.loadProject = async function(pid) {
-  const snap = await get(ref(db, 'team/' + curProfile.id + '/projects/' + pid));
+  const snap = await get(ref(db, projPath(pid)));
   if (!snap.exists()) return;
   curProj = pid;
   fillFromProj(snap.val());
@@ -5382,7 +5504,7 @@ G.loadProject = async function(pid) {
 };
 
 G.deleteProjUI = async function(pid) {
-  const snap = await get(ref(db, 'team/' + curProfile.id + '/projects/' + pid));
+  const snap = await get(ref(db, projPath(pid)));
   const p = snap.exists() ? snap.val() : null;
   if (p?.transferred) { alert('This project was transferred — nothing to delete here.'); return; }
   const wo = p ? (p.wo || '(no WO)') : pid;
@@ -5407,7 +5529,7 @@ let _transferProjData = null;
 G.openTransferModal = async function(pid) {
   if (!curProfile) return;
   _transferTargetPid = pid;
-  const snap = await get(ref(db, 'team/' + curProfile.id + '/projects/' + pid));
+  const snap = await get(ref(db, projPath(pid)));
   if (!snap.exists()) return;
   const proj = snap.val();
   _transferProjData = proj;
@@ -5733,12 +5855,35 @@ async function doSaveInner() {
     if (!curProj) curProj = 'proj_' + Date.now();
   }
   // Read existing to preserve rts flag
-  const existing = (await get(ref(db, 'team/' + curProfile.id + '/projects/' + curProj))).val() || {};
+  const existing = (await get(ref(db, projPath(curProj)))).val() || {};
+  // Projet partagé : le propriétaire (ou son remplaçant après transfert) l'a supprimé entre-temps → on ne le ressuscite pas
+  if (_sharedOwners[curProj] && !existing.id) {
+    curProj = null; clearForm(); setSyncBadge('ok');
+    alert('This project was deleted by its owner — nothing was saved.');
+    return;
+  }
+  // Quelqu'un a enregistré ce projet depuis mon dernier chargement / enregistrement : on ne l'écrase pas sans prévenir
+  if (existing.rev && existing.rev !== _projBaseRev && existing.updatedBy && existing.updatedBy !== curProfile.id) {
+    const who = existing.updatedByName || 'A colleague';
+    const at  = existing.updatedAt ? ' at ' + new Date(existing.updatedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
+    const mineDates = new Set(getUpdatesData().map(u => u.date));
+    const theirNewDates = (existing.updates || []).filter(u => u && u.date && !mineDates.has(u.date)).map(u => u.date);
+    const choice = await askSaveConflict(who, at, theirNewDates);
+    if (choice === 'cancel') { setSyncBadge('pending'); return; }                 // ne rien enregistrer maintenant — on redemandera au prochain essai
+    if (choice === 'theirs') { fillFromProj(existing); setSyncBadge('ok'); renderProjList(); return; }
+    if (choice === 'merge') {
+      const mineDatesNow = new Set(getUpdatesData().map(u => u.date));            // recalculé : la fusion ne doit jamais dupliquer un jour déjà présent chez moi
+      (existing.updates || []).filter(u => u && u.date && !mineDatesNow.has(u.date)).forEach(u => renderUpdateBlock(u));
+      d.updates = getUpdatesData();   // ré-agrège les Daily Updates (enrichis de leurs jours) avant de poursuivre l'enregistrement normal
+    }
+    // choice === 'mine' → on garde ma version telle quelle (écrase la leur, y compris leurs propres Daily Updates)
+  }
   const toSave = {
     ...existing, id: curProj,
     createdAt: existing.createdAt || Date.now(),
     updatedAt: Date.now(),
     rts: existing.rts || false,
+    rev: (existing.rev || 0) + 1, updatedBy: curProfile.id, updatedByName: curProfile.name || '',   // garde anti-écrasement + dernier éditeur
     subjectTemplateUsed: existing.subjectTemplateUsed || curProjSubjectTemplate || DEFAULT_SUBJECT_TEMPLATE,
     ...d
   };
@@ -5746,7 +5891,9 @@ async function doSaveInner() {
     // update() et non set() : ne réécrit que les clés du projet, jamais une copie périmée de
     // ga3671Tags (fiches GA3671 sauvegardées, écrites à part — parfois pendant cette sauvegarde).
     delete toSave.ga3671Tags;
-    await update(ref(db, 'team/' + curProfile.id + '/projects/' + curProj), toSave);
+    await update(ref(db, projPath(toSave.id)), toSave);
+    if (curProj === toSave.id) _projBaseRev = toSave.rev;
+    shareProjectWith(toSave.id, [...projColleagueIds(toSave), toSave.leadEngId]);      // pointeurs d'accès : Assist Engineer + Lead Engineer
     setSyncBadge('ok');
     const _scrollY = window.scrollY;
     await renderProjList();
@@ -5771,6 +5918,8 @@ const sv = (id, v) => { const e = document.getElementById(id); if (e && v != nul
 
 function fillFromProj(proj) {
   curProjSubjectTemplate = proj.subjectTemplateUsed || DEFAULT_SUBJECT_TEMPLATE;
+  _projBaseRev = proj.rev || 0;              // révision chargée (garde anti-écrasement)
+  _pendingLeadId = proj.leadEngId || null;   // appliqué par renderStep6Me() quand la liste d'équipe est chargée
   G._rtagDraft = proj.repairTagDraft || null;   // brouillon GA3671 non sauvegardé, le cas échéant
   sv('f_wo', proj.wo); sv('f_model', proj.model); sv('f_sn', proj.sn); sv('f_reg', proj.reg); sv('f_loc', proj.loc);
   sv('f_rts_assist', proj.rts_assist || 'RTS');
@@ -5822,6 +5971,7 @@ function fillFromProj(proj) {
 
 function clearForm() {
   curProjSubjectTemplate = curProfile?.subjectTemplate || DEFAULT_SUBJECT_TEMPLATE;
+  _projBaseRev = 0; _pendingLeadId = null;
   G._rtagDraft = null;
   ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_site_arrival','f_job_desc','f_intro_msg','f_cust_name','f_cust_tel','f_cust_email','f_cust_company','f_cust_code','f_ac_hours','f_ac_cycles']
     .forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
@@ -7441,7 +7591,7 @@ G.rtagToggleSinceDelivery = function() {
 // par les règles Firebase (propriétaire du projet), la fiche suit le projet lors d'un transfert et
 // disparaît avec lui à la suppression. doSaveInner() utilise update() (et non set()) pour ne
 // jamais réécrire ga3671Tags avec une copie périmée.
-const rtagTagRef = (id) => ref(db, 'team/' + curProfile.id + '/projects/' + curProj + '/ga3671Tags' + (id ? '/' + id : ''));
+const rtagTagRef = (id) => ref(db, projPath(curProj) + '/ga3671Tags' + (id ? '/' + id : ''));
 
 // Clé "PN|SN" (PN OFF / SN OFF) de la ligne de pièce qui ouvre la fiche.
 function rtagRowKey(row) {
@@ -8231,7 +8381,16 @@ G.confirmAiImprove = function() {
 // ══════════════════════════════════════
 //  STEP 6 — TEAM POC
 // ══════════════════════════════════════
+// Lead enregistré du projet ouvert (posé par fillFromProj) : appliqué APRÈS le rendu du sélecteur.
 async function renderStep6Me() {
+  await renderStep6MeBase();
+  const sel = document.getElementById('lead-eng-sel');
+  if (_pendingLeadId && sel && Array.from(sel.options).some(o => o.value === _pendingLeadId)) {
+    sel.value = _pendingLeadId;
+    displayLeadEngInfo(_pendingLeadId);
+  }
+}
+async function renderStep6MeBase() {
   if (!curProfile) return;
   const snap = await get(ref(db, 'team'));
   const team = snap.exists() ? Object.values(snap.val()) : [];
@@ -8272,7 +8431,7 @@ async function buildColleagueOptions(selectedId='') {
   const snap = await get(ref(db, 'team'));
   let html = '<option value="">— Select colleague —</option>';
   if (snap.exists()) {
-    Object.values(snap.val()).filter(p => p.id !== curProfile?.id).forEach(p => {
+      Object.values(snap.val()).filter(p => p.id !== curProfile?.id || p.id === selectedId).forEach(p => {
       html += `<option value="${p.id}" ${p.id===selectedId?'selected':''}>${p.name}${p.team?' ('+p.team+')':''}</option>`;
     });
   }
@@ -9166,7 +9325,7 @@ async function rtsArchiveProject() {
   if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; } // évite qu'une sauvegarde différée réécrive rts:false juste après
   await doSave();
   saveTroubleshootingFromDailyUpdates(); // Smart Diagnosis — capture best-effort des items "Carried out" avec note  
-  await update(ref(db,'team/'+curProfile.id+'/projects/'+curProj),{rts:true,updatedAt:Date.now()});
+  await update(ref(db, projPath(curProj)), {rts:true, updatedAt:Date.now()});
   // Le job est archivé — ses réponses Gmail scannées n'ont plus besoin d'être
   // gardées (le cron les aurait de toute façon purgées au passage quotidien).
   const faWo = gv('f_wo');
@@ -9212,7 +9371,7 @@ G.closeModal = function(id){
 document.querySelectorAll('.modal-bg').forEach(m=>{
   // GA3671 (trop de champs) et AMM Task Reader (session de scan en cours dans l'iframe) —
   // fermeture uniquement via leur propre bouton "✕ Close" / "Annuler" / "Générer".
-  if (m.id === 'modal-repair-tag' || m.id === 'modal-amm-reader') return;
+  if (m.id === 'modal-repair-tag' || m.id === 'modal-amm-reader' || m.id === 'modal-save-conflict') return;
   m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
 });
 
@@ -9580,7 +9739,7 @@ if ('serviceWorker' in navigator) {
 //  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
 //  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v32';
+const CURRENT_VERSION = 'v33';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -10346,7 +10505,7 @@ G.openKickoff = async function(forceWo) {
 // Loads the project's Aircraft info into the Start Job panel fields.
 G.koStartFromProject = async function(pid) {
   if (!curProfile) return;
-  const snap = await get(ref(db, 'team/' + curProfile.id + '/projects/' + pid));
+  const snap = await get(ref(db, projPath(pid)));
   if (!snap.exists()) return;
   const proj = snap.val();
 
@@ -13042,13 +13201,15 @@ G.koApplyIcaoSuggestion = function(idx, context) {
 //   • contrôle des approvals : koRebuildModelIndex() (plus bas) reconstruit tout le catalogue d'avions depuis cette liste
 //  Firebase : config/gulfstreamModels — l'écriture est refusée hors session admin (voir koSaveGsModels)
 // ══════════════════════════════════════
-let KO_GSMODELS = [];   // [{ name, designation, family, aliases, snFrom, snTo, isNew, showInPartOrders }, ...]
+let KO_GSMODELS = [];   // [{ name, designation, family, aliases, snFrom, snTo, snList, isNew, showInPartOrders }, ...]
 
 // Liste de référence : graine au premier chargement + repli si la liste partagée est vide ou illisible.
 //  name = comme écrit dans les documents · designation = texte écrit par les boutons « Use … » et proposé dans les templates
 //  family = « même famille, autre variante » + mentions de famille (« GVI Series ») · snFrom/snTo = plage de S/N (sert à SUGGÉRER
 //  un modèle et à détecter un conflit, ne décide jamais) · isNew = avion neuf qu'aucune approval ne nomme encore
 //  showInPartOrders = proposé dans la liste des templates · code (rare) = identifiant interne d'un nom que Gulfstream a réutilisé (G500)
+//  snList = S/N exacts (petite série connue, ex. G350 : 13-15 avions dans la même tranche que le G450) — un S/N de cette liste
+//  DÉCIDE (contrairement à snFrom/snTo qui ne fait que suggérer) : il l'emporte sur n'importe quelle plage qui le contiendrait aussi.
 // Sources: FAA TCDS A12EA (GIV-X/GV-SP family), FAA TCDS T00015AT (GVI/G650 family),
 // EASA.IM.A.595 (GVII-G500/G600), TCCA A-226 / GVIII (G700/G800), legacy G150/G200/G280.
 const KO_GSMODELS_DEFAULT = [
@@ -13169,6 +13330,9 @@ function renderGsModelsManageList() {
         <input type="number" value="${m.snFrom ?? ''}" oninput="koGsModelEdit(${i},'snFrom',this.value)" placeholder="S/N from" style="width:80px;font-size:12px;padding:5px 8px"/>
         <input type="number" value="${m.snTo ?? ''}" oninput="koGsModelEdit(${i},'snTo',this.value)" placeholder="S/N to" style="width:80px;font-size:12px;padding:5px 8px"/>
       </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:5px">
+        <input value="${escAttr((m.snList||[]).join(', '))}" oninput="koGsModelEdit(${i},'snList',this.value)" placeholder="Exact S/Ns (small series — comma-separated, e.g. 4004, 4009, 4013)" style="width:100%;min-width:260px;font-size:12px;padding:5px 8px"/>
+      </div>
       <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:5px">
         <label style="font-size:11px;color:var(--g600);display:flex;align-items:center;gap:4px"><input type="checkbox" ${m.isNew?'checked':''} onchange="koGsModelEdit(${i},'isNew',this.checked)"/> New aircraft — not yet named by any approval</label>
         <label style="font-size:11px;color:var(--g600);display:flex;align-items:center;gap:4px"><input type="checkbox" ${m.showInPartOrders!==false?'checked':''} onchange="koGsModelEdit(${i},'showInPartOrders',this.checked)"/> Show in part-order list</label>
@@ -13182,6 +13346,7 @@ G.koGsModelEdit = function(i, field, value) {
   if (!m) return;
   if (field === 'aliases') m.aliases = String(value).split(',').map(s => s.trim()).filter(Boolean);
   else if (field === 'snFrom' || field === 'snTo') { const n = Number(value); m[field] = (value === '' || !Number.isFinite(n)) ? null : n; }
+  else if (field === 'snList') m.snList = String(value).split(/[,\s]+/).map(s => parseInt(s, 10)).filter(Number.isFinite);
   else m[field] = value;
   clearTimeout(_gsEditTimer);
   _gsEditTimer = setTimeout(() => { koRebuildModelIndex(); koRenderGsModelSelect(); koSaveGsModels(); }, 400);
@@ -13194,7 +13359,7 @@ G.koAddGsModel = function() {
   if (!name) return;
   const norm = s => String(s || '').toUpperCase().replace(/[\s-]/g, '');
   if (KO_GSMODELS.some(m => m && norm(m.name) === norm(name))) { alert('This model is already in the list.'); return; }
-  KO_GSMODELS.push({ name, designation: '', family: '', aliases: [], snFrom: null, snTo: null, isNew: true, showInPartOrders: true });
+  KO_GSMODELS.push({ name, designation: '', family: '', aliases: [], snFrom: null, snTo: null, snList: [], isNew: true, showInPartOrders: true });
   el.value = '';
   koRebuildModelIndex();
   renderGsModelsManageList(); koRenderGsModelSelect(); koRenderPartTplChips(); koSaveGsModels();
@@ -15265,6 +15430,12 @@ async function renderCountryApprovalsSummary() {
   if (el) el.textContent = koApprovalsSummaryText();
 }
 
+async function renderGsModelsSummary() {
+  await koLoadGsModels();
+  const el = document.getElementById('gsm-summary-count');
+  if (el) el.textContent = `(${KO_GSMODELS.length} model${KO_GSMODELS.length === 1 ? '' : 's'})`;
+}
+
 // Country names are compared on their base name, exactly: "United Kingdom (home)"
 // -> "united kingdom". Substring matching was too loose (Romania matched the Oman
 // entry, Niger matched Nigeria) and a wrong match can silently hide a warning.
@@ -15317,6 +15488,8 @@ let KO_FAMILY_ALL    = {};   // family → every code of the family
 let KO_FAMILY_VIA    = {};   // family → the codes a family-level mention covers
 let KO_FAMILY_NAMES  = [];   // how a family is written in documents ("GVII", "GVI Series", "GV-SP"…), longest first
 let KO_SN_RANGES     = [];   // [from, to, possible models (one button each), text shown in the banner]
+let KO_SN_EXACT       = {};  // exact S/N (small known series, e.g. G350) → codes — decides, unlike a range which only suggests
+let KO_SN_EXACT_LABEL = codes => codes.join(' / ');
 const koFamilyOf = c => KO_MODEL_FAMILY[c] || c;   // an aircraft the table doesn't know is its own family
 
 // A name Gulfstream used twice: an older aircraft and a newer one. The text decides ("GVII-G500" = new, "GV-SP (G500-5000 Series)"
@@ -15359,7 +15532,7 @@ function koRebuildModelIndex() {
   const valid = rawList.filter(r => r && typeof r === 'object' && String(r.name || '').trim());
   const source = valid.length ? valid : KO_GSMODELS_DEFAULT;
 
-  const models = [], byCode = {}, famOf = {}, famAll = {}, famVia = {}, snRaw = [];
+  const models = [], byCode = {}, famOf = {}, famAll = {}, famVia = {}, snRaw = [], snExactRaw = [];
   source.forEach(r => {
     const name = String(r.name).trim();
     const code = String(r.code || '').trim() || name.toUpperCase().replace(/[\s-]/g, '');
@@ -15380,6 +15553,7 @@ function koRebuildModelIndex() {
     (famAll[family] = famAll[family] || []).push(code);
     if (m.viaFamily) (famVia[family] = famVia[family] || []).push(code);
     if (Number.isFinite(r.snFrom) && Number.isFinite(r.snTo) && r.snTo >= r.snFrom) snRaw.push([r.snFrom, r.snTo, code]);
+    (Array.isArray(r.snList) ? r.snList : []).forEach(n => { if (Number.isFinite(n)) snExactRaw.push([n, code]); });
   });
 
   // Une famille a son propre motif (« GVII Series ») quand elle compte 2+ avions, ou quand son seul avion n'a pas de motif direct (GIV, GV).
@@ -15398,10 +15572,17 @@ function koRebuildModelIndex() {
   });
   ranges.forEach(r => { r[3] = r[2].map(c => byCode[c].name).join(' / ') + ' (' + koSnRangeText(r[0], r[1]) + ')'; });
 
+  // S/N exacts (petite série connue, ex. G350) : regroupés par numéro — un numéro DÉCIDE, il n'est jamais juste une suggestion,
+  // et l'emporte sur n'importe quelle plage snFrom/snTo qui le contiendrait aussi (ex. le G450 partage la tranche 4000-4999).
+  const exact = {};
+  snExactRaw.forEach(([n, code]) => { (exact[n] = exact[n] || []).push(code); });
+  const exactLabel = codes => codes.map(c => byCode[c].name).join(' / ') + ' (exact S/N)';  
+
   // Le plus long nom d'abord : « G650ER » doit être lu avant « G650 » (l'ordre de la liste, lui, ne sert qu'à ordonner les boutons de S/N).
   KO_MODELS = models.sort((a, b) => b._len - a._len);
   KO_MODEL_BY_CODE = byCode; KO_MODEL_FAMILY = famOf; KO_FAMILY_ALL = famAll; KO_FAMILY_VIA = famVia;
   KO_FAMILY_NAMES = famNames; KO_SN_RANGES = ranges;
+  KO_SN_EXACT = exact; KO_SN_EXACT_LABEL = exactLabel;
 }
 koRebuildModelIndex();
 // Text → the models it can mean.  { codes: [...], bare: [twin names left ambiguous], clash: [family that contradicts the model] }
@@ -15452,8 +15633,13 @@ function koModelFromSerial(sn) {
   const m = String(sn || '').match(/(?:^|\D)(\d{3,5})(?!\d)/);       // a 3–5 digit number on its own (no look-behind: older Safari can't parse it)
   if (!m) return null;
   const n = parseInt(m[1], 10);
+  // An exact S/N (small known series, e.g. G350) DECIDES — it wins even over a range that also contains this number (e.g. G450's).
+  const exactCodes = KO_SN_EXACT[n];
+  if (exactCodes && exactCodes.length) {
+    return { sn: m[1], codes: exactCodes.slice(), range: KO_SN_EXACT_LABEL(exactCodes), exact: true, options: exactCodes.map(code => ({ code, designation: koDesignation(code) })) };
+  }  
   const hit = KO_SN_RANGES.find(r => n >= r[0] && n <= r[1]);
-  return hit ? { sn: m[1], codes: hit[2].slice(), range: hit[3], options: hit[2].map(code => ({ code, designation: koDesignation(code) })) } : null;
+  return hit ? { sn: m[1], codes: hit[2].slice(), range: hit[3], exact: false, options: hit[2].map(code => ({ code, designation: koDesignation(code) })) } : null;
 }
 
 // Model typed / scanned (+ S/N only to settle a twin name and to spot a conflict) → what the aircraft can be.
@@ -15470,7 +15656,9 @@ function koResolveAircraft(model, sn) {
     else twins.push(w);
   });
   const grp = c => { const f = koFamilyOf(c); return f === 'GV-SP' ? 'GV' : f; };
-  const mismatch = !!snInfo && codes.length > 0 && !codes.some(c => snInfo.codes.some(s => grp(s) === grp(c)));
+  // Un S/N exact (petite série connue) est sûr au niveau de l'avion précis, pas juste de la famille :
+  // Model "G450" + S/N exact d'un G350 doit être signalé, même si les deux partagent la famille GIV-X.
+  const mismatch = !!snInfo && codes.length > 0 && !codes.some(c => snInfo.codes.some(s => snInfo.exact ? s === c : grp(s) === grp(c)));
   return {
     codes, twins, snInfo, mismatch, text, label: text, clash: fromText.clash,
     unrecognized: !!text && !codes.length,
@@ -15790,7 +15978,9 @@ function koApprovalVerdict(input) {
     conflict = true;
   }
   if (ac.mismatch) {
-    v.soft.push(`⚠ S/N ${ac.snInfo.sn} is in the ${ac.snInfo.range} range but the Model says "${ac.text}" — check both.`);
+    v.soft.push(ac.snInfo.exact
+      ? `⚠ S/N ${ac.snInfo.sn} is a known ${ac.snInfo.range} but the Model says "${ac.text}" — check both.`
+      : `⚠ S/N ${ac.snInfo.sn} is in the ${ac.snInfo.range} range but the Model says "${ac.text}" — check both.`);
     conflict = true;
   }
   modelNotes.forEach(n => v.soft.push(n));
@@ -15810,7 +16000,10 @@ function koApprovalHtml(v, target) {
   (v.soft || []).forEach(s => { h += `<br><span style="${small}">${escHtml(s)}</span>`; });
   if (v.suggest) {
     const s = v.suggest;
-    h += `<br><span style="${small}">${s.text ? `Model "${escHtml(s.text)}" isn't recognised` : 'Model field is empty'} — S/N ${escHtml(s.snInfo.sn)} falls in the ${escHtml(s.snInfo.range)} range. The S/N only suggests, pick the model:</span> `;
+    const snPhrase = s.snInfo.exact
+      ? `S/N ${escHtml(s.snInfo.sn)} is a known ${escHtml(s.snInfo.range)}. Confirm the model:`
+      : `S/N ${escHtml(s.snInfo.sn)} falls in the ${escHtml(s.snInfo.range)} range. The S/N only suggests, pick the model:`;
+    h += `<br><span style="${small}">${s.text ? `Model "${escHtml(s.text)}" isn't recognised` : 'Model field is empty'} — ${snPhrase}</span> `;
     s.snInfo.options.forEach(o => {
       h += `<button type="button" onclick="koUseDerivedModel('${escAttr(o.designation)}','${escAttr(target)}')" style="font-size:11px;padding:2px 9px;border-radius:20px;border:1px solid currentColor;background:#fff;color:inherit;cursor:pointer;font-weight:700;margin:2px 4px 0 0">Use ${escHtml(o.designation)}</button>`;
     });
