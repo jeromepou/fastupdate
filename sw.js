@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fast-update-shell-v32';
+const CACHE_NAME = 'fast-update-shell-v33';
 const APP_SHELL = ['./', './index.html'];
 
 self.addEventListener('install', event => {
