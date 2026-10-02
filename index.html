@@ -180,6 +180,12 @@ textarea{resize:vertical}
 .rte-toolbar button{font-size:12px;padding:3px 9px;border:1px solid var(--g200);border-radius:4px;background:#fff;cursor:pointer;min-width:26px;line-height:1.3}
 .rte-toolbar button:hover{background:var(--g100)}
 .rte-toolbar .rte-sep{width:1px;height:18px;background:var(--g200);margin:0 2px}
+/* ── Voice dictation (mic button in each RTE toolbar) ── */
+.rte-toolbar .rte-mic{font-size:14px;line-height:1.2;border-color:#b8d0e8;background:var(--bl)}
+.rte-toolbar .rte-mic.listening{background:#c00000;border-color:#c00000;color:#fff;animation:rteMicPulse 1.1s ease-in-out infinite}
+@keyframes rteMicPulse{0%,100%{box-shadow:0 0 0 0 rgba(192,0,0,.45)}50%{box-shadow:0 0 0 6px rgba(192,0,0,0)}}
+.rte-mic-live{font-size:11px;font-style:italic;color:var(--g400);min-width:0;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html.no-speech .rte-mic,html.no-speech .rte-mic-live{display:none}
 .rte-toolbar .rte-swatch{width:20px;height:20px;padding:0;border-radius:4px;border:1px solid rgba(0,0,0,.15);flex-shrink:0}
 .rte-toolbar .rte-swatch-reset{background:#fff;color:#000;font-size:11px;font-weight:700;line-height:18px}
 .rte-editable{font-size:12px;min-height:44px;margin-top:5px;border:1px solid var(--g200);border-radius:var(--r);padding:7px 10px;font-family:inherit;background:#fff;outline:none;line-height:1.5;color:var(--g900)}
@@ -706,6 +712,26 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   .tpl-f-desc,.tpl-f-note{grid-column:1/-1}
   .tpl-line-rm{position:absolute;top:6px;right:6px}
 }
+.cbk-doc{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;text-align:left;padding:10px 12px;margin-bottom:8px;white-space:normal}
+.cbk-doc span{font-size:11px;font-weight:400;color:var(--g600)}
+.rwk-row{display:flex;gap:6px;align-items:flex-start;margin-bottom:5px}
+.rwk-row .rwk-no{width:64px;flex:none;text-align:center}
+.rwk-row textarea{flex:1;min-height:36px}
+.rwk-row.bad textarea{border-color:var(--red);background:#fff5f5}
+#rwk-rows,#psq-list{max-height:46vh;overflow-y:auto;padding-right:2px}
+.lmx-sheet{background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:8px 10px;margin-bottom:8px}
+.lmx-hd{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.lmx-hd .lmx-no{width:70px;flex:none;text-align:center}
+.lmx-info{font-size:11px;color:var(--g600);flex:1;min-width:0}
+.pdb-item{background:#fff;border:1px solid var(--g200);border-radius:var(--r);margin-bottom:6px}
+.pdb-item>summary{cursor:pointer;padding:7px 10px;font-size:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pdb-body{padding:8px 10px 10px;border-top:1px solid var(--g200)}
+.pdb-sub{font-size:11px;color:var(--g600)}
+.pdb-tag{font-size:10px;font-weight:700;border-radius:10px;padding:1px 8px;background:var(--g100);color:var(--g600)}
+.pdb-tag.warn{background:#fef3c7;color:#92400e}
+.pdb-prev{font-size:11px;line-height:1.45;border:1px dashed var(--g400);border-radius:var(--r);padding:7px 9px;background:var(--g50);white-space:pre-wrap;margin:8px 0}
+.pdbi-old{font-size:11px;background:#fef2f2;border-radius:4px;padding:3px 6px;white-space:pre-wrap;text-decoration:line-through;color:#7f1d1d}
+.pdbi-new{font-size:11px;background:#f0fdf4;border-radius:4px;padding:3px 6px;white-space:pre-wrap;color:#14532d;margin-top:2px}
 </style>
 
 </head>
@@ -888,7 +914,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div class="fg"><label>Model</label><input type="text" id="f_model" placeholder="e.g. GVIII-G700" oninput="autosave();koRenderPartTplChips()"/></div>
       <div class="fg"><label>Serial Number</label><input type="text" id="f_sn" placeholder="e.g. 87033" oninput="autosave()"/></div>
       <div class="fg"><label>A/C Registry</label><input type="text" id="f_reg" placeholder="e.g. T7-MINT" oninput="autosave()"/></div>
-      <div class="fg"><label>A/C Location (ICAO)</label><input type="text" id="f_loc" placeholder="e.g. LFMN" oninput="autosave();koIcaoSuggestInput(this.value,'step2')"/>
+      <div class="fg"><label>A/C Location (ICAO)</label><input type="text" id="f_loc" placeholder="e.g. LFMN or Nice" oninput="autosave();koIcaoSuggestInput(this.value,'step2')"/>
         <div id="fbo-suggestions-step2" style="display:none;margin-top:4px;gap:5px;flex-wrap:wrap"></div>
       </div>
       <div class="fg"><label>RTS / Assist</label>
@@ -1033,6 +1059,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     Generate FAST Update table
   </button>
   <button class="btn danger" id="btn-mark-rts" onclick="markRTS()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:700">✅ Mark A/C RTS</button>
+  <button class="btn" onclick="openCorridorHub()" style="flex:0 0 auto;justify-content:center;padding:12px 6px;border-radius:var(--rlg);font-size:12px;font-weight:600;white-space:nowrap" title="Corridor is down? Generate the official paper worksheets (PLN.105 / PLN.107 / OPS.208), pre-filled from this job">📄 Corridor down?</button>
   <button class="btn" id="btn-reply-sync" onclick="koOpenReplyModal()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:600" title="Scan Gmail for replies on this job">📬 Replies</button>
   <button class="btn" onclick="koOpenStatusComposer()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:600" title="Quick Update: instantly drafts a customer email from what's already on this screen (squawks, ETA, Daily Update, cached Parts). Doesn't check Gmail.">🪄 Quick Update</button>
   <button class="btn" onclick="koOpenDigestComposer()" style="flex:1;justify-content:center;padding:12px;border-radius:var(--rlg);font-size:13px;font-weight:600" title="Full Update: same as Quick Update, but first scans today's Gmail (Techops + customer threads) so nothing gets missed. Takes a few extra seconds.">🔍 Full Update</button>
@@ -1139,7 +1166,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div id="ko-country-approval-warning" style="display:none"></div>
       <div class="ko-g2">
         <div class="ko-fg"><label>Work Order (WO)</label><input type="text" id="ko_wo" placeholder="FA32988" onblur="koCheckWoDraft(this.value)"/></div>
-        <div class="ko-fg"><label>ICAO airport</label><input type="text" id="ko_icao" placeholder="LFPB" oninput="this.value=this.value.toUpperCase();koIcaoSuggestInput(this.value,'ko')"/>
+        <div class="ko-fg"><label>ICAO airport</label><input type="text" id="ko_icao" placeholder="LFPB or city" oninput="this.value=this.value.toUpperCase();koIcaoSuggestInput(this.value,'ko')"/>
           <div id="fbo-suggestions-ko" style="display:none;margin-top:4px;gap:5px;flex-wrap:wrap"></div>
         </div>
       </div>
@@ -1332,6 +1359,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div class="ko-section-lbl">Access & Logistics</div>
       <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px">
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_keys"/> Location of aircraft keys</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_ac_eta"/> Ask customer for the aircraft's ETA on site (arrival at the airport)</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_fbo_name"/> Ask customer for the name of the FBO handling the aircraft</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_fbo_mail"/> Ask customer to send an authorisation email to the FBO</label>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="koq_contact"/> Ask for local contact/crew details on site</label>
@@ -1763,6 +1791,20 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
         <button class="btn primary" onclick="koManageCustomerCodes()" style="font-size:11px;padding:5px 12px">⚙️ Manage list</button>
       </div>
       <p style="font-size:11px;color:var(--g600);margin-bottom:0">Feeds the operator check above — tells a civil Swedish aircraft and Swedish Air Force apart by their Account Code, not by the typed company name. <span id="cc-summary-count" style="font-weight:600"></span></p>
+    </div>
+        <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:var(--r);padding:12px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="font-size:12px;font-weight:700;color:#92400e;flex:1">📋 Release statements — Corridor-down worksheets (GAL.F.PLN.105 Database)</div>
+        <button class="btn primary" onclick="pdbManage()" style="font-size:11px;padding:5px 12px">⚙️ Manage list</button>
+      </div>
+      <p style="font-size:11px;color:var(--g600);margin-bottom:0">Certificate of Release to Service text, approval numbers and form number / revision for each registration authority. Edit one authority here, or import the new GAL.F.PLN.105 workbook (.xlsm) when Quality sends one. Engineers can't edit it. <span id="pdb-summary-count" style="font-weight:600"></span></p>
+    </div>
+    <div style="background:#f0fdfa;border:1px solid #5eead4;border-radius:var(--r);padding:12px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="font-size:12px;font-weight:700;color:#115e59;flex:1">🧾 Standard squawks (Item 1) — Corridor-down register (GAL.F.OPS.208)</div>
+        <button class="btn primary" onclick="psqManage()" style="font-size:11px;padding:5px 12px">⚙️ Manage list</button>
+      </div>
+      <p style="font-size:11px;color:var(--g600);margin-bottom:0">The squawks 1.1, 1.2… that every work order carries (description only). Add, reword or reorder them here. <span id="psq-summary-count" style="font-weight:600"></span></p>
     </div>
     <div id="team-list" style="max-height:220px;overflow-y:auto;margin-bottom:12px;padding-right:4px"></div>
 
@@ -2514,6 +2556,133 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
   </div>
 </div>
 	
+<!-- CORRIDOR BACKUP (GAL.F.OPS.208 / PLN.105 / PLN.107) -->
+
+<div class="modal-bg" id="modal-corridor-hub">
+  <div class="modal" style="max-width:560px">
+    <h3>📄 Corridor down? — paper worksheets</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:4px">Generates the official Gulfstream forms as PDF, pre-filled from this job, so the release can be done on paper. Print them, then initial, sign and stamp by hand. <b>Do this before you mark the A/C RTS</b> — marking RTS archives the job and clears the form.</p>
+    <div id="cbk-ctx" style="font-size:12px;font-weight:600;margin:6px 0 12px"></div>
+    <button class="btn cbk-doc" onclick="closeModal('modal-corridor-hub');openRegisterModal()"><b>GAL.F.OPS.208 — Manual Worksheet Register</b><span>One list of every squawk of the job: 1.x standard squawks, 2.x customer tasks (Step 3), 4.x task cards. Description only, no resolution.</span></button>
+    <button class="btn cbk-doc" onclick="closeModal('modal-corridor-hub');openLineMxModal()"><b>GAL.F.PLN.105 — Line Maintenance Worksheet + CRS</b><span>One sheet per squawk, with the Certificate of Release to Service of the registration authority. A long resolution continues on PLN.107 sheets by itself.</span></button>
+    <button class="btn cbk-doc" onclick="closeModal('modal-corridor-hub');openContinuationModal()"><b>GAL.F.PLN.107 — Continuation Worksheet</b><span>Extra resolution lines for one squawk (the PLN.105 already adds them when needed).</span></button>
+    <div class="modal-btns"><button class="btn" onclick="closeModal('modal-corridor-hub')">Close</button></div>
+  </div>
+</div>
+
+<div class="modal-bg cbk-keep" id="modal-continuation">
+  <div class="modal" style="max-width:640px">
+    <h3>📄 GAL.F.PLN.107 — Continuation Worksheet</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:12px">Pre-filled from the job — check before generating. The Fitter and Certifying Inspector boxes stay empty: initial, sign and stamp each line by hand. More than 29 lines continue on a new sheet automatically.</p>
+    <div class="grid g3" style="margin-bottom:10px">
+      <div class="fg"><label>Work Order No</label><input type="text" id="cwk_wo"/></div>
+      <div class="fg"><label>Item / Squawk No</label><input type="text" id="cwk_item"/></div>
+      <div class="fg"><label>First continuation sheet no</label><input type="text" id="cwk_start" value="1" oninput="cwkCount()"/></div>
+    </div>
+    <div class="fg" style="margin-bottom:10px"><select id="cwk_link" onchange="cwkPick(this)"><option value="">— or pick a Step 3 task —</option></select></div>
+    <div class="fg" style="margin-bottom:6px"><label>Resolution continued</label><textarea id="cwk_text" style="min-height:170px" placeholder="One line per row on the printed sheet — 29 rows per sheet." oninput="cwkCount()"></textarea></div>
+    <div id="cwk-count" style="font-size:11px;color:var(--g600);margin-bottom:8px"></div>
+    <div class="err-msg" id="cwk-err"></div>
+    <div class="modal-btns"><button class="btn" onclick="closeModal('modal-continuation')">Cancel</button><button class="btn primary" id="cwk-btn" onclick="generateContinuation()">📄 Generate PDF</button></div>
+  </div>
+</div>
+
+<div class="modal-bg cbk-keep" id="modal-register">
+  <div class="modal" style="max-width:720px">
+    <h3>📄 GAL.F.OPS.208 — Manual Worksheet Register</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:12px">A register only: the description of every squawk, no resolution. Item 1 = standard squawks, Item 2 = Step 3 tasks (numbered 2.1, 2.2… in Step 3 order — check against Corridor), Item 4 = task cards. The "Completed? (stamp)" boxes stay empty.</p>
+    <div class="grid g3" style="margin-bottom:10px">
+      <div class="fg"><label>Work Order No</label><input type="text" id="rwk_wo"/></div>
+      <div class="fg"><label>Aircraft Type / Serial No</label><input type="text" id="rwk_type"/></div>
+      <div class="fg"><label>Aircraft Registration</label><input type="text" id="rwk_reg"/></div>
+    </div>
+    <div id="rwk-src" style="font-size:11px;margin-bottom:6px"></div>
+    <div id="rwk-rows"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+      <button type="button" class="btn-add" style="flex:1;min-width:150px" onclick="rwkAddGroup(2)">+ Add squawk (2.x)</button>
+      <button type="button" class="btn-add" style="flex:1;min-width:150px" onclick="rwkAddGroup(4)">+ Add task card (4.x)</button>
+    </div>
+    <div id="rwk-count" style="font-size:11px;color:var(--g600);margin:8px 0"></div>
+    <div class="err-msg" id="rwk-err"></div>
+    <div class="modal-btns"><button class="btn" onclick="closeModal('modal-register')">Cancel</button><button class="btn primary" id="rwk-btn" onclick="generateRegister()">📄 Generate PDF</button></div>
+  </div>
+</div>
+
+<div class="modal-bg cbk-keep" id="modal-line-mx">
+  <div class="modal" style="max-width:740px">
+    <h3>📋 GAL.F.PLN.105 — Line Maintenance Worksheet + CRS</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">One sheet per squawk, pre-filled from the job — check everything. The Certificate of Release to Service comes from the company list of release statements, for the authority you pick. Fitter and Certifying Inspector boxes stay empty: initial, sign and stamp by hand. A resolution longer than 13 lines continues on Continuation Worksheets (PLN.107) automatically.</p>
+    <div class="grid g3" style="margin-bottom:10px">
+      <div class="fg"><label>Work Order No</label><input type="text" id="lmx_wo"/></div>
+      <div class="fg"><label>Date</label><input type="text" id="lmx_date"/></div>
+      <div class="fg"><label>Customer PO</label><input type="text" id="lmx_po"/></div>
+      <div class="fg"><label>Aircraft Type</label><input type="text" id="lmx_type"/></div>
+      <div class="fg"><label>Aircraft S/No</label><input type="text" id="lmx_sn"/></div>
+      <div class="fg"><label>Aircraft Reg</label><input type="text" id="lmx_reg"/></div>
+      <div class="fg"><label>T/Log Page No</label><input type="text" id="lmx_tlog"/></div>
+      <div class="fg"><label>Tech Log Hrs</label><input type="text" id="lmx_hrs"/></div>
+      <div class="fg"><label>Tech Log Ldgs</label><input type="text" id="lmx_ldgs"/></div>
+    </div>
+    <div class="ko-section-lbl">Certificate of Release to Service</div>
+    <div id="lmx-country" style="font-size:12px;font-weight:600;margin-bottom:6px"></div>
+    <div class="grid g2" style="margin-bottom:4px">
+      <div class="fg"><label>Registration authority — decides the statement, approval and form number</label><select id="lmx_auth" onchange="lmxPreview()"><option value="">— select the authority —</option></select></div>
+      <div class="fg"><label>Filter the list</label><input type="text" id="lmx_auth_filter" placeholder="e.g. qatar, cayman…" oninput="lmxFillAuthSelect()"/></div>
+    </div>
+    <div id="lmx-src" style="font-size:11px"></div>
+    <div id="lmx-preview" class="pdb-prev"></div>
+    <div class="ko-section-lbl" style="margin-top:12px">Sheets — one per squawk</div>
+    <div id="lmx-sheets" style="margin-bottom:8px"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button type="button" class="btn-add" style="flex:1;min-width:140px" onclick="lmxAddSheet()">+ Add sheet</button>
+      <select id="lmx_std" onchange="lmxAddStd(this)" style="flex:1;min-width:200px"><option value="">+ Add a standard squawk (1.x) as a sheet…</option></select>
+    </div>
+    <div id="lmx-count" style="font-size:11px;color:var(--g600);margin:8px 0 10px"></div>
+    <div class="err-msg" id="lmx-err"></div>
+    <div class="modal-btns"><button class="btn" onclick="closeModal('modal-line-mx')">Cancel</button><button class="btn primary" id="lmx-btn" onclick="generateLineMx()">📄 Generate PDF</button></div>
+  </div>
+</div>
+
+<div class="modal-bg cbk-keep" id="modal-pln105-auth">
+  <div class="modal" style="max-width:820px">
+    <h3>📋 Release statements — GAL.F.PLN.105 Database</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:2px">Shared with the whole team. The release statement, approval line, form number and revision printed on every PLN.105 come from this list. Changes are saved automatically.</p>
+    <div id="pdb-meta" style="font-size:11px;color:var(--g600);margin:4px 0 0"></div>
+    <div class="lkm-hd">
+      <span class="lkm-hd-title">📋 Authorities</span>
+      <span class="lkm-hd-cnt" id="pdb-count"></span>
+      <button class="btn" onclick="pdbPickFile()" style="margin-left:auto;font-size:11px;padding:4px 10px" title="Read the Database tab of the GAL.F.PLN.105 Line Maintenance workbook and show what would change">⬆️ Import PLN.105 workbook (.xlsm)</button>
+      <button class="btn" onclick="pdbReset()" style="font-size:11px;padding:4px 10px" title="Replace the list by the one shipped with the app (your edits are lost)">↺ Reset to built-in</button>
+      <button class="btn" onclick="pdbNew()" style="font-size:11px;padding:4px 10px">➕ New authority</button>
+    </div>
+    <input type="file" id="pdb-file" accept=".xlsm,.xlsx" style="display:none" onchange="pdbImportFile(this)"/>
+    <input type="text" class="lkm-filter" id="pdb-filter" placeholder="🔍 Filter (authority, form number, approval…)" oninput="pdbRenderManage()"/>
+    <div id="pdb-list" class="lkm-list" style="max-height:52vh"></div>
+    <div id="pdb-status" style="font-size:11px;color:var(--g600);margin-top:6px;min-height:16px"></div>
+    <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-pln105-auth')">Done</button></div>
+  </div>
+</div>
+
+<div class="modal-bg cbk-keep" id="modal-pln105-import">
+  <div class="modal" style="max-width:760px">
+    <h3>⬆️ Import PLN.105 workbook — review before applying</h3>
+    <div id="pdbi-body" style="max-height:58vh;overflow-y:auto"></div>
+    <div class="modal-btns"><button class="btn" onclick="closeModal('modal-pln105-import')">Cancel</button><button class="btn primary" id="pdbi-apply" onclick="pdbImportApply()">Apply ticked lines</button></div>
+  </div>
+</div>
+
+<div class="modal-bg cbk-keep" id="modal-pln105-sq">
+  <div class="modal" style="max-width:700px">
+    <h3>🧾 Standard squawks (Item 1) — Manual Worksheet Register</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:2px">Shared with the whole team. These squawks open every OPS.208 register, in this order (description only — keep each one short: it has to fit the two lines of the register cell). Changes are saved automatically.</p>
+    <div id="psq-meta" style="font-size:11px;color:var(--g600);margin:4px 0 8px"></div>
+    <div id="psq-list"></div>
+    <div style="display:flex;gap:8px;margin-top:6px"><button type="button" class="btn-add" style="flex:1" onclick="psqAdd()">+ Add a standard squawk</button><button type="button" class="btn" style="font-size:11px" onclick="psqReset()" title="Replace the list by the one shipped with the app">↺ Reset to built-in</button></div>
+    <div id="psq-status" style="font-size:11px;color:var(--g600);margin-top:6px;min-height:16px"></div>
+    <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-pln105-sq')">Done</button></div>
+  </div>
+</div>
+
 <!-- SUBJECT FORMAT MODAL -->
 <div class="modal-bg" id="modal-subject-template">
   <div class="modal" style="max-width:520px">
@@ -2929,6 +3098,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 <script src="pdf-lib.min.js" defer></script>
 <script src="pizzip_min.js" defer></script>
 <script src="docxtemplater_min.js" defer></script>
+<script src="airports.js" defer></script>
 	
 <!-- ═══════════════════════════════════
      FIREBASE SDK (CDN — no npm needed)
@@ -2976,6 +3146,8 @@ let _sharedOwners     = {};       // { projId: uid du propriétaire } — projet
 let _sharedOwnerNames = {};       // { projId: nom du propriétaire } — utilisé quand j'écris moi-même un pointeur (pas seulement le propriétaire)
 let _pendingLeadId    = null;     // lead enregistré du projet ouvert, appliqué par renderStep6Me() une fois la liste d'équipe chargée
 let _projBaseRev      = 0;        // révision du projet telle que je l'ai chargée / sauvegardée (garde anti-écrasement)
+let _liveUnsub = null, _liveWatchPath = '', _liveFirst = true, _livePending = false, _liveApplying = false;
+let _liveSelfRev = 0, _liveLastInputAt = 0, _liveSyncState = 'ok';   // live sync between engineers on a shared job
 const _accessGranted  = new Set(); // "projId|uid" dont le pointeur d'accès a déjà été écrit pendant cette session
 let _conflictResolve  = null;     // résout la Promise de la modale de conflit d'enregistrement (voir askSaveConflict)
 let isAdmin = false;
@@ -3668,7 +3840,7 @@ function koComposerKnownFacts({ model, reg, loc, desc, items, erts, nxt, siteArr
   const todayStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   let block = `- Today's date: ${todayStr}
 - Engineers on this job: ${engineersLine}
-- Aircraft: ${model || 'unknown model'} ${reg || ''}, currently at ${loc || 'unknown location'}
+- Aircraft: ${model || 'unknown model'} ${reg || ''}, currently at ${koAptCityIcao(loc) || 'unknown location'}
 - Job: ${desc || '(no description on file)'}
 - Current squawks: ${items}
 - Estimated RTS: ${erts || 'not yet known'}
@@ -5040,6 +5212,7 @@ async function showAdminPanel() {
   renderCountryApprovalsSummary();
   renderGsModelsSummary();  
   renderCustomerCodesSummary();
+  pdbRenderSummary();
 }
 
 // ── Session timeout — déconnexion automatique après 45 min d'inactivité ──
@@ -5891,6 +6064,7 @@ async function doSaveInner() {
     // update() et non set() : ne réécrit que les clés du projet, jamais une copie périmée de
     // ga3671Tags (fiches GA3671 sauvegardées, écrites à part — parfois pendant cette sauvegarde).
     delete toSave.ga3671Tags;
+    _liveSelfRev = toSave.rev;
     await update(ref(db, projPath(toSave.id)), toSave);
     if (curProj === toSave.id) _projBaseRev = toSave.rev;
     shareProjectWith(toSave.id, [...projColleagueIds(toSave), toSave.leadEngId]);      // pointeurs d'accès : Assist Engineer + Lead Engineer
@@ -5904,7 +6078,75 @@ async function doSaveInner() {
   }
 }
 
+// ══════════════════════════════════════
+//  LIVE SYNC — see a colleague's changes on a shared job without reopening it
+//  Watches only the project's "rev" number. When someone else saved, the form is refreshed
+//  automatically — but never while I have unsaved edits or I'm typing (the existing
+//  "someone else saved" prompt at save time still protects that case).
+// ══════════════════════════════════════
+['input', 'keydown', 'pointerdown'].forEach(ev =>
+  document.addEventListener(ev, () => { _liveLastInputAt = Date.now(); }, true));
+
+function liveToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--gd);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:700;z-index:300;box-shadow:0 4px 14px rgba(0,0,0,.25);max-width:90vw;text-align:center';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 4500);
+}
+
+function liveEnsure() {
+  const path = (curProfile && curProj) ? projPath(curProj) : '';
+  if (path === _liveWatchPath) return;
+  if (_liveUnsub) { try { _liveUnsub(); } catch(_) {} _liveUnsub = null; }
+  _liveWatchPath = path; _livePending = false; _liveFirst = true;
+  if (!path) return;
+  _liveUnsub = onValue(ref(db, path + '/rev'), snap => {
+    const rev = snap.val();
+    if (rev == null) return;
+    if (_liveFirst) { _liveFirst = false; if (!_projBaseRev || rev === _projBaseRev) return; }
+    else if (rev === _projBaseRev || rev === _liveSelfRev) return;
+    _livePending = true;
+    liveTryApply();
+  }, err => console.warn('live sync listener error:', err));
+}
+
+async function liveTryApply() {
+  if (!_livePending || _liveApplying || !curProfile || !curProj) return;
+  const busy = () => _liveSyncState !== 'ok' || _saveInFlight || (Date.now() - _liveLastInputAt < 8000);
+  if (busy()) return;                                   // unsaved edits or typing: wait, retried every 2 s
+  _liveApplying = true;
+  const pid = curProj;
+  try {
+    const latest = (await get(ref(db, projPath(pid)))).val();
+    if (!latest || curProj !== pid) { _livePending = false; return; }
+    if (!latest.rev || latest.rev === _projBaseRev || latest.updatedBy === curProfile.id) { _livePending = false; return; }
+    if (busy()) return;                                 // re-check after the network call
+    // keep what only exists on this screen: intro message, generated email preview, my GA3671 draft, scroll position
+    const intro = document.getElementById('f_intro_msg')?.value || '';
+    const outEl = document.getElementById('output-section');
+    const outDisp = outEl ? outEl.style.display : '';
+    const rtag = G._rtagDraft, y = window.scrollY;
+    fillFromProj(latest);
+    sv('f_intro_msg', intro);
+    if (outEl) outEl.style.display = outDisp;
+    G._rtagDraft = rtag;
+    window.scrollTo(0, y);
+    _livePending = false;
+    setSyncBadge('ok');
+    renderProjList();
+    liveToast('🔄 ' + (latest.updatedByName || 'A colleague') + ' updated this job');
+  } catch(e) { console.warn('live sync apply failed:', e); }
+  finally { _liveApplying = false; }
+}
+
+setInterval(() => {
+  try { liveEnsure(); if (_livePending) liveTryApply(); }
+  catch(e) { console.warn('live sync tick failed:', e); }
+}, 2000);
+
 function setSyncBadge(state) {
+  _liveSyncState = state;
   const b = document.getElementById('sync-badge');
   b.className = 'sync-indicator ' + (state === 'ok' ? 'sync-ok' : state === 'pending' ? 'sync-pending' : 'sync-err');
   b.textContent = state === 'ok' ? '☁️ Synced' : state === 'pending' ? '⏳ Saving…' : '❌ Sync error';
@@ -6749,6 +6991,8 @@ function rteToPlainText(html) {
 
 function rteToolbarHtml(editorId) {
   return `<div class="rte-toolbar">
+    <button type="button" class="rte-mic" title="Dictate in English (tap again to stop)" aria-label="Dictate" onmousedown="event.preventDefault()" onclick="rteMic('${editorId}',this)">🎤</button><span class="rte-mic-live"></span>
+    <span class="rte-sep"></span>
     <button type="button" title="Bold" onmousedown="event.preventDefault()" onclick="rteExec('${editorId}','bold')"><b>B</b></button>
     <button type="button" title="Italic" onmousedown="event.preventDefault()" onclick="rteExec('${editorId}','italic')"><i>I</i></button>
     <button type="button" title="Underline" onmousedown="event.preventDefault()" onclick="rteExec('${editorId}','underline')"><u>U</u></button>
@@ -6804,6 +7048,183 @@ G.rteColor = function(editorId, color) {
   if (!color) return;
   G.rteExec(editorId, 'foreColor', color);
 };
+
+
+// ══════════════════════════════════════
+//  VOICE DICTATION — Web Speech API (Chrome / Edge / Safari)
+//  One 🎤 per rich-text field of Step 4 (every work item of every day + the
+//  global note). Speech is recognised in English and inserted at the cursor.
+//  Only ONE recognition session exists at a time: tapping another mic stops the
+//  current one (its last words still land in its own field), then starts the new one.
+// ══════════════════════════════════════
+const _SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!_SpeechRec) document.documentElement.classList.add('no-speech');
+
+// Safari / iOS: never restart a session silently (could re-trigger the permission prompt) → user just taps 🎤 again
+const _micUA = navigator.userAgent || '';
+const _micApple = /iPad|iPhone|iPod/.test(_micUA)
+  || (/Macintosh/.test(_micUA) && navigator.maxTouchPoints > 1)
+  || (/Safari/.test(_micUA) && !/Chrome|Chromium|Edg|OPR|Android/.test(_micUA));
+const _MIC_IDLE_MS = 30000;   // the mic switches itself off after 30 s without any speech
+
+let _mic = null;       // current session
+let _micNext = null;   // mic tapped while the previous one was still stopping
+
+function _micLive(btn, txt) {
+  const s = btn && btn.nextElementSibling;
+  if (s && s.classList.contains('rte-mic-live')) s.textContent = txt || '';
+}
+
+// The session has really ended → clean up, then start the queued mic (if any)
+function _micFinish(s) {
+  if (s.finished) return;
+  s.finished = true;
+  clearInterval(s.timer); clearTimeout(s.killTimer);
+  s.btn.classList.remove('listening'); _micLive(s.btn, '');
+  if (_mic === s) _mic = null;
+  if (_micNext && !_mic) { const n = _micNext; _micNext = null; _micBegin(n.editorId, n.btn, true); }
+}
+
+function _micStop(s) {
+  if (!s || s.stopping) return;
+  s.stopping = true; s.wanted = false;
+  s.btn.classList.remove('listening'); _micLive(s.btn, '');
+  try { s.rec.stop(); } catch (e) {}
+  // safety net: if the browser never fires "end", clean up ourselves
+  s.killTimer = setTimeout(() => { try { s.rec.abort(); } catch (e) {} _micFinish(s); }, 1500);
+}
+
+// Insert recognised text in a field: at the caret if there is one in the field,
+// else where the caret last was, else at the end.
+function _micInsert(editorId, text) {
+  const el = document.getElementById(editorId);
+  if (!el || !text || !text.trim()) return;
+  const sel = window.getSelection();
+
+  // a caret that has collapsed to the very start of a non-empty field (content was replaced, e.g. by "Improve text")
+  // is not a real position → ignore it and write at the end instead
+  const usable = (r) => r && el.contains(r.startContainer) &&
+    !(r.startContainer === el && r.startOffset === 0 && el.textContent.trim());
+  let range;
+  if (sel.rangeCount && usable(sel.getRangeAt(0))) range = sel.getRangeAt(0).cloneRange();
+  else if (_rteLastEditorId === editorId && usable(_rteLastRange)) range = _rteLastRange.cloneRange();
+  else { range = document.createRange(); range.selectNodeContents(el); range.collapse(false); }
+
+  // spacing / capitalisation depend on what is around the caret
+  const pre = document.createRange();  pre.selectNodeContents(el);  pre.setEnd(range.startContainer, range.startOffset);
+  const post = document.createRange(); post.selectNodeContents(el); post.setStart(range.endContainer, range.endOffset);
+  const before = pre.toString(), after = post.toString();
+  let t = text.trim();
+  if (!before.trim() || /[.!?]\s*$/.test(before)) t = t.charAt(0).toUpperCase() + t.slice(1);
+  if (before && !/\s$/.test(before)) t = ' ' + t;
+  if (after && !/^[\s.,;:!?)\]]/.test(after)) t += ' ';
+
+  el.focus({ preventScroll: true });
+  sel.removeAllRanges(); sel.addRange(range);
+  const html0 = el.innerHTML, selTxt = range.toString();
+  let ok = false;
+  try { ok = document.execCommand('insertText', false, t); } catch (e) {}
+  if (!ok || (el.innerHTML === html0 && selTxt !== t)) {   // fallback: direct DOM insertion
+    const r = sel.rangeCount ? sel.getRangeAt(0) : range;
+    r.deleteContents();
+    const node = document.createTextNode(t);
+    r.insertNode(node);
+    r.setStartAfter(node); r.collapse(true);
+    sel.removeAllRanges(); sel.addRange(r);
+  }
+  el.dispatchEvent(new Event('input', { bubbles: true }));   // → autosave()
+}
+
+function _micBegin(editorId, btn, silent) {
+  const rec = new _SpeechRec();
+  rec.lang = 'en-US';
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.maxAlternatives = 1;
+
+  const s = { rec, editorId, btn, silent: !!silent, wanted: true, stopping: false, finished: false,
+              startedAt: Date.now(), lastActivity: Date.now(), gotResult: false, done: 0 };
+  _mic = s;
+
+  rec.onstart = () => {
+    if (s.finished || !s.wanted) return;
+    btn.classList.add('listening'); _micLive(btn, 'Listening…');
+  };
+
+  rec.onresult = (ev) => {
+    if (s.finished) return;
+    if (!document.getElementById(editorId)) { _micStop(s); return; }   // field disappeared (day deleted…)
+    s.lastActivity = Date.now();
+    let interim = '';
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      const res = ev.results[i];
+      if (res.isFinal) {
+        // some browsers re-send earlier final results → each index is inserted only once
+        if (i >= s.done) { s.done = i + 1; s.gotResult = true; _micInsert(editorId, res[0].transcript); }
+      } else {
+        interim += res[0].transcript;
+      }
+    }
+    if (s.wanted) _micLive(btn, interim.trim() ? '… ' + interim.trim() : 'Listening…');
+  };
+
+  rec.onerror = (ev) => {
+    if (s.finished) return;
+    if (ev.error === 'no-speech' || ev.error === 'aborted') return;   // harmless — "end" follows
+    s.wanted = false;
+    if (s.silent) return;   // a restart / queued start refused by the browser: stop quietly
+    if (ev.error === 'not-allowed') {
+      alert('Microphone access is blocked. Allow the microphone for this site in your browser settings (and, on iPhone, enable Dictation in Settings › General › Keyboard).');
+    } else if (ev.error === 'service-not-allowed') {
+      alert('Voice dictation is not available here. On iPhone, open the app in Safari (not from the home-screen icon) and make sure Dictation is on in Settings › General › Keyboard.');
+    } else if (ev.error === 'network') {
+      alert('Voice dictation needs an internet connection.');
+    } else if (ev.error === 'audio-capture') {
+      alert('No microphone was found.');
+    } else {
+      alert('Voice dictation error: ' + ev.error);
+    }
+  };
+
+  rec.onend = () => {
+    if (s.finished) return;
+    const now = Date.now();
+    const idle = now - s.lastActivity > _MIC_IDLE_MS;
+    const tooQuick = !s.gotResult && now - s.startedAt < 800;
+    if (s.wanted && !_micApple && !idle && !tooQuick) {
+      try {   // Chrome cuts the session after a silence → keep listening until the user taps stop
+        s.startedAt = now; s.gotResult = false; s.done = 0; s.silent = true;
+        rec.start();
+        return;
+      } catch (e) {}
+    }
+    _micFinish(s);
+  };
+
+  s.timer = setInterval(() => { if (Date.now() - s.lastActivity > _MIC_IDLE_MS) _micStop(s); }, 3000);
+
+  try { rec.start(); }
+  catch (e) {
+    _micFinish(s);
+    if (!s.silent) alert('Could not start the microphone: ' + e.message);
+  }
+}
+
+G.rteMic = function(editorId, btn) {
+  if (!_SpeechRec) { alert('Voice dictation is not supported by this browser. Please use Chrome or Safari.'); return; }
+  if (_mic) {
+    // tap on the mic that is listening → stop; tap on another mic → stop this one, then start the other
+    const sameMic = _mic.btn === btn;
+    _micStop(_mic);
+    _micNext = sameMic ? null : { editorId, btn };
+    return;
+  }
+  _micNext = null;
+  _micBegin(editorId, btn, false);
+};
+
+// Never leave the mic open in the background
+document.addEventListener('visibilitychange', () => { if (document.hidden) { _micNext = null; _micStop(_mic); } });
 
 G.rteNormalize = function(el) {
   if (!el) return;
@@ -8148,6 +8569,775 @@ G.generateRepairTag = async function() {
 };
 	
 // ══════════════════════════════════════
+//  CORRIDOR BACKUP — GAL.F.OPS.208 (Register) · GAL.F.PLN.105 (Line Maintenance + CRS) · GAL.F.PLN.107 (Continuation)
+//  Quand Corridor est HS : les trois documents officiels sortent en PDF, pré-remplis depuis le job (Step 2, Step 3, Step 4).
+//
+//  DONNÉES MODIFIABLES DEPUIS L'APP (rien n'est figé dans le code) — Admin → « Release statements » et « Standard squawks » :
+//    Firebase config/pln105Authorities  textes CRS, n° d'agrément, n° de formulaire/révision/date, avertissements, autorités masquées
+//    Firebase config/pln105StdSquawks   squawks standard de l'Item 1 (1.1, 1.2…) pour le registre OPS.208
+//  Les listes PLN105_SEED / PLN105_SQ_SEED ci-dessous ne sont que les valeurs de DÉPART : un admin les copie une seule fois dans
+//  Firebase (à l'ouverture du panneau Admin), ensuite Firebase fait foi. Mise à jour en masse : « Import PLN.105 workbook (.xlsm) ».
+//  Gabarits PDF à la racine du repo : pln105-template.pdf, pln107-template.pdf, ops208-template.pdf (+ pdf-lib.min.js déjà présent).
+// ══════════════════════════════════════
+const PLN105_SEED = [
+{"id":"easa","name":"EASA","formNo":"GAL.F.PLN.020.A (EASA)","rev":"REV M","date":"2024-09-02","secondary":"","crs":"Certifies that the work specified, except as otherwise specified, was carried out in accordance with PART-145 and in respect to that work, the aircraft/aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"EASA.145.3119","warn":"","hidden":false,"custom":false},
+{"id":"uk-caa","name":"UK CAA","formNo":"GAL.F.PLN.020.A1 (UK CAA)","rev":"REV -","date":"2020-12-31","secondary":"","crs":"Certifies that the work specified, except as otherwise specified, was carried out in accordance with PART-145 and in respect to that work, the aircraft/aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"UK.145.00883","warn":"","hidden":false,"custom":false},
+{"id":"isle-of-man-easa","name":"ISLE OF MAN - EASA","formNo":"GAL.F.PLN.020.Q1 (IOM EASA)","rev":"REV B","date":"2024-09-02","secondary":"","crs":"This Final Certificate of Release to Service is made under the State of Registration national law and is NOT a release under EASA Part-145.\nCertifies that the work specified, except as otherwise specified, was carried out in accordance with Air Navigation (Isle of Man) Order 2015 and in respect to that work, the aircraft/aircraft component is considered ready for release to service.\nEASA Part 145 Approval No. EASA.145.3119","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"EASA.145.3119","warn":"","hidden":false,"custom":false},
+{"id":"isle-of-man-uk-caa","name":"ISLE OF MAN - UK CAA","formNo":"GAL.F.PLN.020.Q (IOM UK CAA)","rev":"REV N","date":"2021-06-15","secondary":"","crs":"This Final Certificate of Release to Service is made under the State of Registration national law and is NOT a release under UK CAA Part-145.\nCertifies that the work specified, except as otherwise specified, was carried out in accordance with Air Navigation (Isle of Man) Order 2015 and in respect to that work, the aircraft/aircraft component is considered ready for release to service.\nUK CAA Part 145 Approval No. UK.145.00883","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"UK.145.00883","warn":"","hidden":false,"custom":false},
+{"id":"aruba-dca","name":"ARUBA DCA","formNo":"GAL.F.PLN.020.B (ARUBA)","rev":"REV P","date":"2025-09-18","secondary":"","crs":"Certifies that the work specified except as otherwise specified was carried out in accordance with AUA-RLW and in respect to that work the aircraft is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"DL-ACC-281","warn":"","hidden":false,"custom":true},
+{"id":"kingdom-of-bahrain-caa","name":"KINGDOM OF BAHRAIN CAA","formNo":"GAL.F.PLN.020.C (BAHRAIN)","rev":"REV O","date":"2024-09-02","secondary":"EASA PART 145 APPROVAL: EASA.145.3119","crs":"Certifies that the work specified, except as otherwise specified, was carried out in accordance with ANTR-145 and in respect to that work the aircraft / aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"ALD/AIR/8/5.33","warn":"","hidden":false,"custom":false},
+{"id":"bermuda-bcaa","name":"BERMUDA BCAA","formNo":"GAL.F.PLN.020.D (BDA)","rev":"REV Q","date":"2023-12-22","secondary":"","crs":"The work recorded has been carried out in accordance with the Air Navigation (Overseas Territories) Order as amended and in respect of that work the aircraft or component is fit for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"BDA/AMO/017","warn":"","hidden":false,"custom":false},
+{"id":"cayman-caaci","name":"CAYMAN CAACI","formNo":"GAL.F.PLN.020.E (CAY)","rev":"REV O","date":"2024-07-15","secondary":"","crs":"The work recorded has been carried out in accordance with the Air Navigation (Overseas Territories) Order as amended and in respect of that work the aircraft or component is fit for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED CAACI OTAR PART 145 APPROVAL:","approval":"CAY-AMO-061174","warn":"","hidden":false,"custom":false},
+{"id":"faa-non-scheduled-maintenance","name":"FAA NON SCHEDULED MAINTENANCE","formNo":"GAL.F.PLN.020.F1 (FAA P91 Non Sch)","rev":"REV I","date":"2020-09-23","secondary":"","crs":"The aircraft and / or component identified above was repaired and inspected in accordance with the current Federal Aviation Regulations and was found to be airworthy and approved for return to service. Pertinent details of the repair are on file at this agency under Work Order File as above.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"MGTY330K","warn":"","hidden":false,"custom":false},
+{"id":"faa-far-part-91-scheduled-maintenance","name":"FAA FAR PART 91 SCHEDULED MAINTENANCE","formNo":"GAL.F.PLN.020.F2 (FAA P91 Sch)","rev":"REV J","date":"2020-09-23","secondary":"","crs":"I certify that this….........................................has been inspected in accordance with FAR 91.409(f)( )\n....................................................................................................inspection and was deemed to be in an airworthy condition.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"MGTY330K","warn":"","hidden":false,"custom":false},
+{"id":"faa-far-part-s-125-129-135","name":"FAA FAR PART's 125, 129 & 135","formNo":"GAL.F.PLN.020.F3 (FAA P135 & P129)","rev":"REV J","date":"2020-09-23","secondary":"","crs":"","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"MGTY330K","warn":"No release statement is printed for this authority: the customer supplies its own release statement.","hidden":false,"custom":false},
+{"id":"hong-kong-cad","name":"HONG KONG CAD","formNo":"GAL.F.PLN.020.G1 (HONG KONG)","rev":"REV O","date":"2024-09-02","secondary":"EASA PART 145 APPROVAL: EASA.145.3119","crs":"Certifies that the work specified except as otherwise specified was carried out in accordance with HKAR-145 and in respect to that work the aircraft / aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED HKCAD HKAR-145 APPROVAL :","approval":"AI/130/706","warn":"","hidden":false,"custom":false},
+{"id":"kuwait-dgca","name":"KUWAIT DGCA","formNo":"GAL.F.PLN.020.H (KUWAIT)","rev":"REV N","date":"2024-09-02","secondary":"EASA PART 145 APPROVAL: EASA.145.3119","crs":"Certifies that the work specified except as otherwise specified was carried out in accordance with KCASR 8 - Part 145 and in respect to that work the aircraft/aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"DGCA/AMO/037","warn":"","hidden":false,"custom":false},
+{"id":"nigeria-ncaa","name":"NIGERIA NCAA","formNo":"GAL.F.PLN.020.I (NCAA)","rev":"REV Q","date":"2023-12-22","secondary":"UK CAA PART 145 APPROVAL: UK.145.00883","crs":"Certifies that the work specified was carried out in accordance with current regulations and in respect to that work the aircraft/aircraft component is considered approved for return to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"AMO/G/GAL","warn":"","hidden":true,"custom":false},
+{"id":"kingdom-of-saudi-arabia-gaca","name":"KINGDOM OF SAUDI ARABIA - GACA","formNo":"GAL.F.PLN.020.J (GACA)","rev":"REV K","date":"2021-04-14","secondary":"","crs":"I certify that this aircraft has been inspected in accordance with above inspection and was determined to be in an airworthy condition.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"AMO-158FA","warn":"","hidden":false,"custom":false},
+{"id":"tanzania-caa","name":"TANZANIA CAA","formNo":"GAL.F.PLN.020.K (TCAA)","rev":"REV N","date":"2024-09-02","secondary":"EASA PART 145 APPROVAL: EASA.145.3119","crs":"Certifies that the work specified was carried out in accordance with current regulations and in respect of that work the aircraft or aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"AI/CA/1.05","warn":"","hidden":false,"custom":false},
+{"id":"transport-canada-tcca","name":"TRANSPORT CANADA TCCA","formNo":"GAL.F.PLN.020.L (TCCA)","rev":"REV P","date":"2023-09-05","secondary":"","crs":"Certifies that except as otherwise specified, the described maintenance has been performed in accordance with the applicable airworthiness requirements and the approved T-AM supplement and in respect to that work the aircraft is ready for release to service.\nUK.145.00883","bottom":"","approval":"","warn":"","hidden":false,"custom":true},
+{"id":"united-arab-emirates-gcaa","name":"UNITED ARAB EMIRATES GCAA","formNo":"GAL.F.PLN.020.M (UAE)","rev":"REV O","date":"2024-09-02","secondary":"EASA PART 145 APPROVAL: EASA.145.3119","crs":"Certifies that the work specified except as otherwise specified was carried out in accordance with CAR 145 and in respect to that work the aircraft/aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"UAE.145.1015","warn":"","hidden":false,"custom":false},
+{"id":"dubai-airwings-only-united-arab-emirates-gcaa","name":"(DUBAI AIRWINGS ONLY) UNITED ARAB EMIRATES GCAA","formNo":"GAL.F.PLN.020.M(A) (GCAA)","rev":"REV -","date":"2022-03-21","secondary":"","crs":"Certifies that the work specified except as otherwise specified was carried out in accordance with CAR 145 and in respect to that work the aircraft/aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"UAE.145.1015","warn":"Dubai Airwings: quote the AMM reference and the AMM revision of the tasks carried out in each squawk resolution.","hidden":false,"custom":false},
+{"id":"kingdom-of-saudi-arabia-gaca-blank","name":"KINGDOM OF SAUDI ARABIA - GACA (BLANK)","formNo":"GAL.F.PLN.020.N (GACA Blank)","rev":"REV I","date":"2020-09-23","secondary":"","crs":"","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"AMO-158FA","warn":"No release statement is printed for this authority: the customer supplies its own release statement.","hidden":false,"custom":false},
+{"id":"non-easa-reg","name":"Non EASA Reg:","formNo":"GAL.F.PLN.020.O (Non EASA Reg)","rev":"REV M","date":"2024-09-02","secondary":"","crs":"This Final Certificate of Release to Service is made under the State of Registration national law and is NOT a release under EASA Part-145.\nCertifies that the work specified except as otherwise specified was carried out in accordance with EASA PART 145 and in respect to that work the aircraft / aircraft component is considered ready for release to service.\nThe original statement from the State of Registration allowing this release certificate is held on file by Gulfstream Aerospace Limited. A copy of the statement has been attached to this certificate.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"EASA.145.3119","warn":"","hidden":false,"custom":false},
+{"id":"non-faa-reg","name":"Non FAA Reg:","formNo":"GAL.F.PLN.020.P (Non FAA Reg)","rev":"REV I","date":"2020-09-23","secondary":"","crs":"This Final Certificate of Release to Service is made under the State of Registration national law and is NOT a release under FAA CFR 43.9 or CFR 43.11.\nCertifies that the work specified above, except as otherwise specified, was accomplished in accordance with CFR Part 43 and in respect to that work the Aircraft/Aircraft Component is considered approved for return to service.\nThe original statement from the State of Registration allowing this release certificate is held on file by Gulfstream Aerospace Limited. A copy of the statement has been attached to this certificate.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"MGTY330K","warn":"","hidden":false,"custom":false},
+{"id":"australia-uk-caa","name":"AUSTRALIA - UK CAA","formNo":"GAL.F.PLN.020.R1 (Australia)","rev":"REV L","date":"2022-05-25","secondary":"","crs":"This Final Certificate of Release to Service is made under the State of Registration national law and is NOT a release under UK CAA Part-145.\nThis maintenance certification is made pursuant to CAR 42ZN. The aircraft is approved for return to service.\nUK CAA Part 145 Approval No. UK.145.00883","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"UK.145.00883","warn":"","hidden":false,"custom":false},
+{"id":"australia-easa","name":"AUSTRALIA - EASA","formNo":"GAL.F.PLN.020.R2 (Australia)","rev":"REV C","date":"2025-08-08","secondary":"","crs":"This Final Certificate of Release to Service is made under the State of Registration national law and is NOT a release under EASA Part-145.\nThis maintenance certification is made pursuant to CAR 42ZD. The aircraft is approved for return to service.\nEASA Part 145 Approval No. EASA.145.3119","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"EASA.145.3119","warn":"","hidden":false,"custom":false},
+{"id":"australia-faa","name":"AUSTRALIA - FAA","formNo":"GAL.F.PLN.020.R3 (Australia)","rev":"REV B","date":"2025-08-08","secondary":"","crs":"This Final Certificate of Release to Service is made under the State of Registration national law and is NOT a release under FAA CFR\nThis maintenance certification is made pursuant to CAR 42ZD. The aircraft is approved for return to service.\nFAA Approval No. MGTY330K","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"MGTY330K","warn":"","hidden":false,"custom":false},
+{"id":"san-marino-easa","name":"SAN MARINO - EASA","formNo":"GAL.F.PLN.020.S1 (San Marino)","rev":"REV O","date":"2024-12-02","secondary":"","crs":"This Final Certificate of Release to Service is made under the State of Registration national law and is NOT a release under EASA Part-145.\nCertifies that the work specified, except as otherwise specified, was carried out in accordance with the Republic of San Marino CAR GEN Subpart C and in respect to that work, the aircraft/aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"EASA.145.3119","warn":"","hidden":false,"custom":false},
+{"id":"san-marino-uk-caa","name":"SAN MARINO - UK CAA","formNo":"GAL.F.PLN.020.S2 (San Marino)","rev":"REV -","date":"2022-07-05","secondary":"","crs":"This Final Certificate of Release to Service is made under the State of Registration national law and is NOT a release under UK CAA Part-145.\nCertifies that the work specified, except as otherwise specified, was carried out in accordance with the Republic of San Marino CAR GEN Subpart C and in respect to that work, the aircraft/aircraft component is considered ready for release to service.\nUK CAA Part 145 Approval No. UK.145.00883","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"UK.145.00883","warn":"","hidden":false,"custom":false},
+{"id":"turkish-dgca","name":"TURKISH DGCA","formNo":"GAL.F.PLN.020.T (Turkish)","rev":"REV R","date":"2026-01-05","secondary":"","crs":"Certifies that the work specified except as otherwise specified was carried out in accordance\nwith SHT-145, and in recognition of the EASA Part-145 approval (EASA.145.3119) and in respect to that work the aircraft is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"TR.145.F.0002","warn":"","hidden":false,"custom":false},
+{"id":"azerbaijan-republic-scaa","name":"AZERBAIJAN REPUBLIC SCAA","formNo":"GAL.F.PLN.020.U (Azerbaijan)","rev":"REV R","date":"2026-08-19","secondary":"EASA PART 145 APPROVAL: EASA.145.3119","crs":"Certifies that the work specified, except as otherwise specified, was carried out in accordance with AAR-145 and in respect to that work, the aircraft/ aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"AZ.145R.0015","warn":"","hidden":false,"custom":false},
+{"id":"barbados","name":"BARBADOS","formNo":"GAL.F.PLN.020.W (Barbados)","rev":"REV J","date":"2025-11-18","secondary":"","crs":"The aircraft, airframe, aircraft engine, propeller or appliance identified above was repaired and inspected in accordance with current maintenance rules of the Civil Aviation Regulations and is approved for return to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"AMO-001F","warn":"","hidden":false,"custom":false},
+{"id":"new-zealand","name":"NEW ZEALAND","formNo":"GAL.F.PLN.020.X (New Zealand)","rev":"REV K","date":"2020-09-23","secondary":"","crs":"This Final Certificate of Release to Service is made under the State of Registration national law and is NOT a release under EASA Part-145.\nThe maintenance recorded has been carried out in accordance with the requirements of New Zealand Civil Aviation Rule Part 43 and in respect of that maintenance the..........................................is released to service.\nPart 145 Approval No. UK.145.00883","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"Part 145 Approval No. UK.145.00883","warn":"","hidden":false,"custom":false},
+{"id":"indian","name":"INDIAN","formNo":"GAL.F.PLN.020.Y (Indian)","rev":"REV J","date":"2024-05-08","secondary":"","crs":"Certifies that the work specified, except as otherwise specified was carried out in accordance with CAR-145 and in respect to that work the aircraft / aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"IND.FAMO.0000000025","warn":"Approval limited to BASE MAINTENANCE ONLY (current approvals list).","hidden":false,"custom":false},
+{"id":"thailand","name":"THAILAND","formNo":"GAL.F.PLN.020.Z (THAI)","rev":"REV N","date":"2025-05-16","secondary":"","crs":"Certifies that the work specified, except as otherwise specified, was carried out in accordance with TCAR 8 Part 145 and in respect to that work, the aircraft/aircraft component is considered ready for release to service.\nThai CAAT Approval No. CAAT.AMO.0532\nEASA AMO No. EASA.145.3119","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"CAAT.AMO.0532","warn":"","hidden":false,"custom":true},
+{"id":"burundi-non-scheduled-maintenance","name":"BURUNDI NON SCHEDULED MAINTENANCE","formNo":"GAL.F.PLN.020.AA1 (Burundi Non Sch)","rev":"REV I","date":"2020-09-23","secondary":"","crs":"The aircraft and / or component identified above was repaired and inspected in accordance with the current Federal Aviation Regulations and was found to be airworthy and approved for return to service. Pertinent details of the repair are on file at this agency under Work Order File as above.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"MGTY330K","warn":"","hidden":false,"custom":false},
+{"id":"burundi-far-part-91-scheduled-maintenance","name":"BURUNDI FAR PART 91 SCHEDULED MAINTENANCE","formNo":"GAL.F.PLN.020.AA2 (Burundi Sch)","rev":"REV I","date":"2020-09-23","secondary":"","crs":"I certify that this .......................................... has been inspected in accordance with FAR 91.409(f)( ) …...............………………………………………………………... inspection and was deemed to be in an airworthy condition.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"MGTY330K","warn":"","hidden":false,"custom":false},
+{"id":"guernsey","name":"GUERNSEY","formNo":"GAL.F.PLN.020.AB (Guernsey)","rev":"REV N","date":"2024-11-13","secondary":"UK CAA Part 145 Approval No. UK.145.00883","crs":"This Final Certificate of Release to Service is made under the State of Registration national law and is NOT a release under UKCAA Part-145.\nThe work recorded has been carried out in accordance with Air Navigation (Bailiwick of Guernsey) Law 2012 and in respect of that work the aircraft or component is fit for release to service.\nGAR 145 Approval No. 2-REG.145.27","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"GAR 145 Approval No. 2-REG.145.27","warn":"","hidden":false,"custom":true},
+{"id":"pakistan","name":"PAKISTAN","formNo":"GAL.F.PLN.020.AC (Pakistan)","rev":"REV H","date":"2024-09-02","secondary":"EASA PART 145 APPROVAL: EASA.145.3119","crs":"Certifies that the work specified except as otherwise specified was carried out in accordance with ANO 145 and in respect to that work the aircraft/aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"PCAA.145.158","warn":"","hidden":false,"custom":false},
+{"id":"qatar","name":"QATAR","formNo":"GAL.F.PLN.020.AD (QCAA)","rev":"REV G","date":"2020-10-26","secondary":"","crs":"Certifies that the work specified except as otherwise specified was carried out in accordance with Part-145 and in respect to that work the aircraft/aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"QCAA/FAMO/186","warn":"","hidden":false,"custom":false},
+{"id":"brazil","name":"BRAZIL","formNo":"GAL.F.PLN.020.AE (BRAZIL)","rev":"REV H","date":"2021-07-13","secondary":"UK CAA PART 145 APPROVAL: UK.145.00883","crs":"Certifies that the work specified; except as otherwise specified, was carried out in accordance with\nANAC airworthiness regulations and in respect to that work\nthe aircraft is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"ANAC 1604-33","warn":"","hidden":false,"custom":false},
+{"id":"uganda","name":"UGANDA","formNo":"GAL.F.PLN.020.AF (Uganda)","rev":"REV J","date":"2024-09-02","secondary":"EASA PART 145 APPROVAL: EASA.145.3119","crs":"Certifies that the work specified was carried out in accordance with current regulations and in respect of that work the aircraft or aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"UG/CAA/AMO/163","warn":"","hidden":false,"custom":false},
+{"id":"swedish-armed-forces-se-maa","name":"SWEDISH ARMED FORCES SE MAA","formNo":"GAL.F.PLN.020.AG (Swedish Armed Forces)","rev":"REV L","date":"2024-09-02","secondary":"","crs":"Certifies that the work specified, except as otherwise specified, was carried out in accordance with EMAR 145 and in respect to that work, the aircraft/aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"SE.EMAR 145.085","warn":"","hidden":false,"custom":true},
+{"id":"equatorial-guinea","name":"EQUATORIAL GUINEA","formNo":"GAL.F.PLN.020.AH (Equatorial Guinea)","rev":"REV D","date":"2024-09-02","secondary":"EASA PART 145 APPROVAL: EASA.145.3119","crs":"Certifies that the work specified except as otherwise specified was carried out in accordance with RACGE-PART 145 and in recognition of the organisation’s EASA Part 145 approval and in respect to that work the aircraft is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"EQG.145.045","warn":"","hidden":false,"custom":false},
+{"id":"egypt","name":"EGYPT","formNo":"GAL.F.PLN.020.AI (Egypt)","rev":"REV A","date":"2020-09-23","secondary":"","crs":"Certifies that the work specified except, the above mentioned exemptions, was carried out in accordance with ECAR Part 145 and in respect to that work, the aircraft is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"ECAA/AW/AE/K0026/R0","warn":"","hidden":false,"custom":false},
+{"id":"libya","name":"LIBYA","formNo":"GAL.F.PLN.020.AJ (Libya)","rev":"REV B","date":"2022-12-02","secondary":"","crs":"Certifies that the work specified, except as otherwise specified, was carried out in accordance with LYCAR.145 and in respect to that work, the aircraft/aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"LYCAA.B.145.011/20","warn":"","hidden":false,"custom":false},
+{"id":"russia","name":"RUSSIA","formNo":"GAL.F.PLN.020.AK (Russia)","rev":"REV -","date":"","secondary":"","crs":"","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"","warn":"","hidden":true,"custom":false},
+{"id":"moroccan","name":"MOROCCAN","formNo":"GAL.F.PLN.020.AL (Moroccan)","rev":"REV C","date":"2025-01-07","secondary":"EASA PART 145 APPROVAL: EASA.145.3119","crs":"Certifies that the work specified, except as otherwise specified, was carried out in accordance with Moroccan Civil Aviation Regulations in force, namely with Ministerial Order 1027-00, and in respect to that work the aircraft/aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"CN-E 51/20","warn":"","hidden":false,"custom":false},
+{"id":"brazil-p135","name":"BRAZIL P135","formNo":"GAL.F.PLN.020.AM (BRAZIL Part 135)","rev":"REV -","date":"2022-09-12","secondary":"UK CAA PART 145 APPROVAL: UK.145.00883","crs":"","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"ANAC 1604-33","warn":"No release statement is printed for this authority: the customer supplies its own release statement.","hidden":false,"custom":false},
+{"id":"oman","name":"OMAN","formNo":"GAL.F.PLN.020.AN (Oman)","rev":"REV -","date":"2024-11-01","secondary":"","crs":"Certifies that the work specified except as otherwise specified was carried out in accordance with CAR 145 and in respect to that work the aircraft/aircraft component is considered ready for release to service”.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"AWR/AMO/GFUK-263/24","warn":"Approval limited to BASE MAINTENANCE ONLY (current approvals list).","hidden":false,"custom":true}
+];
+const PLN105_SQ_SEED = [
+  ['1.1',  "This record contains the Release Statement text required by the aircraft's state of registry to constitute a Certificate of Release to Service (CRS)."],
+  ['1.2',  "Install 'WORK IN PROGRESS' (WIP) Card on Flight Deck."],
+  ['1.3',  "Remove 'WORK IN PROGRESS' (WIP) Card from Flight Deck."],
+  ['1.4',  "Tool Control - Ensure all tools are removed from A/C and accounted for. FAST team to also attach aircraft tools report."],
+  ['1.5',  "Ensure all circuit breakers disturbed, are reset to correct position post support."],
+  ['1.6',  "Record Hours & Cycles"],
+  ['1.7',  "Review Tech Log for any 'OUT OF PHASE' Items, Defects, or Deferred Defects. Include a copy of current Tech Log Page."],
+  ['1.8',  "Record Airport Location, FBO / Shipping address."],
+  ['1.9',  "Carry out risk assessment prior to work commencing on GAL.F.SMS.004 Road Trips Risk Management Worksheet."],
+  ['1.10', "Comply with the AMM Airframe Pre-Maintenance Checklist as required by the defined scope of work"],
+  ['1.11', "Comply with the AMM Airframe Post-Maintenance Checklist as required by the defined scope of work"]
+];
+const CBK = { auth: 'config/pln105Authorities', sq: 'config/pln105StdSquawks' };
+
+// ── Outils communs (texte, PDF, téléchargement) ──
+const cbkEl = id => document.getElementById(id);
+const cbkMonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function cbkFmtDate(v) {   // 2024-09-02 -> 02-Sep-24 (format de la case « date » du classeur officiel)
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v || ''));
+  return m ? m[3] + '-' + cbkMonths[+m[2] - 1] + '-' + m[1].slice(2) : '';
+}
+const cbkSafeName = s => String(s || '').replace(/[^\w.\-]+/g, '_').replace(/^_+|_+$/g, '');
+const cbkItemNo = it => '2.' + it.num;                         // la tâche n° k de Step 3 = squawk 2.k (à vérifier après un WCR / squawk supprimé)
+const cbkTypeSn = () => [gv('f_model'), gv('f_sn')].filter(Boolean).join(' / ');
+const cbkTrim = a => { while (a.length && !a[a.length - 1]) a.pop(); return a; };
+
+let _cbkMeasure = null;   // polices Helvetica servant uniquement à MESURER le texte (mêmes largeurs qu'à l'impression)
+async function cbkFonts() {
+  if (!window.PDFLib) throw new Error('pdf-lib.min.js not found — check that it is at the root of the repo and that its <script> tag is in index.html.');
+  if (!_cbkMeasure) {
+    const d = await PDFLib.PDFDocument.create();
+    _cbkMeasure = { r: await d.embedFont(PDFLib.StandardFonts.Helvetica), b: await d.embedFont(PDFLib.StandardFonts.HelveticaBold) };
+  }
+  return _cbkMeasure;
+}
+const _cbkEnc = new Map();
+function cbkSafe(s, font) {   // ne garde que ce que Helvetica/WinAnsi sait écrire ; « ? » bien visible sinon (jamais d'erreur pdf-lib)
+  const t = String(s == null ? '' : s).replace(/[\u00a0\u2007\u202f\t]/g, ' ').replace(/[\u200b-\u200d\ufeff]/g, '').replace(/ {2,}/g, ' ').trim();
+  return Array.from(t).map(ch => {
+    if (!_cbkEnc.has(ch)) { let ok = true; try { font.encodeText(ch); } catch (e) { ok = false; } _cbkEnc.set(ch, ok); }
+    return _cbkEnc.get(ch) ? ch : '?';
+  }).join('');
+}
+function cbkWrap(text, font, size, widths) {   // widths : nombre, ou tableau (largeur de chaque ligne, la dernière valeur se répète)
+  const lim = i => Array.isArray(widths) ? widths[Math.min(i, widths.length - 1)] : widths;
+  const wd = s => font.widthOfTextAtSize(s, size);
+  const out = [];
+  String(text == null ? '' : text).replace(/\r\n?/g, '\n').split('\n').forEach(par => {
+    const p = cbkSafe(par, font);
+    if (!p) { out.push(''); return; }
+    let line = '';
+    p.split(' ').forEach(w0 => {
+      let word = w0;
+      while (word) {
+        const test = line ? line + ' ' + word : word;
+        if (wd(test) <= lim(out.length)) { line = test; word = ''; }
+        else if (line) { out.push(line); line = ''; }
+        else {   // mot plus large que la ligne (ex. ligne de points) : coupe dure
+          let i = Math.max(1, word.length - 1);
+          while (i > 1 && wd(word.slice(0, i)) > lim(out.length)) i--;
+          out.push(word.slice(0, i)); word = word.slice(i);
+        }
+      }
+    });
+    if (line) out.push(line);
+  });
+  return out;
+}
+function cbkFitSize(text, font, base, min, maxW) { let s = base; while (s > min && font.widthOfTextAtSize(text, s) > maxW) s -= 0.25; return s; }
+
+// Gabarit PDF : on lit la position des champs (s'il y en a), puis on les retire — le texte est dessiné directement sur la page.
+async function cbkTemplate(file) {
+  const res = await fetch(file);
+  if (!res.ok) throw new Error(file + ' not found (HTTP ' + res.status + ') — check that it is uploaded at the root of the repo.');
+  const doc = await PDFLib.PDFDocument.load(await res.arrayBuffer());
+  const rects = {};
+  doc.getForm().getFields().forEach(f => { const w = f.acroField.getWidgets()[0]; if (w) rects[f.getName()] = w.getRectangle(); });
+  doc.getPage(0).node.delete(PDFLib.PDFName.of('Annots'));
+  return { doc, rects, need(n) { const r = rects[n]; if (!r) throw new Error(file + ': field "' + n + '" is missing in the template.'); return r; } };
+}
+async function cbkNewPdf() {
+  const out = await PDFLib.PDFDocument.create();
+  return { out, r: await out.embedFont(PDFLib.StandardFonts.Helvetica), b: await out.embedFont(PDFLib.StandardFonts.HelveticaBold) };
+}
+async function cbkAddPage(out, tpl) { const [pg] = await out.copyPages(tpl.doc, [0]); out.addPage(pg); return pg; }
+function cbkText(pg, s, x, yTop, size, font) {   // yTop = distance depuis le HAUT de la page jusqu'à la ligne de base
+  if (s) pg.drawText(s, { x, y: pg.getHeight() - yTop, size, font, color: PDFLib.rgb(0, 0, 0) });
+}
+function cbkInRect(pg, r, s, font, size, center, onLine) {   // une ligne dans le rectangle d'un champ du gabarit (centrée verticalement, ou posée sur son soulignement)
+  if (!s) return;
+  const w = font.widthOfTextAtSize(s, size);
+  pg.drawText(s, { x: center ? r.x + (r.width - w) / 2 : r.x + 3, y: onLine ? r.y + 3 : r.y + (r.height - 0.925 * size) / 2 + 0.207 * size, size, font, color: PDFLib.rgb(0, 0, 0) });
+}
+function cbkDownload(bytes, name) {
+  const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+  const a = document.createElement('a'); a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+async function cbkRun(btnId, errId, fn) {
+  const btn = cbkEl(btnId), err = cbkEl(errId), label = btn.textContent;
+  err.textContent = ''; btn.disabled = true; btn.textContent = '⏳ Generating…';
+  try { await fn(); btn.textContent = '✅ Downloaded!'; setTimeout(() => { btn.textContent = label; btn.disabled = false; }, 2500); }
+  catch (e) { console.error(e); err.textContent = '❌ ' + (e.message || e); btn.textContent = label; btn.disabled = false; }
+}
+function cbkNextNo(list) {   // « 2.3 » -> « 2.4 » (même item que la dernière ligne) ; liste vide -> « 2.1 »
+  const p = list.map(s => String(s).trim().split('.')).filter(a => a.length === 2 && a.every(x => /^\d+$/.test(x))).map(a => [+a[0], +a[1]]);
+  if (!p.length) return '2.1';
+  const item = p[p.length - 1][0];
+  return item + '.' + (Math.max(...p.filter(x => x[0] === item).map(x => x[1])) + 1);
+}
+const cbkTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+const cbkWho = () => (curProfile && curProfile.name) || '';
+function cbkMetaLabel(m) {
+  if (m.src === 'firebase') return 'company list' + (m.source && m.source !== 'built-in list' ? ' (' + m.source + ')' : ' (initial values)') + (m.updatedAt ? ' · saved ' + cbkFmtDate(m.updatedAt) + (m.updatedBy ? ' by ' + m.updatedBy : '') : '');
+  if (m.src === 'copy') return 'company list — last copy saved on this device (could not reach the company list)' + (m.updatedAt ? ' · saved ' + cbkFmtDate(m.updatedAt) : '');
+  if (m.src === 'offline') return 'built-in list — could not reach the company list (offline?)';
+  return 'built-in list — the admin has not published the company list yet';
+}
+
+// ══════════════════════════════════════
+//  DONNÉES : autorités (textes CRS) et squawks standard — Firebase config/*, secours = valeurs de départ ci-dessus
+// ══════════════════════════════════════
+let _pdb = null, _psq = null;
+const PDB_FIELDS = ['name', 'formNo', 'rev', 'date', 'secondary', 'crs', 'bottom', 'approval', 'warn'];
+const pdbKey = s => String(s || '').toUpperCase().replace(/\s+/g, ' ').trim();
+const cbkArr = v => Array.isArray(v) ? v : (v && typeof v === 'object' ? Object.values(v) : []);
+function pdbNorm(r) {
+  const o = { id: String(r.id || ('a' + Math.random().toString(36).slice(2, 9))) };
+  PDB_FIELDS.forEach(k => { o[k] = r[k] == null ? '' : String(r[k]); });
+  o.hidden = r.hidden === true || r.hidden === 'true';
+  o.custom = r.custom === true || r.custom === 'true';   // texte corrigé à la main (ex. d'après Corridor) : l'import ne le remplace pas sans demander
+  return o;
+}
+async function pdbLoad(force) {
+  if (_pdb && !force) return _pdb;
+  let raw = null, failed = false;
+  try { const s = await cbkTimeout(get(ref(db, CBK.auth)), 8000); raw = s.exists() ? s.val() : null; } catch (e) { failed = true; console.warn('PLN.105 authorities:', e); }
+  let fromCopy = false;
+  if (raw) { try { localStorage.setItem('cbk_pdb_copy', JSON.stringify(raw)); } catch (e) {} }
+  else if (failed) { try { raw = JSON.parse(localStorage.getItem('cbk_pdb_copy') || 'null'); fromCopy = !!raw; } catch (e) { raw = null; } }
+  const list = raw ? cbkArr(raw.list) : [];
+  if (list.length) _pdb = { list: list.map(pdbNorm), meta: { src: fromCopy ? 'copy' : 'firebase', updatedAt: raw.updatedAt || '', updatedBy: raw.updatedBy || '', source: raw.source || '' } };
+  else {
+    _pdb = { list: PLN105_SEED.map(pdbNorm), meta: { src: failed ? 'offline' : 'builtin', updatedAt: '', updatedBy: '', source: '' } };
+    if (!failed && isAdmin) { try { await pdbSave('built-in list'); } catch (e) { console.warn('PLN.105 seed not saved:', e); } }
+  }
+  return _pdb;
+}
+async function pdbSave(source) {
+  const m = _pdb.meta = { src: 'firebase', updatedAt: new Date().toISOString(), updatedBy: cbkWho(), source: source != null ? source : (_pdb.meta.source || '') };
+  await set(ref(db, CBK.auth), { updatedAt: m.updatedAt, updatedBy: m.updatedBy, source: m.source, list: _pdb.list.map(a => ({ ...a })) });
+}
+async function psqLoad(force) {
+  if (_psq && !force) return _psq;
+  let raw = null, failed = false;
+  try { const s = await cbkTimeout(get(ref(db, CBK.sq)), 8000); raw = s.exists() ? s.val() : null; } catch (e) { failed = true; console.warn('PLN.105 standard squawks:', e); }
+  const list = raw ? cbkArr(raw.list) : [];
+  if (list.length) _psq = { list: list.map(s => ({ no: String(s.no || ''), text: String(s.text || '') })), meta: { src: 'firebase', updatedAt: raw.updatedAt || '', updatedBy: raw.updatedBy || '', source: '' } };
+  else {
+    _psq = { list: PLN105_SQ_SEED.map(([no, text]) => ({ no, text })), meta: { src: failed ? 'offline' : 'builtin', updatedAt: '', updatedBy: '', source: '' } };
+    if (!failed && isAdmin) { try { await psqSave(); } catch (e) { console.warn('Standard squawks seed not saved:', e); } }
+  }
+  return _psq;
+}
+async function psqSave() {
+  const m = _psq.meta = { src: 'firebase', updatedAt: new Date().toISOString(), updatedBy: cbkWho(), source: '' };
+  await set(ref(db, CBK.sq), { updatedAt: m.updatedAt, updatedBy: m.updatedBy, list: _psq.list.map(s => ({ no: s.no, text: s.text })) });
+}
+
+// Ce qui sera imprimé pour une autorité (règle vérifiée sur le classeur officiel) :
+//   case CRS = texte du statement (+ référence d'agrément secondaire en dernière ligne) · ligne d'agrément = libellé + n° ·
+//   pied de page = n° de formulaire (« 020 » → « 105 ») + révision, et la date au format jj-Mmm-aa.
+function pdbCompose(a) {
+  const paras = a.crs ? String(a.crs).split('\n') : [];
+  while (paras.length && !paras[paras.length - 1].trim()) paras.pop();
+  if (a.secondary) paras.push(a.secondary);
+  return {
+    paras,
+    approval: [a.bottom, a.approval].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim(),
+    footL: a.formNo ? a.formNo.replace(/020/g, '105') + (a.rev ? ' ' + a.rev : '') : '',
+    footR: cbkFmtDate(a.date)
+  };
+}
+function pdbPreviewHtml(a) {
+  if (!a) return '<span style="color:var(--g600)">Select the authority to see the exact text that will be printed.</span>';
+  const p = pdbCompose(a), w = [];
+  if (a.warn) w.push(a.warn);
+  if (!a.crs && !a.warn) w.push('No release statement is stored for this authority — the box is printed empty.');
+  if (!a.formNo || !a.date) w.push('Form number or revision date is missing for this authority — the footer is incomplete.');
+  return '<b>CERTIFICATE OF RELEASE TO SERVICE</b>\n' + escHtml(p.paras.join('\n')) + (p.approval ? '\n\n<b>' + escHtml(p.approval) + '</b>' : '') +
+    '\n\n<span style="color:var(--g600)">Footer: ' + escHtml(p.footL) + ' · ' + escHtml(p.footR) + '</span>' +
+    w.map(x => '\n<span style="color:#b45309;font-weight:600">⚠ ' + escHtml(x) + '</span>').join('');
+}
+
+// ══════════════════════════════════════
+//  HUB « Corridor down? » (à côté de Mark A/C RTS)
+// ══════════════════════════════════════
+G.openCorridorHub = function() {
+  const bits = [gv('f_wo'), cbkTypeSn(), gv('f_reg')].filter(Boolean);
+  cbkEl('cbk-ctx').textContent = bits.length ? bits.join(' · ') : 'No job data yet — fill Step 2 first: the documents are pre-filled from it.';
+  openModal('modal-corridor-hub');
+};
+
+// ══════════════════════════════════════
+//  GAL.F.PLN.107 — CONTINUATION WORKSHEET (29 lignes de résolution par feuille)
+// ══════════════════════════════════════
+const CWK_W = 437, CWK_ROWS = 29;
+function cbkDraw107(pg, tpl, P, wo, item, sheetNo, lines) {
+  const hdr = (name, val, base, center) => { const r = tpl.need(name), t = cbkSafe(val, P.r); cbkInRect(pg, r, t, P.r, cbkFitSize(t, P.r, base, 6, r.width - 6), center, !center); };
+  hdr('Work Order No', wo, 11); hdr('ITEM  SQUAWK No', item, 11); hdr('CONTINUATION SHEET NO', sheetNo, 12, true);
+  lines.forEach((l, i) => cbkInRect(pg, tpl.need('RESOLUTION CONTINUEDRow' + (i + 1)), l, P.r, 10));   // cases Fitter / Inspector : laissées vides
+}
+G.openContinuationModal = function() {
+  sv('cwk_wo', gv('f_wo')); sv('cwk_start', '1'); sv('cwk_item', ''); sv('cwk_text', '');
+  cbkEl('cwk_link').innerHTML = '<option value="">— or pick a Step 3 task —</option>' +
+    getItems().map(it => `<option value="${escAttr(cbkItemNo(it))}">${escHtml(cbkItemNo(it) + ' — ' + it.label)}</option>`).join('');
+  cbkEl('cwk-err').textContent = ''; cwkCount(); openModal('modal-continuation');
+};
+G.cwkPick = sel => { if (sel.value) sv('cwk_item', sel.value); };
+G.cwkCount = async function() {
+  if (!window.PDFLib) return;
+  const f = await cbkFonts(), n = cbkTrim(cbkWrap(gv('cwk_text'), f.r, 10, CWK_W)).length, s = Math.max(1, Math.ceil(n / CWK_ROWS));
+  cbkEl('cwk-count').textContent = n + ' lines → ' + s + (s === 1 ? ' sheet' : ' sheets') + ' (' + CWK_ROWS + ' lines per sheet)';
+};
+G.generateContinuation = () => cbkRun('cwk-btn', 'cwk-err', async () => {
+  const F = await cbkFonts(), lines = cbkTrim(cbkWrap(gv('cwk_text'), F.r, 10, CWK_W)), start = parseInt(gv('cwk_start'), 10) || 1;
+  const chunks = [];
+  for (let i = 0; i < Math.max(lines.length, 1); i += CWK_ROWS) chunks.push(lines.slice(i, i + CWK_ROWS));
+  const tpl = await cbkTemplate('pln107-template.pdf'), P = await cbkNewPdf();
+  for (let k = 0; k < chunks.length; k++) cbkDraw107(await cbkAddPage(P.out, tpl), tpl, P, gv('cwk_wo'), gv('cwk_item'), String(start + k), chunks[k]);
+  cbkDownload(await P.out.save(), 'PLN107_' + (cbkSafeName(gv('cwk_wo')) || 'job') + '_Item' + (cbkSafeName(gv('cwk_item')) || 'X') + '.pdf');
+});
+
+// ══════════════════════════════════════
+//  GAL.F.OPS.208 — MANUAL WORKSHEET REGISTER (19 lignes par page, description seule, sans résolution)
+// ══════════════════════════════════════
+const RWK = { rows: 19, w: 384, h: 23.8 };   // largeur / hauteur utiles minimales d'une case « description » du gabarit
+function rwkFit(text, font, w, h) {   // plus grande police (9 → 6 pt) pour laquelle le texte tient dans la case ; null = trop long
+  for (let s = 9; s >= 6; s -= 0.5) {
+    const lines = cbkTrim(cbkWrap(text, font, s, w));
+    if (lines.length <= Math.floor((h - 1.2) / (s * 1.06))) return { size: s, lines };
+  }
+  return null;
+}
+G.rwkAddRow = function(no, text) {
+  const d = document.createElement('div'); d.className = 'rwk-row';
+  d.innerHTML = `<input type="text" class="rwk-no" value="${escAttr(no || '')}" oninput="rwkCount()" title="Sheet no"/>` +
+    `<textarea class="rwk-t" rows="2" oninput="rwkCount()" placeholder="Squawk description / title">${escHtml(text || '')}</textarea>` +
+    `<button type="button" class="btn-rm" onclick="this.parentNode.remove();rwkCount()" title="Remove this row">×</button>`;
+  cbkEl('rwk-rows').appendChild(d);
+};
+G.rwkAddGroup = function(item) {   // « + Add squawk (2.x) » / « + Add task card (4.x) » : numéro suivant, rangé avant le groupe suivant
+  const list = cbkEl('rwk-rows'), rows = Array.from(list.querySelectorAll('.rwk-row'));
+  const itemOf = r => parseInt(r.querySelector('.rwk-no').value, 10);
+  const subs = rows.filter(r => itemOf(r) === item).map(r => parseInt(String(r.querySelector('.rwk-no').value).split('.')[1], 10)).filter(Number.isFinite);
+  rwkAddRow(item + '.' + ((subs.length ? Math.max(...subs) : 0) + 1), '');
+  const added = list.lastElementChild, later = rows.find(r => itemOf(r) > item);
+  if (later) list.insertBefore(added, later);
+  added.querySelector('.rwk-t').focus(); rwkCount();
+};
+G.rwkCount = async function() {
+  if (!window.PDFLib) return;
+  const f = await cbkFonts();
+  let bad = 0, n = 0;
+  document.querySelectorAll('#rwk-rows .rwk-row').forEach(r => {
+    n++; const ko = !rwkFit(r.querySelector('.rwk-t').value, f.r, RWK.w, RWK.h);
+    r.classList.toggle('bad', ko); if (ko) bad++;
+  });
+  const el = cbkEl('rwk-count'), pages = Math.max(1, Math.ceil(n / RWK.rows));
+  el.style.color = bad ? '#c0392b' : 'var(--g600)';
+  el.textContent = n + (n === 1 ? ' row' : ' rows') + ' → ' + pages + (pages === 1 ? ' page' : ' pages') + ' (' + RWK.rows + ' rows per page)' + (bad ? ' · ' + bad + ' description(s) too long for the cell (red) — shorten' : '');
+};
+G.openRegisterModal = async function() {
+  sv('rwk_wo', gv('f_wo')); sv('rwk_type', cbkTypeSn()); sv('rwk_reg', gv('f_reg'));
+  cbkEl('rwk-err').textContent = ''; cbkEl('rwk-rows').innerHTML = '';
+  const sq = await psqLoad(true);
+  sq.list.forEach(s => rwkAddRow(s.no, s.text));
+  getItems().forEach(it => rwkAddRow(cbkItemNo(it), it.label));
+  const src = cbkEl('rwk-src'); src.textContent = 'Standard squawks 1.x: ' + cbkMetaLabel(sq.meta); src.style.color = sq.meta.src === 'firebase' ? 'var(--g600)' : '#b45309';
+  rwkCount(); openModal('modal-register');
+};
+G.generateRegister = () => cbkRun('rwk-btn', 'rwk-err', async () => {
+  const F = await cbkFonts();
+  const rows = Array.from(document.querySelectorAll('#rwk-rows .rwk-row')).map(r => ({ no: r.querySelector('.rwk-no').value.trim(), t: r.querySelector('.rwk-t').value }));
+  if (!rows.length) throw new Error('The register is empty.');
+  const tpl = await cbkTemplate('ops208-template.pdf'), P = await cbkNewPdf(), pages = Math.ceil(rows.length / RWK.rows);
+  for (let p = 0; p < pages; p++) {
+    const pg = await cbkAddPage(P.out, tpl);
+    [['Work Order No', gv('rwk_wo')], ['Aircraft Type Serial No', gv('rwk_type')], ['Aircraft Registration', gv('rwk_reg')]].forEach(([name, val]) => {
+      const r = tpl.need(name), t = cbkSafe(val, P.r); cbkInRect(pg, r, t, P.r, cbkFitSize(t, P.r, 10.5, 6, r.width - 6));
+    });
+    rows.slice(p * RWK.rows, (p + 1) * RWK.rows).forEach((row, i) => {
+      const n = i + 1, rn = tpl.need('Sheet NoRow' + n), rt = tpl.need('Squawk Description TitleRow' + n);   // cases « Completed? (stamp) » : laissées vides
+      const no = cbkSafe(row.no, P.b); cbkInRect(pg, rn, no, P.b, cbkFitSize(no, P.b, 10, 7, rn.width - 6), true);
+      const fit = rwkFit(row.t, F.r, rt.width - 6, rt.height);
+      if (!fit) throw new Error('Row ' + (row.no || '?') + ': the description is too long for its cell — shorten it.');
+      const lh = fit.size * 1.06, top = rt.y + rt.height - (rt.height - fit.lines.length * lh) / 2;
+      fit.lines.forEach((l, k) => pg.drawText(l, { x: rt.x + 3, y: top - k * lh - fit.size * 0.8, size: fit.size, font: P.r, color: PDFLib.rgb(0, 0, 0) }));
+    });
+    cbkInRect(pg, tpl.need('Register Cont'), p < pages - 1 ? 'Y' : 'N', P.b, 11, true);   // « Register cont… (Y/N) »
+  }
+  cbkDownload(await P.out.save(), 'OPS208_' + (cbkSafeName(gv('rwk_wo')) || 'job') + '.pdf');
+});
+
+// ══════════════════════════════════════
+//  GAL.F.PLN.105 — LINE MAINTENANCE WORKSHEET + CERTIFICATE OF RELEASE TO SERVICE
+//  Un feuillet par squawk. Résolution > 13 lignes : la suite part sur des PLN.107 (numéros entourés dans la bande « CONTINUATION SHEETS »).
+// ══════════════════════════════════════
+// Géométrie mesurée sur pln105-template.pdf (A4 ; y mesuré depuis le HAUT de la page, en points)
+const LMX = {
+  hdr:  { y: [71.4, 95.3, 119.3], x: [[116.5, 190.2], [288.5, 362.2], [460.5, 547.6]] },
+  item: { cx: 42.85, cy: 179.85 },
+  sq:   { tops: [156.6, 179.9, 203.1, 226.4], h: 23.2, x0: [71.4, 71.4, 22, 22], x1: 574.5, max: 4 },
+  res:  { top: 316.6, h: 23.26, rows: 13, x0: 21.8, x1: 457.5 },
+  crs:  { x0: 19.2, x1: 575.8, top: 633.8, bot: 720.9 },
+  appr: { top: 720.9, bot: 742.2 },
+  strip: { cy: 773.45, r: 6.4, max: 20, b: [42.8, 67.4, 92.0, 116.5, 141.1, 165.7, 190.2, 214.8, 239.4, 263.9, 288.5, 313.1, 337.6, 362.2, 386.8, 411.3, 435.9, 460.5, 489.5, 518.6, 547.6] },
+  foot: { base: 815.0, left: 19.2, right: 575.8 },
+  cont: 29
+};
+LMX.sqW = LMX.sq.x0.map(x => LMX.sq.x1 - x);
+LMX.resW = LMX.res.x1 - LMX.res.x0;
+const LMX_HDR = [['lmx_wo', 0, 0], ['lmx_date', 0, 1], ['lmx_po', 0, 2], ['lmx_type', 1, 0], ['lmx_sn', 1, 1], ['lmx_reg', 1, 2], ['lmx_tlog', 2, 0], ['lmx_hrs', 2, 1], ['lmx_ldgs', 2, 2]];
+const lmxSqLines = (t, f) => cbkTrim(cbkWrap(t, f, 10, LMX.sqW));
+const lmxResLines = (t, f) => cbkTrim(cbkWrap(t, f, 10, LMX.resW));
+
+// Le bloc CRS doit tenir dans sa case : police 10 → 6,5 pt ; si ça ne tient toujours pas on REFUSE d'imprimer plutôt que de couper un texte réglementaire.
+function lmxFitCrs(paras, font) {
+  const W = LMX.crs.x1 - LMX.crs.x0, availH = LMX.crs.bot - LMX.crs.top - 3;
+  for (let q = 40; q >= 26; q--) {
+    const size = q / 4, lines = [];
+    paras.forEach((p, i) => cbkWrap(p, font, size, W).forEach((l, j) => lines.push({ t: l, first: j === 0, para: i })));
+    const lh = size * 1.18, gap = size * 0.25, h = lines.length * lh + Math.max(0, paras.length - 1) * gap;
+    if (h <= availH) return { size, lines, lh, gap, h };
+  }
+  throw new Error('The release statement is too long for its box, even at the smallest size — nothing was printed. Shorten it in Admin → Release statements.');
+}
+const lmxAuth = () => { const v = cbkEl('lmx_auth').value; return v && _pdb ? (_pdb.list.find(a => a.id === v) || null) : null; };
+G.lmxFillAuthSelect = function() {
+  const sel = cbkEl('lmx_auth'), keep = sel.value, f = (cbkEl('lmx_auth_filter').value || '').toLowerCase().trim();
+  const list = (_pdb ? _pdb.list : []).filter(a => !a.hidden && (!f || a.name.toLowerCase().includes(f)));
+  sel.innerHTML = '<option value="">— select the authority (' + list.length + ') —</option>' +
+    list.map(a => `<option value="${escAttr(a.id)}"${a.id === keep ? ' selected' : ''}>${escHtml(a.name || '(unnamed)')}</option>`).join('');
+  lmxPreview();
+};
+G.lmxPreview = function() { cbkEl('lmx-preview').innerHTML = pdbPreviewHtml(lmxAuth()); };
+
+function lmxStep4Text(item) {   // notes quotidiennes de Step 4 pour ce squawk, dans l'ordre chronologique
+  const html2txt = h => {
+    const doc = new DOMParser().parseFromString(String(h || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/(div|p|li|h[1-6]|tr)>/gi, '\n').replace(/<(div|p|h[1-6]|tr)(\s[^>]*)?>/gi, '\n').replace(/<li[^>]*>/gi, '\n- '), 'text/html');
+    return (doc.body.textContent || '').replace(/\u00a0/g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n{2,}/g, '\n').trim();
+  };
+  const out = [];
+  getUpdatesData().slice().sort((a, b) => (a.ts || 0) - (b.ts || 0)).forEach(day => {
+    const u = (day.itemUpdates || []).find(x => (x.id != null ? x.id === item.id : x.num === item.num));
+    const t = u ? html2txt(u.detail) : '';
+    if (t) out.push(day.date + ': ' + t);
+  });
+  return out.join('\n');
+}
+G.lmxFromStep4 = function(btn) {   // ajoute les notes Step 4 à la résolution, sans jamais écraser ce qui est déjà tapé
+  const card = btn.closest('.lmx-sheet'), err = cbkEl('lmx-err'); err.textContent = '';
+  const items = getItems(), no = card.querySelector('.lmx-no').value.trim();
+  const it = items.find(x => String(x.id) === card.dataset.itemId) || items.find(x => cbkItemNo(x) === no);
+  if (!it) { err.textContent = '❌ No Step 3 task matches sheet "' + no + '" — Step 4 notes are linked to Step 3 tasks.'; return; }
+  const txt = lmxStep4Text(it);
+  if (!txt) { err.textContent = '❌ No Step 4 notes for ' + no + '.'; return; }
+  const ta = card.querySelector('.lmx-res'); ta.value = ta.value.trim() ? ta.value.trim() + '\n' + txt : txt;
+  lmxCount();
+};
+G.lmxAddSheet = function(no, squawk, resolution, itemId) {
+  const box = cbkEl('lmx-sheets');
+  if (no === undefined || no === null) no = cbkNextNo(Array.from(box.querySelectorAll('.lmx-no')).map(i => i.value));
+  const d = document.createElement('div'); d.className = 'lmx-sheet';
+  if (itemId != null) d.dataset.itemId = itemId;
+  d.innerHTML =
+    `<div class="lmx-hd"><input type="checkbox" class="lmx-inc" checked onchange="lmxCount()" title="Include this sheet"/>` +
+    `<span style="font-size:12px;font-weight:600;white-space:nowrap">Item / Squawk No</span>` +
+    `<input type="text" class="lmx-no" value="${escAttr(String(no))}" oninput="lmxCount()"/>` +
+    `<span class="lmx-info"></span><button type="button" class="btn-rm" style="margin-top:0" onclick="this.closest('.lmx-sheet').remove();lmxCount()" title="Remove this sheet">×</button></div>` +
+    `<div class="fg" style="margin-bottom:6px"><label>Squawk</label><textarea class="lmx-sq" rows="2" oninput="lmxCount()">${escHtml(String(squawk || ''))}</textarea></div>` +
+    `<div class="fg"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><label style="margin:0">Resolution</label>` +
+    `<button type="button" class="btn" style="padding:2px 8px;font-size:11px" onclick="lmxFromStep4(this)" title="Add the Step 4 daily notes of this task">↓ Step 4 notes</button></div>` +
+    `<textarea class="lmx-res" rows="4" placeholder="Optional — leave empty to hand-write. Longer than ${LMX.res.rows} lines continues on Continuation Worksheets (PLN.107)." oninput="lmxCount()">${escHtml(String(resolution || ''))}</textarea></div>`;
+  box.appendChild(d); lmxCount();
+};
+G.lmxAddStd = function(sel) {
+  const i = parseInt(sel.value, 10); sel.value = '';
+  if (_psq && _psq.list[i]) lmxAddSheet(_psq.list[i].no, _psq.list[i].text, '');
+};
+G.lmxCount = async function() {
+  if (!window.PDFLib) return;
+  const f = await cbkFonts();
+  let sheets = 0, pages = 0, bad = 0;
+  document.querySelectorAll('#lmx-sheets .lmx-sheet').forEach(c => {
+    const sq = lmxSqLines(c.querySelector('.lmx-sq').value, f.r).length, rs = lmxResLines(c.querySelector('.lmx-res').value, f.r).length;
+    const conts = Math.max(0, Math.ceil((rs - LMX.res.rows) / LMX.cont)), err = sq > LMX.sq.max || conts > LMX.strip.max;
+    const info = c.querySelector('.lmx-info');
+    info.style.color = err ? '#c0392b' : 'var(--g600)';
+    info.textContent = 'Squawk ' + sq + '/' + LMX.sq.max + ' lines · Resolution ' + rs + '/' + LMX.res.rows + ' lines' + (conts ? ' → +' + conts + ' continuation sheet' + (conts > 1 ? 's' : '') : '') + (err ? ' — too long' : '');
+    if (c.querySelector('.lmx-inc').checked) { sheets++; pages += 1 + conts; if (err) bad++; }
+  });
+  const el = cbkEl('lmx-count');
+  el.style.color = bad ? '#c0392b' : 'var(--g600)';
+  el.textContent = sheets + (sheets === 1 ? ' sheet' : ' sheets') + ' → ' + pages + (pages === 1 ? ' page' : ' pages') + ' in the PDF' + (bad ? ' · ' + bad + ' too long — shorten' : '');
+};
+G.openLineMxModal = async function() {
+  cbkEl('lmx-err').textContent = '';
+  sv('lmx_wo', gv('f_wo')); sv('lmx_date', rtagTodayFormatted()); sv('lmx_po', gv('f_po'));
+  sv('lmx_type', gv('f_model')); sv('lmx_sn', gv('f_sn')); sv('lmx_reg', gv('f_reg'));
+  sv('lmx_tlog', ''); sv('lmx_hrs', gv('f_ac_hours')); sv('lmx_ldgs', gv('f_ac_cycles'));
+  const country = gv('f_country').trim();
+  cbkEl('lmx-country').textContent = country ? 'Country of registry in Step 2: ' + country : 'Country of registry is empty in Step 2.';
+  cbkEl('lmx-sheets').innerHTML = '';
+  getItems().forEach(it => lmxAddSheet(cbkItemNo(it), it.label, '', it.id));
+  const d = await pdbLoad(true), sq = await psqLoad(true);
+  cbkEl('lmx_std').innerHTML = '<option value="">+ Add a standard squawk (1.x) as a sheet…</option>' +
+    sq.list.map((s, i) => `<option value="${i}">${escHtml(s.no + ' — ' + s.text.slice(0, 70))}</option>`).join('');
+  // le filtre est pré-rempli seulement si le pays figure tel quel dans un nom d'autorité ; l'autorité reste à CHOISIR (jamais devinée)
+  cbkEl('lmx_auth_filter').value = (country && d.list.some(a => !a.hidden && a.name.toLowerCase().includes(country.toLowerCase()))) ? country : '';
+  cbkEl('lmx_auth').innerHTML = ''; lmxFillAuthSelect();
+  const src = cbkEl('lmx-src'); src.textContent = 'Release statements: ' + cbkMetaLabel(d.meta); src.style.color = d.meta.src === 'firebase' ? 'var(--g600)' : '#b45309';
+  lmxCount(); openModal('modal-line-mx');
+};
+
+function lmxDraw(pg, P, p, parts, fit, apprSize) {   // texte imprimé sur le feuillet : en-tête, squawk, résolution, CRS, pied de page, cercles
+  LMX_HDR.forEach(([id, row, col]) => {
+    const t = cbkSafe(gv(id), P.r), [x0, x1] = LMX.hdr.x[col];
+    cbkText(pg, t, x0 + 2, LMX.hdr.y[row] - 2.6, cbkFitSize(t, P.r, 10.5, 6, x1 - x0 - 4), P.r);
+  });
+  const no = cbkSafe(p.no, P.b), ns = cbkFitSize(no, P.b, 16, 8, 44);
+  cbkText(pg, no, LMX.item.cx - P.b.widthOfTextAtSize(no, ns) / 2, LMX.item.cy + ns * 0.35, ns, P.b);
+  p.sq.forEach((l, i) => cbkText(pg, l, LMX.sq.x0[i], LMX.sq.tops[i] + LMX.sq.h - 7.4, 10, P.r));
+  p.first.forEach((l, i) => cbkText(pg, l, LMX.res.x0, LMX.res.top + i * LMX.res.h + LMX.res.h - 7.6, 10, P.r));
+  let top = LMX.crs.top + ((LMX.crs.bot - LMX.crs.top) - fit.h) / 2;
+  fit.lines.forEach(ln => {
+    if (ln.first && ln.para > 0) top += fit.gap;
+    cbkText(pg, ln.t, LMX.crs.x0, top + fit.size * 0.85, fit.size, P.b);
+    top += fit.lh;
+  });
+  if (parts.approval) cbkText(pg, cbkSafe(parts.approval, P.b), LMX.crs.x0, (LMX.appr.top + LMX.appr.bot) / 2 + apprSize * 0.35, apprSize, P.b);
+  if (parts.footL) cbkText(pg, cbkSafe(parts.footL, P.r), LMX.foot.left, LMX.foot.base, 9.5, P.r);
+  if (parts.footR) { const t = cbkSafe(parts.footR, P.r); cbkText(pg, t, LMX.foot.right - P.r.widthOfTextAtSize(t, 9.5), LMX.foot.base, 9.5, P.r); }
+  for (let k = 0; k < p.conts; k++) pg.drawCircle({ x: (LMX.strip.b[k] + LMX.strip.b[k + 1]) / 2, y: pg.getHeight() - LMX.strip.cy, size: LMX.strip.r, borderColor: PDFLib.rgb(0, 0, 0), borderWidth: 1 });
+}
+G.generateLineMx = () => cbkRun('lmx-btn', 'lmx-err', async () => {
+  const a = lmxAuth();
+  if (!a) throw new Error('Select the registration authority first — it decides the release statement, the approval number and the form number printed on the sheet.');
+  const sheets = Array.from(document.querySelectorAll('#lmx-sheets .lmx-sheet')).map(c => ({
+    inc: c.querySelector('.lmx-inc').checked, no: c.querySelector('.lmx-no').value.trim(), sq: c.querySelector('.lmx-sq').value, res: c.querySelector('.lmx-res').value
+  })).filter(s => s.inc);
+  if (!sheets.length) throw new Error('Tick at least one sheet.');
+  const F = await cbkFonts(), parts = pdbCompose(a), fit = lmxFitCrs(parts.paras, F.b);
+  const apprT = cbkSafe(parts.approval, F.b), apprW = LMX.crs.x1 - LMX.crs.x0, apprSize = cbkFitSize(apprT, F.b, 10, 6.5, apprW);
+  if (apprT && F.b.widthOfTextAtSize(apprT, apprSize) > apprW) throw new Error('The approval line is too long for its box — shorten it in Admin → Release statements.');
+  const plan = sheets.map(s => {
+    const sq = lmxSqLines(s.sq, F.r), rs = lmxResLines(s.res, F.r), label = 'Sheet ' + (s.no || '?');
+    if (sq.length > LMX.sq.max) throw new Error(label + ': the squawk needs ' + sq.length + ' lines — the sheet has ' + LMX.sq.max + '. Shorten it.');
+    const extra = rs.slice(LMX.res.rows), conts = Math.ceil(extra.length / LMX.cont);
+    if (conts > LMX.strip.max) throw new Error(label + ': the resolution needs ' + conts + ' continuation sheets — the sheet only has ' + LMX.strip.max + ' numbers. Shorten it.');
+    return { no: s.no, sq, first: rs.slice(0, LMX.res.rows), extra, conts };
+  });
+  const t105 = await cbkTemplate('pln105-template.pdf'), t107 = plan.some(p => p.conts) ? await cbkTemplate('pln107-template.pdf') : null, P = await cbkNewPdf();
+  for (const p of plan) {   // ordre du dossier : feuillet 105, puis ses continuations 107, squawk après squawk
+    lmxDraw(await cbkAddPage(P.out, t105), P, p, parts, fit, apprSize);
+    for (let k = 0; k < p.conts; k++) cbkDraw107(await cbkAddPage(P.out, t107), t107, P, gv('lmx_wo'), p.no, String(k + 1), p.extra.slice(k * LMX.cont, (k + 1) * LMX.cont));
+  }
+  cbkDownload(await P.out.save(), 'PLN105_' + (cbkSafeName(gv('lmx_wo')) || 'job') + '.pdf');
+});
+
+// ══════════════════════════════════════
+//  ADMIN — « Release statements » (liste des autorités, éditable) + import du classeur officiel PLN.105
+// ══════════════════════════════════════
+const pdbSub = a => [a.formNo, a.rev, cbkFmtDate(a.date)].filter(Boolean).join(' · ');
+let _pdbT = null;
+function pdbStatus(msg, bad) { const e = cbkEl('pdb-status'); if (e) { e.textContent = msg; e.style.color = bad ? '#c0392b' : 'var(--g600)'; } }
+function pdbSaveSoon() {   // enregistrement différé (comme les autres listes) : une rafale de frappes = une écriture Firebase
+  pdbStatus('Saving…');
+  clearTimeout(_pdbT);
+  _pdbT = setTimeout(async () => {
+    try { await pdbSave(); pdbStatus('Saved ✓ — ' + cbkMetaLabel(_pdb.meta)); pdbRenderMeta(); }
+    catch (e) { console.error(e); pdbStatus('⚠ Could not save — only admins can edit this list (' + (e.code || e.message) + ')', true); }
+  }, 700);
+}
+function pdbRenderMeta() {
+  const hid = _pdb.list.filter(a => a.hidden).length;
+  cbkEl('pdb-count').textContent = _pdb.list.length + ' authorities' + (hid ? ' · ' + hid + ' hidden' : '');
+  cbkEl('pdb-meta').textContent = 'Source: ' + cbkMetaLabel(_pdb.meta);
+}
+function pdbItemHtml(a, open) {
+  const id = escAttr(a.id);
+  const inp = (k, label, ph, st) => `<div class="fg" style="${st || ''}"><label>${label}</label><input type="text" value="${escAttr(a[k])}" placeholder="${escAttr(ph || '')}" oninput="pdbEdit('${id}','${k}',this.value)"/></div>`;
+  return `<details class="pdb-item" data-id="${id}"${open ? ' open' : ''}>` +
+    `<summary><b id="pdb-t-${id}">${escHtml(a.name || '(unnamed)')}</b> <span class="pdb-sub" id="pdb-s-${id}">${escHtml(pdbSub(a))}</span>` +
+    (a.hidden ? '<span class="pdb-tag">hidden</span>' : '') + (a.custom ? '<span class="pdb-tag warn" title="Edited here — a workbook import will not replace it unless you tick it">customised</span>' : '') + (!a.crs ? '<span class="pdb-tag warn">no statement</span>' : '') + `</summary>` +
+    `<div class="pdb-body">` +
+    `<div class="grid g2">${inp('name', 'Authority name (as shown in the PLN.105 list)')}${inp('formNo', 'Form number (020 becomes 105)')}</div>` +
+    `<div class="grid g2" style="margin-top:6px">${inp('rev', 'Form revision', 'REV M')}<div class="fg"><label>Revision date</label><input type="date" value="${escAttr(a.date)}" style="padding:6px 10px;border:1px solid var(--g200);border-radius:var(--r);font-size:13px;font-family:inherit;width:100%" oninput="pdbEdit('${id}','date',this.value)"/></div></div>` +
+    `<div class="fg" style="margin-top:6px"><label>Release statement — printed in the CERTIFICATE OF RELEASE TO SERVICE box (one paragraph per line; empty = nothing printed, e.g. Part 135)</label><textarea rows="6" oninput="pdbEdit('${id}','crs',this.value)">${escHtml(a.crs)}</textarea></div>` +
+    `<div class="grid g2" style="margin-top:6px">${inp('bottom', 'Approval line — label', 'GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :')}${inp('approval', 'Approval line — number', 'EASA.145.3119')}</div>` +
+    inp('secondary', 'Secondary approval reference — optional, printed as the last line of the statement', 'EASA PART 145 APPROVAL: EASA.145.3119', 'margin-top:6px') +
+    `<div class="fg" style="margin-top:6px"><label>Warning shown to the engineer when this authority is picked — optional</label><textarea rows="2" oninput="pdbEdit('${id}','warn',this.value)">${escHtml(a.warn)}</textarea></div>` +
+    `<div class="pdb-prev" id="pdb-prev-${id}">${pdbPreviewHtml(a)}</div>` +
+    `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox"${a.hidden ? ' checked' : ''} onchange="pdbEdit('${id}','hidden',this.checked)"/> Hide from the PLN.105 list (we no longer hold this approval)</label>` +
+    `<button class="btn danger" style="margin-left:auto;font-size:11px;padding:4px 10px" onclick="pdbDelete('${id}')">🗑 Delete</button></div>` +
+    `</div></details>`;
+}
+G.pdbRenderManage = function(openId) {
+  const f = (cbkEl('pdb-filter').value || '').toLowerCase().trim();
+  const list = _pdb.list.filter(a => !f || (a.name + ' ' + a.formNo + ' ' + a.approval).toLowerCase().includes(f));
+  cbkEl('pdb-list').innerHTML = list.length ? list.map(a => pdbItemHtml(a, a.id === openId)).join('') : '<p class="lkm-empty">No authority matches.</p>';
+  pdbRenderMeta();
+};
+G.pdbManage = async function() {
+  const d = await pdbLoad(true);
+  cbkEl('pdb-filter').value = ''; pdbStatus(cbkMetaLabel(d.meta));
+  pdbRenderManage(); openModal('modal-pln105-auth');
+};
+G.pdbEdit = function(id, k, v) {
+  const a = _pdb.list.find(x => x.id === id); if (!a) return;
+  a[k] = k === 'hidden' ? !!v : String(v);
+  if (PDB_IMPORT.includes(k)) a.custom = true;
+  const pv = cbkEl('pdb-prev-' + id); if (pv) pv.innerHTML = pdbPreviewHtml(a);
+  const t = cbkEl('pdb-t-' + id), s = cbkEl('pdb-s-' + id);
+  if (t) t.textContent = a.name || '(unnamed)';
+  if (s) s.textContent = pdbSub(a);
+  pdbRenderMeta(); pdbSaveSoon();
+};
+G.pdbNew = function() {
+  const a = pdbNorm({ id: 'n' + Date.now().toString(36), bottom: 'GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :' });
+  _pdb.list.push(a); cbkEl('pdb-filter').value = '';
+  pdbRenderManage(a.id); pdbSaveSoon();
+  const el = document.querySelector('#pdb-list details[data-id="' + a.id + '"]');
+  if (el) { el.scrollIntoView({ block: 'center' }); const i = el.querySelector('input'); if (i) i.focus(); }
+};
+G.pdbDelete = function(id) {
+  const a = _pdb.list.find(x => x.id === id); if (!a) return;
+  if (!confirm('Delete "' + (a.name || 'this entry') + '" permanently?\n\nTip: tick "Hide from the PLN.105 list" instead if you may need it again — a hidden authority stays hidden when you import a new workbook.')) return;
+  _pdb.list = _pdb.list.filter(x => x.id !== id); pdbRenderManage(); pdbSaveSoon();
+};
+G.pdbReset = function() {
+  if (!confirm('Replace the whole list by the built-in list (the one shipped with the app)?\n\nAll your edits, additions and hidden flags are lost.')) return;
+  _pdb.list = PLN105_SEED.map(pdbNorm); pdbRenderManage(); pdbSaveSoon();
+};
+
+// — Import du classeur officiel GAL.F.PLN.105 (onglet « Database ») : lecture du .xlsm directement dans le navigateur, sans passer par personne —
+async function cbkUnzip(buf) {
+  if (typeof DecompressionStream === 'undefined') throw new Error('This browser cannot open Excel files (DecompressionStream missing) — use a recent Chrome, Edge or Safari.');
+  const u8 = new Uint8Array(buf), dv = new DataView(buf);
+  let e = u8.length - 22;
+  while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
+  if (e < 0) throw new Error('This is not an Excel (.xlsx / .xlsm) file.');
+  const n = dv.getUint16(e + 10, true); let p = dv.getUint32(e + 16, true);
+  const files = {};
+  for (let i = 0; i < n; i++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) throw new Error('Corrupt Excel file (zip directory).');
+    const nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true);
+    files[new TextDecoder().decode(u8.subarray(p + 46, p + 46 + nl))] = { method: dv.getUint16(p + 10, true), csize: dv.getUint32(p + 20, true), lho: dv.getUint32(p + 42, true) };
+    p += 46 + nl + el + cl;
+  }
+  return async name => {
+    const f = files[name]; if (!f) return null;
+    const start = f.lho + 30 + dv.getUint16(f.lho + 26, true) + dv.getUint16(f.lho + 28, true), raw = u8.subarray(start, start + f.csize);
+    if (f.method === 0) return new TextDecoder().decode(raw);
+    if (f.method !== 8) throw new Error('Unsupported compression in the Excel file.');
+    return new TextDecoder().decode(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+  };
+}
+const PDB_COLS = { name: 'A', formNo: 'C', rev: 'D', date: 'E', secondary: 'G', crs: 'H', bottom: 'K', approval: 'L' };
+const PDB_ONELINE = new Set(['name', 'formNo', 'rev', 'secondary', 'bottom', 'approval']);
+function pdbClean(v, one) {   // espaces/retours normalisés, sans toucher aux mots
+  if (v == null) return '';
+  let s = String(v).replace(/\r\n?/g, '\n').replace(/_x000D_/g, '').replace(/[ \t\u00a0]+/g, ' ');
+  s = one ? s.replace(/\s+/g, ' ') : s.split('\n').map(x => x.trim()).join('\n');
+  return s.trim();
+}
+function pdbIso(v) {
+  const s = String(v == null ? '' : v).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  if (/^\d+(\.\d+)?$/.test(s) && +s > 20000 && +s < 80000) return new Date(Math.round((+s - 25569) * 86400000)).toISOString().slice(0, 10);
+  const d = new Date(s); return isNaN(d) ? '' : d.toISOString().slice(0, 10);
+}
+async function pdbParseWorkbook(file) {
+  const read = await cbkUnzip(await file.arrayBuffer());
+  const X = s => new DOMParser().parseFromString(s, 'application/xml');
+  const wbx = await read('xl/workbook.xml'); if (!wbx) throw new Error('This file is not an Excel workbook.');
+  const sh = Array.from(X(wbx).getElementsByTagName('sheet')).find(s => (s.getAttribute('name') || '').toLowerCase() === 'database');
+  if (!sh) throw new Error('No "Database" tab found — pick the GAL.F.PLN.105 Line Maintenance workbook.');
+  const rel = Array.from(X(await read('xl/_rels/workbook.xml.rels')).getElementsByTagName('Relationship')).find(r => r.getAttribute('Id') === sh.getAttribute('r:id'));
+  if (!rel) throw new Error('Cannot locate the Database tab inside the workbook.');
+  const target = rel.getAttribute('Target'), path = target.startsWith('/') ? target.slice(1) : 'xl/' + target;
+  const sst = [], sx = await read('xl/sharedStrings.xml');
+  if (sx) Array.from(X(sx).getElementsByTagName('si')).forEach(si => sst.push(Array.from(si.getElementsByTagName('t')).filter(t => t.parentNode.nodeName !== 'rPh').map(t => t.textContent).join('')));
+  const cells = {};
+  Array.from(X(await read(path)).getElementsByTagName('c')).forEach(c => {
+    const m = /^([A-Z]+)(\d+)$/.exec(c.getAttribute('r') || ''); if (!m) return;
+    const t = c.getAttribute('t'); let v = null;
+    if (t === 'inlineStr') v = Array.from(c.getElementsByTagName('t')).map(x => x.textContent).join('');
+    else { const ve = c.getElementsByTagName('v')[0]; if (ve) v = t === 's' ? sst[+ve.textContent] : ve.textContent; }
+    (cells[+m[2]] = cells[+m[2]] || {})[m[1]] = v;
+  });
+  const h = cells[1] || {};
+  if (!/authority/i.test(h.A || '') || !/statement/i.test(h.H || '')) throw new Error('The "Database" tab does not look like the PLN.105 one (expected "Authority Selection" in A1 and "Specific Approval CRS Statement" in H1).');
+  const rows = [];
+  for (let r = 2; cells[r] && cells[r].A != null && String(cells[r].A).trim() && !/DROP DOWN LIST/i.test(cells[r].A); r++) {
+    const o = {};
+    Object.keys(PDB_COLS).forEach(k => { o[k] = k === 'date' ? pdbIso(cells[r][PDB_COLS[k]]) : pdbClean(cells[r][PDB_COLS[k]], PDB_ONELINE.has(k)); });
+    rows.push(o);
+  }
+  return rows;
+}
+const PDB_IMPORT = ['formNo', 'rev', 'date', 'secondary', 'crs', 'bottom', 'approval'];
+const PDB_LABEL = { formNo: 'Form number', rev: 'Revision', date: 'Revision date', secondary: 'Secondary approval', crs: 'Release statement', bottom: 'Approval label', approval: 'Approval number' };
+const pdbCmp = (k, v) => k === 'crs' ? String(v || '').split('\n').map(x => x.replace(/\s+/g, ' ').trim()).join('\n').trim() : String(v || '').replace(/\s+/g, ' ').trim();
+let _pdbImp = null;
+G.pdbPickFile = () => cbkEl('pdb-file').click();
+G.pdbImportFile = async function(inp) {
+  const file = inp.files && inp.files[0]; inp.value = '';
+  if (!file) return;
+  pdbStatus('Reading ' + file.name + '…');
+  try {
+    const rows = await pdbParseWorkbook(file);
+    if (!rows.length) throw new Error('No authority found in the Database tab.');
+    const byKey = new Map(_pdb.list.map(a => [pdbKey(a.name), a])), seen = new Set(), items = [];
+    let same = 0;
+    rows.forEach(r => {
+      seen.add(pdbKey(r.name));
+      const cur = byKey.get(pdbKey(r.name));
+      if (!cur) { items.push({ kind: 'new', r }); return; }
+      const diffs = PDB_IMPORT.filter(k => pdbCmp(k, cur[k]) !== pdbCmp(k, r[k]));
+      if (diffs.length) items.push({ kind: 'chg', r, cur, diffs }); else same++;
+    });
+    const missing = _pdb.list.filter(a => !seen.has(pdbKey(a.name)));
+    _pdbImp = { file: file.name, items };
+    cbkEl('pdbi-body').innerHTML =
+      `<p style="font-size:12px;margin-bottom:8px"><b>${escHtml(file.name)}</b> — ${rows.length} authorities in the file: <b>${items.filter(i => i.kind === 'new').length} new</b>, <b>${items.filter(i => i.kind === 'chg').length} changed</b>, ${same} identical` +
+      (missing.length ? `, ${missing.length} of yours not in the file (kept as they are)` : '') + `.</p>` +
+      `<p style="font-size:11px;color:var(--g600);margin-bottom:8px">Untick any line you want to keep as it is. Lines <b>customised</b> here (statements you corrected, e.g. to match Corridor) are unticked by default — tick them only if the workbook is right. Hidden authorities stay hidden; warnings you wrote are never touched.</p>` +
+      (items.length ? items.map((it, i) =>
+        `<details class="pdb-item" open><summary><label style="cursor:pointer"><input type="checkbox" class="pdbi-chk" data-i="${i}"${it.kind === 'chg' && it.cur.custom ? '' : ' checked'}/> <b>${escHtml(it.r.name)}</b></label>` +
+        `<span class="pdb-tag ${it.kind === 'new' ? '' : 'warn'}">${it.kind === 'new' ? 'NEW' : 'CHANGED: ' + escHtml(it.diffs.map(k => PDB_LABEL[k].toLowerCase()).join(', '))}</span>${it.kind === 'chg' && it.cur.custom ? '<span class="pdb-tag warn">customised here — kept unless ticked</span>' : ''}</summary><div class="pdb-body">` +
+        (it.kind === 'new' ? `<div class="pdb-prev">${pdbPreviewHtml(pdbNorm(it.r))}</div>` :
+          it.diffs.map(k => `<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:700">${PDB_LABEL[k]}</div><div class="pdbi-old">${escHtml(pdbCmp(k, it.cur[k]) || '—')}</div><div class="pdbi-new">${escHtml(pdbCmp(k, it.r[k]) || '—')}</div></div>`).join('')) +
+        `</div></details>`).join('') : '<p class="lkm-empty">Nothing to update — your list already matches this workbook.</p>');
+    cbkEl('pdbi-apply').disabled = !items.length;
+    pdbStatus(cbkMetaLabel(_pdb.meta)); openModal('modal-pln105-import');
+  } catch (e) { console.error(e); pdbStatus('❌ ' + (e.message || e), true); alert('Import failed: ' + (e.message || e)); }
+};
+G.pdbImportApply = function() {
+  if (!_pdbImp) return;
+  const chosen = Array.from(document.querySelectorAll('#pdbi-body .pdbi-chk')).filter(c => c.checked).map(c => _pdbImp.items[+c.dataset.i]);
+  chosen.forEach(it => {
+    if (it.kind === 'new') _pdb.list.push(pdbNorm({ ...it.r, id: '' }));
+    else { PDB_IMPORT.forEach(k => { it.cur[k] = it.r[k]; }); it.cur.custom = false; }
+  });
+  closeModal('modal-pln105-import');
+  pdbStatus('Saving…');
+  pdbSave(_pdbImp.file).then(() => { pdbStatus('Imported ' + chosen.length + ' line(s) from ' + _pdbImp.file + ' ✓'); pdbRenderManage(); })
+    .catch(e => { console.error(e); pdbStatus('⚠ Could not save — only admins can edit this list (' + (e.code || e.message) + ')', true); });
+};
+
+// ══════════════════════════════════════
+//  ADMIN — « Standard squawks » (Item 1 du registre OPS.208 : 1.1, 1.2…)
+// ══════════════════════════════════════
+let _psqT = null;
+function psqStatus(msg, bad) { const e = cbkEl('psq-status'); if (e) { e.textContent = msg; e.style.color = bad ? '#c0392b' : 'var(--g600)'; } }
+function psqSaveSoon() {
+  psqStatus('Saving…'); clearTimeout(_psqT);
+  _psqT = setTimeout(async () => {
+    try { await psqSave(); psqStatus('Saved ✓ — ' + cbkMetaLabel(_psq.meta)); }
+    catch (e) { console.error(e); psqStatus('⚠ Could not save — only admins can edit this list (' + (e.code || e.message) + ')', true); }
+  }, 700);
+}
+function psqRender() {
+  cbkEl('psq-meta').textContent = 'Source: ' + cbkMetaLabel(_psq.meta);
+  cbkEl('psq-list').innerHTML = _psq.list.map((s, i) =>
+    `<div class="rwk-row"><input type="text" class="rwk-no" value="${escAttr(s.no)}" oninput="psqEdit(${i},'no',this.value)"/>` +
+    `<textarea rows="2" oninput="psqEdit(${i},'text',this.value)">${escHtml(s.text)}</textarea>` +
+    `<div style="display:flex;flex-direction:column"><button type="button" class="btn-rm" style="margin-top:0" title="Move up" onclick="psqMove(${i},-1)">▴</button><button type="button" class="btn-rm" style="margin-top:0" title="Move down" onclick="psqMove(${i},1)">▾</button></div>` +
+    `<button type="button" class="btn-rm" onclick="psqDelete(${i})" title="Delete">×</button></div>`).join('') || '<p class="lkm-empty">No standard squawk — the register will only list the Step 3 tasks.</p>';
+}
+G.psqManage = async function() { const d = await psqLoad(true); psqStatus(cbkMetaLabel(d.meta)); psqRender(); openModal('modal-pln105-sq'); };
+G.psqEdit = function(i, k, v) { if (_psq.list[i]) { _psq.list[i][k] = String(v); psqSaveSoon(); } };
+G.psqMove = function(i, d) { const j = i + d, l = _psq.list; if (j < 0 || j >= l.length) return; [l[i], l[j]] = [l[j], l[i]]; psqRender(); psqSaveSoon(); };
+G.psqDelete = function(i) {
+  const s = _psq.list[i]; if (!s) return;
+  if (!confirm('Delete squawk "' + s.no + '" from the standard list?')) return;
+  _psq.list.splice(i, 1); psqRender(); psqSaveSoon();
+};
+G.psqAdd = function() {
+  const last = _psq.list[_psq.list.length - 1], n = last ? (parseInt(String(last.no).split('.')[1], 10) || _psq.list.length) + 1 : 1;
+  _psq.list.push({ no: '1.' + n, text: '' }); psqRender(); psqSaveSoon();
+  const ta = cbkEl('psq-list').querySelectorAll('textarea'); if (ta.length) ta[ta.length - 1].focus();
+};
+G.psqReset = function() {
+  if (!confirm('Replace the list by the built-in standard squawks (1.1 to 1.11)?\n\nYour edits are lost.')) return;
+  _psq.list = PLN105_SQ_SEED.map(([no, text]) => ({ no, text })); psqRender(); psqSaveSoon();
+};
+
+// Résumés du panneau Admin (et publication unique de la liste de départ dans Firebase par un admin)
+async function pdbRenderSummary() {
+  const a = cbkEl('pdb-summary-count'), s = cbkEl('psq-summary-count');
+  try { const d = await pdbLoad(true), hid = d.list.filter(x => x.hidden).length; if (a) a.textContent = d.list.length + ' authorities' + (hid ? ' (' + hid + ' hidden)' : '') + ' · ' + cbkMetaLabel(d.meta); } catch (e) { if (a) a.textContent = ''; }
+  try { const d = await psqLoad(true); if (s) s.textContent = d.list.length + ' standard squawks · ' + cbkMetaLabel(d.meta); } catch (e) { if (s) s.textContent = ''; }
+}
+
+// ══════════════════════════════════════
 //  PARTS EXTRACTION FROM EMAIL
 // ══════════════════════════════════════
 let emailInputMode = 'paste';
@@ -8389,13 +9579,14 @@ async function renderStep6Me() {
     sel.value = _pendingLeadId;
     displayLeadEngInfo(_pendingLeadId);
   }
+  G.koSyncTeamRecips?.();
 }
 async function renderStep6MeBase() {
   if (!curProfile) return;
   const snap = await get(ref(db, 'team'));
   const team = snap.exists() ? Object.values(snap.val()) : [];
   const othersOpts = ['<option value="">— Assign lead engineer —</option>',
-    ...team.filter(p => p.role !== 'ops').map(p => `<option value="${p.id}">${p.name}${p.team?' ('+p.team+')':''}</option>`)
+    ...team.filter(p => p.role !== 'ops').sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(p => `<option value="${p.id}">${p.name}${p.team?' ('+p.team+')':''}</option>`)
   ].join('');
 
   document.getElementById('poc-me-container').innerHTML = `
@@ -8415,6 +9606,7 @@ async function renderStep6MeBase() {
 
 G.onLeadEngChange = async function(sel) {
   displayLeadEngInfo(sel.value);
+  G.koSyncTeamRecips?.();
   G.autosave();
 };
 
@@ -8431,7 +9623,7 @@ async function buildColleagueOptions(selectedId='') {
   const snap = await get(ref(db, 'team'));
   let html = '<option value="">— Select colleague —</option>';
   if (snap.exists()) {
-      Object.values(snap.val()).filter(p => p.id !== curProfile?.id || p.id === selectedId).forEach(p => {
+      Object.values(snap.val()).filter(p => p.id !== curProfile?.id || p.id === selectedId).sort((a, b) => (a.name || '').localeCompare(b.name || '')).forEach(p => {
       html += `<option value="${p.id}" ${p.id===selectedId?'selected':''}>${p.name}${p.team?' ('+p.team+')':''}</option>`;
     });
   }
@@ -8453,12 +9645,13 @@ G.addColleagueSlot = async function(colleagueId='') {
   document.getElementById('btn-add-poc').style.display = colleagueSlotCount >= 2 ? 'none' : '';
   const opts = await buildColleagueOptions(colleagueId);
   d.querySelector('.coll-sel').innerHTML = opts;
-  if (colleagueId) displayColleagueInfo(d.querySelector('.coll-info'), colleagueId);
+  if (colleagueId) { displayColleagueInfo(d.querySelector('.coll-info'), colleagueId); G.koSyncTeamRecips?.(); }
 };
 
 G.onColleagueSelect = async function(sel) {
   const block = sel.closest('.poc-block');
   displayColleagueInfo(block.querySelector('.coll-info'), sel.value);
+  G.koSyncTeamRecips?.();
   G.autosave();
 };
 
@@ -8473,6 +9666,7 @@ async function displayColleagueInfo(el, id) {
 G.removeColleagueSlot = function(id) {
   const el = document.getElementById(id); if(el) el.remove(); colleagueSlotCount--;
   document.getElementById('btn-add-poc').style.display = '';
+  G.koSyncTeamRecips?.();
   G.autosave();
 };
 
@@ -8668,6 +9862,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
     fillOrKeep('f_sn',parsed.serial_number);
     fillOrKeep('f_reg',parsed.registration);
     fillOrKeep('f_loc',parsed.location);
+    koAptAfterScan('f_loc');    
     fillOrKeep('f_country',parsed.country);
     fillOrKeep('f_far',parsed.far_certification||'');
     fillOrKeep('f_fbo',parsed.fbo);
@@ -9371,7 +10566,7 @@ G.closeModal = function(id){
 document.querySelectorAll('.modal-bg').forEach(m=>{
   // GA3671 (trop de champs) et AMM Task Reader (session de scan en cours dans l'iframe) —
   // fermeture uniquement via leur propre bouton "✕ Close" / "Annuler" / "Générer".
-  if (m.id === 'modal-repair-tag' || m.id === 'modal-amm-reader' || m.id === 'modal-save-conflict') return;
+  if (m.id === 'modal-repair-tag' || m.id === 'modal-amm-reader' || m.id === 'modal-save-conflict' || m.classList.contains('cbk-keep')) return;
   m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
 });
 
@@ -9739,7 +10934,7 @@ if ('serviceWorker' in navigator) {
 //  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
 //  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v33';
+const CURRENT_VERSION = 'v34';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -10041,12 +11236,14 @@ async function koLoadAirlines() {
       { name: 'Air France',        number: '' },
       { name: 'Lufthansa',   number: '' },
     ];
-  } catch(e) { KO.airlines = [] }
+    if (!Array.isArray(KO.airlines)) KO.airlines = Object.values(KO.airlines || {});
+    KO._airlinesLoaded = true;
+  } catch(e) { console.warn('koLoadAirlines failed:', e); KO.airlines = KO.airlines || []; }
   koRenderAirlines();
 }
 
 async function koSaveAirlines() {
-  if (!curProfile) return;
+  if (!curProfile || !KO._airlinesLoaded) return; // never overwrite saved numbers if the load failed
   try {
     await set(ref(db, 'team/' + curProfile.id + '/airlines'), KO.airlines);
   } catch(e) { console.warn('koSaveAirlines failed:', e); }
@@ -10159,7 +11356,7 @@ function koBuildStateSnapshot() {
     'kofbo_steps','kofbo_steps_engine','kofbo_hangar','kofbo_lavatory','kofbo_hpbay',
     'kofbo_q_days','kofbo_q_confirm','kofbo_q_shipping','kofbo_q_parts_delivery','kofbo_q_importer','kofbo_q_transport','kofbo_q_access_docs','kofbo_q_toolbox_docs',
     'koq_broker','koq_hours','koq_po','koq_next_flight','koq_keys','koq_fbo_name','koq_fbo_mail',
-    'koq_contact','koq_login','koq_troubleshoot','koq_cas','koq_fhdb',
+    'koq_contact','koq_login','koq_ac_eta','koq_pc_location','koq_software_location','koq_troubleshoot','koq_cas','koq_fhdb',
     'koq_techops','koq_self_parts','koq_handcarry','koq_order_before_tshoot',
     'koq_part135_training','koq_part135_roster','koq_part135_rts','koq_part135_gmm',
     'kofbo_doc_passport','kofbo_doc_photo','kofbo_doc_ibac',
@@ -10466,6 +11663,7 @@ G.openKickoff = async function(forceWo) {
   koRenderAllRecips();
   koInitToggles();
   await koRestoreState(forceWo);
+  await G.koSyncTeamRecips?.();
   document.querySelectorAll('#ko-parts-tbody .ko-desc-ta').forEach(koAutoGrow);
 
   // Auto-add scanned customer email to customer recipients if not already present
@@ -10547,6 +11745,10 @@ function koRenderRecips(type) {
       <span class="ko-tag ko-tag-qatar">
         ⭐ ${e}
       </span>`),
+    ...(KO.recips[type].team||[]).map(e => `
+      <span class="ko-tag ko-tag-fixed" title="Added from Step 6 team">
+        👥 ${e}
+      </span>`),
     ...extra.map((e, i) => `
       <span class="ko-tag ko-tag-extra">
         ${e}
@@ -10578,7 +11780,7 @@ G.koRemoveRecip = function(type, i) {
 };
 
 function koGetAllRecips(type) {
-  const base = [...KO.recips[type].fixed, ...KO.recips[type].extra, ...(KO.recips[type].qatar||[])];
+  const base = [...new Set([...KO.recips[type].fixed, ...KO.recips[type].extra, ...(KO.recips[type].qatar||[]), ...(KO.recips[type].team||[])])];
   if (type === 'parts') {
     const parts = koGetParts();
     const hasTool = parts.some(p => p.cat === 'Tool');
@@ -10588,6 +11790,29 @@ function koGetAllRecips(type) {
   }
   return base;
 }
+
+// Step 6 team (lead if not me + assist engineers) -> their emails are added to Customer / Travel / Parts / FBO
+async function koSyncTeamRecips() {
+  try {
+    const ids = [];
+    const lead = document.getElementById('lead-eng-sel')?.value;
+    if (lead) ids.push(lead);
+    document.querySelectorAll('.colleague-slot .coll-sel').forEach(s => { if (s.value) ids.push(s.value); });
+    const snap = await get(ref(db, 'team'));
+    const byId = {};
+    Object.entries(snap.exists() ? snap.val() : {}).forEach(([k, p]) => { byId[k] = p; if (p && p.id) byId[p.id] = p; });
+    const emails = [...new Set(ids
+      .filter(id => id !== curProfile?.id)
+      .map(id => ((byId[id] && byId[id].email) || '').trim())
+      .filter(e => e.includes('@')))];
+    ['customer','travel','parts','fbo'].forEach(type => {
+      KO.recips[type].team = emails.filter(e => !KO.recips[type].fixed.includes(e));
+      koRenderRecips(type);
+    });
+    koUpdatePreview();
+  } catch(e) { console.warn('koSyncTeamRecips failed:', e); }
+}
+G.koSyncTeamRecips = koSyncTeamRecips;
 
 // ══════════════════════════════════════
 //  QATAR EXECUTIVE — extra recipients on Customer Update & Part Request only
@@ -10769,6 +11994,7 @@ window.koAutoCheckColleague = function(name) {
 // Fetch colleague phone from Firebase team list when name is typed
 // (matches by name — best effort)
 window.koFetchColleaguePhone = async function(name) {
+  KO._colleagueAirlines = []; KO._colleagueAirlinesFor = '';
   if (!name || name === '__not_decided__') { KO._colleaguePhone = ''; KO._colleagueFN = ''; return; }
   try {
     const snap = await get(ref(db, 'team'));
@@ -10778,7 +12004,11 @@ window.koFetchColleaguePhone = async function(name) {
     );
     KO._colleaguePhone = match?.phone || '';
     KO._colleagueFN = match?.fnNumber || '';
+    const rawAir = match?.airlines;
+    KO._colleagueAirlines = (Array.isArray(rawAir) ? rawAir : Object.values(rawAir || {})).filter(a => a && a.number);
+    KO._colleagueAirlinesFor = name.toLowerCase().trim();
   } catch(e) { KO._colleaguePhone = ''; KO._colleagueFN = ''; }
+  koUpdatePreview();   // refresh the Travel draft now that the colleague's numbers are known
 }
 
 // ══════════════════════════════════════
@@ -11267,12 +12497,14 @@ G.koAddAirline = function() {
   if (!name) return;
   KO.airlines.push({ name, number: '' });
   koRenderAirlines();
+  koSaveAirlines();
   inp.value = '';
 };
 
 G.koDelAirline = function(i) {
   KO.airlines.splice(i, 1);
   koRenderAirlines();
+  koSaveAirlines();
 };
 
 // ══════════════════════════════════════
@@ -11418,8 +12650,9 @@ G.koResetDraftPreview = function(type) {
 // Copy the subject + body of a draft to clipboard
 G.koCopyDraft = async function(type) {
   const bodyEl = document.getElementById('ko-prev-body-' + type);
-  const body = bodyEl?.value || koComputeBodies()[type];
-  const htmlBody = `<div style="line-height:1.6;white-space:pre-wrap">${koFormatEmailHtml(body)}</div>`;
+  const edited = bodyEl?.dataset.userEdited === '1';
+  const body = edited ? bodyEl.innerText : koComputeBodies()[type];
+  const htmlBody = `<div style="line-height:1.6;white-space:pre-wrap">${edited ? koSanitizeDraftHtml(bodyEl.innerHTML) : koFormatEmailHtml(body)}</div>`;
   const btn = event.target;
   const orig = btn.textContent;
   try {
@@ -11444,11 +12677,20 @@ G.koCopyDraft = async function(type) {
   setTimeout(() => { btn.textContent = orig; }, 2000);
 };
 
+// Frequent flyer numbers of whoever travels: me, or - in colleague mode - the colleague picked
+// from the list (numbers from their own profile, loaded by koFetchColleaguePhone). A typed-in name gets none.
+function koTravelerAirlines() {
+  if (!document.getElementById('ko-colleague-toggle')?.checked) return (KO.airlines || []).filter(a => a && a.number);
+  const picked = (document.getElementById('ko_colleague_name')?.value || '').trim().toLowerCase();
+  if (!picked || picked === '__not_decided__' || KO._colleagueAirlinesFor !== picked) return [];
+  return KO._colleagueAirlines || [];
+}
+
 function koUpdatePreview() {
   const subs = koComputeSubjects();
   const icao = document.getElementById('ko_icao')?.value || '';
 
-  const loyalty = KO.airlines.filter(a=>a.number).map(a=>`${a.name}: ${a.number}`).join(', ');
+  const loyalty = koTravelerAirlines().map(a=>`${a.name}: ${a.number}`).join(', ');
   const recipSummary = (type) => {
     const all = koGetAllRecips(type);
     if (!all.length) return 'No recipients';
@@ -11533,6 +12775,7 @@ function koBuildCustomerBody() {
     );
   }  
   if (q('koq_keys'))   questions.push('- Location of the aircraft keys');
+  if (q('koq_ac_eta')) questions.push(`- Could you please confirm the estimated time of arrival (ETA) of the aircraft at ${icao}?`);  
   if (q('koq_fbo_name')) questions.push(`- Could you please provide the name of the FBO handling the aircraft at ${icao || '[ICAO]'}?`);
   if (q('koq_fbo_mail')) questions.push(`- Could you please send an authorisation email to the FBO at ${icao || '[ICAO]'} confirming our upcoming maintenance intervention?`);
   if (q('koq_contact'))  questions.push(`- Could you please provide the name and phone number of the crew member who will meet ${colleagueMode ? (notDecided ? 'our engineer' : colleagueName) : 'me'} at the aircraft?`);
@@ -11661,11 +12904,10 @@ function koBuildTravelBody() {
   const travelerSubj = colleagueMode ? 'They' : 'I';
   const travelerPoss  = colleagueMode ? 'their' : 'my';
 
-  // Tes numéros grand voyageur n'ont aucun sens (voire induisent en erreur)
-  // si c'est un collègue qui voyage — on ne les affiche que si tu voyages toi-même.
-  const loys  = colleagueMode ? [] : KO.airlines.filter(a => a.number);
+  // Numéros grand voyageur de la personne qui voyage : les tiens, ou (mode collègue) ceux de SON profil.
+  const loys  = koTravelerAirlines();
   const loyaltyBlock = loys.length
-    ? `\nFor reference, my frequent flyer numbers:\n` + loys.map(a => `- ${a.name}: ${a.number}`).join('\n') + '\n'
+    ? `\nFor reference, ${colleagueMode ? travelerName + "'s" : 'my'} frequent flyer numbers:\n` + loys.map(a => `- ${a.name}: ${a.number}`).join('\n') + '\n'
     : '';
 
   const cabinMap = { both: 'Economy and Business class', eco: 'Economy class only', business: 'Business class only' };
@@ -11688,8 +12930,8 @@ function koBuildTravelBody() {
 
   const isAvailability = KO.flightReqType === 'AVAILABILITY';
   const askLine = isAvailability
-    ? `Could you please share all available flight options (${cabinTxt}) from ${from} to ${to}${dateLine} for a maintenance mission${travelerName ? ' — travelling engineer: ' + travelerName : ''}.${timeLine}`
-    : `Could you please book a flight (${cabinTxt}) from ${from} to ${to}${dateLine} for a maintenance mission${travelerName ? ' — travelling engineer: ' + travelerName : ''}.${timeLine}${flightDetail ? `\nSpecific flight requested: ${flightDetail}.` : ''}`;
+    ? `Could you please share all available flight options (${cabinTxt}) from ${koAptForMail(from)} to ${koAptForMail(to)}${dateLine} for a maintenance mission${travelerName ? ' — travelling engineer: ' + travelerName : ''}.${timeLine}`
+    : `Could you please book a flight (${cabinTxt}) from ${koAptForMail(from)} to ${koAptForMail(to)}${dateLine} for a maintenance mission${travelerName ? ' — travelling engineer: ' + travelerName : ''}.${timeLine}${flightDetail ? `\nSpecific flight requested: ${flightDetail}.` : ''}`;
   const closingLine = isAvailability
     ? 'Please prioritise direct flights when possible. Once you send the options over, I will confirm which one to book.'
     : 'Please prioritise direct flights when possible.';
@@ -12023,7 +13265,7 @@ G.koGenerate = async function() {
     const subjEl = document.getElementById('ko-prev-subj-' + type);
     const bodyEl = document.getElementById('ko-prev-body-' + type);
     subjects[type] = (subjEl?.dataset.userEdited === '1') ? subjEl.value : autoSubjects[type];
-    bodies[type]   = (bodyEl?.dataset.userEdited === '1') ? bodyEl.value : autoBodies[type];
+    bodies[type]   = koDraftBodyHtml(type, autoBodies[type]);
   });
 
   const btn = document.getElementById('ko-gen-btn');
@@ -12058,7 +13300,7 @@ G.koGenerate = async function() {
       const toAddrs = koGetAllRecips(type);
       const subject = subjects[type];
       const body    = bodies[type];    
-      const htmlBody = `<html><body style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;white-space:pre-wrap">${koFormatEmailHtml(body)}${koBuildSignatureHtml()}</body></html>`;
+      const htmlBody = `<html><body style="font-family:Arial,sans-serif;font-size:13px;line-height:1.6;white-space:pre-wrap">${body}${koBuildSignatureHtml()}</body></html>`;
       const encoded = buildRfc2822(toAddrs, subject, htmlBody);
 
       const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/drafts', {
@@ -12118,7 +13360,14 @@ document.addEventListener('input', e => {
         KO.airlines[i].number = e.target.value;
       }
     });
+    clearTimeout(window._koAirTimer);
+    window._koAirTimer = setTimeout(koSaveAirlines, 800); // auto-save while typing
   }
+});
+
+// ── Save airline numbers when the app goes to background / is closed
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') { clearTimeout(window._koAirTimer); koSaveAirlines(); }
 });
 
 // ── Auto-save kickoff state on any input or checkbox change
@@ -13066,7 +14315,7 @@ function koRenderShipAddrChips() {
 
   wrap.innerHTML = airports.map(airport => {
     return `<div style="width:100%;margin-bottom:4px">
-      <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">✈️ ${airport}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">✈️ ${airport}${koAptTag(airport)}</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         ${groups[airport].map(a => `
           <button onclick="koUseShipAddr(${a._idx})" style="font-size:12px;padding:5px 11px;border-radius:20px;cursor:pointer;border:1px solid var(--blue);background:#fff;color:var(--blue)">
@@ -13103,7 +14352,7 @@ function renderShipAddrManageList() {
   const airports = Object.keys(groups).sort();
 
   list.innerHTML = airports.map(airport => {
-    return `<div style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin:10px 0 5px">✈️ ${airport}</div>` +
+    return `<div style="font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin:10px 0 5px">✈️ ${airport}${koAptTag(airport)}</div>` +
       groups[airport].map(a => `
         <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:6px 8px;margin-bottom:5px">
           <input type="text" value="${(a.airport||'').replace(/"/g,'&quot;')}" placeholder="ICAO" oninput="koShipAddrEdit(${a._idx},'airport',this.value.toUpperCase())" style="flex:0 0 70px;font-size:11px;padding:4px 6px;text-transform:uppercase"/>
@@ -13150,6 +14399,354 @@ G.koDeleteShipAddr = function(i) {
 async function koSaveShipAddrCatalog() {
   try { await set(ref(db, 'config/shippingAddresses'), KO_SHIPADDR); } catch(e) { console.warn(e); }
 }
+
+// ══════════════════════════════════════
+//  AIRPORT DATABASE — ICAO / IATA / city lookup
+//  Data lives in airports.js (window.KO_AIRPORTS_DATA — one airport per line:
+//  ICAO|IATA|City|Name|Country|Rank|Alt terms|Former codes). Source: OurAirports (public domain).
+//  Fields with a label + suggestions: Step 2 "A/C Location", Start Job "ICAO airport", Travel From / To.
+//  Helpers called from elsewhere in index.html:
+//    koAptAfterScan(id)   RFS / Work Order scan          koAptForMail(text)  Travel email body -> "Nice-Côte d'Azur (NCE / LFMN)"
+//    koAptCityIcao(text)  customer intro + AI facts -> "Nice (LFMN)"          koAptTag(code)      shipping headings -> " — Nice"
+//  Travel email BODY only: an airfield without airline service (Le Bourget, Teterboro...) is replaced by the closest
+//  airport that has some (LFPB -> Paris CDG). The data says which one (last field of each line, e.g. LFPG:10 = 10 km).
+//  Email SUBJECTS are never touched: they keep the raw 4-letter code typed in the fields.
+//  If airports.js is missing, everything below silently does nothing.
+// ══════════════════════════════════════
+const KO_APT = { ready: false, list: [], byIcao: new Map(), byIata: new Map(), byFormer: new Map(), byCity: new Map(), warned: false };
+const KO_APT_FIELDS = {
+  f_loc:          { mode: 'icao' },                     // Step 2 — A/C Location (ICAO)
+  ko_icao:        { mode: 'icao' },                     // Start Job — ICAO airport
+  ko_travel_from: { mode: 'travel', label: 'From' },    // Travel request — From
+  ko_travel_to:   { mode: 'travel', label: 'To' }       // Travel request — To
+};
+
+// ── 1. Data + index ──────────────────────
+function koAptNorm(s) {
+  s = String(s ?? '').toLowerCase();
+  if (/[^\x00-\x7f]/.test(s)) {   // accents etc. only — most strings are plain ASCII, which keeps the first index build fast
+    s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[łŀ]/g, 'l').replace(/ø/g, 'o').replace(/[đð]/g, 'd').replace(/ı/g, 'i')
+      .replace(/ß/g, 'ss').replace(/æ/g, 'ae').replace(/œ/g, 'oe').replace(/þ/g, 'th');
+  }
+  return s.replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function koAptLoad() {
+  if (KO_APT.ready) return true;
+  const raw = window.KO_AIRPORTS_DATA;
+  if (typeof raw !== 'string' || !raw) {
+    if (!KO_APT.warned) { KO_APT.warned = true; console.warn('airports.js not loaded — airport hints are disabled'); }
+    return false;
+  }
+  for (const line of raw.split(/\r?\n/)) {
+    if (!line) continue;
+    const f = line.split('|');
+    const icao = f[0] || '', iata = f[1] || '';
+    if (!icao && !iata) continue;
+    const a = {
+      icao, iata, city: f[2] || '', name: f[3] || '', cc: f[4] || '',
+      rank: parseInt(f[5], 10) || 1,
+      former: f[7] ? f[7].split(' ') : [],
+      near: f[8] ? { code: f[8].split(':')[0], km: parseInt(f[8].split(':')[1], 10) || 0 } : null   // closest airport with airline service
+    };
+    a.qc  = koAptNorm(a.city);
+    a.hay = ' ' + koAptNorm(a.city + ' ' + a.name + ' ' + (f[6] || ''));
+    KO_APT.list.push(a);
+    if (icao) KO_APT.byIcao.set(icao, a);
+    if (iata) KO_APT.byIata.set(iata, a);
+    for (const c of a.former) KO_APT.byFormer.set(c, a);
+    // 3-4 letter city names ("Faro", "Sylt", "Hof") can also be somebody else's code: remembered to avoid guessing wrong
+    if (/^[a-z]{3,4}$/.test(a.qc)) {
+      const l = KO_APT.byCity.get(a.qc);
+      if (l) l.push(a); else KO_APT.byCity.set(a.qc, [a]);
+    }
+  }
+  KO_APT.ready = KO_APT.list.length > 0;
+  return KO_APT.ready;
+}
+
+// ── 2. Resolving a code (never guesses) ──
+// Exact code -> airport (current ICAO, current IATA, then former codes such as KPBI)
+function koAptByCode(code) {
+  const c = String(code || '').trim().toUpperCase();
+  return KO_APT.byIcao.get(c) || KO_APT.byIata.get(c) || KO_APT.byFormer.get(c) || null;
+}
+
+// Every word of the text starts a word of the airport's city / name
+function koAptTextMatches(a, text) {
+  const toks = koAptNorm(text).split(' ').filter(Boolean);
+  return toks.length > 0 && toks.every(w => a.hay.indexOf(' ' + w) !== -1);
+}
+
+// Resolves ONLY unambiguous input: a bare code ("LFMN", "nce") or text ending with a code in brackets
+// ("Nice (NCE)", "Nice-Côte d'Azur (NCE / LFMN)"). Free text is never guessed, and neither is a bare word
+// that is also a city name elsewhere ("Faro" is the ICAO code FARO in South Africa, but Faro is in Portugal).
+function koAptResolve(raw) {
+  if (!koAptLoad()) return null;
+  const v = String(raw ?? '').trim();
+  if (!v) return null;
+  const m = v.match(/^(.*?)\(([^()]*)\)\s*$/);
+  if (m) {
+    const before = m[1].trim();
+    for (const t of m[2].split(/[^A-Za-z0-9]+/)) {
+      if (!/^[A-Za-z]{3,4}$/.test(t)) continue;
+      const a = koAptByCode(t);
+      if (a && (!before || koAptTextMatches(a, before))) return a;   // "Bangkok (TBC)" must not become Tuba City
+    }
+    return null;
+  }
+  if (!/^[A-Za-z]{3,4}$/.test(v)) return null;
+  const a = koAptByCode(v);
+  if (!a) return null;
+  const cities = KO_APT.byCity.get(koAptNorm(v));
+  return cities && cities.some(x => x !== a) ? null : a;
+}
+
+// ── 3. Wording for emails, intro and headings ──
+function koAptPlace(a) {
+  if (a.city && a.name) return koAptNorm(a.name).includes(koAptNorm(a.city)) ? a.name : a.city + ' – ' + a.name;
+  return a.city || a.name || a.icao || a.iata;
+}
+function koAptCodes(a)   { return [a.iata, a.icao].filter(Boolean).join(' / '); }
+function koAptCountry(a) { return (window.KO_AIRPORTS_COUNTRIES || {})[a.cc] || a.cc || ''; }
+
+// You cannot book a flight to an airfield without airline service (Le Bourget, Teterboro, Cannes-Mandelieu...):
+// the data names the closest airport that has some (Le Bourget -> Paris CDG). An airport with service returns itself.
+function koAptBookable(a) {
+  if (!a || !a.near) return a;
+  const b = koAptByCode(a.near.code);
+  return b && b !== a ? b : a;
+}
+
+// Travel email wording, e.g. "Paris – Charles de Gaulle (CDG / LFPG)" for LFPB. Anything that isn't a clear code is returned untouched.
+function koAptForMail(raw) {
+  const a = koAptBookable(koAptResolve(raw));
+  return a ? koAptPlace(a) + ' (' + koAptCodes(a) + ')' : raw;
+}
+// What a tapped suggestion writes into the Travel fields: "Paris (LFPB)". The 4-letter ICAO goes in the brackets
+// because the email subject takes the code between brackets (koExtractAirportCode) and must stay 4 letters.
+function koAptTravelValue(a) {
+  const code = a.icao || a.iata;
+  // no parenthesis inside the place name: the subject takes the FIRST "(...)" of the field as the airport code
+  const place = (a.city || a.name || '').replace(/\s*\([^)]*\)/g, '').replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
+  return place ? place + ' (' + code + ')' : code;
+}
+// Customer-facing wording, e.g. "Nice (LFMN)" (intro message, AI facts). Anything that isn't a clear code is returned untouched.
+function koAptCityIcao(raw) {
+  const a = koAptResolve(raw);
+  return a ? koAptTravelValue(a) : raw;
+}
+// Short " — Nice" tag for headings that only show an ICAO code (HTML-safe, empty if unknown)
+function koAptTag(code) {
+  const a = koAptResolve(code);
+  return a && a.city ? ' — ' + escHtml(a.city) : '';
+}
+
+// ── 4. Search (suggestions) ──────────────
+function koAptSearch(query, limit) {
+  if (!koAptLoad()) return [];
+  const q = String(query ?? '').trim();
+  const qn = koAptNorm(q);
+  if (qn.length < 2) return [];
+  const up = q.toUpperCase();
+  const isCode = /^[A-Z]{2,4}$/.test(up);
+  const clash = isCode && KO_APT.byCity.has(qn);   // "faro": also a city -> the city wins over the foreign code
+  const toks = qn.split(' ');
+  const out = [];
+  for (const a of KO_APT.list) {
+    let s = 0, via = '';
+    if (isCode) {
+      if (a.icao === up || a.iata === up) s = clash ? 650 : 1000;
+      else if (a.former.indexOf(up) !== -1) { s = clash ? 640 : 900; via = up; }
+      else if ((a.icao && a.icao.startsWith(up)) || (a.iata && a.iata.startsWith(up))) s = 400;
+    }
+    if (s < 700) {
+      let t = 0;
+      if (a.qc === qn) t = 700;
+      else if (a.qc.startsWith(qn)) t = 600;
+      else if (toks.every(w => a.hay.indexOf(' ' + w) !== -1)) t = 500;
+      else if (qn.length >= 3 && a.hay.indexOf(qn) !== -1) t = 200;
+      if (t > s) { s = t; via = ''; }
+    }
+    if (s) out.push({ a, s: s + a.rank * 12, via });
+  }
+  out.sort((x, y) => (y.s - x.s) || (x.a.icao || x.a.iata).localeCompare(y.a.icao || y.a.iata));
+  return out.slice(0, limit || 6);
+}
+
+// ── 5. Field UI: label under the field + suggestions ──
+function koAptCss() {
+  if (document.getElementById('apt-css')) return;
+  const st = document.createElement('style');
+  st.id = 'apt-css';
+  st.textContent =
+    '.apt-box{margin-top:4px;font-size:12px;line-height:1.35}' +
+    '.apt-box:empty{display:none}' +
+    '.apt-res{display:flex;gap:6px;align-items:flex-start;padding:5px 8px;margin-top:3px;border-radius:var(--r);background:var(--gl);border:1px solid var(--gb);color:var(--gd)}' +
+    '.apt-res.warn{background:var(--al);border-color:#e6d28a;color:var(--amb)}' +
+    '.apt-sub{color:var(--g600);font-size:11px}' +
+    '.apt-cap{font-size:11px;color:var(--g600);margin:4px 0 2px}' +
+    '.apt-sug{display:flex;flex-direction:column;gap:3px;margin-top:3px}' +
+    '.apt-item{display:flex;gap:8px;align-items:baseline;width:100%;text-align:left;padding:7px 9px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;color:var(--g800);cursor:pointer;font-size:12px;font-family:inherit}' +
+    '.apt-item:hover,.apt-item:active{background:var(--gl);border-color:var(--gb)}' +
+    '.apt-code{flex:0 0 auto;min-width:40px;font-weight:700;color:var(--gd)}';
+  document.head.appendChild(st);
+}
+
+function koAptBox(el) {
+  const cfg = KO_APT_FIELDS[el.id];
+  const key = cfg.mode === 'travel' ? 'travel' : el.id;
+  let box = document.getElementById('apt-box-' + key);
+  if (box && box.isConnected) return box;
+  box = document.createElement('div');
+  box.id = 'apt-box-' + key;
+  box.className = 'apt-box';
+  const anchor = cfg.mode === 'travel' ? (el.closest('.ko-g3') || el.parentElement) : el;
+  anchor.insertAdjacentElement('afterend', box);
+  return box;
+}
+
+function koAptWarnHtml(v) {
+  return '<div class="apt-res warn"><span>⚠️</span><span>No airport found for “' + escHtml(v.toUpperCase()) + '” — check the code</span></div>';
+}
+
+function koAptResHtml(a, prefix, typed, site) {
+  const sub = [koAptCodes(a), koAptCountry(a)].filter(Boolean).join(' · ');
+  const now = typed && typed !== a.icao && typed !== a.iata ? ' · ' + typed + ' is now ' + (a.icao || a.iata) : '';
+  // Travel fields: a = the airport the email will name, site = the airfield that was typed (no airline service)
+  const via = site && site !== a
+    ? '<br><span class="apt-sub">' + escHtml((site.icao || site.iata) + ' has no airline service — the email names the closest airport that has some (≈ ' + (site.near ? site.near.km : '?') + ' km)') + '</span>'
+    : '';
+  return '<div class="apt-res"><span>📍</span><span>' + (prefix ? '<b>' + escHtml(prefix) + ':</b> ' : '') +
+    escHtml(koAptPlace(a)) + ' <span class="apt-sub">' + escHtml(sub + now) + '</span>' + via + '</span></div>';
+}
+
+function koAptSugHtml(res, fieldId, mode, v) {
+  if (!res.length) return mode === 'icao' && /^[A-Za-z]{3,4}$/.test(v) ? koAptWarnHtml(v) : '';
+  return '<div class="apt-sug">' + res.map(r => {
+    const a = r.a;
+    const code = a.icao || a.iata;
+    const mail = mode === 'travel' ? koAptBookable(a) : a;
+    const sub = [mode === 'travel' ? koAptCodes(a) : (a.iata || ''), koAptCountry(a)].filter(Boolean).join(' · ') +
+      (r.via ? ' · was ' + r.via : '') + (mail !== a ? ' · email: ' + (mail.iata || mail.icao) : '');
+    return '<button type="button" class="apt-item" data-apt-field="' + escHtml(fieldId) + '" data-apt-key="' + escHtml(a.icao || a.iata) + '">' +
+      '<span class="apt-code">' + escHtml(code) + '</span>' +
+      '<span>' + escHtml(koAptPlace(a)) + ' <span class="apt-sub">' + escHtml(sub) + '</span></span></button>';
+  }).join('') + '</div>';
+}
+
+// Travel From / To share one box under the row: what will be written in the email + suggestions for the active field
+function koAptRenderTravel(activeEl, passive) {
+  const box = koAptBox(activeEl);
+  let html = '';
+  for (const id of ['ko_travel_from', 'ko_travel_to']) {
+    const f = document.getElementById(id);
+    if (!f) continue;
+    f._aptSeen = f.value;
+    const site = koAptResolve(f.value);
+    if (site) html += koAptResHtml(koAptBookable(site), KO_APT_FIELDS[id].label, '', site);
+  }
+  if (!passive) {
+    const v = (activeEl.value || '').trim();
+    if (v && !koAptResolve(v)) {
+      const sug = koAptSugHtml(koAptSearch(v), activeEl.id, 'travel', v);
+      if (sug) html += '<div class="apt-cap">Suggestions for “' + escHtml(KO_APT_FIELDS[activeEl.id].label) + '”</div>' + sug;
+    }
+  }
+  box.innerHTML = html;
+}
+
+function koAptRender(el, passive) {
+  const cfg = KO_APT_FIELDS[el.id];
+  if (!cfg || !koAptLoad()) return;
+  koAptCss();
+  if (cfg.mode === 'travel') { koAptRenderTravel(el, passive); return; }
+  const box = koAptBox(el);
+  el._aptSeen = el.value;
+  const v = (el.value || '').trim();
+  if (!v) { box.innerHTML = ''; return; }
+  const a = koAptResolve(v);
+  if (a) {
+    let html = koAptResHtml(a, '', /^[A-Za-z]{3,4}$/.test(v) ? v.toUpperCase() : '');
+    // 3 letters can be an IATA code *or* the start of a city name: keep suggestions visible while typing
+    if (!passive && /^[A-Za-z]{3}$/.test(v)) {
+      html += koAptSugHtml(koAptSearch(v, 7).filter(r => r.a !== a).slice(0, 5), el.id, 'icao', v);
+    }
+    box.innerHTML = html;
+    return;
+  }
+  box.innerHTML = koAptSugHtml(koAptSearch(v), el.id, 'icao', v);
+}
+
+// ICAO fields only: a bare IATA code ("NCE", "BOU") becomes its ICAO code ("LFMN", "LFLD")
+function koAptNormalizeIata(el, silent) {
+  const cfg = KO_APT_FIELDS[el.id];
+  if (!cfg || cfg.mode !== 'icao' || !koAptLoad()) return;
+  const v = (el.value || '').trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(v)) return;
+  const a = koAptResolve(v);
+  if (!a || a.iata !== v || !a.icao) return;
+  el.value = a.icao;
+  if (!silent) el.dispatchEvent(new Event('input', { bubbles: true }));   // same side effects as typing (autosave, preview…)
+}
+
+function koAptPick(fieldId, key) {
+  const el = document.getElementById(fieldId);
+  const cfg = KO_APT_FIELDS[fieldId];
+  if (!el || !cfg || !koAptLoad()) return;
+  const a = koAptByCode(key);
+  if (!a) return;
+  el.value = cfg.mode === 'travel' ? koAptTravelValue(a) : (a.icao || a.iata);
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  koAptRender(el, true);
+  el.blur();
+}
+
+// Called right after an RFS / Work Order / WCR scan filled the field programmatically
+function koAptAfterScan(id) {
+  const el = document.getElementById(id);
+  if (!el || !koAptLoad()) return;
+  koAptNormalizeIata(el, true);
+  koAptRender(el, true);
+}
+
+// ── 6. Wiring: events + refresh of fields filled by code ──
+const koAptIsField = el => !!(el && el.id && Object.prototype.hasOwnProperty.call(KO_APT_FIELDS, el.id));
+document.addEventListener('input',   e => { if (koAptIsField(e.target)) koAptRender(e.target, false); });
+document.addEventListener('focusin', e => { if (koAptIsField(e.target)) koAptRender(e.target, false); });
+document.addEventListener('focusout', e => {
+  const el = e.target;
+  if (!koAptIsField(el)) return;
+  clearTimeout(el._aptTimer);
+  // small delay so a tap on a suggestion is not lost when the field loses focus first
+  el._aptTimer = setTimeout(() => {
+    if (document.activeElement === el) return;
+    koAptNormalizeIata(el, false);
+    koAptRender(el, true);
+  }, 250);
+});
+// keep the field focused when tapping a suggestion (no keyboard flicker on mobile)
+document.addEventListener('mousedown', e => { if (e.target.closest && e.target.closest('.apt-box')) e.preventDefault(); });
+document.addEventListener('click', e => {
+  const b = e.target.closest ? e.target.closest('.apt-item') : null;
+  if (b) koAptPick(b.dataset.aptField, b.dataset.aptKey);
+});
+
+// Fields filled by code (scan, project load, Start Job hand-over…) never fire an input event:
+// a light check refreshes their label. It only runs once the database is loaded.
+setInterval(() => {
+  if (document.visibilityState !== 'visible' || !KO_APT.ready) return;
+  for (const id in KO_APT_FIELDS) {
+    const el = document.getElementById(id);
+    if (el && el !== document.activeElement && el.value !== (el._aptSeen === undefined ? '' : el._aptSeen)) koAptRender(el, true);
+  }
+}, 1000);
+// Build the search index during idle time so the first keystroke is instant
+(function () {
+  const warm = () => setTimeout(() => (window.requestIdleCallback || setTimeout)(koAptLoad), 1500);
+  if (document.readyState === 'complete') warm(); else window.addEventListener('load', warm);
+})();
 
 // ── Suggestions ICAO en direct (Step 2 f_loc + Start Job ko_icao) — réutilise
 // KO_SHIPADDR/config/shippingAddresses, pas de nouvelle source de données.
@@ -16288,7 +17885,7 @@ G.koNewJob = async function(keepAircraftInfo = true) {
     'kofbo_steps','kofbo_steps_engine','kofbo_hangar','kofbo_lavatory','kofbo_hpbay',
     'kofbo_q_days','kofbo_q_confirm','kofbo_q_shipping','kofbo_q_parts_delivery','kofbo_q_importer','kofbo_q_transport','kofbo_q_access_docs','kofbo_q_toolbox_docs',
     'koq_broker','koq_hours','koq_po','koq_next_flight','koq_keys','koq_fbo_name','koq_fbo_mail',
-    'koq_contact','koq_pc_location','koq_software_location','koq_login','koq_troubleshoot','koq_cas','koq_fhdb',
+    'koq_contact','koq_pc_location','koq_software_location','koq_ac_eta','koq_login','koq_troubleshoot','koq_cas','koq_fhdb',
     'koq_techops','koq_self_parts','koq_handcarry','koq_order_before_tshoot',
     'koq_part135_training','koq_part135_roster','koq_part135_rts','koq_part135_gmm',
     'kofbo_doc_passport','kofbo_doc_photo','kofbo_doc_ibac',
@@ -16332,6 +17929,7 @@ G.koNewJob = async function(keepAircraftInfo = true) {
   ['customer','travel','parts','fbo'].forEach(type => {
     KO.recips[type].extra = [];
     KO.recips[type].qatar = [];
+    KO.recips[type].team = [];
     koRenderRecips(type);
   });
 
@@ -16429,7 +18027,7 @@ G.setIntroMsg = function(msg) {
   if (el) {
     el.value = msg
       .replace(/\{DATE\}/g, introFormatDate())
-      .replace(/\{LOC\}/g, gv('f_loc') || '[location]')
+      .replace(/\{LOC\}/g, koAptCityIcao(gv('f_loc')) || '[location]')
       .replace(/\{TEAM\}/g, introTeamPhrase());
   }
 };
@@ -16516,6 +18114,76 @@ window.renderDeviceLogs = renderDeviceLogs;
 // the Refresh button silently failed. One-line fix, no other change.
 window.renderSquawkHistory = renderSquawkHistory;
 
+// ════════════════════════════════════════════════════════════════════════════
+//  START JOB — rich-text editor for the 4 draft bodies (Customer / Travel / Parts / FBO)
+//
+//
+//  What it does: each <textarea id="ko-prev-body-…"> of "Drafts to generate" is swapped, at load time,
+//  for an editable box with a formatting toolbar (bold / italic / underline / colour / highlight).
+//  The box still answers to .value (read = plain text, write = text converted to HTML), so the rest of
+//  the app (preview refresh, "Reset to auto-generated", …) keeps working without any change.
+//  Once a colleague types or formats something, that draft is flagged "userEdited" and is sent to
+//  Gmail / copied exactly as edited (with its formatting).
+// ════════════════════════════════════════════════════════════════════════════
+const KO_DRAFT_OK_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'BR', 'DIV', 'P', 'SPAN']);
+const KO_DRAFT_OK_STYLE = /^(color\s*:\s*(#[0-9a-f]{3,8}|rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\))|background-color\s*:\s*(#[0-9a-f]{3,8}|rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\))|font-weight\s*:\s*(bold|700)|font-style\s*:\s*italic|text-decoration(-line)?\s*:\s*underline|font-size\s*:\s*\d{1,2}px)$/i;
+
+// Keeps only safe tags + safe inline styles (pasted content from Word / web pages is cleaned here).
+function koDraftCleanNode(node) {
+  Array.from(node.childNodes).forEach(ch => {
+    if (ch.nodeType === 8) { node.removeChild(ch); return; }              // comments
+    if (ch.nodeType !== 1) return;                                          // plain text: keep
+    if (ch.tagName === 'SCRIPT' || ch.tagName === 'STYLE') { node.removeChild(ch); return; }
+    koDraftCleanNode(ch);
+    if (!KO_DRAFT_OK_TAGS.has(ch.tagName)) {                                // unknown tag: keep its content only
+      while (ch.firstChild) node.insertBefore(ch.firstChild, ch);
+      node.removeChild(ch);
+      return;
+    }
+    const style = (ch.getAttribute('style') || '').split(';').map(s => s.trim()).filter(s => KO_DRAFT_OK_STYLE.test(s)).join('; ');
+    Array.from(ch.attributes).forEach(a => ch.removeAttribute(a.name));
+    if (style) ch.setAttribute('style', style);
+  });
+}
+
+function koSanitizeDraftHtml(html) {
+  const box = document.createElement('div');
+  box.innerHTML = html || '';
+  koDraftCleanNode(box);
+  return box.innerHTML;
+}
+
+// Body of a draft as HTML: the colleague's edited version (with formatting) or the auto-generated text.
+function koDraftBodyHtml(type, autoText) {
+  const el = document.getElementById('ko-prev-body-' + type);
+  return (el && el.dataset.userEdited === '1') ? koSanitizeDraftHtml(el.innerHTML) : koFormatEmailHtml(autoText);
+}
+
+function koInitDraftEditors() {
+  const swatch = (id, col, title) => `<button type="button" class="rte-swatch" style="background:${col}" title="${title}" onmousedown="event.preventDefault()" onclick="rteExec('${id}','hiliteColor','${col}')"></button>`;
+  ['customer', 'travel', 'parts', 'fbo'].forEach(type => {
+    const ta = document.getElementById('ko-prev-body-' + type);
+    if (!ta || ta.tagName !== 'TEXTAREA') return;
+    const el = document.createElement('div');
+    el.id = ta.id;
+    el.className = 'rte-editable';
+    el.setAttribute('contenteditable', 'true');
+    el.style.cssText = 'font-size:13px;min-height:' + (ta.style.minHeight || '160px') + ';max-height:420px;overflow-y:auto;white-space:pre-wrap';
+    Object.defineProperty(el, 'value', {                                    // the rest of the app reads / writes .value
+      get() { return el.innerText; },
+      set(text) { el.innerHTML = koFormatEmailHtml(text); }
+    });
+    el.addEventListener('input', () => { el.dataset.userEdited = '1'; });   // typing OR a toolbar click = "edited by hand"
+    ta.replaceWith(el);
+    const extra = '<span class="rte-sep"></span>'
+      + swatch(el.id, '#fff59d', 'Highlight yellow')
+      + swatch(el.id, '#b9f6ca', 'Highlight green')
+      + swatch(el.id, '#ffccbc', 'Highlight orange')
+      + `<button type="button" title="Remove the formatting of the selected text" onmousedown="event.preventDefault()" onclick="rteExec('${el.id}','removeFormat')">Clear</button>`;
+    el.insertAdjacentHTML('beforebegin', rteToolbarHtml(el.id).replace(/<\/div>\s*$/, extra + '</div>'));
+  });
+}
+koInitDraftEditors();
 
 </script>
 
