@@ -6108,7 +6108,12 @@ function liveEnsure() {
     else if (rev === _projBaseRev || rev === _liveSelfRev) return;
     _livePending = true;
     liveTryApply();
-  }, err => console.warn('live sync listener error:', err));
+  }, err => {
+    console.warn('live sync listener error:', err, '| path:', path, '| uid:', auth.currentUser?.uid || null);
+    if (_liveWatchPath !== path) return;   // un autre projet a été ouvert depuis
+    if (_liveUnsub) { try { _liveUnsub(); } catch(_) {} _liveUnsub = null; }
+    setTimeout(() => { if (_liveWatchPath === path) _liveWatchPath = ''; }, 30000);   // liveEnsure() se ré-abonne au tick suivant
+  });
 }
 
 async function liveTryApply() {
