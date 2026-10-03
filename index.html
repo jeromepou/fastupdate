@@ -2647,6 +2647,10 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
       <div class="fg"><label>Filter the list</label><input type="text" id="lmx_auth_filter" placeholder="e.g. qatar, cayman…" oninput="lmxFillAuthSelect()"/></div>
     </div>
     <div id="lmx-src" style="font-size:11px"></div>
+    <div id="lmx-amm" class="grid g2" style="display:none;margin:8px 0">
+      <div class="fg"><label id="lmx-amm-lbl">Approved Aircraft Maintenance Manual</label><input type="text" id="lmx_amm" placeholder="empty = fill in by hand" oninput="lmxPreview()"/></div>
+      <div class="fg"><label id="lmx-ammrev-lbl">AMM Rev</label><input type="text" id="lmx_ammrev" placeholder="empty = fill in by hand" oninput="lmxPreview()"/></div>
+    </div>
     <div id="lmx-preview" class="pdb-prev"></div>
     <div class="cbk-warn cbk-warn-sm">⚠️ <b>Compare</b> the form number, revision date and approval above with SharePoint (Citrix) before you print.</div>
     <div class="ko-section-lbl" style="margin-top:12px">Sheets — one per squawk</div>
@@ -8616,12 +8620,12 @@ const PLN105_SEED = [
 {"id":"faa-far-part-s-125-129-135","name":"FAA FAR PART's 125, 129 & 135","formNo":"GAL.F.PLN.020.F3 (FAA P135 & P129)","rev":"REV J","date":"2020-09-23","secondary":"","crs":"","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"MGTY330K","warn":"No release statement is printed for this authority: the customer supplies its own release statement.","hidden":false,"custom":false},
 {"id":"hong-kong-cad","name":"HONG KONG CAD","formNo":"GAL.F.PLN.020.G1 (HONG KONG)","rev":"REV O","date":"2024-09-02","secondary":"EASA PART 145 APPROVAL: EASA.145.3119","crs":"Certifies that the work specified except as otherwise specified was carried out in accordance with HKAR-145 and in respect to that work the aircraft / aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED HKCAD HKAR-145 APPROVAL :","approval":"AI/130/706","warn":"","hidden":false,"custom":false},
 {"id":"kuwait-dgca","name":"KUWAIT DGCA","formNo":"GAL.F.PLN.020.H (KUWAIT)","rev":"REV N","date":"2024-09-02","secondary":"EASA PART 145 APPROVAL: EASA.145.3119","crs":"Certifies that the work specified except as otherwise specified was carried out in accordance with KCASR 8 - Part 145 and in respect to that work the aircraft/aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"DGCA/AMO/037","warn":"","hidden":false,"custom":false},
-{"id":"nigeria-ncaa","name":"NIGERIA NCAA","formNo":"GAL.F.PLN.020.I (NCAA)","rev":"REV Q","date":"2023-12-22","secondary":"UK CAA PART 145 APPROVAL: UK.145.00883","crs":"Certifies that the work specified was carried out in accordance with current regulations and in respect to that work the aircraft/aircraft component is considered approved for return to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"AMO/G/GAL","warn":"","hidden":true,"custom":false},
+{"id":"nigeria-ncaa","amm":"Approved Aircraft Maintenance Manual :","ammRev":"AMM Rev :","name":"NIGERIA NCAA","formNo":"GAL.F.PLN.020.I (NCAA)","rev":"REV Q","date":"2023-12-22","secondary":"UK CAA PART 145 APPROVAL: UK.145.00883","crs":"Certifies that the work specified was carried out in accordance with current regulations and in respect to that work the aircraft/aircraft component is considered approved for return to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"AMO/G/GAL","warn":"","hidden":true,"custom":false},
 {"id":"kingdom-of-saudi-arabia-gaca","name":"KINGDOM OF SAUDI ARABIA - GACA","formNo":"GAL.F.PLN.020.J (GACA)","rev":"REV K","date":"2021-04-14","secondary":"","crs":"I certify that this aircraft has been inspected in accordance with above inspection and was determined to be in an airworthy condition.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"AMO-158FA","warn":"","hidden":false,"custom":false},
 {"id":"tanzania-caa","name":"TANZANIA CAA","formNo":"GAL.F.PLN.020.K (TCAA)","rev":"REV N","date":"2024-09-02","secondary":"EASA PART 145 APPROVAL: EASA.145.3119","crs":"Certifies that the work specified was carried out in accordance with current regulations and in respect of that work the aircraft or aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"AI/CA/1.05","warn":"","hidden":false,"custom":false},
 {"id":"transport-canada-tcca","name":"TRANSPORT CANADA TCCA","formNo":"GAL.F.PLN.020.L (TCCA)","rev":"REV P","date":"2023-09-05","secondary":"","crs":"Certifies that except as otherwise specified, the described maintenance has been performed in accordance with the applicable airworthiness requirements and the approved T-AM supplement and in respect to that work the aircraft is ready for release to service.\nUK.145.00883","bottom":"","approval":"","warn":"","hidden":false,"custom":true},
 {"id":"united-arab-emirates-gcaa","name":"UNITED ARAB EMIRATES GCAA","formNo":"GAL.F.PLN.020.M (UAE)","rev":"REV O","date":"2024-09-02","secondary":"EASA PART 145 APPROVAL: EASA.145.3119","crs":"Certifies that the work specified except as otherwise specified was carried out in accordance with CAR 145 and in respect to that work the aircraft/aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"UAE.145.1015","warn":"","hidden":false,"custom":false},
-{"id":"dubai-airwings-only-united-arab-emirates-gcaa","name":"(DUBAI AIRWINGS ONLY) UNITED ARAB EMIRATES GCAA","formNo":"GAL.F.PLN.020.M(A) (GCAA)","rev":"REV -","date":"2022-03-21","secondary":"","crs":"Certifies that the work specified except as otherwise specified was carried out in accordance with CAR 145 and in respect to that work the aircraft/aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"UAE.145.1015","warn":"Dubai Airwings: quote the AMM reference and the AMM revision of the tasks carried out in each squawk resolution.","hidden":false,"custom":false},
+{"id":"dubai-airwings-only-united-arab-emirates-gcaa","amm":"Approved Aircraft Maintenance Manual :","ammRev":"AMM Rev :","name":"(DUBAI AIRWINGS ONLY) UNITED ARAB EMIRATES GCAA","formNo":"GAL.F.PLN.020.M(A) (GCAA)","rev":"REV -","date":"2022-03-21","secondary":"","crs":"Certifies that the work specified except as otherwise specified was carried out in accordance with CAR 145 and in respect to that work the aircraft/aircraft component is considered ready for release to service.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"UAE.145.1015","warn":"Dubai Airwings: quote the AMM reference and the AMM revision of the tasks carried out in each squawk resolution.","hidden":false,"custom":false},
 {"id":"kingdom-of-saudi-arabia-gaca-blank","name":"KINGDOM OF SAUDI ARABIA - GACA (BLANK)","formNo":"GAL.F.PLN.020.N (GACA Blank)","rev":"REV I","date":"2020-09-23","secondary":"","crs":"","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"AMO-158FA","warn":"No release statement is printed for this authority: the customer supplies its own release statement.","hidden":false,"custom":false},
 {"id":"non-easa-reg","name":"Non EASA Reg:","formNo":"GAL.F.PLN.020.O (Non EASA Reg)","rev":"REV M","date":"2024-09-02","secondary":"","crs":"This Final Certificate of Release to Service is made under the State of Registration national law and is NOT a release under EASA Part-145.\nCertifies that the work specified except as otherwise specified was carried out in accordance with EASA PART 145 and in respect to that work the aircraft / aircraft component is considered ready for release to service.\nThe original statement from the State of Registration allowing this release certificate is held on file by Gulfstream Aerospace Limited. A copy of the statement has been attached to this certificate.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"EASA.145.3119","warn":"","hidden":false,"custom":false},
 {"id":"non-faa-reg","name":"Non FAA Reg:","formNo":"GAL.F.PLN.020.P (Non FAA Reg)","rev":"REV I","date":"2020-09-23","secondary":"","crs":"This Final Certificate of Release to Service is made under the State of Registration national law and is NOT a release under FAA CFR 43.9 or CFR 43.11.\nCertifies that the work specified above, except as otherwise specified, was accomplished in accordance with CFR Part 43 and in respect to that work the Aircraft/Aircraft Component is considered approved for return to service.\nThe original statement from the State of Registration allowing this release certificate is held on file by Gulfstream Aerospace Limited. A copy of the statement has been attached to this certificate.","bottom":"GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :","approval":"MGTY330K","warn":"","hidden":false,"custom":false},
@@ -8777,7 +8781,7 @@ function cbkMetaLabel(m) {
 //  DONNÉES : autorités (textes CRS) et squawks standard — Firebase config/*, secours = valeurs de départ ci-dessus
 // ══════════════════════════════════════
 let _pdb = null, _psq = null;
-const PDB_FIELDS = ['name', 'formNo', 'rev', 'date', 'secondary', 'crs', 'bottom', 'approval', 'warn'];
+const PDB_FIELDS = ['name', 'formNo', 'rev', 'date', 'secondary', 'crs', 'bottom', 'approval', 'warn', 'amm', 'ammRev'];
 const pdbKey = s => String(s || '').toUpperCase().replace(/\s+/g, ' ').trim();
 const cbkArr = v => Array.isArray(v) ? v : (v && typeof v === 'object' ? Object.values(v) : []);
 function pdbNorm(r) {
@@ -9002,7 +9006,19 @@ G.lmxFillAuthSelect = function() {
     list.map(a => `<option value="${escAttr(a.id)}"${a.id === keep ? ' selected' : ''}>${escHtml(a.name || '(unnamed)')}</option>`).join('');
   lmxPreview();
 };
-G.lmxPreview = function() { cbkEl('lmx-preview').innerHTML = pdbPreviewHtml(lmxAuth()); };
+// Ligne « Approved Aircraft Maintenance Manual / AMM Rev » (autorités qui en ont une, ex. Dubai Airwings) : ajoutée après le statement, avant la référence secondaire
+function lmxAmmApply(a) {
+  if (!a || !a.crs || !(a.amm || a.ammRev)) return a;
+  const t = gv('lmx_amm').trim() || '________________________', r = gv('lmx_ammrev').trim() || '__________';
+  const line = [a.amm, t].filter(Boolean).join(' ') + ' / ' + [a.ammRev, r].filter(Boolean).join(' ');
+  return Object.assign({}, a, { crs: String(a.crs).replace(/\s+$/, '') + '\n' + line });
+}
+G.lmxPreview = function() {
+  const a = lmxAuth(), on = !!(a && a.crs && (a.amm || a.ammRev));
+  cbkEl('lmx-amm').style.display = on ? '' : 'none';
+  if (on) { cbkEl('lmx-amm-lbl').textContent = (a.amm || 'Approved Aircraft Maintenance Manual').replace(/\s*:\s*$/, ''); cbkEl('lmx-ammrev-lbl').textContent = (a.ammRev || 'AMM Rev').replace(/\s*:\s*$/, ''); }
+  cbkEl('lmx-preview').innerHTML = pdbPreviewHtml(lmxAmmApply(a));
+};
 
 function lmxStep4Text(item) {   // notes quotidiennes de Step 4 pour ce squawk, dans l'ordre chronologique
   const html2txt = h => {
@@ -9067,7 +9083,7 @@ G.openLineMxModal = async function() {
   cbkEl('lmx-err').textContent = '';
   sv('lmx_wo', gv('f_wo')); sv('lmx_date', rtagTodayFormatted()); sv('lmx_po', gv('f_po'));
   sv('lmx_type', gv('f_model')); sv('lmx_sn', gv('f_sn')); sv('lmx_reg', gv('f_reg'));
-  sv('lmx_tlog', ''); sv('lmx_hrs', gv('f_ac_hours')); sv('lmx_ldgs', gv('f_ac_cycles'));
+  sv('lmx_tlog', ''); sv('lmx_hrs', gv('f_ac_hours')); sv('lmx_ldgs', gv('f_ac_cycles')); sv('lmx_amm', ''); sv('lmx_ammrev', '');
   const country = gv('f_country').trim();
   cbkEl('lmx-country').textContent = country ? 'Country of registry in Step 2: ' + country : 'Country of registry is empty in Step 2.';
   cbkEl('lmx-sheets').innerHTML = '';
@@ -9109,7 +9125,7 @@ G.generateLineMx = () => cbkRun('lmx-btn', 'lmx-err', async () => {
     inc: c.querySelector('.lmx-inc').checked, no: c.querySelector('.lmx-no').value.trim(), sq: c.querySelector('.lmx-sq').value, res: c.querySelector('.lmx-res').value
   })).filter(s => s.inc);
   if (!sheets.length) throw new Error('Tick at least one sheet.');
-  const F = await cbkFonts(), parts = pdbCompose(a), fit = lmxFitCrs(parts.paras, F.b);
+  const F = await cbkFonts(), parts = pdbCompose(lmxAmmApply(a)), fit = lmxFitCrs(parts.paras, F.b);
   const apprT = cbkSafe(parts.approval, F.b), apprW = LMX.crs.x1 - LMX.crs.x0, apprSize = cbkFitSize(apprT, F.b, 10, 6.5, apprW);
   if (apprT && F.b.widthOfTextAtSize(apprT, apprSize) > apprW) throw new Error('The approval line is too long for its box — shorten it in Admin → Release statements.');
   const plan = sheets.map(s => {
@@ -9158,6 +9174,7 @@ function pdbItemHtml(a, open) {
     `<div class="fg" style="margin-top:6px"><label>Release statement — printed in the CERTIFICATE OF RELEASE TO SERVICE box (one paragraph per line; empty = nothing printed, e.g. Part 135)</label><textarea rows="6" oninput="pdbEdit('${id}','crs',this.value)">${escHtml(a.crs)}</textarea></div>` +
     `<div class="grid g2" style="margin-top:6px">${inp('bottom', 'Approval line — label', 'GULFSTREAM AEROSPACE LIMITED REPAIR STATION APPROVAL :')}${inp('approval', 'Approval line — number', 'EASA.145.3119')}</div>` +
     inp('secondary', 'Secondary approval reference — optional, printed as the last line of the statement', 'EASA PART 145 APPROVAL: EASA.145.3119', 'margin-top:6px') +
+    `<div class="grid g2" style="margin-top:6px">${inp('amm', 'AMM line — label (optional: adds two boxes for the engineer, e.g. Dubai Airwings)', 'Approved Aircraft Maintenance Manual :')}${inp('ammRev', 'AMM line — revision label', 'AMM Rev :')}</div>` +
     `<div class="fg" style="margin-top:6px"><label>Warning shown to the engineer when this authority is picked — optional</label><textarea rows="2" oninput="pdbEdit('${id}','warn',this.value)">${escHtml(a.warn)}</textarea></div>` +
     `<div class="pdb-prev" id="pdb-prev-${id}">${pdbPreviewHtml(a)}</div>` +
     `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox"${a.hidden ? ' checked' : ''} onchange="pdbEdit('${id}','hidden',this.checked)"/> Hide from the PLN.105 list (we no longer hold this approval)</label>` +
