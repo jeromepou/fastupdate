@@ -714,6 +714,14 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
 }
 .cbk-doc{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;text-align:left;padding:10px 12px;margin-bottom:8px;white-space:normal}
 .cbk-doc span{font-size:11px;font-weight:400;color:var(--g600)}
+.cbk-doc:disabled{opacity:.45;cursor:not-allowed}
+.cbk-warn{background:#fef3c7;border:1px solid #d97706;border-radius:var(--r);padding:10px 12px;margin:0 0 12px;font-size:12px;line-height:1.45;color:#92400e;white-space:normal}
+.cbk-warn-t{font-size:13px;font-weight:700;margin-bottom:4px}
+.cbk-warn ul{margin:4px 0 6px 18px;padding:0}
+.cbk-warn .cbk-sp-btn{margin:2px 0 0;padding:5px 10px}
+.cbk-warn-sm{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:0 0 8px}
+.cbk-ack{display:flex;gap:8px;align-items:flex-start;margin-top:8px;padding-top:8px;border-top:1px solid #fcd34d;font-size:12px;font-weight:700;text-transform:none;letter-spacing:0;color:#92400e;cursor:pointer}
+.cbk-ack input{width:auto;flex:none;margin-top:2px;cursor:pointer}
 .rwk-row{display:flex;gap:6px;align-items:flex-start;margin-bottom:5px}
 .rwk-row .rwk-no{width:64px;flex:none;text-align:center}
 .rwk-row textarea{flex:1;min-height:36px}
@@ -2563,9 +2571,21 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     <h3>📄 Corridor down? — paper worksheets</h3>
     <p style="font-size:12px;color:var(--g600);margin-bottom:4px">Generates the official Gulfstream forms as PDF, pre-filled from this job, so the release can be done on paper. Print them, then initial, sign and stamp by hand. <b>Do this before you mark the A/C RTS</b> — marking RTS archives the job and clears the form.</p>
     <div id="cbk-ctx" style="font-size:12px;font-weight:600;margin:6px 0 12px"></div>
-    <button class="btn cbk-doc" onclick="closeModal('modal-corridor-hub');openRegisterModal()"><b>GAL.F.OPS.208 — Manual Worksheet Register</b><span>One list of every squawk of the job: 1.x standard squawks, 2.x customer tasks (Step 3), 4.x task cards. Description only, no resolution.</span></button>
-    <button class="btn cbk-doc" onclick="closeModal('modal-corridor-hub');openLineMxModal()"><b>GAL.F.PLN.105 — Line Maintenance Worksheet + CRS</b><span>One sheet per squawk, with the Certificate of Release to Service of the registration authority. A long resolution continues on PLN.107 sheets by itself.</span></button>
-    <button class="btn cbk-doc" onclick="closeModal('modal-corridor-hub');openContinuationModal()"><b>GAL.F.PLN.107 — Continuation Worksheet</b><span>Extra resolution lines for one squawk (the PLN.105 already adds them when needed).</span></button>
+    <div class="cbk-warn">
+      <div class="cbk-warn-t">⚠️ Check SharePoint before you use these forms</div>
+      The revisions, revision dates and approval numbers on these worksheets come from the app's own copies (PDF templates and release-statement list), not from the live controlled documents. On SharePoint, check that:
+      <ul>
+        <li>each form (OPS.208, PLN.105, PLN.107) is still at the <b>current revision and date</b>;</li>
+        <li>the <b>approval number and scope</b> for the registration authority are still valid (e.g. base maintenance only).</li>
+      </ul>
+      If anything differs, use the SharePoint version and ask an admin to update the app.
+      <div><button type="button" class="btn cbk-sp-btn" onclick="cbkOpenSharePoint()">📂 Open SharePoint</button></div>
+      <label class="cbk-ack"><input type="checkbox" id="cbk-sp-ack" onchange="cbkAckToggle(this.checked)"/> I checked SharePoint: revisions, dates and approvals are current.</label>
+    </div>
+    <button class="btn cbk-doc" disabled onclick="closeModal('modal-corridor-hub');openRegisterModal()"><b>GAL.F.OPS.208 — Manual Worksheet Register</b><span>One list of every squawk of the job: 1.x standard squawks, 2.x customer tasks (Step 3), 4.x task cards. Description only, no resolution.</span></button>
+    <button class="btn cbk-doc" disabled onclick="closeModal('modal-corridor-hub');openLineMxModal()"><b>GAL.F.PLN.105 — Line Maintenance Worksheet + CRS</b><span>One sheet per squawk, with the Certificate of Release to Service of the registration authority. A long resolution continues on PLN.107 sheets by itself.</span></button>
+    <button class="btn cbk-doc" disabled onclick="closeModal('modal-corridor-hub');openContinuationModal()"><b>GAL.F.PLN.107 — Continuation Worksheet</b><span>Extra resolution lines for one squawk (the PLN.105 already adds them when needed).</span></button>
+
     <div class="modal-btns"><button class="btn" onclick="closeModal('modal-corridor-hub')">Close</button></div>
   </div>
 </div>
@@ -2631,6 +2651,7 @@ hr{border:none;border-top:1px solid var(--g200);margin:1.5rem 0}
     </div>
     <div id="lmx-src" style="font-size:11px"></div>
     <div id="lmx-preview" class="pdb-prev"></div>
+    <div class="cbk-warn cbk-warn-sm"><span>⚠️ <b>Compare</b> the form number, revision date and approval above with SharePoint before you print.</span><button type="button" class="btn cbk-sp-btn" onclick="cbkOpenSharePoint()">📂 Open SharePoint</button></div>
     <div class="ko-section-lbl" style="margin-top:12px">Sheets — one per squawk</div>
     <div id="lmx-sheets" style="margin-bottom:8px"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -8648,6 +8669,8 @@ const PLN105_SQ_SEED = [
   ['1.11', "Comply with the AMM Airframe Post-Maintenance Checklist as required by the defined scope of work"]
 ];
 const CBK = { auth: 'config/pln105Authorities', sq: 'config/pln105StdSquawks' };
+// Lien SharePoint des formulaires GAL.F.* en vigueur (dossier ou bibliothèque de documents). Vide = les boutons « Open SharePoint » sont masqués.
+const CBK_SHAREPOINT_URL = '';
 
 // ── Outils communs (texte, PDF, téléchargement) ──
 const cbkEl = id => document.getElementById(id);
@@ -8833,9 +8856,14 @@ function pdbPreviewHtml(a) {
 // ══════════════════════════════════════
 //  HUB « Corridor down? » (à côté de Mark A/C RTS)
 // ══════════════════════════════════════
+// Avertissement « vérifier SharePoint » : révisions, dates et n° d'agrément imprimés viennent des copies de l'app (gabarits PDF + liste Firebase), pas du document contrôlé.
+G.cbkOpenSharePoint = function() { if (CBK_SHAREPOINT_URL) window.open(CBK_SHAREPOINT_URL, '_blank', 'noopener'); };
+G.cbkSpInit = function() { document.querySelectorAll('.cbk-sp-btn').forEach(b => { b.style.display = CBK_SHAREPOINT_URL ? '' : 'none'; }); };
+G.cbkAckToggle = function(on) { document.querySelectorAll('#modal-corridor-hub .cbk-doc').forEach(b => { b.disabled = !on; }); };
 G.openCorridorHub = function() {
   const bits = [gv('f_wo'), cbkTypeSn(), gv('f_reg')].filter(Boolean);
   cbkEl('cbk-ctx').textContent = bits.length ? bits.join(' · ') : 'No job data yet — fill Step 2 first: the documents are pre-filled from it.';
+  cbkEl('cbk-sp-ack').checked = false; cbkAckToggle(false); cbkSpInit();   // à re-confirmer à chaque ouverture
   openModal('modal-corridor-hub');
 };
 
