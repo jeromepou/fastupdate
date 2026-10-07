@@ -2230,6 +2230,13 @@ button.ko-flip:hover { background: rgba(0,0,0,.14); color: var(--blue) }
       <textarea id="fd-new-body" placeholder="Full address (optional)" style="flex:1 1 100%;min-height:42px;font-size:12px;padding:5px 8px"></textarea>
       <button class="btn primary" onclick="koFboDirAdd()" style="width:100%">+ Add to the directory</button>
     </div>
+    <details style="margin-top:10px;padding-top:10px;border-top:1px solid var(--g200)">
+      <summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--g600)">📋 Add several FBOs at once</summary>
+      <p style="font-size:11px;color:var(--g600);margin:6px 0">One FBO per line: <b>ICAO | FBO name | Email(s) | Phone | Source page | Full address</b> — only the first two are required. Separate the fields with « | » or a Tab (so you can paste straight from a spreadsheet).</p>
+      <textarea id="fd-bulk-text" placeholder="LEMD | FBO name | ops@example.com; ramp@example.com | +34 600 000 000 | https://example.com/madrid&#10;LEBL | Other FBO name | ops@example.com" style="width:100%;min-height:90px;font-size:12px;padding:5px 8px;white-space:pre;overflow-x:auto"></textarea>
+      <button class="btn primary" onclick="koFboDirAddBulk()" style="width:100%;margin-top:6px">+ Add all lines</button>
+      <div id="fd-bulk-result" style="font-size:11px;color:var(--g600);margin-top:6px;white-space:pre-wrap"></div>
+    </details>
     <div class="modal-btns"><button class="btn primary" onclick="closeModal('modal-fbodir')">Done</button></div>
   </div>
 </div>
@@ -4334,6 +4341,8 @@ function koInsertEtaNoteIntoUpdate(itemId, description, etaText) {
 // Tri alphabétique des listes de pays / autorités (affichage seulement) — la ponctuation en tête est ignorée : "(DUBAI AIRWINGS ONLY)…" se range sous D
 const alphaKey = s => String(s || '').replace(/^[^\p{L}\p{N}]+/u, '').replace(/^kingdom of\s+/i, '');   // « KINGDOM OF SAUDI ARABIA… » se range sous S
 const alphaCmp = (x, y) => alphaKey(x).localeCompare(alphaKey(y));
+// Liste « select the authority » : EASA, puis FAA (toutes les variantes), puis UK CAA en tête ; le reste de A à Z (« AUSTRALIA - EASA », « ISLE OF MAN - UK CAA »… gardent leur place alphabétique)
+const authPin = n => { const k = alphaKey(n).toUpperCase(); return /^EASA\b/.test(k) ? 0 : /^FAA\b/.test(k) ? 1 : /^UK[\s-]*CAA\b/.test(k) ? 2 : 3; };
 function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
@@ -9149,7 +9158,7 @@ function lmxFitCrs(paras, font) {
 const lmxAuth = () => { const v = cbkEl('lmx_auth').value; return v && _pdb ? (_pdb.list.find(a => a.id === v) || null) : null; };
 G.lmxFillAuthSelect = function() {
   const sel = cbkEl('lmx_auth'), keep = sel.value, f = (cbkEl('lmx_auth_filter').value || '').toLowerCase().trim();
-  const list = (_pdb ? _pdb.list : []).filter(a => !a.hidden && (!f || a.name.toLowerCase().includes(f))).sort((a, b) => alphaCmp(a.name, b.name));
+  const list = (_pdb ? _pdb.list : []).filter(a => !a.hidden && (!f || a.name.toLowerCase().includes(f))).sort((a, b) => authPin(a.name) - authPin(b.name) || alphaCmp(a.name, b.name));
   sel.innerHTML = '<option value="">— select the authority (' + list.length + ') —</option>' +
     list.map(a => `<option value="${escAttr(a.id)}"${a.id === keep ? ' selected' : ''}>${escHtml(a.name || '(unnamed)')}</option>`).join('');
   lmxPreview();
@@ -11823,7 +11832,7 @@ function koPriorityRanked(items) {
 // Paragraph added to the Customer Update body — '' when no priority is chosen.
 function koPriorityText(items, ranked) {
   if (items.length < 2 || !ranked.length) return '';
-  const lbl  = it => `Item ${it.num} (${it.label.trim()})`;
+  const lbl  = it => it.label.trim();
   const list = ranked.map((it, i) => `   ${i + 1}. ${lbl(it)}`).join('\n');
   if (ranked.length === items.length)
     return `\nPlease note that the items will be worked in the following order:\n${list}\n`;
@@ -12248,7 +12257,7 @@ G.openKickoff = async function(forceWo) {
   }
   koApplyMobileState(true);
   // Saved FBO (FBO list) matching the Step 2 FBO → its email goes to the FBO draft recipients
-  try { koFboAutoRecipients(); } catch(e) { console.warn('koFboAutoRecipients failed:', e); }  
+  koFboOnOpen().catch(e => console.warn('koFboOnOpen failed:', e));  
   // If Travel "To" is still empty after restore, fill it from ICAO
   const _icao = document.getElementById('ko_icao');
   const _travelTo = document.getElementById('ko_travel_to');
@@ -15896,12 +15905,16 @@ function koFboRenderChips(ctx, entries) {
   if (!c) return;
   if (!entries || !entries.length) { c.style.display = 'none'; c.innerHTML = ''; return; }
   const multi = new Set(entries.map(a => koFboAirportId(a.airport))).size > 1;   // plusieurs aéroports : on précise lequel
+  const sel = ctx === 'ko' ? koFboLinked() : null;                                 // Start Job : FBO choisi (= f_fbo) en surbrillance
   c.style.display = 'flex';
-  c.innerHTML = entries.map(a => `
-    <button type="button" class="btn" style="font-size:11px;padding:3px 8px;background:var(--gl);border-color:var(--gb);color:var(--gd);font-weight:600"
+  c.innerHTML = entries.map(a => {
+    const on = !!sel && sel._idx === a._idx;
+    return `
+    <button type="button" class="btn" style="font-size:11px;padding:3px 8px;font-weight:600;${on ? 'background:var(--gd);border-color:var(--gd);color:#fff' : 'background:var(--gl);border-color:var(--gb);color:var(--gd)'}"
       onclick="koApplyIcaoSuggestion(${a._idx},'${ctx}')">
-      🏢 ${escHtml(a.label || a.airport)}${multi ? ' <span style="font-weight:400;opacity:.75">· ' + escHtml(koFboAirportId(a.airport)) + '</span>' : ''}
-    </button>`).join('');
+      ${on ? '✓' : '🏢'} ${escHtml(a.label || a.airport)}${multi ? ' <span style="font-weight:400;opacity:.75">· ' + escHtml(koFboAirportId(a.airport)) + '</span>' : ''}
+    </button>`;
+  }).join('');
 }
 
 function koFboRenderStatus(m, text, air) {
@@ -15931,7 +15944,7 @@ function koFboRenderStatus(m, text, air) {
 // Clé « ce qui est affiché correspond à ces valeurs » : le contrôle périodique ne refait rien tant qu'elle ne change pas.
 function koFboKey(ctx) {
   const air = document.getElementById(ctx === 'ko' ? 'ko_icao' : 'f_loc')?.value || '';
-  return air + '|' + (ctx === 'ko' ? '' : (document.getElementById('f_fbo')?.value || ''));
+  return air + '|' + (document.getElementById('f_fbo')?.value || '');
 }
 
 // Rafraîchit pastilles + encart de lien d'après ce que contiennent les champs MAINTENANT (frappe, scan, chargement de projet…).
@@ -15952,6 +15965,7 @@ async function koFboRefresh(ctx) {
   const m = known ? koFboMatch(text, air) : { status: 'empty', entry: null, entries: [] };
   koFboRenderChips('step2', m.status === 'linked' ? [] : (m.status === 'ambiguous' ? m.candidates : entries));
   koFboRenderStatus(m, text, air);
+  koFboPush();   // Step 2 → Start Job
   koFboDirRender(m, text, air).catch(e => console.warn('koFboDirRender failed:', e));  
   field._fboSeen = koFboKey(ctx);
 }
@@ -15987,11 +16001,13 @@ G.koApplyIcaoSuggestion = function(idx, context) {
     G.autosave();
     koFboRefresh('step2');
   } else {
+    KO_FBO_READY = true;
     G.koSetAddr('manual');
     G.koUseShipAddr(idx);
-    koFboAddEmails(a);   // l'email enregistré pour ce FBO part dans les destinataires du mail FBO
-    const c = document.getElementById('fbo-suggestions-ko');
-    if (c) { c.style.display = 'none'; c.innerHTML = ''; }
+    sv('f_fbo', a.label || '');   // Start Job → Step 2 : le FBO choisi ici devient celui du Step 2
+    G.autosave();
+    koFboAddEmails(a);            // l'email enregistré pour ce FBO part dans les destinataires du mail FBO
+    koFboPush();                  // l'email de l'ancien FBO est retiré, la pastille choisie passe en surbrillance
   }
 };
 
@@ -16015,6 +16031,60 @@ G.koFboAddFromStep2 = function() {
   put('sa-new-label', mail ? text.replace(KO_FBO_EMAIL_RE, ' ').replace(/\s+/g, ' ').trim() : text);
   put('sa-new-email', mail);
 };
+
+// ── Synchro FBO dans les deux sens : Step 2 « FBO / Support Location » (f_fbo) ⇄ Start Job (pastilles, adresse d'expédition, destinataires) ──
+// Aucun écran ne « gagne » : le dernier modifié met l'autre à jour. Le nom du FBO reste stocké dans f_fbo (source unique).
+var KO_FBO_PREV = null;     // FBO de la liste relié au dernier passage : son email est retiré quand on change de FBO
+var KO_FBO_READY = false;   // Start Job ouvert et restauré : avant, son brouillon n'est pas touché
+function koFboAirNow() { return (document.getElementById('ko_icao')?.value || gv('f_loc') || '').trim(); }
+function koFboLinked() {    // FBO de la liste relié au texte de f_fbo, ou null
+  const t = gv('f_fbo').trim(), air = koFboAirNow();
+  if (!t || !air) return null;
+  const m = koFboMatch(t, air);
+  return m.status === 'linked' ? m.entry : null;
+}
+function koFboByFirstLine(txt) {   // 1re ligne d'un texte = nom exact d'un FBO de la liste (aéroport courant)
+  const first = String(txt || '').split(/\r?\n/)[0].trim();
+  return first ? (koFboEntriesFor(koFboAirNow()).find(x => koAptNorm(String(x.label || '')) === koAptNorm(first)) || null) : null;
+}
+function koFboRemoveEmails(e) {
+  if (typeof KO === 'undefined' || !KO.recips || !KO.recips.fbo) return;
+  const drop = koFboEmails(e).map(x => x.toLowerCase()), r = KO.recips.fbo, n = (r.extra || []).length;
+  r.extra = (r.extra || []).filter(x => !drop.includes(String(x).toLowerCase()));
+  if (r.extra.length !== n) { koRenderRecips('fbo'); koUpdatePreview(); }
+}
+// Step 2 → Start Job : email du FBO (l'ancien est retiré), adresse d'expédition (seulement si vide ou déjà celle d'un autre FBO de la liste), pastille en surbrillance
+function koFboPush() {
+  if (!KO_FBO_READY) return;
+  const e = koFboLinked(), prev = KO_FBO_PREV;
+  KO_FBO_PREV = e;
+  if (prev && (!e || prev._idx !== e._idx)) koFboRemoveEmails(prev);
+  if (e) {
+    koFboAddEmails(e);
+    const ta = document.getElementById('ko_shipping_addr'), cur = koFboByFirstLine(ta?.value);
+    if (ta && (!String(ta.value || '').trim() || (cur && cur._idx !== e._idx))) G.koUseShipAddr(e._idx);
+  }
+  koFboRefresh('ko').catch(err => console.warn('koFboRefresh failed:', err));
+}
+async function koFboOnOpen() {   // à l'ouverture de Start Job : on ne remplit que ce qui est vide, rien n'est écrasé
+  await koFboEnsureCatalog();
+  KO_FBO_READY = true;
+  if (!gv('f_fbo').trim()) {
+    const f = koFboByFirstLine(document.getElementById('ko_shipping_addr')?.value);
+    if (f) { sv('f_fbo', f.label || ''); G.autosave(); }
+  }
+  KO_FBO_PREV = koFboLinked();
+  koFboPush();
+}
+// Start Job → Step 2 : on retape (ou colle) en 1re ligne de l'adresse d'expédition le nom d'un FBO de la liste
+document.addEventListener('input', e => {
+  if (!KO_FBO_READY || !e.target || e.target.id !== 'ko_shipping_addr') return;
+  const f = koFboByFirstLine(e.target.value);
+  if (!f || (koFboLinked() || {})._idx === f._idx) return;
+  sv('f_fbo', f.label || ''); G.autosave(); koFboPush();
+}, true);
+// Step 2 : on quitte le champ FBO → Start Job suit tout de suite (sans attendre le contrôle périodique)
+document.addEventListener('change', e => { if (e.target && e.target.id === 'f_fbo') { koFboPush(); koFboRefresh('step2'); } }, true);
 
 // Champs remplis par le code (scan, chargement de projet, Start Job…) : aucun événement « input » → contrôle léger toutes les secondes,
 // uniquement si la valeur a changé et que l'utilisateur n'est pas en train de taper dans le champ.
@@ -16354,6 +16424,33 @@ G.koFboDirAdd = function() {
   KO_FBO_DIR.push({ airport, label, email: val('fd-new-email'), phone: val('fd-new-phone'), body: val('fd-new-body'), source, trust: /^https?:\/\//i.test(source) ? 'official' : 'manual' });
   ['airport', 'label', 'email', 'phone', 'source', 'body'].forEach(k => { const el = document.getElementById('fd-new-' + k); if (el) el.value = ''; });
   koFboDirRenderManage(); koFboDirSave();
+};
+
+// Ajout en lot : une fiche par ligne — ICAO | FBO name | Email(s) | Phone | Source page | Full address
+// (séparateur « | » ou tabulation, donc collable depuis un tableur ; seuls ICAO et nom sont obligatoires).
+// Mêmes contrôles que l'ajout simple ; les lignes refusées restent dans la zone de texte pour être corrigées.
+G.koFboDirAddBulk = function() {
+  const box = document.getElementById('fd-bulk-text'), out = document.getElementById('fd-bulk-result');
+  const norm = s => koAptNorm(s).replace(/ /g, '');
+  const kept = [], problems = [];
+  let added = 0;
+  String(box?.value || '').split(/\r?\n/).forEach((line, n) => {
+    if (!line.trim()) return;
+    const [raw = '', label = '', email = '', phone = '', source = '', body = ''] = line.split(/\t|\|/).map(s => s.trim());
+    const apt = koAptLoad() ? koAptResolve(raw) : null;
+    const airport = apt ? String(apt.icao || apt.iata).toUpperCase() : raw.toUpperCase();
+    let why = '';
+    if ((koAptLoad() && !apt) || !/^[A-Z0-9]{3,4}$/.test(airport)) why = 'unknown airport code «' + raw + '»';
+    else if (!label) why = 'FBO name missing';
+    else if (KO_FBO_DIR.some(d => koFboAirportId(d.airport) === airport && norm(d.label) === norm(label))) why = 'already in the directory';
+    if (why) { kept.push(line); problems.push('Line ' + (n + 1) + ' — ' + why); return; }
+    KO_FBO_DIR.push({ airport, label, email, phone, body, source, trust: /^https?:\/\//i.test(source) ? 'official' : 'manual' });
+    added++;
+  });
+  if (box) box.value = kept.join('\n');
+  if (out) out.textContent = !added && !problems.length ? 'Paste at least one line first.'
+    : added + ' added' + (problems.length ? ' · ' + problems.length + ' not added (left in the box):\n' + problems.join('\n') : '.');
+  if (added) { koFboDirRenderManage(); koFboDirSave(); }
 };
 
 G.koFboDirDelete = function(i) {
