@@ -15143,6 +15143,12 @@ async function koLoadShipAddrCatalog() {
   koRenderShipAddrChips();
 }
 
+// Tri alphabétique des FBO (sans tenir compte de la casse ni des accents). Ne modifie JAMAIS KO_SHIPADDR : _idx garde l'index d'origine.
+function koFboByLabel(a, b) {
+  const n = x => String((x && (x.label || x.airport)) || '');
+  return n(a).localeCompare(n(b), undefined, { sensitivity: 'base', numeric: true }) || ((a._idx || 0) - (b._idx || 0));
+}
+
 function koShipAddrGrouped() {
   const groups = {};
   KO_SHIPADDR.forEach((a, i) => {
@@ -15150,6 +15156,7 @@ function koShipAddrGrouped() {
     if (!groups[airport]) groups[airport] = [];
     groups[airport].push({ ...a, _idx: i });
   });
+  Object.values(groups).forEach(g => g.sort(koFboByLabel));   // ordre alphabétique des FBO de chaque aéroport
   return groups; // { LEMD: [...], EGLF: [...] }
 }
 
@@ -15904,6 +15911,7 @@ function koFboRenderChips(ctx, entries) {
   const c = document.getElementById(ctx === 'ko' ? 'fbo-suggestions-ko' : 'fbo-suggestions-step2');
   if (!c) return;
   if (!entries || !entries.length) { c.style.display = 'none'; c.innerHTML = ''; return; }
+  entries = [...entries].sort(koFboByLabel);   // ordre alphabétique (copie : le catalogue garde son ordre, _idx reste valable)
   const multi = new Set(entries.map(a => koFboAirportId(a.airport))).size > 1;   // plusieurs aéroports : on précise lequel
   const sel = ctx === 'ko' ? koFboLinked() : null;                                 // Start Job : FBO choisi (= f_fbo) en surbrillance
   c.style.display = 'flex';
