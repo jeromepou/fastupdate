@@ -1516,7 +1516,7 @@ button.ko-flip:hover { background: rgba(0,0,0,.14); color: var(--blue) }
       <div class="ko-section-lbl">Shipping address</div>
       <div class="ko-addr-toggle">
         <span class="ko-addr-pill" id="ko-addr-auto" onclick="koSetAddr('auto')">Will be provided shortly</span>
-        <span class="ko-addr-pill" id="ko-addr-manual" onclick="koSetAddr('manual')">Enter address</span>
+        <span class="ko-addr-pill" id="ko-addr-manual" onclick="koSetAddr('manual',true)">Enter address</span>
       </div>
       <div id="ko-addr-field" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -1527,6 +1527,7 @@ button.ko-flip:hover { background: rgba(0,0,0,.14); color: var(--blue) }
         <div class="ko-fg">
           <textarea id="ko_shipping_addr" placeholder="FBO name, address, city, country…" style="min-height:60px" oninput="koUpdatePreview();koSaveState()"></textarea>
         </div>
+        <div id="ko_ship_fbo_box" class="fbo-link"></div>
         <div style="margin-top:6px;font-size:11px;color:#7a5a00;background:#fef9e7;border:1px solid #d4b800;border-radius:6px;padding:5px 9px">⚠️ Confirm this address with the FBO before parts are shipped: ask them directly, or check another reliable way.</div>
       </div>
       <div class="ko-divider"></div>
@@ -3117,7 +3118,7 @@ button.ko-flip:hover { background: rgba(0,0,0,.14); color: var(--blue) }
         <li><strong>Avoid NFF clause</strong> — tick to include a sentence asking Materials to favour overhauled or repaired units over new ones, to reduce the risk of No Fault Found returns.</li>
         <li><strong>Priority warehouse</strong> — optionally ask Materials to check a specific warehouse first (Savannah, Farnborough, Amsterdam, Singapore).</li>
         <li><strong>Certificates, hand carry approval</strong> — tick to include the relevant sentences in the email.</li>
-        <li><strong>Shipping address</strong> — either "Will be provided shortly" (default), a saved address chip (grouped by ICAO airport — tap to fill it in automatically), or type/edit the address manually. Use <strong>"⚙️ Manage list"</strong> to add, edit or remove saved addresses, shared with the whole team.</li>
+        <li><strong>Shipping address</strong> — either "Will be provided shortly" (default), a saved address chip (only the aircraft's airport is shown — use <strong>"Show other airports"</strong> to deliver elsewhere; tap a chip to fill it in automatically), or type/edit the address manually. With <strong>"Enter address"</strong>, the aircraft's FBO (the one on the RFS / Step 2) is filled in for you — with its saved address when the FBO is in the list, or just its name when it isn't (type the address, or use <strong>"➕ Add it to the FBO list"</strong>). Choosing another FBO is allowed, but a warning reminds you it is not the aircraft's FBO. Use <strong>"⚙️ Manage list"</strong> to add, edit or remove saved addresses, shared with the whole team.</li>
         <li><strong>Customer's broker</strong> — paste broker contact details if the customer has provided one for import.</li>
         <li><strong>Importer of Record (IOR)</strong> — paste the IOR's details (legal entity, address, tax/customs ID, contact) once the customer or the FBO has confirmed. They are added to the Part Request email so Materials knows who the IOR is before dispatch.</li>        
       </ul>
@@ -12780,11 +12781,12 @@ function koInitToggles() {
   });
 }
 
-G.koSetAddr = function(mode) {
+G.koSetAddr = function(mode, fromClick) {
   KO.addrMode = mode;
   document.getElementById('ko-addr-auto').classList.toggle('on', mode === 'auto');
   document.getElementById('ko-addr-manual').classList.toggle('on', mode === 'manual');
   document.getElementById('ko-addr-field').style.display = mode === 'manual' ? '' : 'none';
+  if (mode === 'manual' && fromClick === true) koShipPrefillAircraftFbo(false);   // clic sur « Enter address » avec un champ vide : FBO de l'avion pré-rempli
   koUpdatePreview();
   koSaveState();
 };
@@ -13466,6 +13468,7 @@ function koUpdatePreview() {
     if (bodyEl && bodyEl.dataset.populated === '1' && bodyEl.dataset.userEdited !== '1') bodyEl.value = bodies[t];
   });
   koFboConfirmRefresh();   // encart de la question « confirm FBO address »
+  koShipFboRefresh();      // encart « FBO de l'avion » sous l'adresse d'expédition (Part Request)
 }
 
 
@@ -15162,24 +15165,44 @@ function koShipAddrGrouped() {
 
 function koRenderShipAddrChips() {
   koFboConfirmRefresh();   // la liste d'FBO a changé : l'encart de la question « confirm FBO address » suit
+  koShipFboRefresh();      // idem pour l'encart « FBO de l'avion » (ajout / édition dans Manage list…)
   const wrap = document.getElementById('ko-shipaddr-chips');
   if (!wrap) return;
   if (!KO_SHIPADDR.length) { wrap.innerHTML = '<span style="font-size:11px;color:#9a3412">No saved addresses yet — use "Manage list".</span>'; return; }
 
   const groups = koShipAddrGrouped();
-  const airports = Object.keys(groups).sort();
+  const st = koShipFboState();                                   // FBO de l'avion + FBO désigné par l'adresse saisie
+  const acIdx = st.ac.entry ? st.ac.entry._idx : -1, selIdx = st.ship.entry ? st.ship.entry._idx : -1;
+  const isAcAir = k => !!st.aid && koFboAirportId(k) === st.aid;
+  const allKeys = Object.keys(groups).sort((a, b) => (isAcAir(b) - isAcAir(a)) || (a < b ? -1 : a > b ? 1 : 0));   // aéroport de l'avion en tête
+  // Par défaut : uniquement l'aéroport de l'avion (+ celui du FBO déjà choisi, pour qu'on le voie) ; « Show other airports » pour livrer ailleurs.
+  // Aéroport pas encore saisi / pas reconnu (« LFP » en cours de frappe) : rien à filtrer, tout est affiché.
+  const selAir = st.ship.entry ? koFboAirportId(st.ship.entry.airport) : '';
+  const filtering = st.known && !!st.aid && !wrap._showAll;
+  const airports = filtering ? allKeys.filter(k => isAcAir(k) || (!!selAir && koFboAirportId(k) === selAir)) : allKeys;
+  const hidden = allKeys.length - airports.length;
+  const tail = (airports.length ? '' : `<span style="font-size:11px;color:#9a3412">No saved FBO for ${escHtml(st.aid)} yet — use "Manage list".</span>`) +
+    ((hidden > 0 || (wrap._showAll && st.known && st.aid))
+      ? `<div style="width:100%"><button type="button" onclick="koShipToggleAirports()" style="font-size:11px;padding:0;border:none;background:none;color:var(--blue);cursor:pointer;text-decoration:underline">${wrap._showAll ? 'Show only ' + escHtml(st.aid) : 'Show other airports (' + hidden + ')'}</button></div>`
+      : '');
 
   wrap.innerHTML = airports.map(airport => {
     return `<div style="width:100%;margin-bottom:4px">
-      <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">✈️ ${airport}${koAptTag(airport)}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">✈️ ${airport}${koAptTag(airport)}${isAcAir(airport) ? ' <span style="color:var(--gd)">· aircraft</span>' : ''}</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
-        ${groups[airport].map(a => `
-          <button onclick="koUseShipAddr(${a._idx})" style="font-size:12px;padding:5px 11px;border-radius:20px;cursor:pointer;border:1px solid var(--blue);background:#fff;color:var(--blue)">
-            📦 ${(a.label || 'Address').replace(/</g,'&lt;')}
-          </button>`).join('')}
+        ${groups[airport].map(a => {
+          const isSel = a._idx === selIdx, isAc = a._idx === acIdx;
+          const sty = isSel
+            ? ((isAc || st.ship.same !== false) ? 'border:1px solid var(--gd);background:var(--gd);color:#fff' : 'border:1px solid #d4b800;background:#fef9e7;color:#7a5a00')   // choisi : vert foncé, ambre si ≠ FBO de l'avion
+            : isAc ? 'border:1px solid var(--gb);background:var(--gl);color:var(--gd)'                                                                                              // FBO de l'avion
+            : 'border:1px solid var(--blue);background:#fff;color:var(--blue)';
+          return `
+          <button onclick="koUseShipAddr(${a._idx})"${isAc ? ' title="Aircraft FBO (Step 2)"' : ''} style="font-size:12px;padding:5px 11px;border-radius:20px;cursor:pointer;${sty}">
+            ${isSel ? '✓' : (isAc ? '✈️' : '📦')} ${(a.label || 'Address').replace(/</g,'&lt;')}
+          </button>`; }).join('')}
       </div>
     </div>`;
-  }).join('');
+  }).join('') + tail;
 }
 
 G.koUseShipAddr = function(i) {
@@ -15198,6 +15221,137 @@ G.koUseShipAddr = function(i) {
 };
 
 G.koManageShipAddr = function() { renderShipAddrManageList(); openModal('modal-shipaddr'); };
+
+// ══════════════════════════════════════
+//  PART REQUEST — FBO d'expédition vs FBO de l'avion
+//  FBO de l'avion = champ « FBO / Support Location » du Step 2 (f_fbo : scan RFS ou saisie), relié ou non à la liste (KO_SHIPADDR).
+//   • « Enter address » avec un champ vide + FBO de l'avion connu → pré-rempli : nom + A/C + adresse (si elle est dans la liste),
+//     ou nom + A/C seuls si le FBO est inconnu de la liste / sans adresse enregistrée (l'adresse reste à saisir).
+//   • Adresse qui désigne un AUTRE FBO (de la liste, d'un autre aéroport, ou texte libre) → warning, jamais de blocage :
+//     faire livrer les pièces ailleurs reste possible.
+//   • Jamais d'écrasement de ce qui est déjà saisi, sauf clic explicite sur « Use the aircraft FBO ».
+// ══════════════════════════════════════
+function koShipFboState() {
+  const list = Array.isArray(KO_SHIPADDR) ? KO_SHIPADDR : [];
+  const air = koFboAirNow(), aid = koFboAirportId(air);
+  const known = koAptLoad() ? !!koAptResolve(air) : /^[A-Za-z]{4}$/.test(air);   // « LFP » en cours de frappe : pas de verdict (même règle que le Step 2)
+  const text = gv('f_fbo').trim();
+  const compact = s => koAptNorm(s).replace(/ /g, '');
+  const drop = koFboPlaceWords(air);
+
+  // 1) FBO de l'avion : 'linked' (dans la liste) | 'ambiguous' | 'unknown' (pas dans la liste) | 'none' (rien de lisible / aéroport pas encore saisi)
+  const ac = { status: 'none', text, name: '', entry: null, candidates: [] };
+  if (text && known && !koFboIsPlaceholder(text, air)) {
+    const m = koFboMatch(text, air);
+    ac.name = text.replace(KO_FBO_EMAIL_RE, ' ').replace(/\s+/g, ' ').trim();   // le nom seul : un email collé dans le champ FBO n'a rien à faire dans l'adresse
+    if (m.status === 'linked') { ac.status = 'linked'; ac.entry = m.entry; }
+    else if (m.status === 'ambiguous') { ac.status = 'ambiguous'; ac.candidates = m.candidates || []; }
+    else ac.status = 'unknown';
+  }
+
+  // 2) Ce que désigne l'adresse d'expédition (1re ligne = nom du FBO, comme koUseShipAddr l'écrit)
+  const lines = String(document.getElementById('ko_shipping_addr')?.value || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const first = lines[0] || '';
+  const ship = { empty: !lines.length, first, entry: null, same: null, other: null, hasAddr: lines.slice(1).some(l => !/^A\/C\b/i.test(l)) };
+  const fc = compact(first);
+  if (fc) {
+    const hits = [];
+    list.forEach((a, i) => { if (a && koFboNames(a).some(n => compact(n) === fc)) hits.push({ ...a, _idx: i }); });
+    ship.entry = hits.find(a => koFboAirportId(a.airport) === aid) || hits[0] || null;   // même nom dans 2 aéroports : celui de l'avion d'abord
+  }
+
+  // 3) Même FBO que l'avion ?
+  if (!ship.empty && ac.status !== 'none') {
+    const whole = compact(lines.join(' '));
+    const mention = nm => { const c = compact(nm); return !!c && whole.includes(c); };   // le nom du FBO de l'avion apparaît quelque part dans l'adresse
+    const alike = (a, b) => {                                                           // même nom, à la casse / mots génériques / faute d'OCR près
+      const ca = compact(a), cb = compact(b);
+      if (!ca || !cb) return false;
+      if (ca === cb) return true;
+      const c = koFboCompare(koFboTokens(a, drop), koFboTokens(b, drop));
+      return c.inter >= 1 && (c.labelInScan || c.scanInLabel);
+    };
+    if (ship.entry && koFboAirportId(ship.entry.airport) !== aid) {
+      ship.same = false;                                                                // FBO d'un autre aéroport
+    } else if (ac.status === 'linked') {
+      if (ship.entry) ship.same = ship.entry._idx === ac.entry._idx;
+      else {
+        const m2 = koFboMatch(first, air);                                              // saisie libre proche d'un FBO de la liste ?
+        if (m2.status === 'linked') { ship.same = m2.entry._idx === ac.entry._idx; ship.entry = m2.entry; }
+        else if (m2.status === 'ambiguous') ship.same = (m2.candidates || []).some(c => c._idx === ac.entry._idx);
+        else ship.same = koFboNames(ac.entry).some(n => mention(n));
+      }
+    } else {                                                                            // 'unknown' / 'ambiguous' : pas d'entrée de référence → on compare les noms
+      const nm = ac.name || ac.text;
+      const refs = ac.status === 'ambiguous' ? ac.candidates.flatMap(c => koFboNames(c)) : [];
+      if (ship.entry) ship.same = (ac.status === 'ambiguous' && ac.candidates.some(c => c._idx === ship.entry._idx)) || koFboNames(ship.entry).some(n => alike(n, nm));
+      else ship.same = alike(first, nm) || mention(nm) || refs.some(r => alike(first, r) || mention(r));
+    }
+    if (ship.same === false && ship.entry) ship.other = { entry: ship.entry, airportId: koFboAirportId(ship.entry.airport) };
+  }
+  return { air, aid, known, ac, ship };
+}
+
+// Encart sous l'adresse d'expédition + pastilles. Appelé par koUpdatePreview (jamais bloquant : une erreur ici ne doit pas casser l'aperçu).
+function koShipFboRefresh() {
+  try {
+    const box = document.getElementById('ko_ship_fbo_box');
+    if (!box) return;
+    const st = koShipFboState(), ac = st.ac, ship = st.ship;
+    const sig = [ac.entry ? ac.entry._idx : '', ship.entry ? ship.entry._idx : '', ship.same === false ? 'x' : '', Array.isArray(KO_SHIPADDR) ? KO_SHIPADDR.length : 0, st.aid, st.known ? 1 : 0].join('|');
+    if (box._sig !== sig) { box._sig = sig; koRenderShipAddrChips(); }   // pastilles : FBO de l'avion / FBO choisi
+
+    koFboCss();
+    const E = escHtml;
+    const acName = E(ac.entry ? String(ac.entry.label || '') : (ac.name || ac.text));
+    const btn = (fn, txt) => `<button type="button" class="fbo-act" onclick="${fn}()">${txt}</button> `;
+    const row = (cls, icon, body) => `<div class="${cls}"><span>${icon}</span><span>${body}</span></div>`;
+    let html = '';
+    if (ac.status === 'none') {
+      html = '';                                                                       // pas de FBO côté avion : rien à comparer
+    } else if (ship.empty) {
+      if (ac.status === 'linked') html = row('fbo-info', '✈️', `Aircraft FBO: <b>${acName}</b>${String(ac.entry.body || '').trim() ? '' : ' — no address saved in the FBO list'}<br>${btn('koShipUseAircraftFbo', 'Use it as shipping address')}`);
+      else if (ac.status === 'ambiguous') html = row('fbo-info', '✈️', `Aircraft FBO “${acName}” could be several saved FBOs — pick the right one above.`);
+      else html = row('fbo-info', '✈️', `Aircraft FBO: <b>${acName}</b> — not in your FBO list, so no address is saved.<br>${ac.name ? btn('koShipUseAircraftFbo', 'Use the name') : ''}${btn('koFboAddFromStep2', '➕ Add it to the FBO list')}`);
+    } else if (ship.same === true) {
+      const ref = ac.entry || ship.entry;                                              // fiche de la liste correspondante (FBO de l'avion, ou celui choisi si l'avion n'est pas relié)
+      if (ship.hasAddr) html = row('fbo-ok', '✈️', 'Same FBO as the aircraft (Step 2).');
+      else if (ref && String(ref.body || '').trim()) html = row('fbo-warn', '⚠️', `No address under the FBO name yet.<br><button type="button" class="fbo-act" onclick="koUseShipAddr(${ref._idx})">Fill in the saved address</button>`);
+      else html = row('fbo-warn', '⚠️', `No address for <b>${acName}</b> yet — ${ref ? 'none is saved in the FBO list' : 'it is not in your FBO list'}. Type it above, or ask the FBO for it.${ref ? '' : '<br>' + btn('koFboAddFromStep2', '➕ Add it to the FBO list')}`);
+    } else if (ship.same === false) {
+      const o = ship.other;
+      const msg = !o
+        ? `This address doesn't mention the aircraft's FBO (<b>${acName}</b>). If the parts go to another FBO, check that it is intended.`
+        : (o.airportId === st.aid
+          ? `Parts will go to <b>${E(o.entry.label || 'another FBO')}</b>, not to the aircraft's FBO (<b>${acName}</b>). Check that it is intended.`
+          : `<b>${E(o.entry.label || 'This FBO')}</b> is at ${E(o.airportId)}, not at the aircraft's airport (${E(st.aid)}). The aircraft's FBO is <b>${acName}</b>. Check that it is intended.`);
+      html = row('fbo-warn', '⚠️', msg + (ac.status === 'ambiguous' ? '' : '<br>' + btn('koShipUseAircraftFbo', 'Use the aircraft FBO')));
+    }
+    if (box._html !== html) { box._html = html; box.innerHTML = html; }
+  } catch (err) { console.warn('koShipFboRefresh failed:', err); }
+}
+
+// Pré-remplit l'adresse d'expédition avec le FBO de l'avion. force=false : seulement si le champ est vide. force=true : bouton explicite.
+function koShipPrefillAircraftFbo(force) {
+  const ta = document.getElementById('ko_shipping_addr');
+  if (!ta) return false;
+  if (!force && String(ta.value || '').trim()) return false;                // rien n'est écrasé
+  const st = koShipFboState();
+  if (st.ac.entry) { G.koUseShipAddr(st.ac.entry._idx); return true; }      // FBO de la liste : nom + A/C + adresse (si enregistrée)
+  if (st.ac.status === 'unknown' && st.ac.name) {                           // FBO inconnu de la liste : nom lu sur la RFS + A/C, l'adresse reste à saisir
+    const reg = gv('f_reg').trim().toUpperCase();
+    ta.value = [st.ac.name, reg ? 'A/C ' + reg : ''].filter(Boolean).join('\n');
+    koUpdatePreview();
+    koSaveState();
+    return true;
+  }
+  return false;
+}
+G.koShipUseAircraftFbo = function() { koShipPrefillAircraftFbo(true); };
+G.koShipToggleAirports = function() {                                         // pastilles : aéroport de l'avion seul ⇄ tous les aéroports
+  const w = document.getElementById('ko-shipaddr-chips');
+  if (w) { w._showAll = !w._showAll; koRenderShipAddrChips(); }
+};
 
 function renderShipAddrManageList() {
   const list = document.getElementById('shipaddr-manage-list');
@@ -15967,7 +16121,7 @@ async function koFboRefresh(ctx) {
   if (!Array.isArray(KO_SHIPADDR) || !KO_SHIPADDR.length) { clear(); return; }
   const air = String(field.value || '').trim();      // relu après l'attente : l'utilisateur a pu continuer à taper
   const entries = koFboCandidates(air);
-  if (ctx === 'ko') { koFboRenderChips('ko', entries); field._fboSeen = koFboKey(ctx); return; }
+  if (ctx === 'ko') { koFboRenderChips('ko', entries); field._fboSeen = koFboKey(ctx); koShipFboRefresh(); return; }
   const text = gv('f_fbo');
   const known = koAptLoad() ? !!koAptResolve(air) : /^[A-Za-z]{4}$/.test(air);   // « LFP » en cours de frappe : pas de verdict
   const m = known ? koFboMatch(text, air) : { status: 'empty', entry: null, entries: [] };
@@ -16070,7 +16224,8 @@ function koFboPush() {
   if (e) {
     koFboAddEmails(e);
     const ta = document.getElementById('ko_shipping_addr'), cur = koFboByFirstLine(ta?.value);
-    if (ta && (!String(ta.value || '').trim() || (cur && cur._idx !== e._idx))) G.koUseShipAddr(e._idx);
+    // vide → on remplit ; elle désignait l'ANCIEN FBO de l'avion → elle suit le nouveau ; elle désigne un autre FBO (choix volontaire) → on n'y touche pas, l'encart prévient
+    if (ta && (!String(ta.value || '').trim() || (cur && prev && cur._idx === prev._idx && cur._idx !== e._idx))) G.koUseShipAddr(e._idx);
   }
   koFboRefresh('ko').catch(err => console.warn('koFboRefresh failed:', err));
 }
@@ -16084,9 +16239,11 @@ async function koFboOnOpen() {   // à l'ouverture de Start Job : on ne remplit 
   KO_FBO_PREV = koFboLinked();
   koFboPush();
 }
-// Start Job → Step 2 : on retape (ou colle) en 1re ligne de l'adresse d'expédition le nom d'un FBO de la liste
+// Start Job → Step 2 : on retape (ou colle) en 1re ligne de l'adresse d'expédition le nom d'un FBO de la liste.
+// Seulement si le FBO du Step 2 est vide : sinon c'est un FBO de livraison différent de celui de l'avion — l'encart le signale, le Step 2 n'est pas réécrit.
 document.addEventListener('input', e => {
   if (!KO_FBO_READY || !e.target || e.target.id !== 'ko_shipping_addr') return;
+  if (gv('f_fbo').trim() && !koFboIsPlaceholder(gv('f_fbo').trim(), koFboAirNow())) return;
   const f = koFboByFirstLine(e.target.value);
   if (!f || (koFboLinked() || {})._idx === f._idx) return;
   sv('f_fbo', f.label || ''); G.autosave(); koFboPush();
