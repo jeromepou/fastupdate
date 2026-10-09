@@ -116,6 +116,7 @@ header h1{font-size:15px;font-weight:600;flex:1}
 label{font-size:11px;font-weight:600;color:var(--g600);text-transform:uppercase;letter-spacing:.04em}
 input[type=text],input[type=email],input[type=password],textarea,select{padding:7px 10px;border:1px solid var(--g200);border-radius:var(--r);font-size:13px;font-family:inherit;color:var(--g900);background:#fff;transition:border-color .15s;width:100%}
 input:focus,textarea:focus,select:focus{outline:2px solid var(--gm);border-color:var(--gm)}
+input.fld-missing:not(:focus){border-color:#d97706;background:#fffbeb}
 textarea{resize:vertical}
 
 /* DROP */
@@ -964,7 +965,7 @@ button.ko-flip:hover { background: rgba(0,0,0,.14); color: var(--blue) }
       </div>
     </div>
     <div class="grid g2">
-      <div class="fg"><label>FAR / Certification</label><input type="text" id="f_far" placeholder="e.g. EASA" oninput="autosave();updatePart135UI()"/></div>
+      <div class="fg"><label>FAR / Certification</label><input type="text" id="f_far" placeholder="e.g. EASA" oninput="autosave();updatePart135UI();setFarMissing(null)"/></div>
       <div class="fg"><label>Country of Registry</label><input type="text" id="f_country" placeholder="e.g. San Marino" oninput="autosave()"/></div>
       <div class="fg"><label>FBO / Support Location</label><input type="text" id="f_fbo" placeholder="e.g. FBO Universal" oninput="autosave()"/></div>
       <div class="fg"><label>PO Number</label><input type="text" id="f_po" placeholder="e.g. 17-26-REX" oninput="autosave()"/></div>
@@ -973,6 +974,9 @@ button.ko-flip:hover { background: rgba(0,0,0,.14); color: var(--blue) }
     </div>
     <div id="f_far-part135-warning" style="display:none;margin-top:10px;background:#fef3c7;border:1px solid #d97706;border-radius:var(--r);padding:9px 12px;font-size:12px;color:#92400e;align-items:flex-start;gap:8px">
       <span>⚠️</span> <span>This aircraft appears to be operated under <b>14 CFR Part 135</b> (the FAR / Certification field mentions "135"). Review training, roster and RTS-statement requirements with the operator in <b>Start Job</b>.</span>
+    </div>
+    <div id="f_far-missing-warning" style="display:none;margin-top:10px;background:#fef3c7;border:1px solid #d97706;border-radius:var(--r);padding:9px 12px;font-size:12px;color:#92400e;align-items:flex-start;gap:8px">
+      <span>⚠️</span> <span id="f_far-missing-warning-txt"></span>
     </div>
     <div id="country-approval-warning" style="display:none"></div>
   </div>
@@ -6301,8 +6305,9 @@ async function liveTryApply() {
     const intro = document.getElementById('f_intro_msg')?.value || '';
     const outEl = document.getElementById('output-section');
     const outDisp = outEl ? outEl.style.display : '';
-    const rtag = G._rtagDraft, y = window.scrollY;
+    const rtag = G._rtagDraft, y = window.scrollY, farMiss = G._farMissing, farWas = gv('f_far');   // l'alerte « certification manquante » n'existe que sur cet écran
     fillFromProj(latest);
+    if (farMiss && gv('f_far') === farWas) G.setFarMissing(farMiss);   // gardée tant que le champ n'a pas changé chez le collègue
     sv('f_intro_msg', intro);
     if (outEl) outEl.style.display = outDisp;
     G._rtagDraft = rtag;
@@ -6343,7 +6348,7 @@ function fillFromProj(proj) {
   // Mettre à jour le bouton immédiatement
   const isAssist = (proj.rts_assist || 'RTS') === 'Assist';
   const btn = document.getElementById('btn-mark-rts');
-  if (btn) btn.textContent = isAssist ? '🤝 Assistance Provided' : '✅ Mark A/C RTS'; sv('f_far', proj.far); G.updatePart135UI(); sv('f_country', proj.country); sv('f_fbo', proj.fbo); sv('f_po', proj.po);
+  if (btn) btn.textContent = isAssist ? '🤝 Assistance Provided' : '✅ Mark A/C RTS'; sv('f_far', proj.far); G.updatePart135UI(); G.setFarMissing(null); sv('f_country', proj.country); sv('f_fbo', proj.fbo); sv('f_po', proj.po);
   G.koCheckCountryApproval();
   sv('f_ac_hours', proj.ac_hours || ''); sv('f_ac_cycles', proj.ac_cycles || '');
   sv('f_erts', proj.erts || ''); sv('f_nxt', proj.nxt || ''); sv('f_retdate', proj.retdate || ''); sv('f_rettime', proj.rettime || ''); sv('f_info', proj.info || '');
@@ -6393,6 +6398,7 @@ function clearForm() {
   ['f_wo','f_model','f_sn','f_reg','f_loc','f_far','f_country','f_fbo','f_po','f_erts','f_nxt','f_retdate','f_rettime','f_info','f_site_arrival','f_job_desc','f_intro_msg','f_cust_name','f_cust_tel','f_cust_email','f_cust_company','f_cust_code','f_ac_hours','f_ac_cycles']
     .forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
   G.updatePart135UI();
+  G.setFarMissing(null);
   G.koCheckCountryApproval();
   document.getElementById('f_rts_assist').value = 'RTS';
   const btn = document.getElementById('btn-mark-rts');
@@ -7407,7 +7413,8 @@ G.rteNormalize = function(el) {
 };
 
 const DAY_STATUS_META = {
-  arrived:        { emoji:'✈️', label:'Arrived on site',   cls:'active-blue',   bg:'#e8f0f8', fg:'#1a4a7a' },
+  arrived:        { emoji:'🧑‍🔧', label:'Engineer arrived on site', cls:'active-blue',   bg:'#e8f0f8', fg:'#1a4a7a' },
+  work_started:   { emoji:'🔧', label:'Work started',      cls:'active-blue',   bg:'#e8f0f8', fg:'#1a4a7a' },
   parts_received: { emoji:'📦', label:'Parts received',    cls:'active-green',  bg:'#e8f2e8', fg:'#2d5a2d' },
   parts_pending:  { emoji:'⏳', label:'Parts pending',     cls:'active-amber',  bg:'#fef9e7', fg:'#7a5a00' },
   waiting_ac:     { emoji:'🛬', label:'Waiting for A/C',   cls:'active-orange', bg:'#fdf2e9', fg:'#e07800' },
@@ -10260,6 +10267,7 @@ G.extractPDF = async function() {
 
 DOCUMENT TYPE 1 — "RFS" (Request For Service / quote-style document with fields like A/C Registry, Model/SN, FBO, Customer info, work scope items):
 Extract all standard fields normally, including country and far_certification as usually presented in this document type.
+  - far_certification: the value written next to the label "Certification" (section "Additional Visit Aircraft Details"). Customers often leave it EMPTY: when nothing is written for it before the next label (e.g. "Country of Registry"), return "". NEVER copy the Country of Registry value (or any other field) into far_certification, and never deduce it from the registration or the country.
   - customer_code: from the "Account ID" field (e.g. "GX040").
   - customer_company: from the "Account" field — the operator/company name (e.g. "Alba Servizi Aerotrasporti Spa"). Keep original casing, do not uppercase.
   - customer_name: from the "Contact" field — the individual person's name (e.g. "Livio Cuneo"). This is NOT the Account/company name.
@@ -10354,6 +10362,13 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
     fillOrKeep('f_reg',parsed.registration);
     fillOrKeep('f_loc',parsed.location);
     koAptAfterScan('f_loc');    
+    // Garde-fou : une « certification » identique au pays (ou au libellé « Country of Registry ») vient d'une mauvaise
+    // lecture du formulaire quand le champ Certification est vide → on l'ignore (sinon elle serait écrite telle quelle).
+    if (docType === 'RFS' && parsed.far_certification) {
+      const _lc = s => String(s || '').trim().toLowerCase();
+      if (_lc(parsed.far_certification) === _lc(parsed.country) || /^country of registry\b/.test(_lc(parsed.far_certification))) parsed.far_certification = '';
+      if (_lc(parsed.far_certification) === _lc(countryFromRegistration(parsed.registration))) parsed.far_certification = '';   // « UNITED STATES » lu comme certification alors que le pays n'a pas été lu      
+    }
     fillOrKeep('f_country',parsed.country);
     fillOrKeep('f_far',parsed.far_certification||'');
     fillOrKeep('f_fbo',parsed.fbo);
@@ -10368,15 +10383,24 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
     fillOrKeep('f_cust_code',parsed.customer_code||'');
     if(!isFollowUp && parsed.rts_assist) document.getElementById('f_rts_assist').value=parsed.rts_assist.toLowerCase().includes('assist')?'Assist':'RTS';
     const regForCert = (document.getElementById('f_reg')?.value || parsed.registration || '').trim().toUpperCase();
-    if (regForCert && (!document.getElementById('f_far').value.trim())) {
-      const cert = certFromRegistration(regForCert);
-      if (cert) document.getElementById('f_far').value = cert;
-    }
+    // La certification n'est JAMAIS déduite de l'immatriculation (RFS, WOD ou WCR) : si elle manque, on la demande au client.
     if (regForCert && (!document.getElementById('f_country').value.trim())) {
       const ctry = countryFromRegistration(regForCert);
       if (ctry) document.getElementById('f_country').value = ctry;
     }
     G.updatePart135UI();
+    // ⚠ « Certification » absente de la RFS (le client ne l'a pas renseignée) → avertissement Step 1 + Step 2.
+    // RFS uniquement : la WOD et la WCR n'ont jamais ce champ (le prompt le force à "" pour elles).
+    let farWarnHtml = '';
+    if (docType === 'RFS') {
+      if (!String(parsed.far_certification || '').trim()) {
+        const farNow = (document.getElementById('f_far')?.value || '').trim();
+        G.setFarMissing({ value: farNow });
+        farWarnHtml = '<br><span style="color:#92400e;font-weight:700">⚠️ Certification missing on the RFS — see Step 2.</span>';
+      } else {
+        G.setFarMissing(null);
+      }
+    }
     const newItems = (parsed.work_items||[]).filter(it => it.label && it.label.trim().toUpperCase() !== 'EIE');
     if (!isFollowUp) {
       document.getElementById('items-container').innerHTML='';itemCount=0;
@@ -10390,7 +10414,7 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
     }
     G.autosave();
     const typeLabel = docType === 'WORK_ORDER_DETAIL' ? 'Work Order Detail' : docType === 'WCR' ? 'WCR' : 'RFS';
-    setStatus('done',`✓ ${typeLabel} detected — ${newItems.length} item(s) extracted${isFollowUp ? ' and merged' : ''}.`);
+    setStatus('done',`✓ ${typeLabel} detected — ${newItems.length} item(s) extracted${isFollowUp ? ' and merged' : ''}.${farWarnHtml}`);
   }catch(e){setStatus('err','Error: '+e.message);}finally{extractBtn.disabled=false;}
 };
 
@@ -10533,6 +10557,27 @@ G.updatePart135UI = function() {
   const koSection = document.getElementById('ko-part135-section');
   if (koSection) koSection.style.display = isPart135 ? 'block' : 'none';
 };
+ 
+// ⚠ « Certification missing » — le client n'a pas renseigné la certification sur la RFS.
+// État volatil (écran uniquement, rien n'est sauvegardé) : posé par le scan, effacé dès qu'on modifie le champ
+// FAR / Certification ou qu'on change de projet.  m = null | { value: contenu actuel du champ }
+G._farMissing = null;
+G.setFarMissing = function(m) { G._farMissing = m || null; G.updateFarMissingUI(); };
+G.updateFarMissingUI = function() {
+  const m = G._farMissing;
+  const box = document.getElementById('f_far-missing-warning');
+  const txt = document.getElementById('f_far-missing-warning-txt');
+  const inp = document.getElementById('f_far');
+  if (inp) inp.classList.toggle('fld-missing', !!m);
+  if (!box || !txt) return;
+  if (!m) { box.style.display = 'none'; return; }
+  const head = '<b>Certification missing on the RFS.</b> The customer did not say which certification they want. ';
+  txt.innerHTML = head + (!m.value
+    ? 'Ask them, then fill in FAR / Certification.'
+    : 'The field currently shows <b>' + escHtml(m.value) + '</b> — confirm with the customer that this is what they require.');
+  box.style.display = 'flex';
+};
+
 
 // ══════════════════════════════════════
 //  GENERATE TABLE
@@ -11427,7 +11472,7 @@ if ('serviceWorker' in navigator) {
 //  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
 //  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v35';
+const CURRENT_VERSION = 'v36';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
