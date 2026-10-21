@@ -645,3 +645,12 @@ body.u3-on[data-u3k="parts"] .u3-ksub[data-k="drafts"],body.u3-on[data-u3k="draf
 html body.u3-on[data-u3k="drafts"] #kickoff-panel .u3-kgrid{grid-template-columns:minmax(0,760px)}
 body.u3-on[data-u3k="drafts"] .u3-kmain{display:none}
 body.u3-on[data-u3k="drafts"] .u3-kside{display:block;position:static;max-height:none}
+
+/* ===== one page per category (no halves), Gmail / Replies in the Drafts card, no "Clear & New Job" ===== */
+.u3-pt-tabs{display:none!important}
+body.u3-on [data-u3k="questions"] .ko-card-body>p{column-span:all}
+body.u3-on [data-u3k="questions"] .ko-card-body>[data-u3pp="n"]{column-span:all;max-width:760px}
+body.u3-on .u3-ksubs .ko-header{display:none!important}
+.u3-kdh{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto}
+.u3-kdh .btn{min-height:36px;display:inline-flex;align-items:center;gap:6px;padding:0 12px;font-size:12.5px!important;background:#fff!important;border:1.5px solid #CBD5E1!important;color:var(--g800)!important;white-space:nowrap}
+.u3-kdh #btn-gmail-sync-status-ko[style*="none"]{display:none!important}
