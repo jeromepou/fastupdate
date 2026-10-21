@@ -1062,6 +1062,11 @@ input.ac-fld-red:not(:focus),select.ac-fld-red:not(:focus){border-color:#dc2626;
     <div id="updates-container">
       <p style="font-size:13px;color:var(--g400);text-align:center;padding:1rem 0">No updates yet — click "+ Today"</p>
     </div>
+    <div class="fg" id="f_info-wrap" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--g200)">
+      <label>Additional Info / Constraints</label>
+      <textarea id="f_info" style="min-height:60px" oninput="autosave()"></textarea>
+      <button type="button" class="ai-improve-btn" onclick="aiImproveField('f_info', this)">✨ Improve text</button>
+    </div>
   </div>
 </div>
 
@@ -1120,11 +1125,6 @@ input.ac-fld-red:not(:focus),select.ac-fld-red:not(:focus){border-color:#dc2626;
       <div class="fg"><label>Return Date</label><input type="text" id="f_retdate" placeholder="e.g. JUN19/26" oninput="autosave()"/></div>
       <div class="fg"><label>Return Time</label><input type="text" id="f_rettime" placeholder="e.g. 14:00 UTC" oninput="autosave()"/></div>
       <div class="fg"><label>Engineer Arrival On Site</label><input type="text" id="f_site_arrival" placeholder="e.g. 18SEP26 AM" oninput="autosave()"/></div>
-    </div>
-    <div class="fg">
-      <label>Additional Info / Constraints</label>
-      <textarea id="f_info" style="min-height:60px" oninput="autosave()"></textarea>
-      <button type="button" class="ai-improve-btn" onclick="aiImproveField('f_info', this)">✨ Improve text</button>
     </div>
   </div>
 </div>
@@ -3081,14 +3081,14 @@ input.ac-fld-red:not(:focus),select.ac-fld-red:not(:focus){border-color:#dc2626;
         <li><strong>Enrolled in CMP &amp; Payment Terms:</strong> two fields of Step 2, filled in by the RFS scan (a Work Order Detail or a WCR never contains them → <em>Unknown</em>; an older RFS without these lines gives <em>Unknown</em> too). Both are shown under the aircraft name. <strong>ZCOD</strong> (cash on delivery) raises an amber warning and <strong>ZCIA</strong> (cash in advance) a red one; other codes (ZN30, ZN60…) need no particular attention. If the customer is <strong>not enrolled in CMP</strong>, a ready-made question asking for their work package with the associated work cards appears in Start Job → Customer update.</li>
         <li><strong>Step 4 — Daily updates:</strong> tap "+ Today", "+ Yesterday" or "+ Day before" to add a day. A new day automatically carries over any items already checked on the previous day (with their status), so you only need to update what changed. Check off each work item you worked on and set its status (Carried out, Waiting for part(s), Item MEL'd, Cancelled by customer, or In progress), then add a free-text note. Toggle "A/C RTS" on the day the aircraft returns to service. The progress bar on each day card shows how many items are checked. Ticking or changing an item's status on an earlier day also updates that item on every later day already created, so you don't need to repeat it manually.</li>
         <li><strong>Parts (optional):</strong> paste an email thread into the text area or upload it as a PDF, then tap "Extract parts from email" — part numbers, serials and descriptions are detected automatically. Review and confirm before they are added to the parts replaced list.</li>
-        <li><strong>Step 5 — Closing details:</strong> job description suffix for the email subject, estimated RTS, next flight, return date and time, and any additional constraints or information.</li>
+        <li><strong>Step 5 — Closing details:</strong> job description suffix for the email subject, estimated RTS, next flight, return date and time. (Additional Info / Constraints now lives in Step 4 — Daily updates.)</li>
         <li><strong>Step 6 — Onsite engineers &amp; customer:</strong> you are automatically listed as Lead Engineer — reassigning it gives full project access to whoever you pick. Add up to 2 assisting colleagues — the project then appears in their own list (🤝/👑 tag) and they can edit it, add daily updates and create GA3671 tags; removing someone here (or reassigning the lead away from them) removes their access. Fill in the customer's name, phone, email, company, and customer code for the FAST Update table footer and for pre-filling GA3671 tags.</li>
       </ol>
     </div>
 
     <div class="help-section">
       <h4>✨ AI-assisted text correction</h4>
-      <p>Wherever you see a <strong>"✨ Improve text"</strong> button (daily update notes, Step 5 constraints), tap it to have AI correct grammar, spelling and clarity. It never invents information or changes technical facts (part numbers, dates, squawk numbers, registrations…), and never applies automatically: you always see the suggestion side-by-side with your original text and must confirm before it replaces anything.</p>
+      <p>Wherever you see a <strong>"✨ Improve text"</strong> button (daily update notes, Additional Info / Constraints in Daily update), tap it to have AI correct grammar, spelling and clarity. It never invents information or changes technical facts (part numbers, dates, squawk numbers, registrations…), and never applies automatically: you always see the suggestion side-by-side with your original text and must confirm before it replaces anything.</p>
     </div>
 
     <div class="help-section">
@@ -13134,7 +13134,7 @@ WORK_ITEMS RULE for this type — READ CAREFULLY, this is strict:
   Double-check before finalizing: your work_items array must contain ONLY squawks whose Item number is exactly 2. If you are unsure which Item a squawk belongs to, exclude it rather than risk including an administrative task.
 
 DOCUMENT TYPE 3 — "WCR" / "Work Change Request" (header says "WORK CHANGE REQUEST", lists numbered tasks like "2.6 - ...", "2.7 - ..." to be ADDED to an existing work order):
-Extract work_order (from "WORK ORDER:" field), registration (A/C REGISTRATION field), model/serial (A/C TYPE/SERIAL NO. field), customer_name (CUSTOMER REP field), and each numbered task line as a work item. Strip the leading number (e.g. "2.7 -"). If a task starts with a registration/squawk-ID prefix followed by a lead-in like "A7-CGB-260615-1 CREW REPORTED:", strip that whole prefix too and keep only the actual description after it.
+Extract work_order (from "WORK ORDER:" field), registration (A/C REGISTRATION field), model/serial (A/C TYPE/SERIAL NO. field), customer_name (CUSTOMER REP field), and each numbered task line listed under "THE FOLLOWING ITEM(S) HAS/HAVE BEEN ADDED" as a work item. Tasks listed under "THE FOLLOWING ITEM(S) HAS/HAVE BEEN ABORTED / CANCELLED" must NOT go in work_items: put their label (UPPERCASE, number stripped) in the extra array "aborted_items" instead. Strip the leading number (e.g. "2.7 -"). If a task starts with a registration/squawk-ID prefix followed by a lead-in like "A7-CGB-260615-1 CREW REPORTED:", strip that whole prefix too and keep only the actual description after it.
 Leave far_certification and country as "" for this document type too. Return enrolled_in_cmp and payment_terms as "Unknown" as well: a "CMP" written inside a task line (e.g. "CMP 315101.024 - FUEL SUMPING") is a maintenance-program task reference, NOT an enrollment status.
 
 UNIVERSAL RULE FOR ALL TYPES:
@@ -13145,7 +13145,7 @@ UNIVERSAL RULE FOR ALL TYPES:
 - Never invent or infer a value that is not explicitly written in the document. If unsure, use "".
 
 Reply ONLY with valid JSON, no markdown, in this exact shape:
-{"doc_type":"RFS or WORK_ORDER_DETAIL or WCR","work_order":"","model":"e.g. GVIII-G700","serial_number":"","registration":"","location":"ICAO","rts_assist":"RTS or Assist","far_certification":"","country":"","fbo":"","po_number":"","customer_name":"UPPERCASE","customer_company":"","customer_code":"","customer_phone":"","customer_email":"","enrolled_in_cmp":"Yes or No or Unknown","payment_terms":"e.g. ZN30, or Unknown","estimated_rts":"","next_flight":"UNKWN if unknown","constraints":"","work_items":[{"label":"UPPERCASE"}]}`;
+{"doc_type":"RFS or WORK_ORDER_DETAIL or WCR","work_order":"","model":"e.g. GVIII-G700","serial_number":"","registration":"","location":"ICAO","rts_assist":"RTS or Assist","far_certification":"","country":"","fbo":"","po_number":"","customer_name":"UPPERCASE","customer_company":"","customer_code":"","customer_phone":"","customer_email":"","enrolled_in_cmp":"Yes or No or Unknown","payment_terms":"e.g. ZN30, or Unknown","estimated_rts":"","next_flight":"UNKWN if unknown","constraints":"","work_items":[{"label":"UPPERCASE"}],"aborted_items":[]}`;
   try {
     // Étape 1 : lecture locale du PDF (gratuite) ; OCR seulement si le PDF est un scan, un modèle inconnu, ou si pdfjs/ est absent
     let extractedText = await pdfLocalText(pdfB64);
@@ -13274,8 +13274,10 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
       });
     }
     G.autosave();
+    const aborted = (Array.isArray(parsed.aborted_items) ? parsed.aborted_items : []).map(x => String(x && x.label ? x.label : x || '').trim()).filter(Boolean);
+    const abortedHtml = aborted.length ? '<br><span style="color:#92400e;font-weight:700">⚠️ Cancelled on the WCR (not added): ' + aborted.map(escHtml).join(', ') + '</span>' : '';
     const typeLabel = docType === 'WORK_ORDER_DETAIL' ? 'Work Order Detail' : docType === 'WCR' ? 'WCR' : 'RFS';
-    setStatus('done',`✓ ${typeLabel} detected — ${newItems.length} item(s) extracted${isFollowUp ? ' and merged' : ''}${readLocally ? ' · no OCR' : ''}.${farWarnHtml}${cmpPayHtml}`);
+    setStatus('done',`✓ ${typeLabel} detected — ${newItems.length} item(s) extracted${isFollowUp ? ' and merged' : ''}${readLocally ? ' · no OCR' : ''}.${farWarnHtml}${cmpPayHtml}${abortedHtml}`);
   }catch(e){setStatus('err','Error: '+e.message);}finally{extractBtn.disabled=false;}
 };
 
