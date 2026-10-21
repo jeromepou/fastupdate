@@ -177,7 +177,7 @@
   var KSUBS = [['job', 'Job', 'notes'], ['recips', 'Recipients', 'mail'], ['travel', 'Travel', 'plane'], ['questions', 'Customer update', 'help'], ['partreq', 'Part request', 'box'], ['parts', 'Parts & tools', 'wrench'], ['fbo', 'FBO', 'building'], ['drafts', 'Drafts', 'send']];
   var KNAMES = ['job', 'recips', 'travel', 'questions', 'partreq', 'parts', 'fbo', 'drafts'];
   /* "Next" only exists INSIDE a category that has two halves (nobody has to walk through everything) */
-  var HALVES = { questions: [['q', 'Questions'], ['n', 'ETA, priorities & notes']], fbo: [['a', 'Equipment & questions'], ['b', 'People, documents & notes']] };
+  var HALVES = {};   // every category is ONE page (no more two halves / small tabs / Next)
   var seen = {};
   var CHECK_MSG = 'Check the fields below. Empty ones can be filled now or later, in Details.';
   var TABS = [['details', 'Details', 'notes'], ['start', 'Start Job', 'flag'], ['daily', 'Daily update', 'table'], ['ga', 'GA3671 tag', 'tag'], ['corridor', 'Corridor', 'clip'], ['amm', 'AMM reader', 'book']];
@@ -280,13 +280,10 @@
     if (!card) return; card.setAttribute('data-u3half', h);
     $$('.u3-pt-tab', card).forEach(function (x) { x.classList.toggle('on', x.getAttribute('data-h') === h); });
   }
-  function halves(card, names, assign) {
+  function halves(card, names, assign) {   // only tags the blocks (nothing is hidden any more): one single page
     var body = $('.ko-card-body', card); if (!body) return;
     var kids = Array.prototype.slice.call(body.children);
     kids.forEach(function (c, i) { c.setAttribute('data-u3pp', assign(c, i, kids)); });
-    var tb = el('div', 'u3-pt-tabs');
-    names.forEach(function (x) { var t = el('button', 'u3-pt-tab'); t.type = 'button'; t.setAttribute('data-h', x[0]); t.textContent = x[1]; tb.appendChild(t); });
-    body.insertBefore(tb, body.firstChild); setHalf(card, names[0][0]);
   }
   function buildParts(card) {
     var body = $('.ko-card-body', card); if (!body || $('.u3-pw', body)) return;
@@ -346,6 +343,12 @@
       var ks = el('div', 'u3-ksubs'); ks.hidden = true;
       KSUBS.forEach(function (x) { var b = el('button', 'u3-ksub'); b.type = 'button'; b.setAttribute('data-k', x[0]); b.innerHTML = ICON[x[2]] + '<span>' + x[1] + '</span>'; ks.appendChild(b); });
       var hdr2 = $('.ko-header', kp); if (hdr2) ks.appendChild(hdr2);
+      // Gmail status + Replies live in the Drafts card (that is where the emails are sent / answered)
+      var dh = $('.ko-card-head', cards[7]);
+      if (dh && !$('.u3-kdh', dh)) {
+        var box = el('div', 'u3-kdh'), gm = D.getElementById('btn-gmail-sync-status-ko'), rp = hdr2 && $('[onclick*="koOpenReplyModal"]', hdr2);
+        if (gm) box.appendChild(gm); if (rp) box.appendChild(rp); dh.appendChild(box);
+      }
       ph.appendChild(ks);
     }
   }
