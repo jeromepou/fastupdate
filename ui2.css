@@ -1,0 +1,258 @@
+/* =====================================================================
+   ui2.css — FAST Update Generator · new interface (visual layer)
+   PRESENTATION ONLY. Loaded by ui2.js, and only when the opt-in switch
+   is on (?ui2=1). Nothing of the app's markup or logic is replaced.
+   Every override uses the "html body" prefix so it wins over the inline
+   <style> regardless of source order.
+   ===================================================================== */
+
+@font-face{font-family:"Plus Jakarta Sans";src:url("fonts/plus-jakarta-sans-latin-wght-normal.woff2") format("woff2");font-weight:200 800;font-style:normal;font-display:swap}
+
+/* 1 · TOKENS — the app already colours itself through these variables,
+      so changing them re-themes every screen and every modal at once. */
+html:root{
+  --gd:#0E2238;--gm:#1F4068;--gl:#EAF0F7;--gb:#BCCADB;
+  --amb:#6B4A00;--al:#FEF3C7;
+  --g50:#F8FAFC;--g100:#F3F5F8;--g200:#E3E8EF;--g400:#9AA8BA;--g600:#5B6B7F;--g800:#26364B;--g900:#0E2238;
+  --r:10px;--rlg:14px;--sh:0 1px 2px rgba(14,34,56,.05),0 4px 14px rgba(14,34,56,.04);
+  --u2-amber:#FF9F1C;--u2-amber-d:#E58A00;--u2-teal:#2BC4B0;--u2-teal-d:#1FA896;
+  --u2-ok:#12805C;--u2-okl:#E7F4EE;--u2-okb:#9FD3BC;
+  --u2-side:232px;--u2-hdr:56px;--u2-crumb:"Projects";
+}
+
+/* 2 · BASE */
+html body{font-family:"Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:var(--g100);color:var(--g900);-webkit-font-smoothing:antialiased}
+html body button,html body input,html body select,html body textarea{font-family:inherit}
+html body header{background:var(--gd);box-shadow:0 1px 0 rgba(255,255,255,.06)}
+html body header h1{font-weight:800}
+
+/* 3 · COMPONENTS */
+html body .card,html body .proj-panel,html body .eng-bar,html body .ko-card{border-radius:16px;border-color:var(--g200);box-shadow:var(--sh)}
+html body .card-head,html body .ko-card-head,html body .proj-panel-head{background:#fff;padding:14px 20px}
+html body .card-head h2,html body .ko-card-head h3,html body .proj-panel-head h3{font-size:14px;font-weight:800;color:var(--g900)}
+html body .step-badge{background:var(--gd);color:#fff;font-weight:800;letter-spacing:.06em;font-size:10.5px;padding:3px 9px}
+html body .card-body{padding:20px}
+html body .ko-card-body{padding:18px 20px}
+
+html body .btn{border-radius:10px;padding:8px 14px;font-weight:700;border-color:#CBD5E1;color:var(--g800)}
+html body .btn:hover{background:var(--g100)}
+html body .btn.primary{background:var(--gd);border-color:var(--gd);color:#fff}
+html body .btn.primary:hover{background:var(--gm);border-color:var(--gm)}
+html body .btn.primary.xl{background:var(--u2-amber);border-color:var(--u2-amber);color:#0E2238;padding:13px 22px;border-radius:14px}
+html body .btn.primary.xl:hover{background:var(--u2-amber-d);border-color:var(--u2-amber-d)}
+html body .btn.danger{color:var(--red);border-color:#E5BFB4;background:#fff}
+html body .btn.danger:hover{background:var(--rl)}
+html body .btn-start-job{background:var(--u2-teal);color:#0E2238;border-radius:10px;font-weight:800;box-shadow:none}
+html body .btn-start-job:hover{background:var(--u2-teal-d);transform:none;box-shadow:none}
+html body .extract-btn{background:var(--gd);border-radius:10px}
+html body .ko-gen-btn{background:var(--u2-teal);color:#0E2238;border-radius:14px}
+html body .ko-gen-btn:hover:not(:disabled){background:var(--u2-teal-d)}
+html body .copy-btn{border-radius:10px;font-weight:700}
+html body .drop-zone{border-color:var(--gb);border-radius:14px}
+html body .drop-zone:hover,html body .drop-zone.over{background:#DCE6F2;border-color:var(--gm)}
+
+html body label{color:var(--g600);font-weight:700;letter-spacing:.03em}
+html body input[type=text],html body input[type=email],html body input[type=password],html body textarea,html body select{border:1px solid #D5DCE6;border-radius:10px;padding:9px 12px;font-size:13.5px;background:#fff;color:var(--g900)}
+html body input:focus,html body textarea:focus,html body select:focus{outline:2px solid var(--gm);outline-offset:0;border-color:var(--gm)}
+
+html body .modal-bg{background:rgba(14,34,56,.55)}
+html body .modal{border-radius:18px;box-shadow:0 20px 60px rgba(14,34,56,.3)}
+html body .modal h3{font-size:16px;font-weight:800}
+html body .auth-box{border-radius:20px}
+
+/* "success" keeps its own green even though the primary colour is now navy */
+html body .tag-open,html body .tag-rts,html body .s-done,html body .ko-s-done,html body .ko-badge-ok,html body .abadge.ok,
+html body .rts-toggle.checked,html body .day-status-pill.active-green,html body .ko-pill.active-green,html body .ko-addr-pill.on,
+html body .copy-btn.copied,html body .sg-row.done,html body .lkm-ok{background:var(--u2-okl);border-color:var(--u2-okb);color:var(--u2-ok)}
+html body .update-day.is-rts::before{background:var(--u2-ok);border-color:var(--u2-ok)}
+html body .update-day-progress-fill{background:var(--u2-ok)}
+
+/* projects list: two equal actions per row */
+html body .proj-panel-head{gap:12px}
+html body .proj-tab{padding:6px 14px;font-size:12px}
+html body .proj-list{padding:12px;gap:10px}
+html body .proj-item{padding:14px 16px;gap:12px;border-radius:14px;background:#fff}
+html body .proj-item:hover{background:var(--g50);border-color:var(--gb)}
+html body .proj-item.active{background:#fff;border-color:var(--gd);box-shadow:0 0 0 1px var(--gd)}
+html body .proj-item-wo{font-size:15px;color:var(--g900);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+html body .proj-item-sub{font-size:12px;margin-top:2px}
+html body .proj-item .btn-start-job,html body .proj-item .u2-fast{padding:9px 14px!important;font-size:12.5px!important;border-radius:10px;display:inline-flex;align-items:center;gap:7px;font-weight:800;cursor:pointer;border:0}
+html body .proj-item .u2-fast{background:var(--u2-amber);color:#0E2238}
+html body .proj-item .u2-fast:hover{background:var(--u2-amber-d)}
+html body .proj-item svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Start Job header becomes a light toolbar under the banner */
+html body .ko-header{background:#fff;color:var(--g900);border:1px solid var(--g200);box-shadow:var(--sh);border-radius:16px}
+html body .ko-header .ko-avatar{background:var(--gd);color:#fff}
+html body .ko-header .ko-eng-sub{opacity:1;color:var(--g600)}
+html body .ko-header .btn{background:#fff!important;border-color:#CBD5E1!important;color:var(--g800)!important}
+
+/* 4 · SHELL — only active when ui2.js adds body.u2-on (logged-in screens) */
+.u2-side,.u2-banner,.u2-steps{display:none}
+html body.u2-on .u2-side{display:flex;position:fixed;top:0;bottom:0;left:0;width:var(--u2-side);background:#0E2238;color:#C9D5E3;flex-direction:column;gap:4px;padding:18px 14px;z-index:120;overflow-y:auto}
+.u2-brand{display:flex;align-items:center;gap:10px;padding:2px 10px 16px;color:#fff}
+.u2-brand svg{width:26px;height:26px;color:var(--u2-amber);flex:none}
+.u2-brand b{display:block;font-size:15px;font-weight:800;line-height:1.1}
+.u2-brand span{font-size:11px;color:#8FA3BA}
+.u2-cta,.u2-i{display:flex;align-items:center;gap:10px;width:100%;border:0;cursor:pointer;font-weight:700;font-size:13.5px;text-align:left}
+.u2-cta{order:-1;justify-content:center;height:44px;border-radius:12px;background:#fff;color:#0E2238;font-weight:800;margin-bottom:10px}
+.u2-cta:hover{background:#EAF0F7}
+.u2-i{padding:10px 12px;border-radius:10px;background:none;color:#C9D5E3;font-weight:600}
+.u2-i:hover{background:#16304F;color:#fff}.u2-i.on{background:#1B3556;color:#fff}
+.u2-side svg,.u2-tab svg,.u2-step svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.u2-brand svg{fill:currentColor;stroke:none}
+.u2-n{margin-left:auto;background:var(--u2-amber);color:#0E2238;border-radius:99px;padding:0 7px;font-size:11px;font-weight:800;line-height:18px}.u2-n:empty{display:none}
+.u2-sec{display:block;margin:16px 12px 4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#8FA3BA;font-weight:700}
+.u2-grp{display:flex;flex-direction:column;gap:4px}
+.u2-tools-btn{display:none}
+
+html body.u2-on header{margin-left:var(--u2-side);height:var(--u2-hdr);background:#fff;color:var(--g900);border-bottom:1px solid var(--g200);box-shadow:none}
+html body.u2-on header>svg{display:none}
+html body.u2-on header h1{font-size:0}
+html body.u2-on header h1::before{content:var(--u2-crumb);font-size:14px;font-weight:700;color:var(--g900)}
+html body.u2-on .hdr-right button{background:#fff;border:1px solid #CBD5E1;color:var(--g800)}
+html body.u2-on .hdr-right button:hover{background:var(--g100)}
+html body.u2-on #hdr-profile-name{color:var(--g600);opacity:1!important}
+html body.u2-on .main{max-width:1180px;margin-left:max(var(--u2-side),calc((100vw + var(--u2-side) - 1180px)/2));margin-right:auto;padding:20px 28px 5rem}
+html body.u2-on #btn-start-job{display:none!important}
+
+/* page switch: "projects" shows the list only, "workspace" shows the project */
+html body.u2-on[data-u2page="projects"] .u2-ws{display:none!important}
+html body.u2-on[data-u2page="workspace"] .u2-pj{display:none!important}
+html body.u2-on[data-u2page="projects"] .u2-tabs{display:none}
+
+/* banner (photo + project identity + the two equal tabs) */
+html body.u2-on .u2-banner{display:flex;position:relative;border-radius:16px;background:#0E2238;color:#fff;overflow:hidden;min-height:150px;margin-bottom:14px}
+.u2-bn-l{position:relative;z-index:2;flex:0 0 min(440px,55%);padding:18px 28px;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.u2-bn-t{font-size:24px;font-weight:800;line-height:1.15;color:#fff;margin:0}
+.u2-bn-m{font-size:12.5px;color:#C7D3E2;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.u2-chip{display:inline-block;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:800;background:var(--u2-okl);color:var(--u2-ok)}
+.u2-chip[hidden]{display:none}
+.u2-bn-r{position:relative;flex:1;min-width:0}
+.u2-bn-r img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 70%}
+.u2-bn-r::before{content:"";position:absolute;top:0;bottom:0;left:0;width:120px;z-index:1;background:linear-gradient(90deg,#0E2238,rgba(14,34,56,0))}
+.u2-tabs{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.u2-tab{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 16px;border-radius:12px;border:1.5px solid transparent;background:rgba(255,255,255,.12);color:#fff;font-weight:700;font-size:13px;cursor:pointer}
+.u2-tab[data-t="start"]{border-color:rgba(43,196,176,.6)}.u2-tab[data-t="start"] svg{color:var(--u2-teal)}
+.u2-tab[data-t="fast"]{border-color:rgba(255,159,28,.6)}.u2-tab[data-t="fast"] svg{color:var(--u2-amber)}
+.u2-tab.on{color:#0E2238}.u2-tab.on svg{color:#0E2238!important}
+.u2-tab.on[data-t="start"]{background:var(--u2-teal);border-color:var(--u2-teal)}
+.u2-tab.on[data-t="fast"]{background:var(--u2-amber);border-color:var(--u2-amber)}
+
+/* section navigator (scroll-spy) */
+html body.u2-on .u2-steps{display:flex;gap:8px;overflow-x:auto;position:sticky;top:var(--u2-hdr);z-index:90;background:var(--g100);padding:10px 0;margin:0 0 10px;scrollbar-width:none}
+.u2-steps::-webkit-scrollbar{display:none}
+.u2-step{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:99px;background:#fff;border:1.5px solid #C3CEDB;font-weight:700;font-size:13px;color:#2B3D55;white-space:nowrap;cursor:pointer;box-shadow:0 1px 2px rgba(14,34,56,.06)}
+.u2-step b{width:24px;height:24px;border-radius:50%;background:#E3E9F1;color:#0E2238;display:grid;place-items:center;font-size:12px;font-weight:800}
+.u2-step.on{background:#0E2238;border-color:#0E2238;color:#fff}.u2-step.on b{background:var(--u2-amber);color:#0E2238}
+.u2-step i{font-style:normal;background:var(--u2-amber);color:#0E2238;border-radius:99px;padding:0 7px;font-size:11px;font-weight:800;line-height:18px}.u2-step i[hidden]{display:none}
+
+/* 5 · RESPONSIVE — below 900px the sidebar becomes a bottom bar */
+@media(max-width:900px){
+  html body.u2-on .u2-side{top:auto;right:0;width:auto;flex-direction:row;align-items:stretch;gap:0;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));border-top:1px solid #1B3556;overflow:visible}
+  html body.u2-on .u2-brand,html body.u2-on .u2-sec{display:none}
+  html body.u2-on .u2-cta,html body.u2-on .u2-i{order:0;flex:1;flex-direction:column;justify-content:center;gap:3px;min-height:48px;height:auto;padding:6px 4px;margin:0;background:none;color:#C9D5E3;font-size:11px;font-weight:600;text-align:center;border-radius:10px}
+  html body.u2-on .u2-cta svg{color:var(--u2-amber)}
+  html body.u2-on .u2-tools-btn{display:flex}
+  html body.u2-on .u2-grp{display:none}
+  html body.u2-on .u2-side.tools-open .u2-grp{display:flex;position:fixed;left:10px;right:10px;bottom:calc(64px + env(safe-area-inset-bottom,0px));background:#0E2238;border:1px solid #1B3556;border-radius:14px;padding:8px;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+  html body.u2-on .u2-side.tools-open .u2-grp .u2-i{flex:none;flex-direction:row;justify-content:flex-start;font-size:14px;padding:12px}
+  html body.u2-on header{margin-left:0}
+  html body.u2-on .main{margin-left:0;margin-right:0;max-width:none;padding:14px 12px 96px}
+  .u2-bn-l{flex:1;padding:16px}
+  .u2-bn-t{font-size:19px}
+  .u2-bn-r{position:absolute;inset:0;flex:none}
+  .u2-bn-r::before{inset:0;width:auto;background:linear-gradient(90deg,rgba(14,34,56,.96) 0%,rgba(14,34,56,.86) 55%,rgba(14,34,56,.35) 100%)}
+  .u2-tab{flex:1;justify-content:center}
+  html body .proj-item{flex-wrap:wrap}
+}
+
+/* =====================================================================
+   v2 additions — top actions, live preview, Start Job side panel,
+   sticky action row, login screen, icons
+   ===================================================================== */
+
+/* top actions: proxies of "Mark A/C RTS" and "Handover" (the original buttons stay in the page) */
+.u2-topbar{display:none}
+html body.u2-on .u2-topbar{display:flex;justify-content:flex-end;gap:8px;margin:-2px 0 10px}
+html body.u2-on .u2-topbar .btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 14px;font-size:12.5px}
+html body.u2-on .u2-topbar .btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+html body.u2-on .u2-topbar .btn[hidden]{display:none}
+html body.u2-on .u2-topbar .btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* the action row becomes a bar that stays reachable; Mark RTS / Replies live in the top bar / sidebar */
+html body.u2-on[data-u2page="workspace"] .action-row{position:sticky;bottom:0;z-index:85;background:var(--g100);padding:12px 0 10px;margin-top:8px;box-shadow:0 -10px 14px -12px rgba(14,34,56,.25)}
+html body.u2-on .action-row #btn-mark-rts,html body.u2-on .action-row #btn-reply-sync{display:none!important}
+
+/* live preview: each SQ with its update right below */
+.u2-live{display:none}
+.u2-live-in{display:flex;flex-direction:column;background:#fff;border:1px solid var(--g200);border-radius:16px;box-shadow:var(--sh);padding:16px}
+.u2-live-h{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.u2-live-h h3{margin:0;font-size:15px;font-weight:800}
+.u2-cnt{font-style:normal;background:var(--gd);color:#fff;border-radius:99px;padding:0 9px;font-size:11px;font-weight:800;line-height:18px}
+.u2-live-m{margin-left:auto;color:var(--g600);font-size:11.5px}
+.u2-live-x{display:none;margin-left:8px;border:0;background:none;font-size:24px;line-height:1;color:var(--g600);cursor:pointer}
+.u2-live-wo{background:#A8D08D;color:#000;font-weight:700;font-size:11px;padding:7px 12px;border-radius:10px 10px 0 0}
+.u2-live-sc{flex:1;min-height:0;overflow-y:auto;border:1px solid var(--g200);border-top:0;border-radius:0 0 10px 10px;padding:0 12px;max-height:60vh}
+.u2-live-sc::-webkit-scrollbar{width:8px}.u2-live-sc::-webkit-scrollbar-thumb{background:#C5CEDA;border-radius:8px}
+.u2-dh{position:sticky;top:0;z-index:1;background:#fff;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 0 8px;border-bottom:1px solid var(--g200)}
+.u2-db{background:#E8F2E8;padding:2px 8px;border-radius:4px;font-size:11.5px}
+.u2-dp{background:#FEF3C7;color:#6B4A00;border-radius:99px;padding:2px 10px;font-size:10.5px;font-weight:800}
+.u2-dp-rts{background:var(--u2-okl);color:var(--u2-ok)}
+.u2-en{padding:9px 0;border-bottom:1px solid #EEF1F5;cursor:pointer}.u2-en:last-child{border:0}.u2-en:hover{background:var(--g50)}
+.u2-l1{display:flex;gap:8px;align-items:baseline;font-size:12px}
+.u2-sq{flex:none;width:54px}
+.u2-ds{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.u2-l2{margin:4px 0 0 62px;font-size:11.5px;line-height:1.55;color:var(--g600);word-break:break-word}
+.u2-pl{display:inline-block;color:#fff;font-size:9.5px;font-weight:800;padding:2px 8px;border-radius:99px;margin-right:6px;letter-spacing:.02em}
+.u2-mu{font-style:italic;color:var(--g600)}
+.u2-note{margin:10px 0;padding:8px 10px;background:var(--g50);border-radius:8px;font-size:11.5px;font-style:italic;color:var(--g600)}
+.u2-empty{font-size:12px;color:var(--g600);padding:14px 0;margin:0}
+.u2-live.open{display:block;position:fixed;top:var(--u2-hdr);left:0;right:0;bottom:0;z-index:140;background:rgba(14,34,56,.5);padding:14px}
+.u2-live.open .u2-live-in{max-height:100%}
+.u2-live.open .u2-live-sc{max-height:none}
+.u2-live.open .u2-live-x{display:block}
+
+/* Start Job: "Drafts to generate" becomes a side panel on wide screens */
+.u2-ko-side{display:none}
+.u2-drafts.u2-flash{box-shadow:0 0 0 3px var(--u2-teal)}
+html body.u2-on .ko-card-head h3{display:flex;align-items:center;gap:10px}
+.u2-ic{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;background:var(--gl);color:var(--gd);flex:none}
+.u2-ic svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+@media(min-width:1360px){
+  html body.u2-on[data-u2view="fast"][data-u2page="workspace"] #app-screen{position:relative;max-width:1280px;margin-left:max(var(--u2-side),calc((100vw + var(--u2-side) - 1280px)/2));padding-right:376px}
+  html body.u2-on[data-u2view="fast"][data-u2page="workspace"] .u2-live{display:block;position:absolute;top:0;bottom:0;right:28px;width:328px}
+  html body.u2-on .u2-live .u2-live-in{position:sticky;top:calc(var(--u2-hdr) + 14px);max-height:calc(100vh - var(--u2-hdr) - 34px)}
+  html body.u2-on .u2-live .u2-live-sc{max-height:none}
+  html body.u2-on .u2-prev-pill{display:none}
+}
+@media(min-width:1440px){
+  html body.u2-on #kickoff-panel{position:relative;max-width:1320px;margin-left:max(var(--u2-side),calc((100vw + var(--u2-side) - 1320px)/2));padding-right:408px}
+  html body.u2-on .u2-ko-side{display:block;position:absolute;top:0;bottom:0;right:28px;width:360px}
+  html body.u2-on .u2-ko-in{position:sticky;top:calc(var(--u2-hdr) + 14px);max-height:calc(100vh - var(--u2-hdr) - 34px);overflow:auto;border-radius:16px}
+}
+@media(max-width:900px){
+  html body.u2-on[data-u2page="workspace"] .action-row{bottom:calc(64px + env(safe-area-inset-bottom,0px))}
+  html body.u2-on .u2-topbar{margin:0 0 10px}
+}
+
+/* login screen: the fleet photo behind the card */
+html body.u2-login{background:#0E2238 url("hero-gulfstream.jpg") center 64%/cover fixed no-repeat}
+html body.u2-login::before{content:"";position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(14,34,56,.62);pointer-events:none;z-index:0}
+html body.u2-login header,html body.u2-login .main{position:relative;z-index:1}
+html body.u2-login header{background:transparent;box-shadow:none}
+html body.u2-login .auth-box{background:#fff;border:0;box-shadow:0 24px 70px rgba(0,0,0,.4)}
+html body.u2-login #auth-box>div:first-child{font-size:0;height:56px;margin-bottom:.5rem;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23FF9F1C' d='M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2l-.8.5 5 4.8-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3z'/%3E%3C/svg%3E") center/contain no-repeat}
+
+/* emoji replaced by inline SVG icons on static labels */
+.u2-i2{display:inline-flex;vertical-align:-.2em;width:1.15em;height:1.15em;margin-right:.45em;flex:none}
+.u2-i2 svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+html body .proj-item .u2-i2{margin-right:0}
+
+/* native scrollIntoView / anchors must not hide targets under the sticky header + section bar */
+html.u2-enabled{scroll-padding-top:128px;scroll-padding-bottom:90px}
+
+/* 8 · additions made after the redesign was checked (v36) */
+/* FBO / Support location (Step 2): names are long ("Jet Aviation Paris Le Bourget") and the "Saved FBO" box sits under the field: it takes two columns when there is room */
+@media(min-width:700px){html body.u2-on #app-screen .fg:has(>#f_fbo){grid-column:span 2}}
