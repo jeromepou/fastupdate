@@ -1,0 +1,304 @@
+/* =====================================================================
+   ui3-tablet.css - FAST Update Generator - interface v3 - TABLET layer
+   PRESENTATION ONLY, like ui3.css: it changes where things sit and how big
+   they are. No field, button or window is removed or rebuilt - each keeps its
+   id and its code. The only things hidden are decorative: the brand text and
+   the "Tools" caption on the slim rail and the tab icons under 760px.
+
+   Loaded by ui3.js right AFTER ui3.css (one line), so it only wins where it
+   says so. It never touches anything below 601px (phone). Above 1100px with a
+   mouse it leaves the PC layout alone; touch screens (pointer:coarse) keep the
+   PC layout there but get the finger-sized controls and the few fixes that depend
+   only on the width of a block (sections 3c, 7, 7c, 9, 12a2, 12a3, 12b, 12c).
+
+   Tablet bands used below:
+     portrait   601-900px    bottom bar (as ui3.css), a bit more room
+     landscape  901-1099px   slim navigation rail instead of the 232px sidebar
+     touch      601px and up finger-sized controls (16px fields, 40-44px targets)
+
+   v2 = rebased on the Start Job pages of ui3.css (section 12): sticky bars above the bottom
+   bar, recipients in 1 or 2 columns depending on the room, order lines as cards when the panel
+   is narrow, finger-sized pills / rows / chips. Nothing is hidden there, nothing is removed.
+   Known exception to the 40px rule: tick-boxes without a label of their own (order lines,
+   "include this draft" boxes) stay at 28-32px (WCAG 2.2 minimum is 24px).
+
+   v3 = rebased on the newer ui3.css / ui3.js (sticky foot of the Drafts column, sticky action row of
+   Daily update, "Start Job without a project"). Three blocks of the first versions are now part of
+   ui3.css itself and were removed from here: project-card buttons as a 2 x 2 / 1 x 4 grid (old 3b),
+   "Start Job without a project" visible (old 10) and the generated table kept on its own page (old 11).
+   New: section 12d (the two new sticky bars rest above the bottom bar in portrait) and section 3c
+   (the name block of the engineer bar was squeezed to nothing around 960px).
+   v3.1 = --u3-bar-h (height of the bottom bar, used to rest the sticky bars above it) is now defined only
+   for 601-900px: below 601px ui3.css owns it (79px, phones). Nothing else changed.
+   ===================================================================== */
+
+html:root{--u3-tap:44px;--u3-tap-s:40px}
+
+/* 1 - PORTRAIT TABLETS (601-900px) - bottom navigation bar ------------------ */
+@media (min-width:601px) and (max-width:900px){
+  /* height of this portrait bottom bar (ui3.css says 79px for phones: it keeps its own value below 601px) */
+  html:root{--u3-bar-h:67px}
+  /* the bar: grouped in the middle, not four cells stretched over 800px */
+  html body.u3-on .u2-side{justify-content:center;gap:6px;padding:6px 12px calc(6px + env(safe-area-inset-bottom,0px))}
+  html body.u3-on .u2-cta,html body.u3-on .u2-i{position:relative;flex:0 1 156px;min-height:54px;gap:4px;font-size:12px}
+  html body.u3-on .u2-side svg[viewBox]:not([width]){width:22px;height:22px}
+  /* the counter on "Projects" sat in its own row and pushed the other labels out of line */
+  html body.u3-on .u2-n{position:absolute;top:3px;left:calc(50% + 7px);margin:0;padding:0 6px;font-size:10.5px;line-height:16px}
+  /* "Tools" list: a small panel above its button, not a full-width sheet */
+  html body.u3-on .u2-side.tools-open .u2-grp{left:auto;right:max(14px,calc(50% - 321px));width:min(320px,calc(100vw - 28px));bottom:calc(var(--u3-bar-h) + 8px + env(safe-area-inset-bottom,0px))}
+  html body.u3-on .u2-side.tools-open .u2-grp .u2-i{min-height:50px;gap:12px;font-size:15px;flex:none}
+
+  /* the validation bar (new project) sits ABOVE the bottom bar, on one line */
+  html body.u3-on .u3-checkbar{bottom:calc(var(--u3-bar-h) + 10px + env(safe-area-inset-bottom,0px));flex-wrap:nowrap}
+  html body.u3-on .u3-checkbar span{flex:1 1 0;min-width:0}
+  html body.u3-on .u3-checkbar .btn{flex:none}
+
+  /* room: same gutters for the project header and the pages */
+  html body.u3-on .u3-ph:not([hidden]){padding:18px 20px 0}
+  html body.u3-on .main{padding:18px 20px calc(var(--u3-bar-h) + 44px + env(safe-area-inset-bottom,0px))}
+  html body.u3-on #proj-list{padding:14px;gap:12px}
+}
+@media (min-width:601px) and (max-width:700px){
+  /* narrowest tablets: message on top, the two buttons side by side below */
+  html body.u3-on .u3-checkbar{flex-wrap:wrap}
+  html body.u3-on .u3-checkbar span{flex:1 1 100%;order:-1}
+  html body.u3-on .u3-checkbar .btn{flex:1 1 0}
+}
+
+/* 1b - larger portrait tablets (800-900px): the PC two-column pages come back */
+@media (min-width:800px) and (max-width:900px){
+  html body.u3-on:is([data-u3p="check"],[data-u3p="project"][data-u3t="details"]) #app-screen{grid-template-columns:minmax(0,1.45fr) minmax(0,1fr)}
+  html body.u3-on:is([data-u3p="new"],[data-u3p="project"][data-u3t="corridor"]) #app-screen{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  html body.u3-on[data-u3p="new"] #app-screen>[data-u3g="chooser"]{grid-column:1/-1!important}
+  html body.u3-on[data-u3p="new"] #app-screen>[data-u3g="upload"]{grid-column:1!important;grid-row:2!important}
+  html body.u3-on[data-u3p="new"] #app-screen>[data-u3g="manual"]{grid-column:2!important;grid-row:2!important}
+  html body.u3-on[data-u3p="project"][data-u3t="details"] #app-screen>[data-u3g="upload"]{grid-column:1/-1!important;grid-row:1!important}
+  html body.u3-on:is([data-u3p="check"],[data-u3p="project"][data-u3t="details"]) #app-screen>[data-u3g="aircraft"]{grid-column:1!important;grid-row:2!important}
+  html body.u3-on:is([data-u3p="check"],[data-u3p="project"][data-u3t="details"]) #app-screen>[data-u3g="closing"]{grid-column:1!important;grid-row:3!important}
+  html body.u3-on:is([data-u3p="check"],[data-u3p="project"][data-u3t="details"]) #app-screen>[data-u3g="team"]{grid-column:2!important;grid-row:2 / span 2!important}
+  html body.u3-on[data-u3p="check"] #app-screen>[data-u3g="checkbar"]{grid-column:1/-1!important;grid-row:4!important}
+}
+
+/* 2 - LANDSCAPE TABLETS (901-1099px) - slim rail instead of the wide sidebar */
+@media (min-width:901px) and (max-width:1099px){
+  html:root{--u2-side:92px}
+  html body.u3-on .u2-side{padding:14px 8px;gap:6px}
+  html body.u3-on .u2-brand{order:-2;justify-content:center;padding:2px 0 10px}
+  html body.u3-on .u2-brand>div{display:none}
+  html body.u3-on .u2-cta{height:auto;min-height:64px;flex-direction:column;justify-content:center;gap:4px;padding:8px 4px;margin-bottom:6px;font-size:11px;text-align:center;line-height:1.2}
+  html body.u3-on .u2-i{position:relative;flex-direction:column;justify-content:center;gap:4px;min-height:64px;padding:10px 4px;font-size:11px;text-align:center;line-height:1.2}
+  html body.u3-on .u2-side svg[viewBox]:not([width]){width:22px;height:22px}
+  html body.u3-on .u2-n{position:absolute;top:5px;left:calc(50% + 7px);margin:0;padding:0 6px;font-size:10.5px;line-height:16px}
+  html body.u3-on .u2-sec{display:none}
+  html body.u3-on .u2-grp{margin-top:8px;padding-top:10px;border-top:1px solid #1B3556}
+  html body.u3-on .main{padding:20px 24px 5rem}
+  html body.u3-on .u3-ph:not([hidden]){padding:20px 24px 0}
+}
+
+/* 3 - BOTH TABLET BANDS - project header and tabs ---------------------------- */
+@media (min-width:601px) and (max-width:1099px){
+  html body.u3-on .u3-pc{padding:14px 18px;gap:10px 20px}
+  html body.u3-on .u3-tabs{width:100%;justify-content:space-between;margin-top:12px}
+  html body.u3-on .u3-tab{flex:1 1 auto;justify-content:center;gap:7px;padding:0 10px;min-height:46px}
+  /* corridor rows: when a column is narrow the button drops under the text instead of covering it */
+  html body.u3-on .u3-crow{flex-wrap:wrap}
+  html body.u3-on .u3-crow span{flex:1 1 180px}
+}
+@media (min-width:601px) and (max-width:760px){
+  html body.u3-on .u3-tab>svg:first-child{display:none}
+}
+
+/* 3c - engineer bar of the Projects page (name, e-mail format, signature, Gmail, Start Job).
+        ui3.css gives the name block "flex:1 1 220px" so it keeps a readable width and the buttons wrap
+        under it, but the page's own inline style="flex:1" wins: the block starts from 0 and is squeezed
+        to nothing (8px around 960px: the name ends up under the buttons; 79px on an iPad Air in landscape).
+        !important puts the intended rule back. */
+@media (min-width:601px) and (max-width:1099px),(min-width:601px) and (pointer:coarse){
+  html body.u3-on[data-u3p="projects"] #app-screen>[data-u3g="ebar"]>div:first-child{flex:1 1 220px!important}
+}
+
+/* 7 - TOUCH (any tablet width, 601px and up) - follow the finger, not the width -- */
+@media (min-width:601px) and (pointer:coarse){
+  /* 16px fields: below that iPadOS zooms the page when a field is tapped
+     (!important: a few fields carry their own font-size inside the page code) */
+  html body:is(.u3-on,.u3-login) :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]):not([type=hidden]),select,textarea){font-size:16px!important;min-height:var(--u3-tap)}
+  html body:is(.u3-on,.u3-login) .rte-editable{font-size:16px!important;min-height:56px}
+  html body:is(.u3-on,.u3-login) :is(input[type=checkbox],input[type=radio]){width:22px;height:22px;flex:none}
+  html body.u3-on :is(.upd-item-chk,.rts-toggle) input[type=checkbox]{width:22px!important;height:22px!important}   /* these carry style="width:auto" */
+  html body.u3-on .modal label:has(>input[type=checkbox]),html body.u3-on .modal label:has(>input[type=radio]){min-height:var(--u3-tap-s)}
+
+  /* buttons and pills */
+  html body:is(.u3-on,.u3-login) :is(.btn,.btn-add,.copy-btn,.ai-improve-btn,.day-status-pill,.rts-toggle,.auth-tab,.ptab,.profile-btn){min-height:var(--u3-tap-s)}
+  html body:is(.u3-on,.u3-login) :is(.btn.primary,.btn.xl,.extract-btn,.u3-validate,.u3-open){min-height:var(--u3-tap)}
+  html body:is(.u3-on,.u3-login) .proj-tab{min-height:var(--u3-tap-s);display:inline-flex;align-items:center}
+  html body.u3-on :is(.u3-sub,.proj-item .u3-ra,.proj-item .u3-open){min-height:var(--u3-tap)}
+  html body:is(.u3-on,.u3-login) .hdr-right button{min-height:var(--u3-tap-s)}
+  html body.u3-login .auth-box a{display:inline-block;padding:10px 8px}
+  html body:is(.u3-on,.u3-login) .profile-btn{padding:12px 14px}
+  /* small round / icon-only controls */
+  html body.u3-on :is(.btn-rm,.update-day-del,.tpl-card-del,.tpl-line-rm){display:inline-flex;align-items:center;justify-content:center;min-width:var(--u3-tap-s);min-height:var(--u3-tap-s);margin-top:0;font-size:20px}
+  html body.u3-on :is(#recipients-tags,#default-recipients-tags,.ko-tag-extra) button:not(.ko-flip){min-width:var(--u3-tap-s)!important;min-height:var(--u3-tap-s)!important;font-size:20px!important;padding:0 6px!important}
+  html body.u3-on .modal button[onclick^="koDeleteGsModel"]{min-width:var(--u3-tap-s);min-height:var(--u3-tap-s);font-size:20px!important}   /* "Manage GS models": the bin was 24 x 19 px (the row is already 44px high) */
+  html body.u3-on .modal summary{padding:11px 0}   /* fold-outs such as "Add several FBOs at once": a 20px line becomes 42px */
+  /* rich-text toolbar of the daily updates */
+  html body.u3-on .rte-toolbar{gap:6px}
+  html body.u3-on .rte-toolbar button{min-width:var(--u3-tap-s);min-height:var(--u3-tap-s);font-size:14px}
+  html body.u3-on .rte-toolbar .rte-swatch{width:var(--u3-tap-s);height:var(--u3-tap-s)}
+  html body.u3-on .rte-toolbar .rte-swatch-reset{line-height:calc(var(--u3-tap-s) - 2px)}
+  /* work-item rows of a daily update */
+  html body.u3-on .upd-item-chk label{min-height:var(--u3-tap-s);display:flex;align-items:center}
+  html body.u3-on .upd-item-chk{gap:10px}
+  html body.u3-on .upd-status-sel{width:auto;min-width:230px}
+  html body.u3-on .part-row .btn{margin-top:18px;min-width:var(--u3-tap-s)}
+  /* signature window: format buttons and colour dots */
+  html body.u3-on .sig-fmt-row{gap:10px}
+  html body.u3-on .sig-fmt-btn{width:var(--u3-tap-s);height:var(--u3-tap-s)}
+  html body.u3-on .sig-swatches{gap:12px}
+  html body.u3-on .sig-swatch{width:30px;height:30px}
+  html body.u3-on .sig-fmt-custom{width:var(--u3-tap-s);height:var(--u3-tap-s)}
+
+  /* no 300ms delay / no double-tap zoom on controls */
+  html body :is(button,a,label,summary,select,input,[onclick],.proj-item,.u3-tab,.u3-sub){touch-action:manipulation}
+}
+
+/* 7b - no "stuck" hover highlight after a tap (touch screens keep :hover until the next tap) */
+@media (min-width:601px) and (hover:none){
+  html body.u3-on .proj-item:hover{background:#fff;border-color:var(--g200)}
+  html body.u3-on .proj-item.active:hover{border-color:var(--gd)}
+  html body.u3-on .u3-tab:hover:not(:disabled):not(.on){background:none}
+  html body.u3-on .btn:hover:not(.primary):not(.danger){background:#fff}
+}
+
+/* 7c - PC layout used on a touch screen (1100px and up): sidebar entries become finger-sized */
+@media (min-width:1100px) and (pointer:coarse){
+  html body.u3-on .u2-side .u2-i{min-height:var(--u3-tap)}
+}
+
+/* 8 - the part rows (Parts replaced): five fields no longer squeezed on one line */
+@media (min-width:601px) and (max-width:900px){
+  html body.u3-on .part-fields{grid-template-columns:repeat(4,minmax(0,1fr))}
+  html body.u3-on .part-fields>.fg:first-child{grid-column:1/-1}
+}
+
+/* 9 - windows (modals): follow the visible height on iPad (browser bars), no scroll leaking behind */
+@media (min-width:601px) and (max-width:1099px),(min-width:601px) and (pointer:coarse){
+  html body .modal{overscroll-behavior:contain}
+}
+@supports (height:100dvh){
+  @media (min-width:601px) and (max-width:1099px),(min-width:601px) and (pointer:coarse){
+    html body .modal{max-height:min(90vh,calc(100dvh - 2rem))}
+  }
+}
+
+/* =====================================================================
+   12 - START JOB (the guided pages built by ui3.css) on tablets
+   ===================================================================== */
+
+/* 12a - portrait: the sticky bars ("Back / Next", "Review the order") rest ABOVE the bottom
+         navigation bar instead of sliding under it. (The two bars that ui3.css anchors at bottom:0 - the
+         foot of the Drafts column and the action row of Daily update - are handled in 12d.) */
+@media (min-width:601px) and (max-width:900px){
+  html body.u3-on .u3-knav,html body.u3-on .u3-obar{bottom:calc(var(--u3-bar-h) + 12px + env(safe-area-inset-bottom,0px))}
+  /* consumable lookups: 8 blocks in 3 columns (4 is too narrow for their drop-downs) */
+  html body.u3-on .ko-card[data-u3pane="look"] [data-pane="look"]{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (min-width:601px) and (max-width:700px){
+  html body.u3-on .ko-card[data-u3pane="look"] [data-pane="look"]{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+/* 12d - two sticky bottoms that ui3.css anchors at bottom:0 (right for a rail or a PC sidebar) would slide
+         UNDER the portrait bottom bar: the foot of the Drafts column (status, "Polish the wording", green
+         button) and the action row of Daily update ("Generate FAST Update table", "Full Update"...).
+         They rest on top of the bar instead. */
+@media (min-width:601px) and (max-width:900px){
+  html body.u3-on .u3-kside .u3-kfoot,
+  html body.u3-on[data-u3p="project"][data-u3t="daily"] #app-screen>.action-row{bottom:calc(var(--u3-bar-h) + env(safe-area-inset-bottom,0px))}
+}
+/* 12a3 - recipients: the four address blocks (Customer update, Part request, Travel, FBO) stay in two
+          columns only while each column can hold an e-mail address and its To/Cc button (about 370px);
+          below that they sit one under the other. Measured on the card itself, so it also covers the
+          iPad Air / 11" landscape case (1180px: sidebar + Drafts column leave about 540px). */
+@media (min-width:601px) and (max-width:1099px),(min-width:601px) and (pointer:coarse){
+  html body.u3-on .u3-kmain>.ko-card[data-u3k="recips"]{container-type:inline-size;container-name:u3recips}
+  @container u3recips (max-width:799.98px){
+    html body.u3-on .u3-kmain>[data-u3k="recips"] .ko-card-body{column-count:1}
+  }
+}
+
+/* 12a2 - the live order bar (Parts & tools) is meant to stay in sight, but two things make the CARD,
+          not the screen, the thing it sticks to: the app gives .ko-card overflow:hidden, and the body of
+          this card carries an inline overflow-x:auto. Both set to visible (nothing needs clipping: the
+          title bar is hidden here and the order table has its own sideways scroller). */
+@media (min-width:601px) and (max-width:1099px),(min-width:601px) and (pointer:coarse){
+  html body.u3-on .u3-kmain>.ko-card[data-u3k="parts"]{overflow:visible}
+  html body.u3-on .u3-kmain>.ko-card[data-u3k="parts"]>.ko-card-body{overflow:visible!important}
+}
+
+/* 12b - touch: finger-sized pills, rows, chips and cross buttons.
+         ui3.css packs the long checklists (13px text, 17px boxes, rows of 22px) and cancels its own
+         touch block for them; here they get back a 40px row and 22px boxes. */
+@media (min-width:601px) and (pointer:coarse){
+  html body.u3-on :is(.u3-ksub,.u3-pt-tab,.u3-pwtab,.u3-qcat){min-height:var(--u3-tap-s)}
+  html body.u3-on .u3-qcat{padding:0 14px;font-size:13px}
+  html body.u3-on .u3-ksubs{gap:8px}
+  html body.u3-on .u3-ksubs .ko-header .btn{min-height:var(--u3-tap-s)}
+  html body.u3-on #kickoff-panel .u3-kmain label:has(>input[type=checkbox]){font-size:14px!important;min-height:var(--u3-tap-s);padding:5px 0;margin-bottom:2px}
+  html body.u3-on #kickoff-panel .u3-kmain label:has(>input[type=checkbox])>input[type=checkbox]{width:22px;height:22px;margin-top:0}
+  html body.u3-on #kickoff-panel .u3-kmain [onclick*="koTogglePriority"]{min-height:var(--u3-tap-s)}
+  html body.u3-on .u3-kside label:has(#ko-polish-chk){font-size:13px!important}
+  html body.u3-on input.ko-draft-chk{width:32px;height:32px}
+  /* toggle pills: request type, departure time, cabin, baggage, shipping address */
+  html body.u3-on .ko-toggles{gap:8px}
+  html body.u3-on .ko-pill{display:inline-flex;align-items:center;min-height:var(--u3-tap-s);padding:0 16px;font-size:14px}
+  html body.u3-on .ko-addr-pill{display:inline-flex;align-items:center;min-height:var(--u3-tap-s);padding:0 16px;font-size:13px}
+  /* recipients: the To/Cc button is the way to move an address by touch (no drag with a finger) */
+  html body.u3-on #kickoff-panel button.ko-flip{flex:none;white-space:nowrap;min-width:48px;min-height:var(--u3-tap-s);padding:0 12px;font-size:13px;border-radius:20px}
+  html body.u3-on #kickoff-panel .ko-tag{gap:6px}
+  html body.u3-on .ko-airline-row{gap:10px}
+  html body.u3-on .ko-airline-del{min-width:var(--u3-tap-s);min-height:var(--u3-tap-s);font-size:22px}
+  /* parts: quick-add chips (a tablet has no hover: the whole name and the P/N are shown), template chips */
+  html body.u3-on .u3-pwpane #ko-quickparts-chips button{display:grid!important;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:7px;row-gap:1px;min-height:var(--u3-tap);padding:6px 12px!important;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25!important}
+  html body.u3-on .u3-pwpane #ko-quickparts-chips button>.u2-i2{display:inline-flex!important}   /* ui3.css hides the last <span>: with no P/N that was the icon */
+  html body.u3-on .u3-pwpane #ko-quickparts-chips button>span:last-child:not(.u2-i2){display:block!important;grid-column:2;font-size:11px!important;opacity:.75}
+  html body.u3-on .u3-pwpane #ko-parttpl-chips button{display:inline-flex;align-items:center;gap:7px;min-height:var(--u3-tap);padding:6px 14px!important;white-space:normal;text-align:left;line-height:1.25}
+  /* the order table: row tick-boxes, remove cross, "small qty" label */
+  html body.u3-on .u3-pwr :is(.ko-part-row-cb,#ko-parts-select-all){width:28px;height:28px}
+  html body.u3-on .u3-pwr .ko-parts-tbl .rm-btn{min-width:var(--u3-tap-s);min-height:var(--u3-tap-s);font-size:22px}
+  html body.u3-on .u3-pwr .ko-smallqty-lbl{min-height:var(--u3-tap-s);font-size:12.5px}
+  /* table (wide enough): room for "Consumable" at 16px, a real cross column, columns that still fit 860px */
+  html body.u3-on .u3-pwr .ko-parts-tbl :is(th,td):nth-child(2){min-width:130px!important}
+  html body.u3-on .u3-pwr .ko-parts-tbl :is(th,td):nth-child(3){min-width:110px!important}
+  html body.u3-on .u3-pwr .ko-parts-tbl :is(th,td):nth-child(6){min-width:110px!important}
+  html body.u3-on .u3-pwr .ko-parts-tbl :is(th,td):nth-child(7){min-width:150px!important}
+  html body.u3-on .u3-pwr .ko-parts-tbl :is(th,td):nth-child(8){min-width:120px!important}
+  html body.u3-on .u3-pwr .ko-parts-tbl :is(th,td):nth-child(9){min-width:44px!important}
+}
+
+/* 12c - the order (Parts & tools): when its panel is narrower than the 8-column table needs (860px),
+         each line becomes a card - the stacked layout the app already uses under 600px - instead of
+         a sideways scroll that pushes Description off the screen. Nothing is removed. */
+@media (min-width:601px) and (max-width:1099px),(min-width:601px) and (pointer:coarse){
+  html body.u3-on .u3-pwr{container-type:inline-size;container-name:u3order}
+  @container u3order (max-width:859.98px){
+    html body.u3-on .u3-pwr .ko-tbl-scroll{overflow-x:visible;border:0;border-radius:0}
+    html body.u3-on .u3-pwr .ko-parts-tbl,html body.u3-on .u3-pwr .ko-parts-tbl :is(thead,tbody){display:block;width:100%}
+    html body.u3-on .u3-pwr .ko-parts-tbl thead tr{display:flex;align-items:center;padding:2px 4px 10px}
+    html body.u3-on .u3-pwr .ko-parts-tbl thead th{display:none}
+    html body.u3-on .u3-pwr .ko-parts-tbl thead th:first-child{display:flex;align-items:center;gap:10px;width:auto!important;padding:0;border:0}
+    html body.u3-on .u3-pwr .ko-parts-tbl thead th:first-child::after{content:"Select all";font-size:13px;font-weight:600;color:var(--g600)}
+    html body.u3-on .u3-pwr .ko-parts-tbl tbody tr{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px 10px;align-items:start;padding:10px 12px 12px;margin:0 0 10px;border:1px solid var(--g200);border-radius:14px}
+    html body.u3-on .u3-pwr .ko-parts-tbl tbody td{display:block;padding:0;border:0;width:auto!important;min-width:0!important;max-width:none!important}
+    html body.u3-on .u3-pwr .ko-pcell-lbl{display:block;margin:0 0 3px;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--g600)}
+    html body.u3-on .u3-pwr .ko-pcell-cb{grid-row:1;grid-column:1;align-self:center;justify-self:center}
+    html body.u3-on .u3-pwr .ko-pcell-cb .ko-pcell-lbl{display:none}
+    html body.u3-on .u3-pwr .ko-pcell-cb .ko-part-row-cb{width:32px!important;height:32px!important}
+    html body.u3-on .u3-pwr .ko-pcell-desc{grid-row:1;grid-column:2 / span 10}
+    html body.u3-on .u3-pwr .ko-pcell-rm{grid-row:1;grid-column:12;align-self:center;justify-self:center}
+    html body.u3-on .u3-pwr .ko-pcell-pn{grid-row:2;grid-column:1 / span 4}
+    html body.u3-on .u3-pwr .ko-pcell-sn{grid-row:2;grid-column:5 / span 3}
+    html body.u3-on .u3-pwr .ko-pcell-qty{grid-row:2;grid-column:8 / span 2}
+    html body.u3-on .u3-pwr .ko-pcell-cat{grid-row:2;grid-column:10 / span 3}
+    html body.u3-on .u3-pwr .ko-pcell-note{grid-row:3;grid-column:1 / span 7}
+    html body.u3-on .u3-pwr .ko-pcell-sq{grid-row:3;grid-column:8 / span 5}
+    html body.u3-on .u3-pwr .ko-parts-tbl td select,html body.u3-on .u3-pwr .ko-parts-tbl td input[type=text],html body.u3-on .u3-pwr .ko-parts-tbl td textarea{width:100%;max-width:none;border:1px solid var(--g200);background:#fff}
+  }
+}

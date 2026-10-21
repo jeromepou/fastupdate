@@ -1,0 +1,559 @@
+/* =====================================================================
+   ui3-phone.css - FAST Update Generator - interface v3 - PHONE layer (version 2)
+   PRESENTATION ONLY, like ui3.css and ui3-tablet.css: it changes where things
+   sit and how big they are. No field, button, tab or window is removed or
+   rebuilt - each keeps its id and its code.
+
+   Version 2: confirmation messages ("Copied", "Saved"...) now sit above the bottom bar and use the
+   width they need (the page writes them with inline styles); windows get a grab handle, a slide-up and
+   buttons that stay visible at the bottom of the window; the active tab of the bottom bar has an amber
+   marker; small inline text is raised to 11px whichever way the page wrote it.
+
+   Loaded by ui3.js right AFTER ui3-tablet.css (one line), so it only wins where
+   it says so. Tablets and PCs never match it: a portrait phone is recognised by its
+   width (600px or less), a phone held sideways by its low height (500px or less) on a
+   touch screen.
+
+   Phone bands used below:
+     portrait   up to 600px       bottom bar, one column, finger-sized controls
+     landscape  phone held sideways (height <= 500px, touch screen)
+                                  navigation rail on the left, compact bars
+
+   Sections
+     0  tokens (heights, tap sizes, safe areas)
+     1  top bar (header)
+     2  bottom bar + Tools list
+     3  page frame, cards, accordion (the app's own phone accordion is switched off)
+     4  project header, tabs, sub-tabs
+     5  projects page
+     6  new project / check / details pages
+     7  daily update (work items, parts, closing details, result)
+     8  corridor page
+     9  Start Job
+    10  finger-sized controls (16px fields, 40-44px targets)
+    11  windows (modals), toasts, banners
+    12  login screens
+    13  landscape phones (13b: the narrowest ones, under 740px wide)
+   ===================================================================== */
+
+/* 0 - TOKENS ---------------------------------------------------------------- */
+@media (max-width:600px), (orientation:landscape) and (min-width:560px) and (max-height:500px) and (pointer:coarse){
+  html:root{--u3-bar-h:62px;--u3-hdr-h:52px;--u3-tap:44px;--u3-tap-s:40px;--u3-sab:env(safe-area-inset-bottom,0px);--u3-sat:env(safe-area-inset-top,0px)}
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  /* anchors and scrollIntoView must not end up under the top bar or the bars at the bottom */
+  html.u3-enabled{scroll-padding-top:calc(var(--u3-hdr-h) + var(--u3-sat) + 14px);scroll-padding-bottom:calc(var(--u3-bar-h) + var(--u3-sab) + 90px)}
+  /* no 300ms delay / no double-tap zoom on controls */
+  html body :is(button,a,label,summary,select,input,[onclick],.proj-item,.u3-tab,.u3-sub,.u3-ksub){touch-action:manipulation}
+}
+
+/* 1 - TOP BAR --------------------------------------------------------------- */
+@media (max-width:600px), (orientation:landscape) and (min-width:560px) and (max-height:500px) and (pointer:coarse){
+  /* one slim line: the path on the left (cut with "..." when it is long), then name, sync state and the two
+     icon buttons. When the line is tight the NAME gives way first (the same name is also in the project card). */
+  html body.u3-on header{height:auto;min-height:var(--u3-hdr-h);gap:0 6px;flex-wrap:nowrap;align-items:center;padding:var(--u3-sat) max(10px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px))}
+  /* the "..." must be drawn at 14px: the h1 itself is font-size:0 (its text is replaced by the path), so the path becomes a flex box of its own */
+  html body.u3-on header h1{display:flex;flex:1 1 0;min-width:96px;overflow:hidden}
+  html body.u3-on header h1::before{display:block;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;line-height:1.3}
+  html body.u3-on .hdr-right{flex:0 1 auto;min-width:0;margin-left:auto;flex-wrap:nowrap;gap:4px}
+  html body.u3-on #hdr-profile-name{flex:0 1 auto;min-width:0;max-width:58px;margin-right:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+  html body.u3-on .sync-indicator{flex:0 0 auto;font-size:11px;padding:3px 6px;white-space:nowrap}
+  /* "Switch user" and "Help": icon only (the words stay in the page for screen readers) */
+  html body.u3-on .hdr-right button{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:var(--u3-tap-s);height:var(--u3-tap-s);padding:0;font-size:0;line-height:0;border-radius:10px}
+  html body.u3-on .hdr-right button .u2-i2{width:20px;height:20px;margin:0}
+  html body.u3-on #btn-logout::before{content:"\21A9\FE0E";font-size:20px;line-height:1}
+}
+
+/* 2 - BOTTOM BAR + TOOLS LIST --------------------------------------------- */
+@media (max-width:600px), (orientation:landscape) and (min-width:560px) and (max-height:500px) and (pointer:coarse){
+  html body.u3-on .u2-side{padding:6px max(6px,env(safe-area-inset-right,0px)) calc(6px + var(--u3-sab)) max(6px,env(safe-area-inset-left,0px));gap:2px}
+  html body.u3-on .u2-cta,html body.u3-on .u2-i{position:relative;min-height:50px;gap:3px;padding:4px 2px;font-size:11px;line-height:1.15}
+  html body.u3-on .u2-side svg[viewBox]:not([width]){width:22px;height:22px}
+  /* the counter sat in its own row and pushed "Projects" out of line: it now hangs on the icon */
+  html body.u3-on .u2-n{position:absolute;top:2px;left:calc(50% + 8px);margin:0;padding:0 5px;font-size:11px;line-height:17px}
+  /* Tools list: a panel just above the bar */
+  html body.u3-on .u2-side.tools-open .u2-grp{left:max(10px,env(safe-area-inset-left,0px));right:max(10px,env(safe-area-inset-right,0px));bottom:calc(var(--u3-bar-h) + var(--u3-sab) + 8px)}
+  html body.u3-on .u2-side.tools-open .u2-grp .u2-i{min-height:52px;gap:12px;padding:0 14px;font-size:15px;flex:none}
+}
+
+/* 2b - while a text field has the keyboard, the bottom bar steps aside (portrait only: the landscape rail stays) */
+@media (max-width:600px){
+  /* the page you are on: a short amber marker on the top edge of its button (the landscape rail keeps its filled button) */
+  html body.u3-on .u2-i.on::after{content:"";position:absolute;top:0;left:30%;right:30%;height:3px;border-radius:0 0 3px 3px;background:var(--u2-amber,#FF9F1C)}
+  /* while a text field has the keyboard, the bar steps aside (and the bars that sit above it follow) */
+  html body.u3-on:has(:is(input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=file]):not([type=range]):not([type=color]),textarea,[contenteditable=true]):focus){--u3-bar-h:0px;--u3-sab:0px}
+  html body.u3-on:has(:is(input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]):not([type=file]):not([type=range]):not([type=color]),textarea,[contenteditable=true]):focus) .u2-side{display:none}
+}
+
+/* 3 - PAGE FRAME, CARDS ------------------------------------------------------ */
+@media (max-width:600px), (orientation:landscape) and (min-width:560px) and (max-height:500px) and (pointer:coarse){
+  html body.u3-on .main{max-width:none;padding:10px max(10px,env(safe-area-inset-right,0px)) calc(var(--u3-bar-h) + var(--u3-sab) + 40px) max(10px,env(safe-area-inset-left,0px))}
+  html body.u3-on #kickoff-panel{padding-right:max(10px,env(safe-area-inset-right,0px))}   /* ui3.css keeps 28px for the PC side column */
+  html body.u3-on .u3-ph:not([hidden]){padding:10px max(10px,env(safe-area-inset-right,0px)) 0 max(10px,env(safe-area-inset-left,0px))}
+  html body.u3-on .card,html body.u3-on .proj-panel,html body.u3-on .eng-bar,html body.u3-on .ko-card{border-radius:14px}
+  html body.u3-on .card{margin-bottom:12px}
+  html body.u3-on .card-head,html body.u3-on .ko-card-head,html body.u3-on .proj-panel-head{padding:12px 14px}
+  html body.u3-on .card-body{padding:14px}
+  html body.u3-on .ko-card-body{padding:14px}
+  html body.u3-on .card-head h2,html body.u3-on .ko-card-head h3{font-size:14.5px;line-height:1.3}
+  /* the app folds every card of the page into an accordion on phones (one open at a time).
+     With one page per tab that would hide fields: all cards stay open. */
+  html body.u3-on #app-screen>.card.collapsed .card-body{display:block}
+  html body.u3-on #app-screen>.card .acc-chevron{display:none}
+  html body.u3-on #app-screen>.card .card-head{cursor:default}
+  /* the PDF drop zone and the status line */
+  html body.u3-on .drop-zone{padding:16px 12px}
+  html body.u3-on[data-u3p="project"] [data-u3g="upload"] .drop-zone{padding:14px 12px}
+  html body.u3-on .status{font-size:12.5px}
+  /* form grids: two columns of short fields wherever they fit, one column for names / e-mails */
+  html body.u3-on :is([data-u3g="aircraft"],[data-u3g="closing"]) .grid.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  html body.u3-on .grid.g3{grid-template-columns:repeat(auto-fit,minmax(138px,1fr))}
+  html body.u3-on .fg>label,html body.u3-on .ko-fg>label{line-height:1.3;overflow-wrap:anywhere}
+  /* stray tables, long words and long e-mail addresses never push the page sideways */
+  html body.u3-on :is(.u3-ps,.u3-t,.proj-item-sub,.subj-txt,.eng-sub){overflow-wrap:anywhere}
+}
+
+/* 4 - PROJECT HEADER, TABS, SUB-TABS ---------------------------------------- */
+@media (max-width:600px), (orientation:landscape) and (min-width:560px) and (max-height:500px) and (pointer:coarse){
+  html body.u3-on .u3-pc,html body.u3-on[data-u3t="start"] .u3-pc{padding:12px;gap:10px;border-radius:14px}
+  html body.u3-on .u3-pt{flex:1 1 100%}
+  html body.u3-on .u3-th{gap:4px 8px}
+  html body.u3-on .u3-t,html body.u3-on[data-u3t="start"] .u3-t{font-size:20px;line-height:1.2;overflow-wrap:anywhere}
+  html body.u3-on .u3-chip{font-size:11px;padding:2px 9px}
+  html body.u3-on .u3-ps{font-size:12px;margin-top:3px}
+  html body.u3-on .u3-eng{flex:1 1 100%;gap:5px}
+  html body.u3-on .u3-lab{font-size:11px}
+  html body.u3-on .u3-eng-chip{font-size:12px;padding:4px 10px}
+  /* Transfer / Mark A/C RTS side by side */
+  html body.u3-on .u3-pa{flex:1 1 100%;margin-left:0;flex-wrap:nowrap;gap:8px}
+  html body.u3-on .u3-pa .btn,html body.u3-on .u3-pa #btn-mark-rts{flex:1 1 0;min-width:0;justify-content:center;min-height:var(--u3-tap-s);padding:0 8px!important;font-size:12.5px!important;line-height:1.15;white-space:normal;text-align:center;gap:6px}
+  html body.u3-on .u3-pa .u3-xfer{flex-grow:1.35}
+  html body.u3-on .u3-pa svg{width:16px;height:16px}
+
+  /* the six tabs: one line, icon above the word - the active one is always on screen */
+  html body.u3-on .u3-tabs,html body.u3-on[data-u3t="start"] .u3-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;width:auto;max-width:none;overflow:visible;padding:4px;margin-top:10px;border-radius:14px}
+  html body.u3-on .u3-tab{position:relative;flex-direction:column;justify-content:center;gap:3px;min-width:0;min-height:54px;padding:6px 1px;font-size:11px;line-height:1.1;white-space:normal;text-align:center;border-radius:10px}
+  html body.u3-on .u3-tab>span{display:block;max-width:100%;overflow-wrap:anywhere;hyphens:auto}
+  html body.u3-on .u3-tab>svg{width:20px;height:20px}
+  html body.u3-on .u3-tab>em{position:absolute;top:3px;right:3px}
+  html body.u3-on .u3-tab>em svg{width:11px;height:11px}
+
+  /* Daily update sections: four equal cells */
+  html body.u3-on .u3-subs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:8px}
+  html body.u3-on .u3-subs[hidden]{display:none}
+  html body.u3-on .u3-sub{flex-direction:column;justify-content:center;gap:3px;min-width:0;min-height:54px;padding:6px 2px;border-radius:12px;font-size:11px;line-height:1.1;text-align:center;white-space:normal}
+  html body.u3-on .u3-sub>span{display:block;max-width:100%;overflow-wrap:anywhere}
+  html body.u3-on .u3-sub>svg{width:19px;height:19px}
+
+  /* Start Job pages: eight cells, then the Gmail / Replies / Clear buttons */
+  html body.u3-on .u3-ksubs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:8px;align-items:stretch}
+  html body.u3-on .u3-ksubs[hidden]{display:none}
+  html body.u3-on .u3-ksub,html body.u3-on .u3-ksub[data-k="drafts"]{flex-direction:column;justify-content:center;gap:3px;min-width:0;min-height:54px;padding:6px 2px;border-radius:12px;font-size:11px;line-height:1.1;text-align:center;white-space:normal}
+  html body.u3-on .u3-ksub>span{display:block;max-width:100%;overflow-wrap:anywhere}
+  html body.u3-on .u3-ksub>svg{width:19px;height:19px}
+  html body.u3-on .u3-ksubs .ko-header{grid-column:1/-1;margin:2px 0 0;flex-wrap:wrap;gap:6px;justify-content:stretch}
+  html body.u3-on .u3-ksubs .ko-header .btn{flex:1 1 auto;justify-content:center;min-height:var(--u3-tap-s);padding:0 10px;font-size:12px!important;white-space:nowrap}
+}
+
+/* 4b - the narrowest phones (320-349px): the six tabs would need words broken in the middle, so they take two rows of three */
+@media (max-width:349px){
+  html body.u3-on .u3-tabs,html body.u3-on[data-u3t="start"] .u3-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}
+  html body.u3-on .u3-tab{min-height:50px;padding:6px 4px}
+  html body.u3-on .action-row .btn.btn{font-size:11px!important;padding:0 3px!important;gap:4px;white-space:normal;line-height:1.05}   /* 3 boutons dans 300px */
+  html body.u3-on .action-row .btn.btn svg{width:13px;height:13px}  
+}
+
+/* 5 - PROJECTS PAGE ---------------------------------------------------------- */
+@media (max-width:600px), (orientation:landscape) and (min-width:560px) and (max-height:500px) and (pointer:coarse){
+  .u3-pagehead h1,.u3-chooser h1{font-size:24px}
+  .u3-pagehead p,.u3-chooser p{font-size:13px;margin:3px 0 12px}
+  /* engineer bar: name on top, the two settings side by side, then Gmail and "Start Job without a project" full width */
+  html body.u3-on[data-u3p="projects"] #app-screen>[data-u3g="ebar"]{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-start;align-items:stretch;background:#fff;border:1px solid var(--g200);box-shadow:var(--sh);border-radius:14px;padding:12px;margin:0 0 12px}
+  html body.u3-on [data-u3g="ebar"]>div:first-child{flex:1 1 100%!important}   /* the app gives this block an inline flex:1 - the name keeps a full line */
+  html body.u3-on [data-u3g="ebar"] .eng-sub{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.4;margin-top:2px}
+  html body.u3-on [data-u3g="ebar"]>div:nth-child(2){flex:1 1 100%;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important}
+  html body.u3-on [data-u3g="ebar"]>div:nth-child(2) .btn{justify-content:center;text-align:center;white-space:normal;line-height:1.15;min-height:var(--u3-tap);padding:0 8px}
+  html body.u3-on [data-u3g="ebar"]>#btn-gmail-sync-status{flex:1 1 100%;justify-content:center;font-size:12.5px!important;min-height:var(--u3-tap-s)}
+  html body.u3-on [data-u3g="ebar"]>#btn-start-job{flex:1 1 100%;justify-content:center;min-height:var(--u3-tap);font-size:14px}
+
+  /* "My projects": title + New project on one line, Active / Archives under it */
+  html body.u3-on .proj-panel-head{flex-wrap:wrap;gap:8px 10px}
+  html body.u3-on .proj-panel-head h3{order:1;flex:1 1 auto;font-size:15px}
+  html body.u3-on .proj-panel-head .btn.primary{order:2;flex:0 0 auto;min-height:var(--u3-tap-s);padding:0 14px}
+  html body.u3-on .proj-tabs{order:3;flex:1 1 100%;margin:0;gap:6px}
+  html body.u3-on .proj-tab{flex:1 1 0;display:inline-flex;align-items:center;justify-content:center;min-height:38px;font-size:12.5px}
+  html body.u3-on #proj-list{padding:10px;gap:10px}
+
+  /* project cards: info, then four equal buttons in a 2 x 2 grid (same height in a row) */
+  html body.u3-on .proj-item{padding:14px;gap:8px;align-items:stretch}
+  html body.u3-on .proj-item-info{padding-right:64px}
+  html body.u3-on .proj-item-date{top:14px;right:14px}
+  html body.u3-on .proj-item-wo{font-size:15px}
+  html body.u3-on .proj-item-sub{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.4}
+  html body.u3-on .proj-item :is(.u3-open,.u3-ra){min-height:var(--u3-tap);font-size:12.5px!important}
+}
+
+/* 6 - NEW PROJECT, CHECK, DETAILS ------------------------------------------------ */
+@media (max-width:600px), (orientation:landscape) and (min-width:560px) and (max-height:500px) and (pointer:coarse){
+  html body.u3-on[data-u3p="new"] #app-screen{gap:12px}
+  html body.u3-on[data-u3p="new"] [data-u3g="upload"] .card-head h2{font-size:14.5px}
+  /* validation bar: message, then Back + Validate, above the bottom bar */
+  html body.u3-on .u3-checkbar{bottom:calc(var(--u3-bar-h) + var(--u3-sab) + 8px);flex-wrap:wrap;gap:8px;padding:10px;border-radius:14px}
+  html body.u3-on .u3-checkbar span{flex:1 1 100%;order:-1;font-size:12px;line-height:1.35}
+  html body.u3-on .u3-checkbar .btn{flex:1 1 0;justify-content:center;min-height:var(--u3-tap);padding:0 10px;white-space:normal;line-height:1.15;text-align:center}
+  html body.u3-on .u3-checkbar .u3-back{flex:0 0 84px}
+  html body.u3-on .u3-hint{padding:18px 14px;font-size:13px}
+  html body.u3-on #app-screen .u3-manual .card-body p{margin-bottom:12px}
+  html body.u3-on #app-screen .u3-manual .u3-manual-go{width:100%;justify-content:center;min-height:var(--u3-tap)}
+}
+
+/* 7 - DAILY UPDATE ------------------------------------------------------------------ */
+@media (max-width:600px), (orientation:landscape) and (min-width:560px) and (max-height:500px) and (pointer:coarse){
+  /* work items: the description gets the full line, "Resolution" sits under it */
+  html body.u3-on .item-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 8px;padding:10px;align-items:start}
+  html body.u3-on .item-num{min-width:16px;padding-top:13px}
+  html body.u3-on .item-fields{min-width:0}
+  html body.u3-on .item-label-row{gap:8px}
+  html body.u3-on .item-label-row input{flex:1 1 100%;min-width:0}
+  html body.u3-on .item-label-row .btn{flex:0 0 auto}
+
+  /* daily updates timeline: less room taken by the rail */
+  html body.u3-on .card-body:has(>#updates-container){padding:10px}
+  html body.u3-on #updates-container.has-items{padding-left:16px}
+  html body.u3-on #updates-container.has-items::before{left:5px}
+  html body.u3-on .update-day{margin-bottom:12px;border-radius:14px}
+  html body.u3-on .update-day::before{left:-16px;top:17px;width:12px;height:12px}
+  html body.u3-on .update-day-head{padding:10px 8px 6px;gap:6px 8px}
+  html body.u3-on .update-day-date{font-size:14px}
+  html body.u3-on .rts-toggle{font-size:11.5px;padding:6px 10px}
+  html body.u3-on .day-status-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:0 8px 8px}
+  html body.u3-on .day-status-pill{justify-content:flex-start;min-height:38px;padding:6px 10px;font-size:12px;line-height:1.2;white-space:normal}
+  html body.u3-on .update-day-body{padding:6px 8px 10px;gap:10px}
+  html body.u3-on .upd-item-block{padding:8px}
+  html body.u3-on .upd-item-header{gap:8px}
+  html body.u3-on .upd-item-chk{flex:1 1 100%;align-items:flex-start;gap:10px}
+  html body.u3-on .upd-item-chk label{font-size:13px;line-height:1.4;overflow-wrap:anywhere}
+  html body.u3-on .upd-status-sel{flex:1 1 100%;width:100%}
+  html body.u3-on .update-day-note{gap:8px}
+  html body.u3-on .update-day-note .fg{min-width:0}
+  html body.u3-on .update-day-note .note-icon{margin-top:2px}
+
+  /* rich-text toolbar */
+  html body.u3-on .rte-toolbar{gap:5px;margin-bottom:6px}
+  html body.u3-on .rte-toolbar button{min-width:38px;min-height:38px;padding:0 8px;font-size:14px}
+  html body.u3-on .rte-toolbar .rte-swatch{width:38px;height:38px}
+  html body.u3-on .rte-toolbar .rte-swatch-reset{line-height:36px}
+  html body.u3-on .rte-toolbar .rte-sep{height:24px}
+  html body.u3-on .ai-improve-btn{font-size:13px;padding:0 14px}
+
+  /* parts replaced: five fields in two columns, the three buttons in a row under them */
+  html body.u3-on .part-row{flex-wrap:wrap;gap:8px;padding:10px}
+  html body.u3-on .part-fields{flex:1 1 100%;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  html body.u3-on .part-fields>.fg:first-child{grid-column:1/-1}
+  html body.u3-on .part-fields .fg label{font-size:11px}
+  html body.u3-on .part-row>.btn,html body.u3-on .part-row>.btn-rm{margin-top:0!important}
+  html body.u3-on .part-row>.btn{flex:0 1 auto;justify-content:center;min-height:var(--u3-tap-s);padding:0 14px!important;font-size:12px!important}
+  html body.u3-on .part-row>.btn-rm{margin-left:auto}
+  /* the two buttons only have an icon in the app and a phone has no hover tooltip: a short word next to each icon */
+  html body.u3-on .part-row>.btn[onclick^="koOpenScanCapture"]::after{content:"Scan";margin-left:7px;font-size:12px;font-weight:700}
+  html body.u3-on .part-row>.btn[onclick^="openRepairTagModal"]::after{content:"GA3671 tag";margin-left:7px;font-size:12px;font-weight:700}
+  html body.u3-on .grid.g2:has(#email-mode-paste){grid-template-columns:repeat(2,minmax(0,1fr))}
+  html body.u3-on .grid.g2:has(#email-mode-paste) .btn{justify-content:center;white-space:normal;line-height:1.15;text-align:center}
+
+  /* the action row stays reachable at the bottom: only "Generate FAST Update table" is held above the bar while you scroll;
+     Replies / Quick Update / Full Update are on the line below it (hidden behind the bar until the end of the page) */
+  html body.u3-on[data-u3p="project"][data-u3t="daily"] #app-screen>.action-row{bottom:calc(var(--u3-bar-h) + var(--u3-sab) - 48px);flex-wrap:wrap;gap:6px;padding:8px 0 10px;margin-top:6px}
+  html body.u3-on .action-row .btn{min-width:0;justify-content:center;padding:0 6px!important;font-size:12px!important;line-height:1.1;white-space:nowrap;height:38px;flex:1 1 0!important}
+  html body.u3-on .action-row .btn.primary.xl{flex:1 1 100%!important;height:46px;font-size:14px!important;order:-1}
+  html body.u3-on .action-row .btn svg{width:15px;height:15px}
+
+  /* result page */
+  html body.u3-on .output-head h3{font-size:12.5px;flex:1 1 100%}
+  html body.u3-on .output-head .copy-btn{flex:1 1 0;justify-content:center;min-height:var(--u3-tap-s)}
+  html body.u3-on #output-section .gemini-banner{padding:12px}
+  html body.u3-on #output-section .email-subject-box{padding:10px 12px}
+  html body.u3-on #output-section .subj-txt{flex:1 1 100%;order:2}
+  html body.u3-on #output-section [onclick^="setIntroMsg"]{min-height:36px;padding:6px 11px!important;font-size:12px!important}
+}
+
+/* 7b - rich-text toolbar, portrait phones: dictation + B I U on the first line, the colours together on the second */
+@media (max-width:600px){
+  html body.u3-on .rte-toolbar .rte-sep~.rte-sep{flex:0 0 100%;height:0;margin:0;background:none}
+}
+
+/* 8 - CORRIDOR ----------------------------------------------------------------------- */
+@media (max-width:600px), (orientation:landscape) and (min-width:560px) and (max-height:500px) and (pointer:coarse){
+  html body.u3-on[data-u3p="project"][data-u3t="corridor"] #app-screen{gap:12px}
+  html body.u3-on .u3-crow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 10px;align-items:start;padding:10px 12px}
+  html body.u3-on .u3-crow>.btn{grid-column:1/-1;justify-content:center;min-height:var(--u3-tap-s)}
+  html body.u3-on .u3-cdown .btn{width:100%;justify-content:center;min-height:var(--u3-tap);white-space:normal;line-height:1.2;text-align:center}
+}
+
+/* 9 - START JOB ------------------------------------------------------------------------ */
+@media (max-width:600px), (orientation:landscape) and (min-width:560px) and (max-height:500px) and (pointer:coarse){
+  html body.u3-on .u3-ksubs .ko-header .ko-eng-info{display:none}   /* empty box: its name and sub-title are hidden by ui3.css */
+  html body.u3-on #kickoff-panel .u3-kgrid{margin-top:10px}
+  html body.u3-on .u3-kmain .ko-card-body{padding:14px}
+  html body.u3-on .u3-kmain>[data-u3k="job"] .ko-card-body{padding:14px;gap:12px}
+  html body.u3-on .u3-ko-note{padding:10px 12px;gap:10px;flex-wrap:wrap}
+  html body.u3-on .u3-ko-note .btn{flex:1 1 auto;justify-content:center;min-height:var(--u3-tap-s)}
+
+  /* the two halves of a long page */
+  html body.u3-on .u3-pt-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  html body.u3-on .u3-pt-tab{min-height:var(--u3-tap);padding:0 8px;border-radius:12px;line-height:1.15;white-space:normal}
+
+  /* recipients: one column (two columns left room for about six letters per address) */
+  html body.u3-on .u3-kmain>[data-u3k="recips"] .ko-card-body{column-count:1;column-width:auto;padding:14px}
+  html body.u3-on [data-u3k="recips"] .ko-recip-block{padding:12px}
+  html body.u3-on [data-u3k="recips"] .ko-info-note{padding:10px 12px}
+  /* address pills: a very long address wraps inside its pill; the "To / Cc" switch and the x keep their size */
+  html body.u3-on .ko-tag{border-radius:18px}
+  html body.u3-on .ko-tag :is(button.ko-flip,.ko-lock){flex:0 0 auto;white-space:nowrap}
+  html body.u3-on .ko-tag-extra button{flex:0 0 auto}
+  /* the tablet rule that enlarges the x of an added address (18px text, !important) also reached the small "To / Cc" switch next to it */
+  html body.u3-on :is(#kickoff-panel,.modal) .ko-tag-extra button.ko-flip{min-width:44px!important;min-height:32px!important;font-size:11px!important;padding:0 8px!important;white-space:nowrap}
+  html body.u3-on :is(#kickoff-panel,.modal) .ko-tag-extra button:not(.ko-flip){font-size:20px!important;min-width:36px!important;min-height:32px!important}
+  html body.u3-on .ko-add-email{gap:8px}
+  html body.u3-on .ko-add-email button{min-height:var(--u3-tap);padding:0 14px}
+
+  /* long pages already flow in one column; the checklists keep a readable size */
+  html body.u3-on #kickoff-panel .u3-kmain label:has(>input[type=checkbox]){font-size:14px!important;line-height:1.35;padding:6px 0;min-height:var(--u3-tap);margin-bottom:2px}
+  html body.u3-on #kickoff-panel .u3-kmain label:has(>input[type=checkbox])>input[type=checkbox]{width:24px;height:24px;margin-top:0}
+
+  /* the order bar must stick to the SCREEN, not to its card: the app gives the card (overflow:hidden) and its body
+     (inline style overflow-x:auto) their own scroll box, so the bar stayed inside them and sat 70px up on the content.
+     The order is a stack of cards here, so there is nothing to scroll sideways. */
+  html body.u3-on .u3-kmain>.ko-card[data-u3k="parts"]{overflow:visible;overflow:clip}
+  html body.u3-on .u3-kmain>[data-u3k="parts"] .ko-card-body{overflow:visible!important}
+
+  /* guided navigation, order bar, drafts footer: held above the bottom bar */
+  html body.u3-on .u3-knav{bottom:calc(var(--u3-bar-h) + var(--u3-sab) + 8px);padding:8px;gap:8px;border-radius:14px}
+  html body.u3-on .u3-knav .btn{flex:1 1 auto;justify-content:center;min-height:var(--u3-tap);padding:0 12px;font-size:13px;line-height:1.15;white-space:normal;text-align:center}
+  html body.u3-on .u3-obar{bottom:calc(var(--u3-bar-h) + var(--u3-sab) + 8px);flex-wrap:wrap;gap:8px;padding:10px;margin-top:12px}
+  html body.u3-on .u3-ocount{flex:none}
+  html body.u3-on .u3-olist{flex:1 1 0;font-size:12px}
+  /* two short lines instead of three: counter + list on top, the two buttons side by side under them */
+  html body.u3-on .u3-obar::after{content:"";order:1;flex:1 1 100%;height:0;margin-top:-8px}
+  html body.u3-on .u3-obar .btn{order:2;flex:1 1 calc(50% - 4px);justify-content:center;min-height:var(--u3-tap-s);white-space:normal;line-height:1.15;text-align:center;padding:0 8px;font-size:12.5px}
+  html body.u3-on .u3-kside .u3-kfoot{bottom:calc(var(--u3-bar-h) + var(--u3-sab))}
+
+  /* parts & tools */
+  html body.u3-on .u3-pwtabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  html body.u3-on .u3-pwtab{min-height:42px;padding:0 8px;line-height:1.15;white-space:normal}
+  html body.u3-on .u3-pwpane #ko-quickparts-search{display:block!important;width:100%!important}
+  html body.u3-on .u3-pwpane .u3-qcats{display:flex;margin:8px 0 0;gap:6px}
+  html body.u3-on .u3-qcat{min-height:36px;padding:0 12px;font-size:12px}
+  html body.u3-on .u3-pwpane #ko-quickparts-chips{max-height:min(56vh,420px)!important;overflow:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  html body.u3-on .u3-pwpane #ko-quickparts-chips button{min-height:40px;padding:6px 12px!important;line-height:1.25!important}
+  /* ui3.css hides the part number under each name ("shows on hover"): a phone has no hover, so it is shown again, as a small second line */
+  html body.u3-on .u3-pwpane #ko-quickparts-chips button>span.u2-i2{display:inline-flex}
+  html body.u3-on .u3-pwpane #ko-quickparts-chips button>span:is([style*="font-size:9.5px"],[style*="font-size: 9.5px"]){display:block;margin-top:1px;overflow:hidden;text-overflow:ellipsis}
+  html body.u3-on .u3-pwpane #ko-parttpl-chips button{min-height:40px}
+  html body.u3-on .ko-card[data-u3pane="look"] [data-pane="look"]{grid-template-columns:minmax(0,1fr)}
+  html body.u3-on .u3-pwpane [data-pane="quick"]>div,html body.u3-on .u3-pwpane>div{padding:12px}
+  html body.u3-on .u3-pwh h3{font-size:15px}
+
+  /* the order: one card per line (the app's own phone layout), same look as every other field */
+  html body.u3-on .u3-pwr .ko-parts-tbl :is(th,td){min-width:0!important;max-width:none!important;padding:0!important}
+  html body.u3-on .u3-pwr .ko-parts-tbl tr{padding:12px;gap:10px;border-radius:12px}
+  html body.u3-on .ko-parts-tbl td :is(input:not([type=checkbox]),select,textarea){width:100%;min-width:0;max-width:none;background:#fff!important;border:1px solid #D5DCE6!important;border-radius:10px;padding:10px 12px!important}
+  html body.u3-on .u3-pwr .ko-parts-tbl td select{max-width:none}   /* ui3.css caps these at 92-100px for the PC table */
+  html body.u3-on .ko-parts-tbl td textarea.ko-desc-ta{min-height:44px}
+  html body.u3-on .ko-parts-tbl td select{padding-right:32px!important;background-position:right 11px center;background-size:12px}
+  html body.u3-on .u3-pwr .ko-parts-tbl input[type=text]{width:100%}
+  html body.u3-on .ko-pcell-lbl{font-size:11px}
+  html body.u3-on .ko-parts-tbl td.ko-pcell-cb{display:flex;align-items:center;gap:10px;text-align:left!important}
+  html body.u3-on .ko-parts-tbl td input[type=checkbox]{width:24px;height:24px;flex:none;padding:0}
+  html body.u3-on .ko-pcell-cb .ko-pcell-lbl{font-size:12px}
+  html body.u3-on .ko-parts-tbl .rm-btn{min-width:var(--u3-tap-s);min-height:var(--u3-tap-s);font-size:22px}
+  html body.u3-on .ko-note-head{gap:6px}
+
+  /* drafts */
+  html body.u3-on .u3-kside .ko-draft-row{display:grid;grid-template-columns:auto auto minmax(0,1fr);gap:6px 10px;align-items:center;padding:10px}
+  html body.u3-on .ko-draft-row .ko-draft-info{min-width:0}
+  html body.u3-on .ko-draft-row .ko-draft-sub{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+  html body.u3-on .ko-draft-row>.ko-badge{grid-column:3;justify-self:start}   /* the status sits under the text instead of squeezing it */
+  html body.u3-on .ko-draft-row input.ko-draft-chk[type=checkbox]{width:26px;height:26px}
+  html body.u3-on .u3-kside #ko-gen-btn,html body.u3-on .u3-kside .u3-kfoot #ko-gen-btn{min-height:48px}
+}
+
+/* 10 - FINGER-SIZED CONTROLS ------------------------------------------------------------- */
+@media (max-width:600px), (orientation:landscape) and (min-width:560px) and (max-height:500px) and (pointer:coarse){
+  /* 16px text: below that iOS zooms the page when a field is tapped
+     (!important: a few fields carry their own font-size inside the page code) */
+  html body:is(.u3-on,.u3-login) :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]):not([type=hidden]),select){font-size:16px!important;min-height:var(--u3-tap)}
+  html body:is(.u3-on,.u3-login) textarea{font-size:16px!important}
+  html body:is(.u3-on,.u3-login) .rte-editable{font-size:16px!important;min-height:64px}
+  html body:is(.u3-on,.u3-login) :is(input[type=checkbox],input[type=radio]){width:24px;height:24px;flex:none}
+  html body.u3-on :is(.upd-item-chk,.rts-toggle) input[type=checkbox]{width:24px!important;height:24px!important}   /* these carry style="width:auto" */
+  html body.u3-on .modal label:has(>input[type=checkbox]),html body.u3-on .modal label:has(>input[type=radio]){min-height:var(--u3-tap-s)}
+  /* buttons and pills */
+  html body:is(.u3-on,.u3-login) :is(.btn,.btn-add,.copy-btn,.ai-improve-btn,.day-status-pill,.rts-toggle,.auth-tab,.ptab,.profile-btn){min-height:var(--u3-tap-s)}
+  html body:is(.u3-on,.u3-login) :is(.btn.primary,.btn.xl,.extract-btn,.u3-validate,.u3-open){min-height:var(--u3-tap)}
+  html body.u3-on :is(.ko-pill,.ko-addr-pill){min-height:36px;display:inline-flex;align-items:center}
+  html body.u3-on .tpl-card-row{min-height:var(--u3-tap-s)}
+  /* small round / icon-only controls */
+  html body.u3-on :is(.btn-rm,.update-day-del,.tpl-card-del,.tpl-line-rm,.ko-airline-del){display:inline-flex;align-items:center;justify-content:center;min-width:var(--u3-tap-s);min-height:var(--u3-tap-s);margin-top:0;font-size:20px}
+  html body.u3-on :is(#recipients-tags,#default-recipients-tags,.ko-tag-extra) button{min-width:32px!important;min-height:32px!important;font-size:18px!important;padding:0 6px!important}
+  html body.u3-on #kickoff-panel button.ko-flip{min-width:44px;min-height:38px}   /* ui3.css sets 34x30 with an id in the selector */
+  html body.u3-on #kickoff-panel .ko-tag{padding:2px 4px 2px 12px}
+  html body.u3-on .modal button[onclick^="koDeleteGsModel"]{min-width:var(--u3-tap-s);min-height:var(--u3-tap-s)}   /* trash button of the Gulfstream models list */  
+  /* signature window: format buttons and colour dots */
+  html body.u3-on .sig-fmt-row{gap:10px}
+  html body.u3-on .sig-fmt-btn,html body.u3-on .sig-fmt-custom{width:var(--u3-tap-s);height:var(--u3-tap-s)}
+  html body.u3-on .sig-swatches{gap:10px}
+  html body.u3-on .sig-swatch{width:36px;height:36px}
+  html body.u3-on .modal summary{padding:10px 0}   /* "Add several FBOs at once" */
+  html body.u3-on .modal label{overflow-wrap:anywhere}   /* a long word never runs out of the window at 320px */  
+  /* nothing under 11px: the app and ui3 use 9 to 10.5px for badges, captions and field labels (class rules, then the ones written inside the page) */
+  html body.u3-on :is(.part-fields .fg label,.tpl-line-lbl,.ko-pcell-lbl,.u2-pl,.abadge,.badge-today,.ko-badge,.ko-tag-fixed .ko-lock,.pdb-tag,.proj-item-date,.tag-arch,.tag-open,.tag-rts,.tpl-card-chev,button.ko-flip,.u2-sec,.ko-smallqty-lbl,.lkm-jump,.tpl-line-header,.tpl-line-opt,.u2-dp,.step-badge,#sqa-status,#auth-badge,.proj-item-sub small){font-size:11px}
+  /* (both spellings: a style the page writes by script comes back as "font-size: 10px" with a space) */
+  html body.u3-on :is(#app-screen,#kickoff-panel,.modal-bg,#reply-modal) :is([style*="font-size:9px"],[style*="font-size:9.5px"],[style*="font-size:10px"],[style*="font-size:10.5px"],[style*="font-size: 9px"],[style*="font-size: 9.5px"],[style*="font-size: 10px"],[style*="font-size: 10.5px"]){font-size:11px!important}
+  /* no "stuck" hover highlight after a tap */
+  @media (hover:none){
+    html body.u3-on .proj-item:hover{background:#fff;border-color:var(--g200)}
+    html body.u3-on .proj-item.active:hover{border-color:var(--gd)}
+    html body.u3-on .u3-tab:hover:not(:disabled):not(.on){background:none}
+    html body.u3-on .btn:hover:not(.primary):not(.danger){background:#fff}
+  }
+}
+
+/* 11 - WINDOWS (MODALS), TOASTS, BANNERS ------------------------------------------------- */
+@media (max-width:600px), (orientation:landscape) and (min-width:560px) and (max-height:500px) and (pointer:coarse){
+  /* every window is a sheet that slides up from the bottom and uses the visible height (browser bars, notch) */
+  html body .modal-bg{align-items:flex-end}
+  html body .modal{width:100%!important;max-width:none!important;margin:0!important;padding:10px 14px calc(16px + var(--u3-sab))!important;border-radius:18px 18px 0 0;max-height:92vh;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;box-shadow:0 -12px 44px rgba(14,34,56,.34)}   /* !important: two windows (#modal-cra, #modal-parttpl) have their own margin/padding by id */
+  html body .modal::before{content:"";display:block;width:44px;height:5px;border-radius:5px;background:var(--g200);margin:0 auto 12px}   /* grab handle: it only shows that this is a sheet */
+  html body .modal h3{font-size:16px}
+  /* the buttons of a window stay visible at the bottom of the sheet while its content scrolls.
+     A sticky bottom offset is measured from the inside of the sheet's padding, hence the "- 16px - safe area" (same trick the page already uses for #modal-cra) */
+  html body .modal-btns{position:sticky;bottom:calc(-16px - var(--u3-sab));z-index:3;flex-wrap:wrap;gap:8px;margin:14px -14px calc(-16px - var(--u3-sab));padding:10px 14px calc(10px + var(--u3-sab));background:#fff;border-top:1px solid var(--g200)}
+  html body #modal-cra .modal-btns{bottom:calc(-16px - var(--u3-sab));margin:14px -14px calc(-16px - var(--u3-sab));padding:10px 14px calc(10px + var(--u3-sab))}   /* the page gives this one its own offsets by id */
+  html body .modal .modal-btns>div{flex:1 1 auto;flex-wrap:wrap}   /* plate/tag scan window: "Use as OFF" + "Use as ON" wrap instead of overflowing at 320px */  
+  html body .modal-btns .btn{flex:1 1 auto;justify-content:center;min-height:var(--u3-tap)}
+  @keyframes u3p-sheet{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+  html body .modal-bg.open .modal{animation:u3p-sheet .2s ease-out}
+  @media (prefers-reduced-motion:reduce){html body .modal-bg.open .modal{animation:none}}
+  /* AMM Task Reader window: the reader fills the whole sheet */
+  #modal-amm-reader .modal{padding:0!important;height:92vh;max-height:92vh!important}
+  #modal-amm-reader .modal::before{display:none}
+  #modal-amm-reader iframe{flex:1 1 auto;height:auto!important;min-height:200px!important}
+  /* Gmail Reply Sync window (inline-styled in the page) */
+  #reply-modal{align-items:flex-end!important;padding:0!important}
+  #reply-modal>div{width:100%!important;max-height:92vh!important;border-radius:18px 18px 0 0!important}
+  #reply-modal-body{padding:14px!important}
+  #reply-modal button{min-height:40px!important;min-width:40px!important}
+  /* confirmation messages the app creates ("Copied", "Saved"...): above the bottom bar, as wide as their text needs (a box centred with left:50% would otherwise wrap at half the screen), never wider than the screen.
+     The page writes them with style="position:fixed;bottom:24px;...;z-index:300" and the browser hands that back with spaces, so both spellings are matched. */
+  html body.u3-on>div:is([style*="bottom:24px"],[style*="bottom: 24px"]):is([style*="z-index:300"],[style*="z-index: 300"]){bottom:calc(var(--u3-bar-h) + var(--u3-sab) + 14px)!important;width:max-content!important;max-width:calc(100vw - 24px)!important;white-space:normal;text-align:center;box-sizing:border-box}
+  html body.u3-on .update-banner{bottom:calc(var(--u3-bar-h) + var(--u3-sab))}
+  html body.u3-on #bio-enroll-banner{top:calc(var(--u3-hdr-h) + var(--u3-sat) + 8px)!important;width:calc(100% - 20px)!important}
+  html body.u3-on #bio-enroll-banner button{min-height:36px}
+}
+/* AMM Task Reader title bar, portrait: title and Close on the first line, the squawk selector on the second */
+@media (max-width:600px){
+  #modal-amm-reader h3{flex:1 1 0!important;order:1}
+  #modal-amm-reader .modal>div:first-child>.btn{order:2}
+  #modal-amm-reader #amm-reader-sq-row{order:3;flex:1 1 100%}
+  #modal-amm-reader #amm-reader-sq-sel{flex:1 1 0;min-width:0;max-width:none!important}
+}
+@supports (height:100dvh){
+  @media (max-width:600px), (orientation:landscape) and (min-width:560px) and (max-height:500px) and (pointer:coarse){
+    html body .modal{max-height:calc(100dvh - 8px)}
+    #modal-amm-reader .modal{height:calc(100dvh - 8px);max-height:calc(100dvh - 8px)!important}
+    #reply-modal>div{max-height:calc(100dvh - 8px)!important}
+  }
+}
+
+/* 12 - LOGIN SCREENS ---------------------------------------------------------------------- */
+@media (max-width:600px), (orientation:landscape) and (min-width:560px) and (max-height:500px) and (pointer:coarse){
+  html body.u3-login .main{padding:10px max(10px,env(safe-area-inset-right,0px)) 24px max(10px,env(safe-area-inset-left,0px))}
+  html body.u3-login .auth-box{padding:1.25rem .9rem}
+  /* one name per line: full names, not "Beatrice L..." */
+  html body.u3-login #picker-grid{grid-template-columns:minmax(0,1fr)!important;max-height:min(56vh,460px)!important}
+  html body.u3-login #picker-grid .profile-btn{min-height:52px;padding:8px 12px!important}
+  html body.u3-login #picker-grid .profile-btn .pb-name{font-size:14px!important}
+  html body.u3-login .ptab{min-height:var(--u3-tap);font-size:12px!important}
+  html body.u3-login .profile-btn{min-height:52px}
+  html body.u3-login header{height:auto;min-height:var(--u3-hdr-h);padding-top:var(--u3-sat);padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+  html body.u3-login .hdr-right button{min-height:var(--u3-tap-s);padding:0 14px}
+  html body.u3-login #auth-box p a[href]{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;font-size:12px}
+}
+
+/* 13 - LANDSCAPE PHONES --------------------------------------------------------------------
+   A phone held sideways is only about 360-430px high: a bottom bar plus a top bar would take a third of it.
+   So the four navigation buttons move to a slim rail on the left, the top bar gets thinner, and the pages
+   keep the phone design above (same cards, same finger-sized controls), just wider.
+   Applies to touch screens, wider than 560px and lower than 500px; tablets and PCs never match it. */
+@media (orientation:landscape) and (min-width:560px) and (max-height:500px) and (pointer:coarse){
+  html:root{--u2-side:calc(76px + env(safe-area-inset-left,0px));--u2-hdr:44px;--u3-hdr-h:44px;--u3-bar-h:0px}
+
+  /* the rail (it replaces the bottom bar of ui3.css / ui3-tablet.css and the 92px rail they use from 901px) */
+  html body.u3-on .u2-side{top:0;bottom:0;left:0;right:auto;width:var(--u2-side);flex-direction:column;align-items:stretch;justify-content:center;gap:4px;padding:6px 6px 6px max(6px,env(safe-area-inset-left,0px));border-top:0;border-right:1px solid #1B3556;overflow-x:hidden;overflow-y:auto}
+  html body.u3-on .u2-brand,html body.u3-on .u2-sec{display:none}
+  html body.u3-on .u2-cta,html body.u3-on .u2-i{order:0;flex:0 0 auto;width:100%;height:auto;min-height:52px;margin:0;padding:5px 2px;flex-direction:column;justify-content:center;align-items:center;gap:2px;background:none;color:#C9D5E3;font-size:11px;font-weight:600;line-height:1.1;text-align:center;border-radius:10px}
+  html body.u3-on .u2-cta{order:-1}
+  html body.u3-on .u2-cta svg{color:var(--u2-amber)}
+  html body.u3-on .u2-i.on{background:#1B3556;color:#fff}
+  html body.u3-on .u2-tools-btn{display:flex}
+  html body.u3-on .u2-grp{display:none}
+  html body.u3-on .u2-side.tools-open .u2-grp{display:flex;flex-direction:column;position:fixed;left:calc(var(--u2-side) + 8px);right:auto;top:auto;bottom:8px;width:min(320px,calc(100vw - var(--u2-side) - 24px));margin:0;padding:8px;gap:4px;background:#0E2238;border:1px solid #1B3556;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.35)}
+  html body.u3-on .u2-side.tools-open .u2-grp .u2-i{flex:none;flex-direction:row;justify-content:flex-start;align-items:center;width:100%;min-height:46px;padding:0 12px;gap:12px;font-size:14px;text-align:left}
+
+  /* top bar, page frame: the content starts right of the rail */
+  html body.u3-on header{margin-left:var(--u2-side);padding-left:14px}
+  html body.u3-on .hdr-right button{width:36px;height:36px}
+  html body.u3-on #hdr-profile-name{max-width:180px}
+  html body.u3-on .main{margin-left:var(--u2-side);margin-right:0;max-width:none;padding:10px max(14px,env(safe-area-inset-right,0px)) calc(var(--u3-sab) + 76px) 14px}
+  html body.u3-on .u3-ph:not([hidden]){margin-left:var(--u2-side);margin-right:0;max-width:none;padding:10px max(14px,env(safe-area-inset-right,0px)) 0 14px}
+  html body.u3-on #kickoff-panel{padding-right:0}
+
+  /* project header: title and engineers on the left, the two buttons on the right */
+  html body.u3-on .u3-pc,html body.u3-on[data-u3t="start"] .u3-pc{padding:10px 12px;gap:8px 16px}
+  html body.u3-on .u3-pt{flex:1 1 260px}
+  html body.u3-on .u3-eng{flex:1 1 240px}
+  html body.u3-on .u3-pa{flex:0 0 auto;margin-left:auto}
+  html body.u3-on .u3-pa .btn,html body.u3-on .u3-pa #btn-mark-rts{flex:0 0 auto;min-width:150px}
+  html body.u3-on .u3-pa .u3-xfer{flex-grow:0}
+
+  /* tabs: icon beside the word, one line */
+  html body.u3-on .u3-tabs,html body.u3-on[data-u3t="start"] .u3-tabs{margin-top:8px;gap:4px}
+  html body.u3-on .u3-tab,html body.u3-on .u3-sub{flex-direction:row;gap:6px;min-height:42px;padding:4px 6px;font-size:12px}
+  html body.u3-on .u3-tab>svg:first-child{display:block}
+  html body.u3-on .u3-tab>svg,html body.u3-on .u3-sub>svg{width:17px;height:17px;flex:none}
+  html body.u3-on .u3-tab>em{position:static;margin-left:2px}   /* the lock sits after the word instead of on top of it */
+  html body.u3-on .u3-ksubs{grid-template-columns:repeat(8,minmax(0,1fr));gap:4px;margin-top:6px}
+  html body.u3-on .u3-ksub,html body.u3-on .u3-ksub[data-k="drafts"]{min-height:50px;padding:4px 2px}
+  html body.u3-on .u3-ksubs .ko-header .btn{flex:0 1 auto}
+
+  /* projects page: the engineer bar keeps its buttons on one line under the name */
+  html body.u3-on [data-u3g="ebar"]>div:nth-child(2){flex:2 1 300px;min-width:0}
+  html body.u3-on [data-u3g="ebar"]>#btn-gmail-sync-status{flex:1 1 230px;min-width:0;white-space:normal;line-height:1.2}   /* its label is ~215px wide: with 150px the text ran out of the button */
+  html body.u3-on [data-u3g="ebar"]>#btn-start-job{flex:1.3 1 190px;min-width:0}
+
+  /* bars held at the bottom: one line each, no bottom bar underneath */
+  html body.u3-on .u3-checkbar{flex-wrap:nowrap;padding:8px 10px}
+  html body.u3-on .u3-checkbar span{flex:1 1 0;order:0;min-width:0}
+  html body.u3-on .u3-checkbar .btn,html body.u3-on .u3-checkbar .u3-back{flex:0 0 auto}
+  html body.u3-on .u3-obar{flex-wrap:nowrap;padding:8px 10px}
+  html body.u3-on .u3-obar::after{display:none}
+  html body.u3-on .u3-obar .btn{order:0;flex:0 0 auto}
+  html body.u3-on[data-u3p="project"][data-u3t="daily"] #app-screen>.action-row{bottom:var(--u3-sab);flex-wrap:nowrap;padding:6px 0;margin-top:4px}
+  html body.u3-on .action-row .btn{height:40px}
+  html body.u3-on .action-row .btn.primary.xl{flex:2.4 1 0!important;order:0;height:40px;font-size:13px}
+
+  /* windows: a sheet of reasonable width, not the whole landscape screen */
+  html body .modal{max-width:680px!important;margin:0 auto!important}
+  html body.u3-login #picker-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+
+/* 13b - NARROW LANDSCAPE (iPhone SE / 5s, small Androids: under 740px wide) ------------------------------
+   Six tabs across about 460px do not have room for an icon beside the word, so they keep the portrait layout:
+   the icon above the word. */
+@media (orientation:landscape) and (min-width:560px) and (max-width:739px) and (max-height:500px) and (pointer:coarse){
+  html body.u3-on .u3-tab,html body.u3-on .u3-sub{flex-direction:column;gap:2px;min-height:46px;padding:4px 1px;font-size:11px;line-height:1.1}
+  html body.u3-on .u3-tab>svg,html body.u3-on .u3-sub>svg{width:18px;height:18px}
+  html body.u3-on .u3-tab>em{position:absolute;top:2px;right:2px;margin:0}
+  html body.u3-on .action-row .btn{font-size:11.5px!important;padding:0 4px!important;gap:4px;white-space:normal;line-height:1.05}
+  html body.u3-on .action-row .btn.primary.xl{font-size:12px!important}   /* "Generate FAST Update table" and "Quick Update" were 5-15px too wide at 568px */
+  html body.u3-on .action-row .btn svg{width:13px;height:13px}  
+}
