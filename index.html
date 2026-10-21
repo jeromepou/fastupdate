@@ -795,6 +795,7 @@ input.ac-fld-red:not(:focus),select.ac-fld-red:not(:focus){border-color:#dc2626;
 .acf.acf-red{background:#FEE2E2;border-color:#DC2626;color:#991B1B}
 .u3-warn{flex:1 1 100%;display:flex;align-items:flex-start;gap:8px;margin-top:2px;padding:8px 11px;border-radius:10px;font-size:12.5px;line-height:1.35;overflow-wrap:anywhere}
 </style>
+
 <style id="check-page-fix">
 /* Validation window: show the work items and the daily updates (with Additional Info / Constraints), each in its own row. */
 html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="check"] #app-screen>:is([data-u3g="items"],[data-u3g="updates"]){display:block!important}
@@ -805,6 +806,9 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
   html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="check"] #app-screen>[data-u3g="team"]{grid-column:2!important;grid-row:2 / span 4!important}
   html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="check"] #app-screen>[data-u3g="checkbar"]{grid-row:6!important}
 }
+/* Validation window: no day buttons / "No updates yet" (useless there); only Additional Info / Constraints stays. */
+html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="check"] #app-screen>[data-u3g="updates"] :is(.card-head,.day-actions,#updates-container){display:none!important}
+html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="check"] #app-screen>[data-u3g="updates"] #f_info-wrap{margin-top:0!important;padding-top:0!important;border-top:0!important}
 </style>
 </head>
 <body>
