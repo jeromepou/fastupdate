@@ -37,9 +37,9 @@
 
   function addLink(a) { var l = D.createElement('link'); Object.keys(a).forEach(function (k) { l.setAttribute(k, a[k]); }); D.head.appendChild(l); }
   addLink({ rel: 'preload', href: 'fonts/plus-jakarta-sans-latin-wght-normal.woff2', as: 'font', type: 'font/woff2', crossorigin: '' });
-  addLink({ rel: 'stylesheet', href: 'ui3.css' });
-  addLink({ rel: 'stylesheet', href: 'ui3-tablet.css' });                  // tablets (601-1099px + touch): loaded after ui3.css, so it only wins where it says so
-  addLink({ rel: 'stylesheet', href: 'ui3-phone.css' });   // phones
+  addLink({ rel: 'stylesheet', href: 'ui3.css?v=20261021a' });
+  addLink({ rel: 'stylesheet', href: 'ui3-tablet.css?v=20261021a' });                  // tablets (601-1099px + touch): loaded after ui3.css, so it only wins where it says so
+  addLink({ rel: 'stylesheet', href: 'ui3-phone.css?v=20261021a' });   // phones
   D.documentElement.classList.add('u3-enabled');
 
   /* ---------- AMM reader: locked (AMM_LOCKED) until the access code has been typed once; remembered on this device ---------- */
