@@ -76,7 +76,10 @@ html:root{--u3-tap:44px;--u3-tap-s:40px}
   html body.u3-on:is([data-u3p="check"],[data-u3p="project"][data-u3t="details"]) #app-screen>[data-u3g="aircraft"]{grid-column:1!important;grid-row:2!important}
   html body.u3-on:is([data-u3p="check"],[data-u3p="project"][data-u3t="details"]) #app-screen>[data-u3g="closing"]{grid-column:1!important;grid-row:3!important}
   html body.u3-on:is([data-u3p="check"],[data-u3p="project"][data-u3t="details"]) #app-screen>[data-u3g="team"]{grid-column:2!important;grid-row:2 / span 2!important}
-  html body.u3-on[data-u3p="check"] #app-screen>[data-u3g="checkbar"]{grid-column:1/-1!important;grid-row:4!important}
+  html body.u3-on[data-u3p="check"] #app-screen>[data-u3g="items"]{grid-column:1!important;grid-row:3!important}
+  html body.u3-on[data-u3p="check"] #app-screen>[data-u3g="closing"]{grid-column:1!important;grid-row:4!important}
+  html body.u3-on[data-u3p="check"] #app-screen>[data-u3g="team"]{grid-column:2!important;grid-row:2 / span 3!important}
+  html body.u3-on[data-u3p="check"] #app-screen>[data-u3g="checkbar"]{grid-column:1/-1!important;grid-row:5!important}
 }
 
 /* 2 - LANDSCAPE TABLETS (901-1099px) - slim rail instead of the wide sidebar */
