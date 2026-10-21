@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://www.gstatic.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://orange-snow-95f7.jeromepoupinel.workers.dev; object-src 'none'; base-uri 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://www.gstatic.com https://*.googleapis.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://orange-snow-95f7.jeromepoupinel.workers.dev; object-src 'none'; base-uri 'self';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AMM Task Reader</title>
 <style>
@@ -265,6 +265,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-app.js";
 import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-database.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-auth.js";
 
 // Même projet Firebase que l'app principale.
 const firebaseConfig = {
@@ -277,6 +278,7 @@ const firebaseConfig = {
   appId: "1:178536566816:web:e1c2b103fc198a94d72c45"
 };
 const app = initializeApp(firebaseConfig);
+getAuth(app); // reprend la session ouverte par index.html (même origine) ; sans ça : auth == null -> PERMISSION_DENIED
 const db = getDatabase(app);
 
 const AMM_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 jours — durée modifiable ici uniquement
@@ -329,12 +331,33 @@ window.ammCache = {
    ============================================================ */
 const KO_WORKER = 'https://orange-snow-95f7.jeromepoupinel.workers.dev';
 
+// Filet de sécurité : le vrai cache est défini dans le <script type="module"> plus haut, qui ne
+// s'exécute qu'une fois Firebase chargé depuis gstatic. Si ce chargement échoue (réseau, CSP, 404),
+// le scan ne doit PAS planter : on retombe sur un cache vide. Le module remplace ce stub dès qu'il s'exécute.
+window.ammCache = window.ammCache || { async load() { return null; }, async save() {} };
+
 let _ammSessionToken = null;
 
 function koWorkerFetch(path, options = {}) {
   const headers = Object.assign({}, options.headers || {});
   if (_ammSessionToken) headers['Authorization'] = 'Bearer ' + _ammSessionToken;
   return fetch(KO_WORKER + path, Object.assign({}, options, { headers }));
+}
+
+// Lit la réponse JSON et, si le statut n'est pas OK, lève une erreur au texte lisible.
+// Le Worker renvoie { error: "texte" } (401, 429) ou { error: { message } } (502, 599) ;
+// Mistral renvoyé tel quel donne { message }. Un corps non-JSON ne casse plus le message.
+async function apiJson(res, label) {
+  let data = null;
+  try { data = await res.json(); } catch (e) { /* corps non-JSON */ }
+  if (!res.ok) {
+    const err = data && data.error;
+    let msg = (typeof err === 'string' ? err : (err && err.message)) || (data && data.message);
+    if (msg && typeof msg !== 'string') msg = JSON.stringify(msg);
+    throw new Error(msg || (label + ' error ' + res.status));
+  }
+  if (data === null) throw new Error(label + ': the server did not return valid JSON');
+  return data;
 }
 
 if (window.parent && window.parent !== window) {
@@ -375,6 +398,9 @@ let inputMode = 'pdf';
 let ammPdfB64 = null;
 let rootResult = null;
 let knownCards = []; // [{ref, title, addedAt}]
+// Deux procédures peuvent avoir le MÊME numéro (71-10-01 « Open » / « Close »). titleVariants[numéro] = les titres vus dans la
+// session, dans l'ordre ; voir taskKey().
+let titleVariants = {};
 // Scans of related tasks are stored independently of any card's tree,
 // keyed by normalized task ref, so a related task can be scanned no
 // matter which card is currently rootResult (or none at all).
@@ -411,7 +437,9 @@ let suggestionState = {
   protectiveGloves: { accepted: false },
   hydraulicCans: { accepted: false, qty: '' },
   oilCans: { accepted: false, qty: '' },
-  softwareLoadingPcLocation: { accepted: false }
+  softwareLoadingPcLocation: { accepted: false },
+  esdWristStrap: { accepted: false },
+  hydraulicGoggles: { accepted: false }
 };
 
 const expectedModel = new URLSearchParams(location.search).get('model') || '';
@@ -577,7 +605,9 @@ function escapeHtml(s) {
 // is parsed as JS. Same trick already used ad hoc for `keyAttr`
 // elsewhere; this just makes it reusable for a second argument.
 function jsArg(v) {
-  return JSON.stringify(v == null ? '' : v).replace(/"/g,'&quot;');
+  // &amp; d'abord : sinon un texte contenant littéralement &quot; (ex. un titre de tâche lu par l'IA)
+  // redevient un guillemet une fois décodé par le navigateur et sort de la chaîne JS de l'attribut onclick.
+  return JSON.stringify(v == null ? '' : v).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
 }
 
 /* ============================================================
@@ -689,7 +719,7 @@ Extract five things:
    - "step_reference": exactly where in THIS card that instruction appears (e.g. "Preliminary Requirements", "Step 9", "Requirements After Job Completion").
    - Do NOT include purely informational cross-references that are not instructions to perform another task.
 
-   DEDUPLICATION — MANDATORY: deduplicate by "ref" before finalizing. If the same ref is cited in multiple sub-sections of this card, output it ONCE only, using the clearest step_reference. Never output the same ref twice.
+   DEDUPLICATION — MANDATORY: deduplicate by "ref" AND "title" together before finalizing. If the same task (same ref AND same title) is cited in multiple sub-sections of this card, output it ONCE only, using the clearest step_reference. BUT two procedures that share the same ref number and have DIFFERENT titles are two different tasks (e.g. "Lower Cowl - Open" and "Lower Cowl - Close" are both 71-10-01; "Thrust Reverser - Deactivation Procedure for Maintenance" and "Thrust Reverser - Reactivation Procedure for Maintenance" are both 78-30-00): output EACH of them as its own entry, never merge them into one.
 
 The technician has already scanned these AMM references earlier in this session: ${JSON.stringify(alreadyKnownRefs)}
 If any related task you find matches one of these refs, still include it but set "already_known": true. Otherwise set "already_known": false.
@@ -759,7 +789,7 @@ For EACH item in tools, consumables, implicit_materials, access_panels, related_
   - Remove any entry that is actually the current card itself referencing its own PHASE HEADERS (Preparation/Removal/Installation/Follow-on Maintenance/Safety Conditions) — that's internal structure, not a related task.
   - Do NOT remove a differently-titled procedure with its own complete Preliminary Requirements/Procedure/Requirements After Job Completion structure (e.g. "Hydraulic System – Pre-operation", "Hydraulic System – Post-operation") even if it shares the enclosing card's task number footer — these are genuine related tasks and must be kept (ADD them if the extraction pass missed them). If such a procedure has no distinct task number, its "ref" must be its exact title text, never the enclosing card's own task number.
   - Remove any entry that is actually an access panel — those belong exclusively in access_panels, never duplicated in related_tasks.
-  - DEDUPLICATE by "ref": keep only ONE entry per ref, merging into the clearest step_reference.
+  - DEDUPLICATE by "ref" AND "title" together: keep only ONE entry per task, merging into the clearest step_reference. Two entries that share a ref number but have DIFFERENT titles (e.g. "Lower Cowl - Open" / "Lower Cowl - Close", both 71-10-01) are two different tasks: keep BOTH.
   - Confirm the "when" classification matches the source. Confirm step_reference points to the exact section/step.
 - Flag ("needs_review": true) any item you are not fully confident about, with a specific, actionable "review_note".
 
@@ -925,6 +955,83 @@ function normalizeRef(ref) {
   return (ref || '').toString().trim().toUpperCase();
 }
 
+/* ------------------------------------------------------------
+   MÊME NUMÉRO, PROCÉDURES DIFFÉRENTES — ex. 71-10-01 « Lower Cowl - Open » et « Lower Cowl - Close » : deux cartes (deux PDF)
+   pour UN seul numéro. Le numéro ne suffit donc pas à reconnaître une carte : on compare aussi la FIN de son titre (la partie
+   après le dernier tiret : « Close », « Removal / Installation »…). Aucune de ces fonctions n'appelle l'IA.
+   ------------------------------------------------------------ */
+const TITLE_STOPWORDS = new Set(['a', 'an', 'the', 'and', 'or', 'of', 'for', 'to', 'on', 'in', 'with', 'as', 'system', 'procedure', 'general', 'maintenance']);
+function titleWords(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w && !TITLE_STOPWORDS.has(w));
+}
+// « Lower Cowl - Close » -> « Close » (tiret, demi-cadratin ou cadratin) ; un titre sans tiret reste entier.
+function titleTail(title) {
+  const parts = String(title || '').split(/\s[-\u2013\u2014]\s/);
+  return parts[parts.length - 1];
+}
+// Vrai si l'un des deux titres est contenu dans l'autre (titre abrégé, majuscules, ponctuation) ; faux pour Open / Close.
+function sameTitle(a, b) {
+  const within = (x, y) => {
+    const small = x.length <= y.length ? x : y, big = x.length <= y.length ? y : x;
+    return small.length > 0 && small.every(w => big.includes(w));
+  };
+  if (!titleWords(a).length || !titleWords(b).length) return true; // un titre manque : impossible de comparer, on fait comme avant
+  return within(titleWords(titleTail(a)), titleWords(titleTail(b))) || within(titleWords(a), titleWords(b));
+}
+// Clé d'une carte -> son numéro (la clé est le numéro seul, sauf pour une 2e procédure de même numéro : « 71-10-01~2 »).
+function refOfKey(key) {
+  return normalizeRef(key).split('~')[0];
+}
+// Titre de la carte lu dans le texte, sans IA : la ligne « 71-10-01 Lower Cowl - Close » est répétée sur chaque page, comme le numéro.
+function detectCardTitleFromText(sourceText, ref) {
+  const want = normalizeRef(ref);
+  const counts = new Map();
+  for (const m of (sourceText || '').matchAll(/^(\d{2}-\d{2}-\d{2})[ \t]+([A-Z][^\n]{3,80})$/gm)) {
+    if (want && m[1] !== want) continue;
+    const t = m[2].trim();
+    counts.set(t, (counts.get(t) || 0) + 1);
+  }
+  let best = '', bestCount = 0;
+  for (const [t, c] of counts) { if (c > bestCount) { best = t; bestCount = c; } }
+  return best;
+}
+
+/* ------------------------------------------------------------
+   CACHE D'ÉQUIPE « PAR PROCÉDURE » — la clé reste « modèle + numéro » (comme avant) tant qu'une seule procédure existe sous ce
+   numéro. Si le cache contient une AUTRE procédure sous ce numéro, on ne la prend JAMAIS pour celle du PDF : on cherche la bonne
+   sous « numéro + fin du titre » (ex. 71-10-01 close), sinon on rescanne. Titre inconnu = comportement d'avant.
+   ------------------------------------------------------------ */
+function cacheEntryTitle(hit) {
+  return (hit && (hit.title || (hit.data && hit.data.card_title))) || '';
+}
+function cacheVariantKey(ref, title) {
+  return ref + ' ' + (titleWords(titleTail(title)).join(' ') || titleWords(title).join(' '));
+}
+function cacheTitleHtml(hit) {
+  const t = cacheEntryTitle(hit);
+  return t ? ' (<b>' + escapeHtml(t) + '</b>)' : '';
+}
+async function ammCacheLoad(ref, title) {
+  window._cacheOtherTitle = '';
+  const hit = await window.ammCache.load(expectedModel, ref);
+  const hitTitle = cacheEntryTitle(hit);
+  if (!hit || !title || !hitTitle || sameTitle(hitTitle, title)) return hit;
+  const own = await window.ammCache.load(expectedModel, cacheVariantKey(ref, title));
+  if (own) return own;
+  window._cacheOtherTitle = hitTitle; // une autre procédure occupe ce numéro : le message final le dira
+  return null;
+}
+async function ammCacheSave(ref, title, data, sourceText, scannedBy) {
+  try {
+    const old = await window.ammCache.load(expectedModel, ref);
+    const oldTitle = cacheEntryTitle(old);
+    const other = !!(old && title && oldTitle && !sameTitle(oldTitle, title));
+    await window.ammCache.save(expectedModel, other ? cacheVariantKey(ref, title) : ref, title, data, sourceText, scannedBy);
+  } catch (e) {
+    console.warn('ammCacheSave a échoué:', e);
+  }
+}
+
 // Loose name normalizer for cross-matching tool/consumable/implicit names
 // that may be phrased slightly differently (e.g. "Container, hydraulic
 // fluid resistant" vs "Hydraulic fluid drain container" vs "Container,
@@ -962,7 +1069,14 @@ function namesOverlapSignificantly(a, b) {
 // to catch hydraulic fluid during bleed operations" (purpose-descriptive
 // implicit-material name) — same head noun + enough shared descriptive
 // words, even though the plain overlap ratio falls short of 0.75.
+// Signature des nombres d'un nom (plages, tailles) : "Torque wrench, 40 - 200 inch-pounds" -> "200,40".
+// Deux noms qui portent des nombres DIFFÉRENTS sont deux outils différents, jamais une même ligne.
+function numericSignature(name) {
+  return nameTokens(name).filter(w => /^\d+$/.test(w)).sort().join(',');
+}
 function namesOverlapForMerge(a, b) {
+  const numA = numericSignature(a), numB = numericSignature(b);
+  if (numA && numB && numA !== numB) return false;
   if (namesOverlapSignificantly(a, b)) return true;
   const tokA = nameTokens(a), tokB = nameTokens(b);
   const ta = new Set(tokA), tb = new Set(tokB);
@@ -1092,14 +1206,26 @@ function reconcileImplicitMaterials(implicitMaterials, tools, consumables) {
    "current card" view and a separate "session summary" view.
    ============================================================ */
 function addToSessionCards(data) {
-  const refNorm = normalizeRef(data.card_ref);
+  const refNorm = taskKey(data.card_ref, data.card_title);
   const entry = JSON.parse(JSON.stringify(data)); // snapshot, decoupled from live editing of rootResult
-  const idx = sessionCards.findIndex(c => normalizeRef(c.card_ref) === refNorm);
+  const idx = sessionCards.findIndex(c => taskKey(c.card_ref, c.card_title) === refNorm);
   if (idx >= 0) sessionCards[idx] = entry; else sessionCards.push(entry);
 }
 
 function sessKey(...parts) {
   return parts.map(p => normalizeRef(p || '')).join('|');
+}
+
+// Identité d'une carte ou d'une tâche liée : son numéro, plus « ~2 », « ~3 »… pour une 2e, 3e procédure de même numéro.
+// La 1re procédure vue sous un numéro garde le numéro seul (rien ne change tant qu'un numéro n'a qu'une procédure) ; un titre égal
+// à (ou contenu dans) un titre déjà vu retrouve la même clé (voir sameTitle). Sans titre : le numéro seul.
+function taskKey(ref, title) {
+  const base = normalizeRef(ref);
+  if (!base || !title) return base;
+  const seen = titleVariants[base] || (titleVariants[base] = []);
+  let i = seen.findIndex(t => sameTitle(t, title));
+  if (i < 0) { seen.push(title); i = seen.length - 1; }
+  return i === 0 ? base : base + '~' + (i + 1);
 }
 
 function mergeSessionLeaf(items, keyFn) {
@@ -1116,7 +1242,7 @@ function mergeSessionLeaf(items, keyFn) {
 function mergeRelatedTasks(items) {
   const map = new Map();
   for (const { cardRef, item } of items) {
-    const key = sessKey(item.ref || item.title);
+    const key = item.ref ? taskKey(item.ref, item.title) : sessKey(item.title);
     if (!key) continue;
     if (!map.has(key)) map.set(key, { item, cardRefs: new Set(), citations: [], key });
     const entry = map.get(key);
@@ -1213,10 +1339,10 @@ function mergeSessionLeafFuzzy(items, nameOf, pnOf) {
 
 function computeMergeKey(cat, item) {
   if (cat === 'tools' || cat === 'consumables') return sessKey(canonicalizeText(item.name), canonicalizePn(item.pn));
-  if (cat === 'implicit_materials') return sessKey(canonicalizeText(item.name));
+  if (cat === 'implicit_materials') return sessKey(canonicalizeText(item.name), ''); // même forme que la clé de la ligne affichée (nom + P/N vide)
   if (cat === 'access_panels') return sessKey(item.panel_id);
   if (cat === 'safety_notices') return sessKey(item.kind, (item.text || '').slice(0, 120));
-  if (cat === 'related_tasks') return sessKey(item.ref || item.title);
+  if (cat === 'related_tasks') return item.ref ? taskKey(item.ref, item.title) : sessKey(item.title);
   return '';
 }
 
@@ -1244,6 +1370,11 @@ function setItemQty(itemKey, cat, val) {
   snapshots.forEach(snap => {
     (snap[cat] || []).forEach(it => { if (computeMergeKey(cat, it) === itemKey) it.qty = val; });
   });
+  // Ligne issue d'une fusion floue : l'item affiché/exporté peut avoir une autre clé canonique
+  // que la ligne (m.key) -> on lui applique aussi la quantité, sinon elle disparaît de l'export.
+  const merged = getMergedCategories(collectAllScannedData());
+  const row = (cat === 'tools' ? merged.toolsM : merged.consM).find(m => m.key === itemKey);
+  if (row) row.item.qty = val;
 }
 
 // Builds the merged/deduplicated view used by BOTH the on-screen lists and
@@ -1265,10 +1396,13 @@ function getMergedCategories(entries) {
   // strip above. A related task scanned in-place via its own tree node
   // ("Scan this task") stays in this list so renderTaskNode() can show
   // its "✓ Scanned" state instead of the node just vanishing.
-  const rootRefs = new Set(sessionCards.map(c => normalizeRef(c.card_ref)));
-  if (rootResult) rootRefs.add(normalizeRef(rootResult.card_ref));
+  // Deux procédures de même numéro (71-10-01 Open / Close) sont deux cartes : on ne masque que celle qui est déjà une carte racine.
+  // Une tâche qui porte le MÊME numéro que la carte qui la cite (section interne du PDF, ex. « Hydraulic System – Pre-operation »)
+  // reste masquée, comme avant.
+  const rootRefs = new Set(sessionCards.map(c => taskKey(c.card_ref, c.card_title)));
+  if (rootResult) rootRefs.add(taskKey(rootResult.card_ref, rootResult.card_title));
   const tasksM = mergeRelatedTasks(
-    flat('related_tasks').filter(({item}) => !rootRefs.has(normalizeRef(item.ref)))
+    flat('related_tasks').filter(({cardRef, item}) => !rootRefs.has(taskKey(item.ref, item.title)) && normalizeRef(item.ref) !== normalizeRef(cardRef))
   );
 
   return { toolsM, consM, implM, accM, safM, tasksM };
@@ -1283,6 +1417,7 @@ function clearSession() {
   rootResult = null;
   fboRequests = {};
   itemSelection = {};
+  manualCard = { card_ref: 'MANUEL', card_title: 'Ajouté manuellement', tools: [], consumables: [], implicit_materials: [], access_panels: [], safety_notices: [], related_tasks: [] };
   suggestionState = { maskingTape: { accepted: false }, protectiveGloves: { accepted: false }, hydraulicCans: { accepted: false, qty: '' }, oilCans: { accepted: false, qty: '' }, softwareLoadingPcLocation: { accepted: false }, esdWristStrap: { accepted: false }, hydraulicGoggles: { accepted: false } };
   renderKnownCards();
   resetResults();
@@ -1322,8 +1457,7 @@ async function runScan(text, knownRefs) {
       response_format: { type: 'json_object' }
     })
   });
-  const extractData = await extractRes.json();
-  if (!extractRes.ok) throw new Error(extractData.message || ('Chat error ' + extractRes.status));
+  const extractData = await apiJson(extractRes, 'Chat');
   const extractRaw = extractData.choices[0].message.content.replace(/```json|```/g, '').trim();
 
   const verifyRes = await koWorkerFetch('/chat', {
@@ -1336,8 +1470,7 @@ async function runScan(text, knownRefs) {
       response_format: { type: 'json_object' }
     })
   });
-  const verifyData = await verifyRes.json();
-  if (!verifyRes.ok) throw new Error(verifyData.message || ('Chat error ' + verifyRes.status));
+  const verifyData = await apiJson(verifyRes, 'Chat');
   const verifyRaw = verifyData.choices[0].message.content.replace(/```json|```/g, '').trim();
   const verified = JSON.parse(verifyRaw);
 
@@ -1385,8 +1518,7 @@ async function runScopeReasoning(sourceText, confirmedRows, extractedData) {
       response_format: { type: 'json_object' }
     })
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || ('Chat error ' + res.status));
+  const data = await apiJson(res, 'Chat');
   const raw = data.choices[0].message.content.replace(/```json|```/g, '').trim();
   return JSON.parse(raw);
 }
@@ -1423,8 +1555,7 @@ async function runFinalRelevanceCheck(sourceText, baseData, partReplaced) {
       response_format: { type: 'json_object' }
     })
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || ('Chat error ' + res.status));
+  const data = await apiJson(res, 'Chat');
   const raw = data.choices[0].message.content.replace(/```json|```/g, '').trim();
   return JSON.parse(raw);
 }
@@ -1515,7 +1646,167 @@ function forceIncludeAlwaysApplicableItems(fullData, scopedResult) {
   return out;
 }
 
+/* ============================================================
+   CONTRÔLES SANS IA À PARTIR DU PDF
+   Les PDF du portail AMM s'appellent DMC-<manuel>-A-<ATA>-…-A.pdf (ex. DMC-GAC700-A-34-12-05-00A-910B-A.pdf) :
+   le nom dit déjà quel manuel et quelle carte, alors que le TEXTE d'une carte ne cite jamais le modèle d'avion.
+   Le pied de page de chaque page donne la date de révision. Aucune de ces fonctions n'appelle l'IA.
+   ============================================================ */
+function parseDmcFileName(name) {
+  const m = /DMC-([A-Z]{2,4}\d{3})-[A-Z]-(\d{2})-(\d{2})-(\d{2})-/i.exec(name || '');
+  return m ? { model: m[1].toUpperCase(), ref: m[2] + '-' + m[3] + '-' + m[4] } : null;
+}
+// "GAC700" -> "G700". Manuel moteur (PW800…) ou autre format de nom -> '' : pas de contrôle de modèle.
+function modelFromDmc(dmcModel) {
+  return /^GAC\d{3}$/i.test(dmcModel || '') ? 'G' + dmcModel.slice(3) : '';
+}
+// "February 28/26" -> 260228 (comparable) ; null si illisible.
+function revisionKey(s) {
+  const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  const m = /([A-Za-z]{3})[A-Za-z]*\.?\s+(\d{1,2})\s*[\/,]\s*(?:20)?(\d{2})\b/.exec(s || '');
+  const i = m ? MONTHS.indexOf(m[1].toUpperCase()) : -1;
+  return i < 0 ? null : (+m[3]) * 10000 + (i + 1) * 100 + (+m[2]);
+}
+// Date de révision du pied de page : la plus fréquente du texte (même principe que detectCardRefFromText).
+function detectRevisionFromText(sourceText) {
+  const re = /\b(?:January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}\/\d{2}\b/g;
+  const counts = new Map();
+  for (const m of (sourceText || '').matchAll(re)) counts.set(m[0], (counts.get(m[0]) || 0) + 1);
+  let best = null, bestCount = 0;
+  for (const [d, count] of counts) {
+    if (count > bestCount) { best = d; bestCount = count; }
+  }
+  return best;
+}
+// Texte d'alerte ('' si tout va bien) quand le fichier ou le texte ne correspond pas à la tâche liée qu'on scanne.
+function subScanMismatch(key, seenRef, seenModel, seenTitle, wantTitle) {
+  const out = [];
+  const want = refOfKey(key);
+  if (/^\d{2}-\d{2}-\d{2}$/.test(want) && seenRef && normalizeRef(seenRef) !== want) {
+    out.push('This looks like card ' + seenRef + ', but you are scanning task ' + want + '.');
+  } else if (seenTitle && wantTitle && !sameTitle(seenTitle, wantTitle)) {
+    // Même numéro, autre procédure : « Lower Cowl - Close » alors qu'on scanne la ligne « Lower Cowl - Open ».
+    out.push('This looks like "' + seenTitle + '", but you are scanning "' + wantTitle + '" (same number ' + want + ', different procedure).');
+  }
+  const fileModel = modelFromDmc(seenModel);
+  if (fileModel && expectedModel && !modelsRoughlyMatch(fileModel, expectedModel)) {
+    out.push('This file is for ' + fileModel + ', but the project aircraft is ' + expectedModel + '.');
+  }
+  return out.length ? '⚠️ ' + out.join('\n⚠️ ') + '\n\nScan it anyway?' : '';
+}
+
+/* ============================================================
+   LECTURE DIRECTE DU TEXTE DU PDF (sans OCR)
+   Les cartes AMM sont des PDF « texte » : le texte est déjà écrit dedans (celui qu'on peut sélectionner à la souris).
+   pdf.js le lit en moins d'une seconde, sans quota Mistral et sans faute de lecture. Il faut deux fichiers à côté du reader :
+   pdf.min.js et pdf.worker.min.js (pdf.js 3.11.174). Sans ces fichiers, avec un PDF scanné (sans texte) ou en cas d'erreur,
+   le reader retombe sur l'OCR exactement comme avant. Ajouter &ocr=1 à l'adresse du reader force l'OCR (pour comparer).
+   ============================================================ */
+let _pdfjsLoading = null;
+const PDFJS_DIR = 'pdfjs/'; // dossier de pdf.min.js et pdf.worker.min.js, à partir de l'endroit où se trouve le reader
+function loadPdfJs() {
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (!_pdfjsLoading) {
+    // Les fichiers de ce dossier sont des modules ES (pdf.js 4.x) : on les charge avec import(), pas avec une balise <script>.
+    const dir = new URL(PDFJS_DIR, location.href).href;
+    _pdfjsLoading = import(dir + 'pdf.min.js').then(lib => {
+      lib.GlobalWorkerOptions.workerSrc = dir + 'pdf.worker.min.js';
+      window.pdfjsLib = lib;
+      return lib;
+    }).catch(e => {
+      _pdfjsLoading = null;
+      throw new Error(PDFJS_DIR + 'pdf.min.js could not be loaded (' + e.message + ')');
+    });
+  }
+  return _pdfjsLoading;
+}
+
+// Met en lignes les morceaux de texte d'une page : même hauteur = même ligne ; un grand écart horizontal = changement de colonne
+// d'un tableau (deux espaces) ; un petit écart = un espace entre deux mots. Pas d'indentation, comme le texte de l'OCR.
+function pdfItemsToText(items, viewport, Util) {
+  const toks = [];
+  for (const it of items) {
+    if (typeof it.str !== 'string' || !it.str.trim()) continue;   // les « espaces » larges entre colonnes se mesurent entre les vrais mots
+    const t = Util.transform(viewport.transform, it.transform);
+    toks.push({ s: it.str, x: t[4], y: t[5], w: Math.abs(it.width) * (viewport.scale || 1), size: Math.hypot(t[2], t[3]) || Math.abs(it.height) || 10 });
+  }
+  toks.sort((a, b) => a.y - b.y || a.x - b.x);
+  const lines = [];
+  for (const tk of toks) {
+    const last = lines[lines.length - 1];
+    if (last && Math.abs(tk.y - last.y) <= Math.max(1.5, 0.45 * Math.min(tk.size, last.size))) {
+      last.toks.push(tk); last.size = Math.max(last.size, tk.size);
+    } else lines.push({ y: tk.y, size: tk.size, toks: [tk] });
+  }
+  const out = [];
+  let prev = null;
+  for (const ln of lines) {
+    ln.toks.sort((a, b) => a.x - b.x);
+    let s = '', prevEnd = 0, prevTok = null;
+    for (const tk of ln.toks) {
+      let sep = '';
+      if (prevTok) {
+        const gap = tk.x - prevEnd;
+        if (gap > 0.9 * ln.size) sep = '  ';
+        else if (!/\s$/.test(prevTok.s) && !/^\s/.test(tk.s) && gap > 0.12 * ln.size) sep = ' ';
+      }
+      s += sep + tk.s;
+      prevEnd = tk.x + tk.w; prevTok = tk;
+    }
+    s = s.replace(/[\u00a0\u2009\u202f]/g, ' ').replace(/[\u200b\u00ad]/g, '')
+         .replace(/\ufb00/g, 'ff').replace(/\ufb01/g, 'fi').replace(/\ufb02/g, 'fl').replace(/\ufb03/g, 'ffi').replace(/\ufb04/g, 'ffl')
+         .replace(/ {3,}/g, '  ').trim();
+    if (!s) continue;
+    if (prev && ln.y - prev.y > 1.9 * Math.max(ln.size, prev.size)) out.push('');   // ligne vide entre deux paragraphes
+    out.push(s);
+    prev = ln;
+  }
+  return out.join('\n');
+}
+
+// Texte du PDF lu directement, ou null s'il n'y en a pas d'exploitable (PDF scanné, texte illisible, navigateur sans Web Worker).
+async function pdfTextLayer(pdfB64) {
+  if (typeof Worker === 'undefined') return null;
+  const pdfjs = await loadPdfJs();
+  const bin = atob(pdfB64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  // isEvalSupported:false = réglage de sécurité recommandé pour pdf.js 3.x : aucun code n'est exécuté à partir du contenu du PDF
+  const doc = await pdfjs.getDocument({ data: bytes, isEvalSupported: false, verbosity: 0 }).promise;
+  try {
+    const pages = [];
+    for (let n = 1; n <= doc.numPages; n++) {
+      const page = await doc.getPage(n);
+      const content = await page.getTextContent();
+      pages.push(pdfItemsToText(content.items, page.getViewport({ scale: 1 }), pdfjs.Util));
+    }
+    const text = pages.join('\n\n');
+    const chars = text.replace(/\s/g, '').length;
+    const garbled = (text.match(/[\ue000-\uf8ff\ufffd]/g) || []).length;
+    // PDF scanné (presque pas de texte) ou police sans correspondance Unicode (texte illisible) : l'OCR fera mieux
+    if (chars < 80 * doc.numPages || garbled > chars * 0.02) return null;
+    return { text, pages: doc.numPages };
+  } finally {
+    doc.destroy();
+  }
+}
+
 async function pdfToText(pdfB64) {
+  // 1) Lecture directe du texte du PDF. Sinon (fichiers pdf.js absents, PDF scanné, erreur) : OCR comme avant, et window._lastPdfRead dit pourquoi.
+  window._lastPdfRead = null;
+  if (/[?&]ocr=1(&|$)/.test(location.search)) {
+    window._lastPdfRead = 'OCR forced by &ocr=1 in the address.';
+  } else {
+    try {
+      const direct = await Promise.race([pdfTextLayer(pdfB64), new Promise((_, no) => setTimeout(() => no(new Error('timeout')), 45000))]);
+      if (direct) { window._lastPdfRead = 'Text read directly from the PDF (' + direct.pages + ' pages, no OCR).'; return direct.text; }
+      window._lastPdfRead = 'No readable text in this PDF — OCR used.';
+    } catch (e) {
+      console.warn('Direct PDF reading unavailable, using OCR instead:', e);
+      window._lastPdfRead = 'Direct PDF reading unavailable (' + e.message + ') — OCR used.';
+    }
+  }
+  // 2) OCR (Mistral, via le Worker)
   const ocrRes = await koWorkerFetch('/ocr', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
@@ -1524,8 +1815,7 @@ async function pdfToText(pdfB64) {
       document: { type: 'document_url', document_url: `data:application/pdf;base64,${pdfB64}` }
     })
   });
-  const ocrData = await ocrRes.json();
-  if (!ocrRes.ok) throw new Error(ocrData.message || ('OCR error ' + ocrRes.status));
+  const ocrData = await apiJson(ocrRes, 'OCR');
   return ocrData.pages.map(p => p.markdown).join('\n\n');
 }
 
@@ -1566,13 +1856,40 @@ async function analyzeAmm() {
 
   try {
     const ammText = isPdf ? await pdfToText(ammPdfB64) : pastedText;
+    // Comment le texte a été lu (lecture directe ou OCR) : affiché à la fin de l'analyse.
+    const readNote = (isPdf && window._lastPdfRead) ? ' ' + escapeHtml(window._lastPdfRead) : '';
 
     // ---------- vérifier le cache Firebase existant avant tout appel IA ----------
     const manualRefEarly = document.getElementById('amm-ref').value.trim();
     const autoRef = manualRefEarly || detectCardRefFromText(ammText);
     const forceRescan = !!(autoRef && autoRef === window._ammForceRescanRef);
     window._ammForceRescanRef = null; // ne s'applique qu'à ce clic
-    const cacheHit = (autoRef && !forceRescan) ? await window.ammCache.load(expectedModel, autoRef) : null;
+    // Titre de la carte lu dans le texte, sans IA : deux procédures peuvent avoir le même numéro (71-10-01 Open / Close).
+    const pdfTitle = detectCardTitleFromText(ammText, autoRef);
+    window._cacheOtherTitle = '';
+    let cacheHit = (autoRef && !forceRescan) ? await ammCacheLoad(autoRef, pdfTitle) : null;
+
+    // Nom du PDF choisi (ex. DMC-GAC700-A-34-12-05-…) : sert au contrôle du modèle d'avion plus bas.
+    const pdfInput = document.getElementById('amm-pdf');
+    const dmc = (isPdf && pdfInput.files && pdfInput.files[0]) ? parseDmcFileName(pdfInput.files[0].name) : null;
+
+    // Le cache ne connaît pas la révision du PDF : on compare la date du pied de page de CE PDF (sans IA) à celle du scan en cache.
+    // PDF plus récent -> le scan en cache est périmé, on rescanne. PDF plus ancien -> on garde le cache mais on prévient.
+    // Le cache contenait une AUTRE procédure sous ce numéro (même numéro, autre titre) : on le dit, et on scanne ce PDF.
+    let revNote = (!cacheHit && window._cacheOtherTitle)
+      ? ` The team cache holds another procedure under ${escapeHtml(autoRef)} (<b>${escapeHtml(window._cacheOtherTitle)}</b>), not this one — scanned again.`
+      : '';
+    if (cacheHit) {
+      const pdfRev = detectRevisionFromText(ammText);
+      const cachedRev = cacheHit.data && cacheHit.data.revision_date;
+      const kPdf = revisionKey(pdfRev), kCached = revisionKey(cachedRev);
+      if (kPdf && kCached && kPdf > kCached) {
+        revNote = ` Team cache was for revision <b>${escapeHtml(cachedRev)}</b>, your PDF is revision <b>${escapeHtml(pdfRev)}</b> — scanned again.`;
+        cacheHit = null;
+      } else if (kPdf && kCached && kPdf < kCached) {
+        revNote = ` ⚠️ Your PDF (revision <b>${escapeHtml(pdfRev)}</b>) is older than the team scan (<b>${escapeHtml(cachedRev)}</b>).`;
+      }
+    }
 
     let verified;
     if (cacheHit) {
@@ -1590,16 +1907,24 @@ async function analyzeAmm() {
 
     const manualRef = document.getElementById('amm-ref').value.trim();
     if (manualRef) verified.card_ref = manualRef;
+    if (!verified.card_ref && autoRef) verified.card_ref = autoRef;
+    // Le texte d'une carte AMM ne cite jamais le modèle d'avion : à défaut, on prend celui du nom de fichier (DMC-GAC600-… -> G600).
+    // Il est enregistré avec le scan : le contrôle « mauvais modèle » marche donc aussi quand la carte revient du cache.
+    if (!verified.aircraft_model && dmc && modelFromDmc(dmc.model)) verified.aircraft_model = modelFromDmc(dmc.model);
+    // Sans référence, collectAllScannedData() ignore la carte : résultat invisible malgré "Analysis complete".
+    if (!verified.card_ref) throw new Error('Card reference not found on the card — type it in the "Card reference" field and analyze again.');
 
     rootResult = verified;
     registerKnownCard(verified.card_ref, verified.card_title);
-    window.ammCache.save(expectedModel, verified.card_ref, verified.card_title, verified, ammText, currentEngineerName);
+    // Seulement pour un VRAI nouveau scan : réécrire après un hit remettrait scannedAt à "maintenant"
+    // (la bannière ">30 j" ne s'afficherait jamais) en mélangeant anciennes données et nouveau texte.
+    if (!cacheHit) ammCacheSave(verified.card_ref, pdfTitle || verified.card_title, verified, ammText, currentEngineerName);
     renderModelWarning('model-warning-root', verified.aircraft_model, expectedModel, 'the project aircraft');
 
     // Same applicability-table tracking as sub-task scans, keyed by this
     // card's own ref, so the technician confirms the component(s) before
     // the full unfiltered card content lands in the merged lists.
-    const rootRefNorm = normalizeRef(verified.card_ref);
+    const rootRefNorm = taskKey(verified.card_ref, verified.card_title);
     const rootTable = verified.applicability_table || [];
     taskScans[rootRefNorm] = {
       status: 'done',
@@ -1646,10 +1971,10 @@ async function analyzeAmm() {
       ? ` Loaded from team cache (scanned ${ammCacheAgeLabel(cacheHit.scannedAt)}${cacheHit.scannedBy ? ' by ' + escapeHtml(cacheHit.scannedBy) : ''}) — 0 tokens used for extraction. Card revision on file: <b>${escapeHtml(verified.revision_date || 'not detected')}</b> — compare it to your PDF. <button class="btn btn-ghost btn-sm" onclick="window._ammForceRescanRef=${jsArg(autoRef)};document.getElementById('btn-analyze').click()">🔄 Scan anyway</button>`
       : '';
 
-    setStatus('done', `✓ Analysis complete${verified.card_ref ? ' — card ' + escapeHtml(verified.card_ref) : ''}.${cacheNote} Review items flagged "needs review" before sending.${relevanceNote}`);
+    setStatus('done', `✓ Analysis complete${verified.card_ref ? ' — card ' + escapeHtml(verified.card_ref) : ''}.${cacheNote}${revNote}${readNote} Review items flagged "needs review" before sending.${relevanceNote}`);
   } catch (e) {
     setStep('step-extract', null); setStep('step-verify', null); setStep('step-relevance', null);
-    setStatus('err', 'Error: ' + e.message);
+    setStatus('err', 'Error: ' + escapeHtml(e.message));
   } finally {
     btn.disabled = false;
   }
@@ -1690,7 +2015,7 @@ async function checkAmmCacheForRefField(refVal) {
   const ageLabel = ammCacheAgeLabel(hit.scannedAt);
   banner.innerHTML = `
     <div class="status show ${hit._fresh ? 'done' : 'warn'}">
-      ✅ <b>Already scanned</b>${hit.scannedBy ? ' by ' + escapeHtml(hit.scannedBy) : ''} — ${ageLabel}${hit._fresh ? '' : ` <b>(&gt;${ammCacheTtlLabel()} — verify before trusting)</b>`}.
+      ✅ <b>Already scanned</b>${cacheTitleHtml(hit)}${hit.scannedBy ? ' by ' + escapeHtml(hit.scannedBy) : ''} — ${ageLabel} — revision ${escapeHtml((hit.data && hit.data.revision_date) || 'not detected')}${hit._fresh ? '' : ` <b>(&gt;${ammCacheTtlLabel()} — verify before trusting)</b>`}.
       <div class="row" style="margin-top:8px">
         <button class="btn btn-primary btn-sm" onclick="loadAmmCacheIntoRoot(${jsArg(refVal)})">✅ Use this scan (0 tokens)</button>
         <button class="btn btn-ghost btn-sm" onclick="window._ammForceRescanRef=${jsArg(refVal)};document.getElementById('amm-cache-banner').style.display='none'">🔄 Scan anyway</button>
@@ -1705,7 +2030,7 @@ async function loadAmmCacheIntoRoot(refVal) {
   rootResult = verified;
   registerKnownCard(verified.card_ref || refVal, verified.card_title);
   renderModelWarning('model-warning-root', verified.aircraft_model, expectedModel, 'the project aircraft');
-  const rootRefNorm = normalizeRef(verified.card_ref || refVal);
+  const rootRefNorm = taskKey(verified.card_ref || refVal, verified.card_title);
   const rootTable = verified.applicability_table || [];
   const partReplaced = document.getElementById('amm-part-replaced').value.trim();
   taskScans[rootRefNorm] = {
@@ -1716,7 +2041,6 @@ async function loadAmmCacheIntoRoot(refVal) {
     partReplaced, relevanceData: null, relevanceStatus: null
   };
   addToSessionCards(verified);
-  window.ammCache.save(expectedModel, verified.card_ref, verified.card_title, verified, hit.sourceText || '', currentEngineerName);
   renderEsdWarning('esd-warning-root', verified.esd_warning, verified.esd_note);
   document.getElementById('amm-cache-banner').style.display = 'none';
   renderAll();
@@ -1732,7 +2056,7 @@ async function loadAmmCacheIntoRoot(refVal) {
 
 function registerKnownCard(ref, title) {
   if (!ref) return;
-  if (!knownCards.find(c => c.ref === ref)) {
+  if (!knownCards.find(c => taskKey(c.ref, c.title) === taskKey(ref, title))) {
     knownCards.push({ ref, title: title || '', addedAt: Date.now() });
     renderKnownCards();
   }
@@ -1754,21 +2078,46 @@ function renderKnownCards() {
 function removeKnownCard(i) {
   const removed = knownCards.splice(i, 1)[0];
   if (removed) {
-    sessionCards = sessionCards.filter(c => normalizeRef(c.card_ref) !== normalizeRef(removed.ref));
-    if (rootResult && normalizeRef(rootResult.card_ref) === normalizeRef(removed.ref)) rootResult = null;
+    const refNorm = taskKey(removed.ref, removed.title); // numéro + procédure : l'autre procédure du même numéro reste
+    sessionCards = sessionCards.filter(c => taskKey(c.card_ref, c.card_title) !== refNorm);
+    // Sans ça, collectAllScannedData() relit taskScans et remet la carte supprimée dans les listes.
+    // On compare aussi data.card_ref : pour une sous-tâche, la clé de taskScans est la ref de la
+    // tâche liée, pas forcément le card_ref lu par l'IA.
+    Object.keys(taskScans).forEach(k => {
+      const s = taskScans[k];
+      if (k === refNorm || (s && s.data && taskKey(s.data.card_ref, s.data.card_title) === refNorm)) delete taskScans[k];
+    });
+    delete fboRequests[normalizeRef(removed.ref)];
+    if (rootResult && taskKey(rootResult.card_ref, rootResult.card_title) === refNorm) {
+      rootResult = null;
+      clearRootBanners();
+    }
   }
   renderKnownCards();
   renderAll();
+}
+
+// Cache les bandeaux liés à la carte racine. Ils sont HORS de #results : renderAll() ne les nettoie
+// pas quand il n'y a plus aucune carte (il sort avant).
+function clearRootBanners() {
+  ['model-warning-root', 'esd-warning-root', 'gas-warning-root', 'applicability-warning-root', 'amm-cache-banner'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+  });
 }
 
 function resetResults() {
   document.getElementById('amm-text').value = '';
   document.getElementById('amm-ref').value = '';
   document.getElementById('amm-part-replaced').value = '';
+  document.getElementById('amm-pdf').value = ''; // sinon re-choisir le même PDF ne déclenche pas onchange
   ammPdfB64 = null;
-  document.getElementById('pdf-filename').textContent = '';
+  const pf = document.getElementById('pdf-filename');
+  pf.textContent = '';
+  pf.style.display = 'none';
   document.getElementById('check-progress').style.display = 'none';
   document.getElementById('amm-status').className = 'status';
+  clearRootBanners();
   rootResult = null;
   renderAll();
 }
@@ -1794,13 +2143,14 @@ function collectAllScannedData() {
   const out = [];
   const seen = new Set();
   function addEntry(data, fallbackRef, fallbackTitle) {
-    const ref = normalizeRef(data.card_ref || fallbackRef);
+    const title = data.card_title || fallbackTitle;
+    const ref = taskKey(data.card_ref || fallbackRef, title); // numéro + procédure
     if (!ref || seen.has(ref)) return;
     seen.add(ref);
-    out.push({ cardRef: data.card_ref || fallbackRef, cardTitle: data.card_title || fallbackTitle, data });
+    out.push({ cardRef: data.card_ref || fallbackRef, cardTitle: title, data });
   }
   sessionCards.forEach(c => {
-    const refNorm = normalizeRef(c.card_ref);
+    const refNorm = taskKey(c.card_ref, c.card_title);
     const rs = taskScans[refNorm];
     if (rs && (rs.data.applicability_table || []).length) {
       if (scanNeedsApplicabilityConfirmation(rs)) return; // attend la confirmation du composant
@@ -1850,7 +2200,9 @@ function scanNeedsApplicabilityConfirmation(scan) {
 
 function renderAll() {
   const entries = collectAllScannedData();
-  const hasAnything = entries.length > 0;
+  // rootResult compte aussi : une carte racine en attente de confirmation du composant n'est pas encore
+  // dans `entries`, mais son sélecteur (applicability-warning-root) doit quand même s'afficher.
+  const hasAnything = entries.length > 0 || !!rootResult;
   document.getElementById('results').style.display = hasAnything ? 'block' : 'none';
   if (!hasAnything) return;
 
@@ -1865,7 +2217,7 @@ function renderAll() {
 
   if (rootResult) {
     renderGasWarningRoot('gas-warning-root', rootResult.card_ref, rootResult);
-    const rootRefNorm = normalizeRef(rootResult.card_ref);
+    const rootRefNorm = taskKey(rootResult.card_ref, rootResult.card_title);
     const rootScan = taskScans[rootRefNorm];
     const applEl = document.getElementById('applicability-warning-root');
     if (applEl) {
@@ -2274,11 +2626,11 @@ function renderMergedTasksList(tasksM) {
    task's normalized ref, completely independent of any card tree.
    ============================================================ */
 function renderTaskNode(t, cardRefs, citations) {
-  const key = normalizeRef(t.ref);
+  const key = taskKey(t.ref, t.title);
   const scan = taskScans[key] || { status: 'idle' };
   const keyArg = jsArg(key);
   const titleArg = jsArg(t.title || '');
-  const isKnown = knownCards.some(c => normalizeRef(c.ref) === normalizeRef(t.ref));
+  const isKnown = knownCards.some(c => taskKey(c.ref, c.title) === key);
   const ignored = isTaskIgnored(key);
   // Resolved from the static ref table immediately (no scan needed for known
   // gas refs), or from the sub-task's own scan once done for unknown 12-xx-xx
@@ -2691,7 +3043,7 @@ async function runScopeReasoningForScan(key) {
 }
 
 function renderScanWidget(key, nodeId, scan) {
-  const keyAttr = JSON.stringify(key).replace(/"/g,'&quot;');
+  const keyAttr = jsArg(key);
   const mode = scan.inputMode || 'pdf';
 
   let cacheHtml = ''; // NEW
@@ -2699,13 +3051,13 @@ function renderScanWidget(key, nodeId, scan) {
     const ageLabel = ammCacheAgeLabel(scan.cacheHit.scannedAt);
     cacheHtml = `
       <div class="status show ${scan.cacheHit._fresh ? 'done' : 'warn'}" style="margin-bottom:10px">
-        ✅ Already scanned${scan.cacheHit.scannedBy ? ' by ' + escapeHtml(scan.cacheHit.scannedBy) : ''} — ${ageLabel}${scan.cacheHit._fresh ? '' : ` <b>(&gt;${ammCacheTtlLabel()})</b>`}.
+        ✅ Already scanned${cacheTitleHtml(scan.cacheHit)}${scan.cacheHit.scannedBy ? ' by ' + escapeHtml(scan.cacheHit.scannedBy) : ''} — ${ageLabel} — revision ${escapeHtml((scan.cacheHit.data && scan.cacheHit.data.revision_date) || 'not detected')}${scan.cacheHit._fresh ? '' : ` <b>(&gt;${ammCacheTtlLabel()})</b>`}.
         <div class="row" style="margin-top:8px">
           <button class="btn btn-primary btn-sm" onclick="loadSubScanFromCache(${keyAttr})">✅ Use this scan</button>
         </div>
       </div>`;
   } else if (scan.cacheChecked) {
-    cacheHtml = `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">No previous scan found for ${escapeHtml(key)}.</div>`;
+    cacheHtml = `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">No previous scan found for ${escapeHtml(refOfKey(key))}${scan.parentTitle ? ' (' + escapeHtml(scan.parentTitle) + ')' : ''}.</div>`;
   }
 
   return cacheHtml + `
@@ -2751,11 +3103,12 @@ async function openScanWidget(key, parentTitle) {
     status: 'widget_open', inputMode: 'pdf', pdfB64: null, pdfFileName: '', pastedText: '',
     componentHint: '', parentTitle: parentTitle || '', data: null, errorMsg: '',
     applicabilityMatch: null, applicabilityPickerOpen: false,
-    cacheHit: null, cacheChecked: false // NEW
+    cacheHit: null, cacheChecked: false, // NEW
+    previous: (taskScans[key] && taskScans[key].previous) || null // scan déjà fait : « Cancel » le remet (voir rescanTask)
   };
   renderAll();
 
-  const hit = await window.ammCache.load(expectedModel, key); // NEW
+  const hit = await ammCacheLoad(refOfKey(key), parentTitle); // NEW
   const scan = taskScans[key];
   if (!scan || scan.status !== 'widget_open') return;
   scan.cacheHit = hit;
@@ -2764,7 +3117,9 @@ async function openScanWidget(key, parentTitle) {
 }
 
 function cancelScanWidget(key) {
-  taskScans[key] = { status: 'idle' };
+  // Si le widget vient de « Re-scan », on remet le scan précédent au lieu de l'effacer.
+  const cur = taskScans[key];
+  taskScans[key] = (cur && cur.previous) ? cur.previous : { status: 'idle' };
   renderAll();
 }
 
@@ -2802,13 +3157,29 @@ async function runSubScan(key) {
   if (isPdf && !scan.pdfB64) { alert('Please choose a PDF first.'); return; }
   if (!isPdf && !scan.pastedText.trim()) { alert('Please paste the sub-task text first.'); return; }
 
+  // Contrôle sans IA, AVANT de payer l'OCR : le nom du PDF (DMC-GAC700-A-25-19-02-…) dit quelle carte c'est et pour quel avion.
+  let mismatchAsked = false;
+  const dmcName = isPdf ? parseDmcFileName(scan.pdfFileName) : null;
+  const nameWarn = dmcName ? subScanMismatch(key, dmcName.ref, dmcName.model) : '';
+  if (nameWarn) {
+    if (!confirm(nameWarn)) return;
+    mismatchAsked = true;
+  }
+
   scan.status = 'loading';
   renderAll();
 
   try {
     const text = isPdf ? await pdfToText(scan.pdfB64) : scan.pastedText.trim();
+    // Même contrôle sur le pied de page du texte (PDF sans nom DMC, ou texte collé), sauf si la question a déjà été posée.
+    const seenRef = detectCardRefFromText(text);
+    const seenTitle = detectCardTitleFromText(text, seenRef); // « Close » au lieu de « Open » : même numéro, autre procédure
+    const textWarn = mismatchAsked ? '' : subScanMismatch(key, seenRef, '', seenTitle, scan.parentTitle);
+    if (textWarn && !confirm(textWarn)) { scan.status = 'widget_open'; renderAll(); return; }
     const knownRefs = knownCards.map(c => c.ref);
     const verified = await runScan(text, knownRefs);
+    if (!verified.card_ref) verified.card_ref = refOfKey(key); // sinon collectAllScannedData() ignore cette carte
+    if (!verified.card_title && scan.parentTitle) verified.card_title = scan.parentTitle; // l'identité d'une carte = numéro + titre
     scan.status = 'done';
     scan.data = verified;
     scan.sourceText = text; // kept so a confirmed-component scope reasoning pass can re-read the full card
@@ -2816,7 +3187,7 @@ async function runSubScan(key) {
     scan.relevanceData = null; // reset: same, for the final relevance pass below
     scan.relevanceStatus = null;
     registerKnownCard(verified.card_ref || key, verified.card_title || '');
-    window.ammCache.save(expectedModel, verified.card_ref || key, verified.card_title, verified, text, currentEngineerName);
+    ammCacheSave(verified.card_ref || refOfKey(key), seenTitle || verified.card_title, verified, text, currentEngineerName);
 
     // If this document carries a component -> procedure-scope table
     // (e.g. "Table 4. Brake Components" inside a Hydraulic Bleed
@@ -2873,7 +3244,13 @@ async function loadSubScanFromCache(key) {
 }
 
 function rescanTask(key, parentTitle) {
-  taskScans[key] = { status: 'widget_open', inputMode: 'pdf', pdfB64: null, pdfFileName: '', pastedText: '', componentHint: '', parentTitle: parentTitle || '', data: null, errorMsg: '', applicabilityMatch: null, applicabilityPickerOpen: false };
+  // On garde le scan déjà fait dans `previous` : « Cancel » le remet en place (voir cancelScanWidget).
+  // Sans ça, un clic sur « Re-scan » suivi de « Cancel » effaçait définitivement le scan de la tâche.
+  const prev = taskScans[key];
+  let previous = null;
+  if (prev && prev.status === 'done' && prev.data) { prev.previous = null; previous = prev; }
+  else if (prev && prev.previous) previous = prev.previous; // nouveau Re-scan après une erreur : on garde le scan d'origine
+  taskScans[key] = { status: 'widget_open', inputMode: 'pdf', pdfB64: null, pdfFileName: '', pastedText: '', componentHint: '', parentTitle: parentTitle || '', data: null, errorMsg: '', applicabilityMatch: null, applicabilityPickerOpen: false, previous };
   renderAll();
 }
 
@@ -2885,23 +3262,33 @@ function exportSelection() {
   const entries = collectAllScannedData();
   if (!entries.length) return;
 
-  const flat = (kind) => entries.flatMap(e => (e.data[kind] || []));
-  const dedupeBy = (items, keyFn) => {
-    const seen = new Set(); const out = [];
-    for (const it of items) { const k = keyFn(it); if (!k || seen.has(k)) continue; seen.add(k); out.push(it); }
-    return out;
+  // Même vue fusionnée que celle affichée (getMergedCategories) : une ligne décochée à l'écran
+  // est exactement une ligne absente de l'export.
+  const { toolsM, consM, implM, accM, safM, tasksM } = getMergedCategories(entries);
+  const ownRefs = new Set(entries.map(e => taskKey(e.cardRef, e.cardTitle)));
+  // Start Job n'écrit dans la note d'une ligne que « 📍 <step_reference> » : on y ajoute la ou les cartes d'où vient la ligne.
+  const withCardRefs = m => {
+    const refs = [...m.cardRefs].filter(r => r && r !== 'MANUEL');
+    const where = m.item.step_reference || '';
+    return Object.assign({}, m.item, { step_reference: refs.length ? refs.join(' + ') + (where ? ' — ' + where : '') : where });
   };
-
-  const ownRefs = new Set(entries.map(e => normalizeRef(e.cardRef)));
   const payload = {
     cards: entries.map(e => ({ card_ref: e.cardRef, card_title: e.cardTitle })),
-    tools: dedupeBy(flat('tools'), i => sessKey(i.name, i.pn)).filter(i => isItemIncluded(sessKey(i.name, i.pn))),
-    consumables: dedupeBy(flat('consumables'), i => sessKey(i.name, i.pn)).filter(i => isItemIncluded(sessKey(i.name, i.pn))),
-    implicit_materials: dedupeBy(flat('implicit_materials'), i => sessKey(i.name)).filter(i => isItemIncluded(sessKey(i.name))),
-    access_panels: dedupeBy(flat('access_panels'), i => sessKey(i.panel_id)),
-    safety_notices: dedupeBy(flat('safety_notices'), i => sessKey(i.kind, (i.text||'').slice(0,120))),
-    related_tasks: dedupeBy(flat('related_tasks').filter(t => !ownRefs.has(normalizeRef(t.ref))), i => sessKey(i.ref || i.title))
+    tools: toolsM.filter(m => isItemIncluded(m.key)).map(withCardRefs),
+    consumables: consM.filter(m => isItemIncluded(m.key)).map(withCardRefs),
+    implicit_materials: implM.filter(m => isItemIncluded(m.key)).map(withCardRefs),
+    access_panels: accM.map(m => m.item),
+    safety_notices: safM.map(m => m.item),
+    related_tasks: tasksM
+      .filter(m => !ownRefs.has(taskKey(m.item.ref, m.item.title)) && !isTaskIgnored(taskKey(m.item.ref, m.item.title)))
+      .map(m => m.item)
   };
+
+  // index.html lit payload.card_ref pour ses notes « AMM … » et ses messages d'import : on lui envoie les cartes
+  // de la session (la carte « Ajouté manuellement » n'est pas une vraie carte AMM, on l'exclut).
+  // Deux procédures de même numéro dans la session : « 71-10-01 (Open) + 71-10-01 (Close) » plutôt que deux fois « 71-10-01 ».
+  const sameNumber = e => entries.filter(x => normalizeRef(x.cardRef) === normalizeRef(e.cardRef)).length > 1;
+  payload.card_ref = entries.filter(e => e.data !== manualCard).map(e => sameNumber(e) ? e.cardRef + ' (' + titleTail(e.cardTitle) + ')' : e.cardRef).filter(Boolean).join(' + ');
 
   // FBO gas requests — only ones the technician explicitly toggled on,
   // whether resolved from the static ref table or from a scanned sub-task.
