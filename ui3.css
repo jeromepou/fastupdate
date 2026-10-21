@@ -377,12 +377,17 @@ body.u3-on[data-u3p="new"] #app-screen>[data-u3g="manual"]{display:block;grid-co
 /* — pages: check import / project details (same sections, same fields) -- */
 body.u3-on:is([data-u3p="check"],[data-u3p="project"][data-u3t="details"]) #app-screen{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:0 18px;align-items:start}
 body.u3-on:is([data-u3p="check"],[data-u3p="project"][data-u3t="details"]) #app-screen>:is([data-u3g="aircraft"],[data-u3g="team"],[data-u3g="closing"]){display:block}
+/* validation window: the work items read from the PDF are shown too, so they can be checked before the project is created */
+body.u3-on[data-u3p="check"] #app-screen>[data-u3g="items"]{display:block}
 body.u3-on[data-u3p="project"][data-u3t="details"] #app-screen>[data-u3g="upload"]{display:block;grid-column:1/-1;grid-row:1}
 body.u3-on:is([data-u3p="check"],[data-u3p="project"][data-u3t="details"]) #app-screen>[data-u3g="aircraft"]{grid-column:1;grid-row:2}
 body.u3-on:is([data-u3p="check"],[data-u3p="project"][data-u3t="details"]) #app-screen>[data-u3g="closing"]{grid-column:1;grid-row:3}
+body.u3-on[data-u3p="check"] #app-screen>[data-u3g="items"]{grid-column:1;grid-row:3}
+body.u3-on[data-u3p="check"] #app-screen>[data-u3g="closing"]{grid-row:4}
 body.u3-on:is([data-u3p="check"],[data-u3p="project"][data-u3t="details"]) #app-screen>[data-u3g="team"]{grid-column:2;grid-row:2 / span 2}
+body.u3-on[data-u3p="check"] #app-screen>[data-u3g="team"]{grid-row:2 / span 3}
 body.u3-on[data-u3p="check"] #app-screen>[data-u3g="checkbar"]{display:flex}
-.u3-checkbar{grid-column:1/-1;grid-row:4;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;background:#fff;border:1px solid var(--g200);border-radius:14px;box-shadow:var(--sh);position:sticky;bottom:12px;z-index:60}
+.u3-checkbar{grid-column:1/-1;grid-row:5;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;background:#fff;border:1px solid var(--g200);border-radius:14px;box-shadow:var(--sh);position:sticky;bottom:12px;z-index:60}
 .u3-checkbar span{flex:1;color:var(--g600);font-size:13px}.u3-checkbar .btn{display:inline-flex;align-items:center;gap:8px;min-height:42px}
 
 /* — pages: daily update (4 sections), corridor -------------------------- */
