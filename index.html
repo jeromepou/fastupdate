@@ -9987,6 +9987,7 @@ const _micApple = /iPad|iPhone|iPod/.test(_micUA)
   || (/Macintosh/.test(_micUA) && navigator.maxTouchPoints > 1)
   || (/Safari/.test(_micUA) && !/Chrome|Chromium|Edg|OPR|Android/.test(_micUA));
 const _MIC_IDLE_MS = 30000;   // the mic switches itself off after 30 s without any speech
+const _micAndroid = /Android/i.test(_micUA);   // Android Chrome : chaque résultat final répète tout ce qui précède
 
 let _mic = null;       // current session
 let _micNext = null;   // mic tapped while the previous one was still stopping
@@ -10081,7 +10082,16 @@ function _micBegin(editorId, btn, silent) {
       const res = ev.results[i];
       if (res.isFinal) {
         // some browsers re-send earlier final results → each index is inserted only once
-        if (i >= s.done) { s.done = i + 1; s.gotResult = true; _micInsert(editorId, res[0].transcript); }
+        if (i >= s.done) {
+          s.done = i + 1; s.gotResult = true;
+          let t = res[0].transcript;
+          if (_micAndroid) {   // n'insérer que la partie nouvelle ("1" → "1 2" → "1 2 3" donne "1", "2", "3")
+            const prev = (s.lastFinal || '').trim(), cur = t.trim();
+            s.lastFinal = cur;
+            t = (prev && cur.toLowerCase().startsWith(prev.toLowerCase())) ? cur.slice(prev.length) : cur;
+          }
+          _micInsert(editorId, t);
+        }
       } else {
         interim += res[0].transcript;
       }
@@ -10114,7 +10124,7 @@ function _micBegin(editorId, btn, silent) {
     const tooQuick = !s.gotResult && now - s.startedAt < 800;
     if (s.wanted && !_micApple && !idle && !tooQuick) {
       try {   // Chrome cuts the session after a silence → keep listening until the user taps stop
-        s.startedAt = now; s.gotResult = false; s.done = 0; s.silent = true;
+        s.startedAt = now; s.gotResult = false; s.done = 0; s.silent = true; s.lastFinal = '';
         rec.start();
         return;
       } catch (e) {}
