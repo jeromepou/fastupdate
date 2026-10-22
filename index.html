@@ -7262,6 +7262,7 @@ const sqa = {
   entries: [], fam: [], woNum: [],
   idxD: new Map(),            // mot → n° des SQ dont la PANNE (ou une désignation de pièce) contient le mot
   idxX: new Map(),            // mot → n° des SQ dont seule la RÉSOLUTION contient le mot
+  pnIdx: new Map(),           // P/N normalisé → n° des SQ où cette pièce a été déposée/posée
   woMin: 0, woMax: 0, N: 0,
   loadedAt: 0, checkedAt: 0, errorAt: 0,
   promise: null, idb: null,
@@ -7343,17 +7344,110 @@ function sqaShardEntries(val) {
   return arr.filter(x => x && typeof x === 'object');
 }
 // Pièces d'un SQ : [[désignation, P/N off, P/N on, S/N off, S/N on], …] (cases vides = '')
-function sqaPartRows(e) {
-  let p = e && e.p;
-  if (!p) return [];
-  if (!Array.isArray(p)) p = Object.values(p);
-  const out = [];
-  for (const row of p) {
-    if (!row || typeof row !== 'object') continue;
-    const t = [0, 1, 2, 3, 4].map(k => (row[k] == null ? '' : String(row[k])));
-    if (t[1] || t[2] || t[3] || t[4]) out.push(t);
+// ── Pièces d'un cas ─────────────────────────────────────────────────────────────
+// 1) lignes enregistrées (« p ») : gardées seulement si la pièce est bien citée dans le SQ (P/N, S/N ou mot de la désignation) ;
+//    sinon c'est une pièce d'un autre SQ du même WP → on ne l'affiche pas.
+// 2) lignes lues dans le texte (« P/N in and out: …, SN out: …, SN in: … ») quand rien n'est enregistré.
+const SQA_PART_GENERIC = new Set(['customer', 'vendor', 'part', 'parts', 'assy', 'assembly', 'unit', 'kit', 'item', 'other', 'left', 'right', 'inner', 'outer', 'upper', 'lower', 'front', 'rear', 'main', 'with', 'from', 'that', 'this']);
+const sqaPartCache = new WeakMap();
+const sqaPnNorm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+function sqaPartCodeOk(c) { return c.length >= 5 && /\d/.test(c) && /[A-Z0-9]/i.test(c); }
+function sqaPartsFromText(txt) {
+  const t = String(txt || '');
+  const re = /\bP\s*\/?\s*N\s*(?:\(S\))?\s*(in\s*(?:and|&|\/)\s*out|off\s*\/\s*on|on\s*\/\s*off|off|out|on|in|removed|installed)?\s*[:#=\-]?\s*([A-Z0-9][A-Z0-9\-\.\/]{3,})/gi;
+  const hits = [];
+  let m;
+  while ((m = re.exec(t))) {
+    const code = m[2].replace(/[.\-\/]+$/, '');
+    if (!sqaPartCodeOk(code.replace(/[^A-Za-z0-9]/g, ''))) continue;
+    hits.push({ i: m.index, end: m.index + m[0].length, kind: (m[1] || '').toLowerCase().replace(/\s+/g, ' '), code });
   }
-  return out;
+  const rows = [];
+  let prevEnd = 0;
+  hits.forEach((h, k) => {
+    const nextI = k + 1 < hits.length ? hits[k + 1].i : t.length;
+    const win = t.slice(h.end, Math.min(nextI, h.end + 240));
+    const sn = kw => { const r = new RegExp('\\bS\\s*\\/?\\s*N\\s*' + kw + '\\s*[:#=\\-]?\\s*([A-Z0-9][A-Z0-9\\-]{2,})', 'i').exec(win); return r ? r[1] : ''; };
+    const snOff = sn('(?:off|out|removed)'), snOn = sn('(?:on|in|installed)');
+    const before = t.slice(prevEnd, h.i).split(/\n/).map(x => x.trim()).filter(Boolean);
+    let desig = '';
+    if (before.length) {
+      const ln = before[before.length - 1].replace(/[:\-–,;]+\s*$/, '');
+      if (ln.length <= 60) desig = ln.split(/\s+/).slice(-5).join(' ');
+      if (!/[A-Za-z]{3,}/.test(desig) || /\d\.$/.test(desig)) desig = '';
+    }
+    const kind = h.kind;
+    const isOff = /^(off|out|removed)$/.test(kind), isOn = /^(on|in|installed)$/.test(kind);
+    const both = /and|&|\/|off\/on|on\/off/.test(kind) && !isOff && !isOn;
+    const row = [desig, (isOff || both) ? h.code : '', (isOn || both || !kind) ? h.code : '', snOff, snOn];
+    const last = rows[rows.length - 1];
+    if (isOn && last && last[1] && !last[2] && h.i - last.__end < 260) { last[2] = h.code; if (!last[4]) last[4] = snOn; if (!last[0]) last[0] = desig; last.__end = h.end; }
+    else { row.__end = h.end; rows.push(row); }
+    prevEnd = h.end;
+  });
+  return rows.map(r => r.slice(0, 5)).slice(0, 8);
+}
+
+function sqaPartRows(e) {
+  if (!e || typeof e !== 'object') return [];
+  const hit = sqaPartCache.get(e);
+  if (hit) return hit;
+  const hay = (String(e.d || '') + ' ' + String(e.x || '')).toUpperCase();
+  const hayN = sqaPnNorm(hay);
+  const hayWords = new Set(hay.split(/[^A-Z0-9]+/).filter(Boolean));
+  const out = [], seen = new Set();
+  const push = t => {
+    const key = sqaPnNorm(t[2] || t[1]) || ('D' + sqaPnNorm(t[0]));
+    if (seen.has(key)) return;
+    seen.add(key); out.push(t);
+  };
+  let p = e.p;
+  if (p) {
+    if (!Array.isArray(p)) p = Object.values(p);
+    for (const row of p) {
+      if (!row || typeof row !== 'object') continue;
+      const t = [0, 1, 2, 3, 4].map(k => (row[k] == null ? '' : String(row[k])));
+      if (!(t[1] || t[2] || t[3] || t[4])) continue;
+      const codes = [t[1], t[2], t[3], t[4]].map(sqaPnNorm).filter(c => c.length >= 5);
+      let ok = codes.some(c => hayN.indexOf(c) >= 0);
+      if (!ok) ok = t[0].toUpperCase().split(/[^A-Z0-9]+/).some(w => w.length >= 4 && !SQA_PART_GENERIC.has(w.toLowerCase()) && hayWords.has(w));
+      if (ok) push(t);
+    }
+  }
+  if (!out.length || (e.x || e.d)) {
+    for (const t of sqaPartsFromText(String(e.d || '') + '\n' + String(e.x || ''))) {
+      const key = sqaPnNorm(t[2] || t[1]);
+      if (key && seen.has(key)) {
+        // même pièce déjà enregistrée : on complète la désignation / les S/N manquants
+        const ex = out.find(o => sqaPnNorm(o[2] || o[1]) === key);
+        if (ex) { if (!ex[0]) ex[0] = t[0]; if (!ex[3]) ex[3] = t[3]; if (!ex[4]) ex[4] = t[4]; }
+        continue;
+      }
+      push(t);
+    }
+  }
+  const res = out.slice(0, 8);
+  sqaPartCache.set(e, res);
+  return res;
+}
+// Autres cas où le même P/N a été remplacé : [{e, pn}], hors cas courant
+function sqaSamePn(e, max) {
+  const res = [], seenKey = new Set([(e.w || '') + '|' + (e.n || '')]);
+  for (const r of sqaPartRows(e)) {
+    for (const code of [r[2], r[1]]) {
+      const k = sqaPnNorm(code);
+      if (k.length < 5) continue;
+      for (const i of (sqa.pnIdx.get(k) || [])) {
+        const o = sqa.entries[i];
+        const id = (o.w || '') + '|' + (o.n || '');
+        if (seenKey.has(id)) continue;
+        seenKey.add(id);
+        res.push({ e: o, pn: code, ms: sqaDateMs(o) });
+      }
+    }
+  }
+  res.sort((a, b) => b.ms - a.ms);
+  return res.slice(0, max || 4);
 }
 // Cartes CMP liées : [[n° CMP, titre, source], …]
 function sqaCmpLinks(e) {
@@ -7388,13 +7482,15 @@ const sqaNormReg = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 // ── Index de recherche, construit par tranches pour ne pas figer l'écran ──
 async function sqaBuild(shards) {
   const entries = [], fam = [], woNum = [];
-  const idxD = new Map(), idxX = new Map();
+  const idxD = new Map(), idxX = new Map(), pnIdx = new Map();
   const add = (map, t, i) => { const a = map.get(t); if (a) a.push(i); else map.set(t, [i]); };
   let woMin = Infinity, woMax = 0, count = 0;
   for (const sh of shards) {
     for (const e of sh) {
       const i = entries.length;
-      const dTok = smartDiagTokens(String(e.d || '') + ' ' + sqaPartRows(e).map(r => r[0]).join(' '));
+      const pr = sqaPartRows(e);
+      pr.forEach(r => { const seenP = new Set(); [r[1], r[2]].forEach(c => { const k = sqaPnNorm(c); if (k.length >= 5 && !seenP.has(k)) { seenP.add(k); add(pnIdx, k, i); } }); });
+      const dTok = smartDiagTokens(String(e.d || '') + ' ' + pr.map(r => r[0]).join(' '));
       const xTok = smartDiagTokens(String(e.x || ''));
       dTok.forEach(t => add(idxD, t, i));
       xTok.forEach(t => { if (!dTok.has(t)) add(idxX, t, i); });
@@ -7407,7 +7503,7 @@ async function sqaBuild(shards) {
       if (++count % 500 === 0) await sqaSleep(0);
     }
   }
-  return { entries, fam, woNum, idxD, idxX, woMin: woMin === Infinity ? 0 : woMin, woMax };
+  return { entries, fam, woNum, idxD, idxX, pnIdx, woMin: woMin === Infinity ? 0 : woMin, woMax };
 }
 
 // ── Chargement : meta → lots (mémoire, sinon copie de l'appareil, sinon Firebase) → index ──
@@ -7481,7 +7577,7 @@ async function sqaLoadInternal() {
   sqa.shards = next;
   sqa.shardHash = list.map(x => x.h);
   sqa.entries = built.entries; sqa.fam = built.fam; sqa.woNum = built.woNum;
-  sqa.idxD = built.idxD; sqa.idxX = built.idxX;
+  sqa.idxD = built.idxD; sqa.idxX = built.idxX; sqa.pnIdx = built.pnIdx;
   sqa.woMin = built.woMin; sqa.woMax = built.woMax;
   sqa.N = built.entries.length;
   sqa.meta = { version: meta.version, n: meta.n || sqa.N, shards: list };
@@ -7699,7 +7795,17 @@ function sqaCaseHtml(c, itemId) {
         const swap = r[1] && r[2] && r[1].toUpperCase() !== r[2].toUpperCase() ? ` — replaces ${escHtml(r[1])}` : '';
         return `${escHtml(r[0] || 'Part')}${pn ? ` (P/N: ${escHtml(pn)}${swap})` : ''}`;
       }).join(', ')}${rows.length > 6 ? ` +${rows.length - 6} more` : ''}</div>`
-    : '<div style="font-size:10.5px;color:var(--g600)">ℹ️ No part recorded for this case</div>';
+    : '<div style="font-size:10.5px;color:var(--g600)">ℹ️ No part found in this squawk</div>';
+  const same = rows.length ? sqaSamePn(e, 4) : [];
+  const sameHtml = same.length
+    ? `<div style="font-size:10.5px;color:#1e40af;margin:-2px 0 4px">🔁 <b>Same P/N also replaced in:</b> ${same.map(o => {
+        const lbl = `WO ${escHtml(o.e.w || '—')} · SQ ${escHtml(o.e.n || '')}${craRegKnown(o.e.r) ? ' · ' + escHtml(craRegKnown(o.e.r)) : ''} (${escHtml(sqaDateLabel(o.e))})`;
+        return itemId != null
+          ? `<a href="#" data-w="${escAttr(o.e.w || '')}" data-n="${escAttr(o.e.n || '')}" style="color:var(--blue)" onclick="craOpenCase(${Number(itemId) || 0},this.dataset.w,this.dataset.n);return false">${lbl}</a>`
+          : lbl;
+      }).join(' · ')}</div>`
+    : '';
+
 
   const cmps = sqaCmpLinks(e);
   const cmpHtml = cmps.length
@@ -7722,6 +7828,7 @@ function sqaCaseHtml(c, itemId) {
             <div style="color:var(--g600);margin-bottom:4px"><b>Past squawk:</b> ${escHtml(smartDiagShort(e.d, 260))}</div>
             ${resHtml}
             ${partsHtml}
+            ${sameHtml}
             ${cmpHtml}
             ${craCaseLink(e, itemId)}
           </div>`;
@@ -7768,7 +7875,7 @@ G.sqaReset = async function() {
   for (let k = 0; k < oldN + 5; k++) await sqaIdbDelete(idb, 'shard:' + k);
   await sqaIdbDelete(idb, 'meta');
   Object.assign(sqa, { state: 'idle', meta: null, shards: [], shardHash: [], entries: [], fam: [], woNum: [],
-                       idxD: new Map(), idxX: new Map(), N: 0, checkedAt: 0, errorAt: 0, error: '' });
+                       idxD: new Map(), idxX: new Map(), pnIdx: new Map(), N: 0, checkedAt: 0, errorAt: 0, error: '' });
   sqaPaintStatus();
   return sqaReady();
 };
@@ -7984,7 +8091,7 @@ function craLines(x) {
 }
 
 // ───────────────────────── Renvois « X-ref » ─────────────────────────
-const CRA_XREF_KW = '(?:x[\\s\\-]*(?:re?f|erf|rfe)(?:er(?:t)?)?|xerf|refer(?:ence)?|ref)';
+const CRA_XREF_KW = '(?:x[\\s\\-]*(?:re?f|erf|rfe)(?:er(?:t)?)?|xerf|refer(?:ence)?|ref|see|sqq)';
 const CRA_XREF_KWE = '(?:\\b|(?=(?:to|sq|item|task|step|card)\\b))';          // fin du mot-clé (collé au mot suivant dans « XREFSQ 4.1 », « XREFTO ITEM 4.1 »)
 const CRA_XREF_WORDS = '(?:the\\s+)?(?:(?:this|thsi|tot\\s*his)\\s+wo\\s+(?:items?|tiems?)|customer\\s+supplied\\s+(?:task|squawk)s?|customer\\s+tasks?|task\\s+cards?|cmp\\s+(?:task\\s+)?cards?|squawks?|sqks?|sqs?|sq|items?|steps?|tasks?|cards?)';
 const CRA_XREF_NUM = '#?\\d+(?:\\.\\d+)*';
@@ -9266,6 +9373,7 @@ const CRA_CSS = `
 #modal-cra .cra-pill.bl{background:var(--bl);color:var(--blue)}
 #modal-cra .cra-rank{display:inline-block;min-width:18px;text-align:center;border-radius:9px;background:var(--gd);color:#fff;font-size:10px;font-weight:700;padding:0 5px;margin-right:5px}
 #modal-cra .cra-line{margin-top:2px;word-break:break-word}
+#modal-cra .cra-line.cra-full{white-space:pre-wrap}
 #modal-cra .cra-line b{color:var(--g600)}
 #modal-cra .cra-src{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;font-weight:700;color:var(--gd);margin:8px 0 4px}
 #modal-cra .cra-src .cra-lnk{font-weight:600}
@@ -9457,7 +9565,7 @@ function craSearchNow(pin) {
   rows.forEach(r => { if (!cands.some(c => craSameEntry(c.e, r.e))) cands.push(r); });
   const sel = keep.map(k => cands.findIndex(c => craSameEntry(c.e, k.e)));
   if (pe) { const i = cands.findIndex(c => craSameEntry(c.e, pe)); if (i >= 0 && sel.indexOf(i) < 0 && sel.length < CRA_MAX_SRC) sel.push(i); }
-  s.cands = cands; s.sel = sel;
+  s.cands = cands; s.sel = sel; s.fullTxt = {};
   s.showAll = !sel.length;
   craAfterSel();
 }
@@ -9496,6 +9604,7 @@ function craPaintCands() {
     const e = c.e, on = s.sel.indexOf(i) >= 0;
     if (!on && !s.showAll && s.sel.length) { hidden++; return; }
     const insp = sqaInspections(e), date = sqaDateLabel(e);
+    const isFull = !!(s.fullTxt && s.fullTxt[i]);
     const pills = [
       c.level === 'close' ? craPill('ok', 'Close match') : c.level === 'possible' ? craPill('am', 'Possible match') : c.level === 'weak' ? craPill('', 'Weak match') : c.level === 'wo' ? craPill('bl', 'Same WO') : c.level === 'pin' ? craPill('ok', 'Chosen case') : '',
       c.sameFamily === true ? craPill('bl', 'Same model') : (c.sameFamily === false ? craPill('', 'Other model') : ''),
@@ -9508,8 +9617,11 @@ function craPaintCands() {
       '<div class="cra-body"><div class="cra-c-top"><span>' + (on ? '<span class="cra-rank">' + (s.sel.indexOf(i) + 1) + '</span>' : '') +
       '✈️ ' + escHtml(e.t || '—') + ' · WO ' + escHtml(e.w || '—') + ' · SQ ' + escHtml(e.n || '') + (craRegKnown(e.r) ? ' · ' + escHtml(craRegKnown(e.r)) : '') + '</span><span>' + escHtml(date) + '</span></div>' +
       '<div class="cra-pills">' + pills + '</div>' +
-      '<div class="cra-line"><b>Squawk:</b> ' + escHtml(smartDiagShort(e.d, 150)) + '</div>' +
-      '<div class="cra-line"><b>Resolution:</b> ' + escHtml(smartDiagShort(e.x, 230)) + '</div></div></label>';
+      '<div class="cra-line' + (isFull ? ' cra-full' : '') + '"><b>Squawk:</b> ' + escHtml(isFull ? String(e.d || '') : smartDiagShort(e.d, 150)) + '</div>' +
+      '<div class="cra-line' + (isFull ? ' cra-full' : '') + '"><b>Resolution:</b> ' + escHtml(isFull ? String(e.x || '') : smartDiagShort(e.x, 230)) + '</div>' +
+      (isFull || String(e.d || '').length > 150 || String(e.x || '').length > 230
+        ? '<button type="button" class="cra-lnk" data-act="cand-full" data-i="' + i + '">' + (isFull ? '− Collapse text' : '＋ Read the full text') + '</button>' : '') +
+      '</div></label>';
   });
   if (hidden) h += '<button type="button" class="cra-lnk" data-act="more">＋ Show the ' + hidden + ' other result' + (hidden > 1 ? 's' : '') + '</button>';
   else if (s.sel.length && s.showAll && s.cands.length > s.sel.length) h += '<button type="button" class="cra-lnk" data-act="more">− Hide the other results</button>';
@@ -9702,6 +9814,13 @@ function craOnClick(ev) {
   else if (a === 'copy') craCopy(false);
   else if (a === 'use') craCopy(true);
   else if (a === 'more') { s.showAll = !s.showAll; craPaintCands(); }
+  else if (a === 'cand-full') {
+    ev.preventDefault();
+    const i = +t.dataset.i;
+    s.fullTxt = s.fullTxt || {};
+    s.fullTxt[i] = !s.fullTxt[i];
+    craPaintCands();
+  }
   else if (a === 'rm-src') {
     const k = +t.dataset.k, i = s.sel[k];
     s.sel = s.sel.filter(x => x !== i);
