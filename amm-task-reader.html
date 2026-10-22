@@ -3508,7 +3508,8 @@ function exportSelection() {
 (function () {
   function reportHeight() {
     try {
-      const h = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+      // hauteur du contenu seul : scrollHeight du document vaut au moins la hauteur de la fenêtre, ce qui la faisait grandir de 4 px à chaque envoi
+      const h = Math.ceil(document.body.getBoundingClientRect().height);
       if (window.parent && window.parent !== window) {
         window.parent.postMessage({ type: 'amm-task-reader:resize', height: h }, '*');
       }
