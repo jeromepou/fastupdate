@@ -7387,7 +7387,6 @@ function sqaPartsFromText(txt) {
   });
   return rows.map(r => r.slice(0, 5)).slice(0, 8);
 }
-
 function sqaPartRows(e) {
   if (!e || typeof e !== 'object') return [];
   const hit = sqaPartCache.get(e);
@@ -7450,9 +7449,28 @@ function sqaSamePn(e, max) {
   return res.slice(0, max || 4);
 }
 // Cartes CMP liées : [[n° CMP, titre, source], …]
+const sqaCmpTextCache = new WeakMap();
+// À défaut de liens enregistrés (base publiée avant la mise à jour), les cartes 4.x sont lues dans les renvois du texte (« See SQK 4.1 and 4.2 for CMP »).
+function sqaCmpFromText(e) {
+  if (!e || typeof e !== 'object') return [];
+  const hit = sqaCmpTextCache.get(e);
+  if (hit) return hit;
+  const seen = new Set(), out = [];
+  try {
+    String(e.x || '').split(/\r?\n/).forEach(line => {
+      if (!/\b4\.\d/.test(line)) return;
+      craStripXref(line).refs.forEach(r => {
+        if (r.kind !== 'cmp') return;
+        r.nums.forEach(n => { if (/^4\.\d+$/.test(n) && !seen.has(n)) { seen.add(n); out.push(['Card ' + n, '', '~text']); } });
+      });
+    });
+  } catch (err) { /* lecture du texte impossible : on n'affiche rien */ }
+  sqaCmpTextCache.set(e, out);
+  return out;
+}
 function sqaCmpLinks(e) {
   let c = e && e.c;
-  if (!c) return [];
+  if (!c) return sqaCmpFromText(e);
   if (!Array.isArray(c)) c = Object.values(c);
   const out = [];
   for (const row of c) {
@@ -7464,7 +7482,12 @@ function sqaCmpLinks(e) {
 // Inspections critiques du travail passé : "CTI", "RII" ou "CTI + RII" ('' si aucune).
 function sqaInspections(e) {
   let k = e && e.k;
-  if (!k) return '';
+  if (!k) {
+    // base publiée avant la mise à jour : on lit CTI / RII dans le texte de la résolution
+    const x = String((e && e.x) || '');
+    k = [/\bCTI\b|double inspection/i.test(x) ? 'CTI' : '', /\bRII\b|required inspection item/i.test(x) ? 'RII' : ''].filter(Boolean);
+    if (!k.length) return '';
+  }
   if (!Array.isArray(k)) k = typeof k === 'object' ? Object.values(k) : [k];
   const u = [...new Set(k.map(x => String(x).toUpperCase()).filter(x => x === 'CTI' || x === 'RII'))].sort();
   return u.join(' + ');
@@ -7806,11 +7829,10 @@ function sqaCaseHtml(c, itemId) {
       }).join(' · ')}</div>`
     : '';
 
-
   const cmps = sqaCmpLinks(e);
   const cmpHtml = cmps.length
     ? `<div style="font-size:10.5px;color:var(--g600);margin-top:3px">📋 <b>CMP:</b> ${cmps.slice(0, 4).map(x =>
-        escHtml(x[0]) + (x[1] ? ' ' + escHtml(smartDiagShort(x[1], 60)) : '') + (x[2].includes('~') ? ' <i>(deduced)</i>' : '')
+        escHtml(x[0]) + (x[1] ? ' ' + escHtml(smartDiagShort(x[1], 60)) : '') + (x[2] === '~text' ? ' <i>(from the text)</i>' : x[2].includes('~') ? ' <i>(deduced)</i>' : '')
       ).join(' · ')}${cmps.length > 4 ? ` +${cmps.length - 4} more` : ''}</div>`
     : '';
 
@@ -8150,7 +8172,8 @@ function craStripXref(line) {
     }
   }
   const text = line.replace(CRA_XREF_RE, (all, pre, kw, nums, motif) => { add(nums, motif); return pre.trim() ? pre : ''; });
-  return { text: text.replace(/\s{2,}/g, ' ').replace(/^\s*[.;,]\s*/, '').trim(), refs };
+  const clean = text.replace(/\s{2,}/g, ' ').replace(/^\s*[.;,]\s*/, '').trim();
+  return { text: refs.length ? clean.replace(/\s*[,;]\s*$|\s+[-–]\s*$/, '').trim() : clean, refs };
 }
 
 // ───────────────────────── Références AMM ─────────────────────────
@@ -8809,7 +8832,7 @@ function craPrepare(entries, opts) {
       else if (cmpByKey[key].srcs.indexOf(si) < 0) cmpByKey[key].srcs.push(si);
     });
     info.refs.filter(r => r.kind === 'cmp').forEach(r => r.nums.forEach(no => {
-      if (own.some(c => c.no === no)) return;
+      if (own.some(c => c.no === no || c.origin.replace(/~.*$/, '') === no)) return;   // c.no = n° CMP ; c.origin = n° de la carte dans l'ancien WP (4.1, ou 4.1~ata si déduit)
       const key = 'old.' + si + '.' + no;
       if (!cmpByKey[key]) { cmpByKey[key] = { key, title: '', oldNo: no, srcs: [si], origin: 'xref' }; model.cmp.push(cmpByKey[key]); }
     }));
@@ -9432,6 +9455,7 @@ const CRA_HTML = `
     <div class="modal-btns">
       <button type="button" class="btn" data-act="close">Close</button>
       <button type="button" class="btn primary" id="cra-use" data-act="use" style="display:none">⬇ Use in sheet</button>
+      <button type="button" class="btn" id="cra-save" data-act="save" style="display:none" title="Keep this text on this device to finish it later">💾 Save</button>
       <button type="button" class="btn primary" id="cra-copy" data-act="copy">📋 Copy</button>
     </div>
   </div>
@@ -9460,11 +9484,25 @@ function craEnsureDom() {
 }
 
 // ───────────────────────── Ouverture ─────────────────────────
+// ── Texte enregistré (« 💾 Save ») : gardé sur l'appareil, par WO + squawk, pour le reprendre plus tard ──
+const CRA_LS_DRAFT = 'fast.cra.drafts';
+function craDraftKey(no, label) {
+  const wo = gv('f_wo').trim().toUpperCase();
+  return wo ? wo + '|' + (no || 0) + '|' + String(label || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60) : '';
+}
+function craDraftGet(key) { const all = craLsGet(CRA_LS_DRAFT, {}); return key && all && all[key] ? all[key] : null; }
+function craDraftSet(key, text) {
+  const all = Object.assign({}, craLsGet(CRA_LS_DRAFT, {}));
+  if (text == null) delete all[key]; else all[key] = { text: String(text), at: Date.now() };
+  const keys = Object.keys(all).sort((a, b) => (all[b].at || 0) - (all[a].at || 0));
+  keys.slice(40).forEach(k => delete all[k]);
+  craLsSet(CRA_LS_DRAFT, all);
+}
 // opts : { query, heading, cmpCur, onUse(text) → true/false, useLabel, pin:{w,n} }
 function craOpen(opts) {
   craEnsureDom();
   cra = {
-    ctx: { heading: opts.heading || '', model: gv('f_model'), reg: gv('f_reg'), wo: gv('f_wo').trim().toUpperCase(), cmpCur: opts.cmpCur || '', cycleCur: opts.cycleCur || '', onUse: opts.onUse || null },
+    ctx: { heading: opts.heading || '', model: gv('f_model'), reg: gv('f_reg'), wo: gv('f_wo').trim().toUpperCase(), cmpCur: opts.cmpCur || '', cycleCur: opts.cycleCur || '', onUse: opts.onUse || null, draftKey: opts.draftKey || '' },
     query: opts.query || '', cands: [], sel: [], model: null, S: null, loading: false, msg: '', showAll: true, toolForm: null, copied: ''
   };
   craEl('cra-q').value = cra.query;
@@ -9474,6 +9512,7 @@ function craOpen(opts) {
   use.textContent = opts.useLabel || '⬇ Use in sheet';
   craEl('cra-copy').className = cra.ctx.onUse ? 'btn' : 'btn primary';
   craEl('cra-text').value = '';
+  craEl('cra-save').style.display = cra.ctx.draftKey ? '' : 'none';
   openModal('modal-cra');
   craSearchNow(opts.pin || null);
   craToolsSync(false);   // la mallette d'outils est rafraichie depuis le compte en arriere-plan (la liste de cet appareil s'affiche tout de suite)
@@ -9483,13 +9522,13 @@ G.craOpenItem = function(id) {
   if (!row) return;
   const label = ((row.querySelector('input') || {}).value || '').trim();
   const no = Array.from(document.querySelectorAll('#items-container .item-row')).indexOf(row) + 1;
-  craOpen({ query: label, heading: 'Squawk 2.' + no + (label ? ' — ' + label : ''), cmpCur: craCmpFromText(label), cycleCur: craCycleFromText(label) });
+  craOpen({ query: label, heading: 'Squawk 2.' + no + (label ? ' — ' + label : ''), cmpCur: craCmpFromText(label), cycleCur: craCycleFromText(label), draftKey: craDraftKey(no, label) });
 };
 G.craOpenCase = function(id, w, n) {
   const row = document.getElementById('item-' + id);
   const label = row ? ((row.querySelector('input') || {}).value || '').trim() : '';
   const no = row ? Array.from(document.querySelectorAll('#items-container .item-row')).indexOf(row) + 1 : 0;
-  craOpen({ query: label, heading: (no ? 'Squawk 2.' + no : 'Squawk') + (label ? ' — ' + label : ''), cmpCur: craCmpFromText(label), cycleCur: craCycleFromText(label), pin: { w, n } });
+  craOpen({ query: label, heading: (no ? 'Squawk 2.' + no : 'Squawk') + (label ? ' — ' + label : ''), cmpCur: craCmpFromText(label), cycleCur: craCycleFromText(label), pin: { w, n }, draftKey: craDraftKey(no, label) });
 };
 G.craOpenSheet = function(btn) {
   const card = btn && btn.closest ? btn.closest('.lmx-sheet') : null;
@@ -9782,6 +9821,12 @@ function craPaintStatus() {
   if (checks.length) h += '<br/><span class="cra-amber">👁 ' + checks.length + ' value' + (checks.length > 1 ? 's' : '') + ' from the old job to check (between ⟪ ⟫): ' + uniq(checks).map(escHtml).join(' · ') + '. The marks are removed when you copy.</span>';
   if (s.S.edited) h += '<br/><span class="cra-amber">✏️ You edited the text by hand — the fields above no longer change it.</span> <button type="button" class="cra-lnk" data-act="rebuild">Rebuild it from the fields</button>';
   if (s.copied) h += '<br/><span class="cra-ok">' + escHtml(s.copied) + '</span>';
+  const dr = craDraftGet(s.ctx.draftKey);
+  if (dr) {
+    const when = new Date(dr.at).toLocaleString();
+    if (dr.text === text) h += '<br/><span class="cra-ok">💾 Saved on this device (' + escHtml(when) + ')</span> <button type="button" class="cra-lnk" data-act="draft-del">Delete the saved text</button>';
+    else h += '<br/><span class="cra-amber">💾 A text saved on ' + escHtml(when) + ' exists for this squawk.</span> <button type="button" class="cra-lnk" data-act="draft-load">Load it</button>';
+  }
   h += '<br/><span style="color:var(--g600)">' + (text ? text.split('\n').length : 0) + ' lines · ' + text.length + ' characters</span>';
   el.innerHTML = h;
 }
@@ -9812,8 +9857,27 @@ function craOnClick(ev) {
   if (a === 'search') craSearchNow();
   else if (a === 'close') craClose();
   else if (a === 'copy') craCopy(false);
+  else if (a === 'save') {
+    if (!s.model) { alert('Tick at least one past squawk first.'); return; }
+    if (!s.ctx.draftKey) return;
+    craDraftSet(s.ctx.draftKey, craEl('cra-text').value);
+    s.copied = '✓ Saved on this device — it will be offered again when you reopen this squawk.';
+    craPaintStatus();
+  }
+  else if (a === 'draft-load') {
+    const dr = craDraftGet(s.ctx.draftKey);
+    if (dr && s.model) { craEl('cra-text').value = dr.text; s.S.edited = true; s.copied = ''; craPaintStatus(); }
+  }
+  else if (a === 'draft-del') { craDraftSet(s.ctx.draftKey, null); s.copied = ''; craPaintStatus(); }
   else if (a === 'use') craCopy(true);
   else if (a === 'more') { s.showAll = !s.showAll; craPaintCands(); }
+  else if (a === 'cand-full') {
+    ev.preventDefault();
+    const i = +t.dataset.i;
+    s.fullTxt = s.fullTxt || {};
+    s.fullTxt[i] = !s.fullTxt[i];
+    craPaintCands();
+  }
   else if (a === 'cand-full') {
     ev.preventDefault();
     const i = +t.dataset.i;
