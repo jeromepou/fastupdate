@@ -567,6 +567,7 @@
       if (amb && ammLocked()) { e.preventDefault(); e.stopPropagation(); ammUnlock(function () { var sd0 = $('.u2-side'); if (sd0) sd0.classList.remove('tools-open'); call('koOpenAmmReader', /'template'/.test(amb.getAttribute('onclick') || '') ? 'template' : undefined); }); return; }
       if (!t.closest('.u2-side')) { var sd = $('.u2-side'); if (sd) sd.classList.remove('tools-open'); }                // tap outside: close the Tools list
       else if (t.closest('.u2-grp .u2-i')) { var sd2 = $('.u2-side'); if (sd2) sd2.classList.remove('tools-open'); }       // entry chosen: close it
+      if ((b = t.closest('.u2-side [onclick*="openCorridorHub"]')) && activeProjectId()) { e.preventDefault(); e.stopPropagation(); tab('corridor'); return; }   // barre latérale : Corridor = onglet Corridor du projet (A + B) ; sans projet ouvert, l'ancienne fenêtre reste      
       if (t.closest('#btn-start-job')) { SA = true; B.setAttribute('data-u3sa', '1'); setK('job'); return; }     // the app opens the panel; its aircraft fields (on the Job page) stay visible in this mode
       if ((b = t.closest('.u3-open'))) { call('loadProject', b.getAttribute('data-pid')); setState('project', 'details'); e.stopPropagation(); return; }
       if ((b = t.closest('.u3-tab'))) { tab(b.getAttribute('data-t')); return; }
