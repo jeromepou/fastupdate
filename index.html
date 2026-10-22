@@ -16205,7 +16205,7 @@ function koRenderAirlines() {
     row.innerHTML = `
       <span class="ko-airline-name">${a.name}</span>
       <input class="ko-airline-input" type="text" value="${(a.number||'').replace(/"/g,'&quot;')}"
-        placeholder="Member number…" oninput="KO.airlines[${i}].number=this.value"/>
+        placeholder="Member number…"/>
       <button class="ko-airline-del" onclick="koDelAirline(${i})" aria-label="Remove ${a.name}">×</button>`;
     list.appendChild(row);
   });
