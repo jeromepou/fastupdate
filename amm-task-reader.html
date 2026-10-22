@@ -1290,10 +1290,10 @@ function canonicalizePn(pn) {
 function mergeSessionLeafFuzzy(items, nameOf, pnOf) {
   const groups = [];
   const byKey = new Map();
-  const addCitation = (g, cardRef, stepRef) => {
+  const addCitation = (g, cardRef, stepRef, page) => {
     if (!stepRef) return;
     const citKey = sessKey(cardRef, stepRef);
-    if (!g.citations.some(c => sessKey(c.cardRef, c.step_reference) === citKey)) g.citations.push({ cardRef, step_reference: stepRef });
+    if (!g.citations.some(c => sessKey(c.cardRef, c.step_reference) === citKey)) g.citations.push({ cardRef, step_reference: stepRef, page: page || 0 });
   };
   for (const { cardRef, item } of items) {
     const key = sessKey(canonicalizeText(nameOf(item)), pnOf ? canonicalizePn(pnOf(item)) : '');
@@ -1305,7 +1305,7 @@ function mergeSessionLeafFuzzy(items, nameOf, pnOf) {
     }
     const g = byKey.get(key);
     g.cardRefs.add(cardRef);
-    addCitation(g, cardRef, item.step_reference);
+    addCitation(g, cardRef, item.step_reference, item.page);
   }
 
   const used = new Array(groups.length).fill(false);
@@ -1328,7 +1328,7 @@ function mergeSessionLeafFuzzy(items, nameOf, pnOf) {
         (bHasPn === aHasPn && (nameOf(other.item) || '').length > (nameOf(base.item) || '').length);
       if (preferOther) base.item = other.item;
       other.cardRefs.forEach(r => base.cardRefs.add(r));
-      other.citations.forEach(c => addCitation(base, c.cardRef, c.step_reference));
+      other.citations.forEach(c => addCitation(base, c.cardRef, c.step_reference, c.page));
       used[j] = true;
     }
     merged.push(base);
@@ -1405,6 +1405,9 @@ function getMergedCategories(entries) {
     flat('related_tasks').filter(({cardRef, item}) => !rootRefs.has(taskKey(item.ref, item.title)) && normalizeRef(item.ref) !== normalizeRef(cardRef))
   );
 
+  // Un outil ou consommable dont le P/N ou le nom est introuvable dans le texte du PDF (voir annotateFromSource) est décoché d'office.
+  // Un choix déjà fait (case cochée ou décochée à la main) n'est jamais changé.
+  [...toolsM, ...consM].forEach(m => { if (m.item.src_flag && !(m.key in itemSelection)) itemSelection[m.key] = false; });
   return { toolsM, consM, implM, accM, safM, tasksM };
 }
 
@@ -1446,7 +1449,66 @@ function flagMissedImplicitEquipment(data, sourceText) {
   return missed;
 }
 
+/* ============================================================
+   TEXTE ENVOYÉ À L'IA : SANS LES TABLES DE DISJONCTEURS
+   Beaucoup de cartes contiennent des tables « NOMENCLATURE / PANEL / LOCATION » (les disjoncteurs à tirer ou à fermer, étape par étape).
+   Elles ne servent ni aux outils, ni aux consommables, ni aux panneaux : on les remplace par une ligne « [Circuit breaker table (N rows) omitted] »
+   avant d'envoyer le texte à l'IA (moins de texte = moins cher, plus rapide, moins de confusion). La phrase de l'étape (« Pull, tag and install
+   the safety clips on the circuit breakers: ») reste. Le texte COMPLET reste enregistré dans le cache. Un tableau de moins de 4 lignes est gardé.
+   Ajouter &cb=1 à l'adresse du reader garde les tables (pour comparer).
+   ============================================================ */
+const CB_FOOTER_LINES = [/^$/, /^MAINTENANCE MANUAL$/i, /^Page \d+$/i, /^[A-Z][a-z]{2,8} \d{1,2}\/\d{2}$/, /^\d{2}-\d{2}-\d{2}[ \t]+\S.*$/];
+function stripCircuitBreakerTables(text) {
+  const lines = String(text || '').split('\n');
+  const cols = l => l.split(/\s{2,}|\s*\|\s*/).map(s => s.trim()).filter(Boolean);
+  const isHeader = l => /^[\s|]*nomenclature[\s|]+panel[\s|]+location[\s|]*$/i.test(l);
+  const isRule = l => /-/.test(l) && /^[\s|:-]+$/.test(l);                      // ligne « | --- | --- | » d'un tableau markdown (OCR)
+  const isFooterish = l => CB_FOOTER_LINES.some(re => re.test(l.trim()));       // pied de page : on le traverse, le tableau peut continuer après
+  // suite d'un nom qui passe à la ligne dans le tableau (ex. « HA, R ELEV EBHA) ») : en majuscules, courte, sans numéro d'étape
+  const isWrap = l => { const t = l.trim(); return t.length > 0 && t.length <= 50 && cols(l).length === 1 && /^[A-Z0-9 ,.()\/&+-]+$/.test(t) && !/^(WARNING|CAUTION|NOTE|MAINTENANCE MANUAL)$/.test(t) && !/^\d+(\.\d+)*[ \t]/.test(t) && !isFooterish(l) && /[(),]/.test(t); };
+  const isRow = l => { const c = cols(l); return c.length === 3 && !/^\d+(\.\d+)*[ \t]/.test(l.trim()) && !isHeader(l) && !isRule(l); };
+  const out = [];
+  let removed = 0, tables = 0;
+  const panels = new Set();
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!isHeader(line)) { out.push(line); continue; }
+    // seulement si l'une des 4 dernières lignes non vides parle de circuit breaker / SSPC
+    let ctx = '', seen = 0;
+    for (let k = out.length - 1; k >= 0 && seen < 4; k--) { if (out[k].trim()) { ctx += ' ' + out[k]; seen++; } }
+    if (!/circuit breakers?|sspcs?/i.test(ctx)) { out.push(line); continue; }
+    const outBefore = out.length;
+    let n = 0, j = i + 1;
+    for (;;) {
+      while (j < lines.length && (!lines[j].trim() || isRule(lines[j]) || isRow(lines[j]) || isWrap(lines[j]))) {
+        if (isRow(lines[j])) { n++; panels.add(cols(lines[j])[1].toLowerCase()); }
+        j++;
+      }
+      // fin de page : pied de page, puis suite du tableau (avec ou sans nouvel en-tête) ? Oui si la ligne suivante est une ligne de même type.
+      let k = j; const foot = [];
+      while (k < lines.length && (isFooterish(lines[k]) || isHeader(lines[k]))) { if (!isHeader(lines[k]) && lines[k].trim()) foot.push(lines[k]); k++; }
+      if (k < lines.length && foot.length && isRow(lines[k]) && panels.has(cols(lines[k])[1].toLowerCase())) {
+        foot.forEach(f => out.push(f)); j = k; continue;
+      }
+      break;
+    }
+    if (n < 4) { out.length = outBefore; for (let k = i; k < j; k++) out.push(lines[k]); i = j - 1; continue; }   // petit tableau : on le garde
+    removed += n; tables++;
+    out.push('[Circuit breaker table (' + n + ' rows) omitted]');
+    out.push('');
+    i = j - 1;
+  }
+  return { text: out.join('\n'), removed, tables };
+}
+// Texte envoyé à l'IA : sans les sauts de page (\f, voir pdfToText) et sans les tables de disjoncteurs.
+function aiText(text) {
+  const t = String(text || '').replace(/\f/g, '');
+  if (/[?&]cb=1(&|$)/.test(location.search)) return t;
+  return stripCircuitBreakerTables(t).text;
+}
+
 async function runScan(text, knownRefs) {
+  text = aiText(text); // texte allégé : sans sauts de page ni tables de disjoncteurs (le texte complet reste dans le cache)
   const extractRes = await koWorkerFetch('/chat', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
@@ -1501,6 +1563,7 @@ async function runScan(text, knownRefs) {
 // genuinely needs — always-required preliminary/preparation/follow-on
 // work, plus judgment-based access panel selection by system/location.
 async function runScopeReasoning(sourceText, confirmedRows, extractedData) {
+  sourceText = aiText(sourceText);
   const res = await koWorkerFetch('/chat', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
@@ -1545,6 +1608,7 @@ function buildScopedData(fullData, reasoningResult) {
 // screen (the table-scoped subset if one applied, otherwise the full
 // verified card), so the two mechanisms stack instead of conflicting.
 async function runFinalRelevanceCheck(sourceText, baseData, partReplaced) {
+  sourceText = aiText(sourceText);
   const res = await koWorkerFetch('/chat', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
@@ -1780,7 +1844,7 @@ async function pdfTextLayer(pdfB64) {
       const content = await page.getTextContent();
       pages.push(pdfItemsToText(content.items, page.getViewport({ scale: 1 }), pdfjs.Util));
     }
-    const text = pages.join('\n\n');
+    const text = pages.join('\n\f\n'); // \f = saut de page : sert à retrouver la page d'une ligne (aiText() l'enlève avant l'IA)
     const chars = text.replace(/\s/g, '').length;
     const garbled = (text.match(/[\ue000-\uf8ff\ufffd]/g) || []).length;
     // PDF scanné (presque pas de texte) ou police sans correspondance Unicode (texte illisible) : l'OCR fera mieux
@@ -1816,7 +1880,7 @@ async function pdfToText(pdfB64) {
     })
   });
   const ocrData = await apiJson(ocrRes, 'OCR');
-  return ocrData.pages.map(p => p.markdown).join('\n\n');
+  return ocrData.pages.map(p => p.markdown).join('\n\f\n'); // \f = saut de page (voir la lecture directe)
 }
 
 // Détection du card_ref SANS IA — le ref de la carte se répète dans le
@@ -2179,8 +2243,104 @@ function collectAllScannedData() {
 // the final relevance-filtered set (most specific — matched against the
 // technician's stated part) beats the table-scoped set (matched against a
 // formal components table only), which beats the full verified card.
+/* ============================================================
+   CONTRÔLE DES LIGNES CONTRE LE TEXTE DU PDF + NUMÉRO DE PAGE — aucun appel IA
+   Pour chaque outil, consommable, panneau d'accès et avertissement de sécurité, on cherche son P/N, son nom ou son texte dans le texte
+   du PDF (celui qui est enregistré avec le scan). Introuvable -> « src_flag » : la ligne n'est peut-être pas dans le PDF (invention de
+   l'IA, faute de lecture) ; un outil ou un consommable dans ce cas est décoché d'office. On note aussi la page où la ligne apparaît
+   pour la première fois (« page »), grâce aux sauts de page (\f) que pdfToText() met entre les pages. Un texte collé à la main ou un
+   ancien scan n'a pas de sauts de page : pas de numéro de page, mais le contrôle marche quand même.
+   ============================================================ */
+// Lettres et chiffres seulement, en minuscules : « GSE 2400-984 » et « gse2400984 » deviennent identiques.
+function srcNorm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+// Le texte du PDF sous forme comparable : lettres/chiffres collés, page de chaque caractère, ensemble des mots.
+function buildSourceIndex(text) {
+  const t = String(text || '');
+  const pageAt = [], words = new Set();
+  let norm = '', w = '', page = 1, hasPages = false;
+  for (let i = 0; i < t.length; i++) {
+    if (t.charCodeAt(i) === 12) { page++; hasPages = true; }
+    const ch = t[i].toLowerCase();
+    if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) { norm += ch; pageAt.push(page); w += ch; }
+    else if (w) { words.add(w); w = ''; }
+  }
+  if (w) words.add(w);
+  return { norm, pageAt, words, hasPages };
+}
+// Page où `needle` (déjà passé par srcNorm) apparaît pour la première fois ; 0 si inconnue.
+function srcPage(ix, needle) {
+  if (!ix.hasPages || !needle) return 0;
+  const i = ix.norm.indexOf(needle);
+  return i < 0 ? 0 : ix.pageAt[i];
+}
+// Les morceaux d'un P/N qu'on doit retrouver dans le PDF : chaque morceau qui contient un chiffre (« GSE2400984 or equivalent » -> GSE2400984).
+// « Standard », « Refer to IPC » et un P/N vide ne se contrôlent pas.
+function pnKeys(pn) {
+  const base = String(pn || '').replace(/\bor\s+(?:equivalent|equal)\b\.?/ig, ' ');
+  const keys = [];
+  base.split(/\s+or\s+|;/i).forEach(alt => {
+    alt = alt.trim();
+    if (!alt || /^(standard|n\/?a|none|as necessary)$/i.test(alt) || /\bipc\b/i.test(alt)) return;
+    const toks = alt.split(/[\s,]+/).map(srcNorm).filter(Boolean);
+    const withDigit = toks.filter(n => n.length >= 4 && /\d/.test(n));
+    if (withDigit.length) keys.push(...withDigit);
+    else if (toks[0] && toks[0].length >= 5) keys.push(toks[0]);
+  });
+  return keys;
+}
+// Le nom est dans le PDF tel quel, ou (nom coupé sur deux lignes dans un tableau) tous ses mots y sont.
+function nameFound(ix, name) {
+  const n = srcNorm(name);
+  if (n.length < 3 || ix.norm.includes(n)) return true;
+  const ws = String(name || '').toLowerCase().split(/[^a-z0-9]+/).filter(x => x.length >= 3);
+  return ws.length > 0 && ws.every(x => ix.words.has(x));
+}
+
+const SRC_CHECKED = new WeakSet();   // lignes déjà contrôlées (le contrôle ne se refait pas à chaque affichage)
+function annotateFromSource(data, text) {
+  if (!data || !text) return;
+  let ix = null;
+  const index = () => ix || (ix = buildSourceIndex(text));
+  const mark = (it, flag, page) => {
+    if (flag) it.src_flag = flag; else delete it.src_flag;
+    if (page) it.page = page; else delete it.page;      // jamais « undefined » : Firebase refuse
+  };
+  const todo = it => it && typeof it === 'object' && !SRC_CHECKED.has(it) && (SRC_CHECKED.add(it), true);
+  ['tools', 'consumables'].forEach(cat => (data[cat] || []).forEach(it => {
+    if (!todo(it)) return;
+    const x = index();
+    const keys = it.note_ipc ? [] : pnKeys(it.pn);
+    const miss = keys.find(k => !x.norm.includes(k));
+    let flag = '';
+    if (miss !== undefined) flag = 'P/N "' + it.pn + '" is not in the text of the PDF.';
+    else if (!nameFound(x, it.name)) flag = '"' + it.name + '" is not in the text of the PDF.';
+    mark(it, flag, srcPage(x, keys.length ? keys[0] : srcNorm(it.name)));
+  }));
+  (data.access_panels || []).forEach(it => {
+    if (!todo(it)) return;
+    const k = srcNorm(it.panel_id), x = index();
+    mark(it, k.length >= 2 && !x.norm.includes(k) ? 'Panel "' + it.panel_id + '" is not in the text of the PDF.' : '', k.length >= 2 ? srcPage(x, k) : 0);
+  });
+  (data.safety_notices || []).forEach(it => {
+    if (!todo(it)) return;
+    const k = srcNorm(it.text), x = index();
+    if (k.length < 20) { mark(it, '', 0); return; }
+    // texte entier, sinon son début (une page peut couper l'encadré en deux)
+    const found = x.norm.includes(k) ? k : (x.norm.includes(k.slice(0, 60)) ? k.slice(0, 60) : '');
+    mark(it, found ? '' : 'This text is not word for word in the PDF.', found ? srcPage(x, found) : 0);
+  });
+}
+function pageSuffix(page) { return page ? ' · p. ' + page : ''; }
+function srcFlagNoteHtml(item, unticked) {
+  if (!item || !item.src_flag) return '';
+  return `<div class="note-flag">🔎 <b>Check against the PDF:</b> ${escapeHtml(item.src_flag)}${unticked ? ' Unticked until you check it.' : ''}</div>`;
+}
+
 function dataToUseForScan(scan) {
-  return scan.relevanceData || scan.scopedData || scan.data;
+  const d = scan.relevanceData || scan.scopedData || scan.data;
+  annotateFromSource(d, scan.sourceText); // contrôle contre le PDF + n° de page (une seule fois par ligne)
+  return d;
 }
 
 // True while a scanned sub-task's own document has a component -> scope
@@ -2289,8 +2449,8 @@ function renderMergedList(listId, countId, merged, renderer) {
 
 function renderMergedTool(t, cardRefs, key, citations) {
   const included = isItemIncluded(key);
-  const refs = (citations && citations.length) ? citations : (t.step_reference ? [{ cardRef: '', step_reference: t.step_reference }] : []);
-  const refsHtml = refs.map(c => `<span class="step-ref">📍 ${c.cardRef ? `<b>${escapeHtml(c.cardRef)}:</b> ` : ''}${escapeHtml(c.step_reference)}</span>`).join('');
+  const refs = (citations && citations.length) ? citations : (t.step_reference ? [{ cardRef: '', step_reference: t.step_reference, page: t.page }] : []);
+  const refsHtml = refs.map(c => `<span class="step-ref">📍 ${c.cardRef ? `<b>${escapeHtml(c.cardRef)}:</b> ` : ''}${escapeHtml(c.step_reference)}${pageSuffix(c.page)}</span>`).join('');
   return `
     <div class="item ${included ? 'flag-checked' : 'ignored'}">
       <input type="checkbox" ${included ? 'checked' : ''} onchange="toggleItemInclusion(${jsArg(key)})" title="Include in export">
@@ -2304,6 +2464,7 @@ function renderMergedTool(t, cardRefs, key, citations) {
         </div>
         ${refsHtml ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px">${refsHtml}</div>` : ''}
         ${uncertainNoteHtml(t)}
+        ${srcFlagNoteHtml(t, true)}
         <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
       </div>
     </div>`;
@@ -2311,8 +2472,8 @@ function renderMergedTool(t, cardRefs, key, citations) {
 
 function renderMergedConsumable(c, cardRefs, key, citations) {
   const included = isItemIncluded(key);
-  const refs = (citations && citations.length) ? citations : (c.step_reference ? [{ cardRef: '', step_reference: c.step_reference }] : []);
-  const refsHtml = refs.map(r => `<span class="step-ref">📍 ${r.cardRef ? `<b>${escapeHtml(r.cardRef)}:</b> ` : ''}${escapeHtml(r.step_reference)}</span>`).join('');
+  const refs = (citations && citations.length) ? citations : (c.step_reference ? [{ cardRef: '', step_reference: c.step_reference, page: c.page }] : []);
+  const refsHtml = refs.map(r => `<span class="step-ref">📍 ${r.cardRef ? `<b>${escapeHtml(r.cardRef)}:</b> ` : ''}${escapeHtml(r.step_reference)}${pageSuffix(r.page)}</span>`).join('');
   return `
     <div class="item ${included ? 'flag-checked' : 'ignored'}">
       <input type="checkbox" ${included ? 'checked' : ''} onchange="toggleItemInclusion(${jsArg(key)})" title="Include in export">
@@ -2329,6 +2490,7 @@ function renderMergedConsumable(c, cardRefs, key, citations) {
         ${c.note_ipc ? `<div class="note-ipc">📘 <span><b>Refer to the IPC</b> — ${escapeHtml(c.ipc_note_text || 'no P/N given in this card, refer to the IPC.')}</span></div>` : ''}
         ${uncertainNoteHtml(c)}
         ${needsReviewNoteHtml(c)}
+        ${srcFlagNoteHtml(c, true)}
         <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
       </div>
     </div>`;
@@ -2370,11 +2532,12 @@ function renderMergedAccess(p, cardRefs) {
             ${p.conditional ? `<span class="badge badge-cond">if required</span>` : ''}
           </div>
         </div>
-        ${p.step_reference ? `<div class="step-ref">📍 ${escapeHtml(p.step_reference)}</div>` : ''}
+        ${p.step_reference ? `<div class="step-ref">📍 ${escapeHtml(p.step_reference)}${pageSuffix(cardRefs.size === 1 ? p.page : 0)}</div>` : ''}
         ${p.figure_reference ? `<div class="item-meta" style="margin-top:4px">🖼️ ${escapeHtml(p.figure_reference)}</div>` : ''}
         ${p.conditional && p.conditional_note ? `<div class="note-cond">🔀 <b>Depends on the part:</b> ${escapeHtml(p.conditional_note)}</div>` : ''}
         ${uncertainNoteHtml(p)}
         ${needsReviewNoteHtml(p)}
+        ${srcFlagNoteHtml(p, false)}
         <div class="item-meta" style="margin-top:6px">Needed for: ${cardTagsHtml(cardRefs)}</div>
       </div>
     </div>`;
@@ -2392,7 +2555,8 @@ function renderMergedSafety(s, cardRefs) {
           <span class="safety-kind-badge kind-${k}">${SAFETY_KIND_LABEL[k]}</span>
         </div>
         <div class="safety-text" style="margin-top:6px">${escapeHtml(s.text)}</div>
-        ${refs.length ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px">${refs.map(r => `<span class="step-ref">📍 ${escapeHtml(r)}</span>`).join('')}</div>` : ''}
+        ${srcFlagNoteHtml(s, false)}
+        ${(refs.length || (cardRefs.size === 1 && s.page)) ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px">${refs.concat(cardRefs.size === 1 && s.page ? ['p. ' + s.page] : []).map(r => `<span class="step-ref">📍 ${escapeHtml(r)}</span>`).join('')}</div>` : ''}
         <div class="item-meta" style="margin-top:6px">Applies to: ${cardTagsHtml(cardRefs)}</div>
       </div>
     </div>`;
@@ -3267,18 +3431,20 @@ function exportSelection() {
   const { toolsM, consM, implM, accM, safM, tasksM } = getMergedCategories(entries);
   const ownRefs = new Set(entries.map(e => taskKey(e.cardRef, e.cardTitle)));
   // Start Job n'écrit dans la note d'une ligne que « 📍 <step_reference> » : on y ajoute la ou les cartes d'où vient la ligne.
+  // « page » et « src_flag » ne servent qu'à l'écran : on ne les envoie pas à Start Job.
+  const forStartJob = it => { const c = Object.assign({}, it); delete c.page; delete c.src_flag; return c; };
   const withCardRefs = m => {
     const refs = [...m.cardRefs].filter(r => r && r !== 'MANUEL');
     const where = m.item.step_reference || '';
-    return Object.assign({}, m.item, { step_reference: refs.length ? refs.join(' + ') + (where ? ' — ' + where : '') : where });
+    return Object.assign({}, forStartJob(m.item), { step_reference: refs.length ? refs.join(' + ') + (where ? ' — ' + where : '') : where });
   };
   const payload = {
     cards: entries.map(e => ({ card_ref: e.cardRef, card_title: e.cardTitle })),
     tools: toolsM.filter(m => isItemIncluded(m.key)).map(withCardRefs),
     consumables: consM.filter(m => isItemIncluded(m.key)).map(withCardRefs),
     implicit_materials: implM.filter(m => isItemIncluded(m.key)).map(withCardRefs),
-    access_panels: accM.map(m => m.item),
-    safety_notices: safM.map(m => m.item),
+    access_panels: accM.map(m => forStartJob(m.item)),
+    safety_notices: safM.map(m => forStartJob(m.item)),
     related_tasks: tasksM
       .filter(m => !ownRefs.has(taskKey(m.item.ref, m.item.title)) && !isTaskIgnored(taskKey(m.item.ref, m.item.title)))
       .map(m => m.item)
