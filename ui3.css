@@ -655,6 +655,20 @@ body.u3-on[data-u3k="drafts"] .u3-kside{display:block;position:static;max-height
 .u3-pt-tabs{display:none!important}
 body.u3-on [data-u3k="questions"] .ko-card-body>p{column-span:all}
 body.u3-on [data-u3k="questions"] .ko-card-body>[data-u3pp="n"]{column-span:all;max-width:760px}
+
+/* « QE » and « I am preparing this job for a colleague »: moved to the top of Customer update by ui3.js */
+body.u3-on .u3-gone{display:none!important}
+body.u3-on [data-u3k="questions"] .ko-card-body>.u3-who{column-span:all;margin:0 0 16px}
+body.u3-on [data-u3k="questions"] .u3-who>label{border-radius:12px;padding:10px 14px!important;margin:0 0 8px!important}
+body.u3-on [data-u3k="questions"] .u3-who #ko-colleague-name-wrap{margin:0 0 8px!important}
+
+/* FBO page: FBO list tools (directory, saved addresses, FBO emails) */
+body.u3-on [data-u3k="fbo"] .u3-fbotools{column-span:all;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin:0 0 16px;padding:12px 14px;background:var(--g50);border:1px solid var(--g200);border-radius:12px}
+body.u3-on [data-u3k="fbo"] .u3-fbotools-t{flex:1 1 260px;display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--g600)}
+body.u3-on [data-u3k="fbo"] .u3-fbotools-t b{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--gd)}
+body.u3-on [data-u3k="fbo"] .u3-fbotools-t svg{width:16px;height:16px}
+body.u3-on [data-u3k="fbo"] .u3-fbotools-b{display:flex;flex-wrap:wrap;gap:8px}
+body.u3-on [data-u3k="fbo"] .u3-fbotools-b .btn svg{width:15px;height:15px;margin-right:5px;vertical-align:-3px}
 body.u3-on .u3-ksubs .ko-header{display:none!important}
 .u3-kdh{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto}
 .u3-kdh .btn{min-height:36px;display:inline-flex;align-items:center;gap:6px;padding:0 12px;font-size:12.5px!important;background:#fff!important;border:1.5px solid #CBD5E1!important;color:var(--g800)!important;white-space:nowrap}
