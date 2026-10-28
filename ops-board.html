@@ -1,0 +1,1014 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>FAST Ops Board · Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F2F5F9;--hd:#F2F5F9;--card:#fff;--ink:#0E2238;--mut:#5A6B80;--line:#DCE4ED;--acc:#1D6FE8;--rts:#1D6FE8;--as:#7A4DE0;--r:#D62D4C;--a:#B86E00;--g:#10815A;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0A1828;--hd:#0A1828;--card:#122740;--ink:#E9F0F8;--mut:#8DA1B8;--line:#213A57;--acc:#5AA2FF;--rts:#5AA2FF;--as:#B79CFF;--r:#FF6F86;--a:#FFB547;--g:#3FDC9A;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0A1828;--hd:#0A1828;--card:#122740;--ink:#E9F0F8;--mut:#8DA1B8;--line:#213A57;--acc:#5AA2FF;--rts:#5AA2FF;--as:#B79CFF;--r:#FF6F86;--a:#FFB547;--g:#3FDC9A;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Manrope,system-ui,-apple-system,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--hd)}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--hd);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.logo{font-weight:800;letter-spacing:.03em;font-size:17px}.logo span{color:var(--acc)}.clk{font-size:12px;color:var(--mut)}.sp{flex:1}
+input,button{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:7px 11px}
+button{cursor:pointer}button:hover{border-color:var(--acc)}#q{flex:1;min-width:150px;max-width:340px}
+main{max-width:1280px;margin:0 auto;padding:14px 16px 50px}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.k{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 14px}.k b{font-size:28px;display:block;line-height:1.1}.k small{display:block;color:var(--mut)}.k.r b{color:var(--r)}.k.a b{color:var(--a)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;align-items:center}.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--mut);margin:24px 0 10px;display:flex;gap:8px;align-items:center}
+h2 em{font-style:normal;background:var(--line);border-radius:99px;padding:1px 9px;color:var(--ink)}h2.r{color:var(--r)}
+.gr{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:12px}
+.c{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--g);border-radius:14px;padding:12px 14px;cursor:pointer;transition:.15s}
+.c:hover{transform:translateY(-2px);box-shadow:0 8px 24px #0003}.c.r{border-left-color:var(--r)}.c.a{border-left-color:var(--a)}.c.m{border-left-color:var(--mut)}
+.t1{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}.fa{font-weight:800}.ty{color:var(--mut);font-size:12px}
+.kb{margin-left:auto;font-size:11px;font-weight:800;border-radius:7px;padding:2px 8px;color:var(--c);background:color-mix(in srgb,var(--c) 15%,transparent)}.kb.R{--c:var(--rts)}.kb.A{--c:var(--as)}
+.ap{font-size:12px;color:var(--mut);margin:2px 0 8px}.ch{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.e{font-size:11px;font-weight:600;border-radius:7px;padding:2px 7px;background:var(--ink);color:var(--bg)}
+.e.s{background:none;color:var(--ink);border:1px solid var(--ink)}.e.r{background:none;color:var(--mut);border:1px dashed var(--mut)}.e i{font-style:normal;opacity:.7;margin-left:3px}
+.p{font-size:11px;font-weight:700;border-radius:99px;padding:2px 8px;color:var(--c);background:color-mix(in srgb,var(--c) 15%,transparent)}.p.r{--c:var(--r)}.p.a{--c:var(--a)}.p.v{--c:var(--as)}
+.n{font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.o .n{-webkit-line-clamp:unset;display:block}
+.x{display:none;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-size:12px;color:var(--mut)}.o .x{display:block}
+.tb{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:820px}th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top;font-size:12px}
+th{color:var(--mut)}td.h{background:color-mix(in srgb,var(--a) 16%,transparent)}.wx{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;border:1px solid var(--c);border-radius:99px;padding:2px 8px;color:var(--c)}.wx u{width:9px;height:5px;border-radius:2px;background:var(--line);text-decoration:none}.wx u.f{background:var(--c)}.wx.a{--c:var(--a)}.wx.g{--c:var(--g)}.wr{display:flex;gap:6px;align-items:center;margin:4px 0}.wr>input:first-child{flex:1}.wr label{display:flex;flex-direction:row;align-items:center;gap:4px;font-weight:400;white-space:nowrap}.wr input[type=checkbox]{padding:0;width:auto}
+.tg{display:inline-block;margin:0 4px 4px 0;border:1px solid var(--line);border-left:4px solid var(--rts);border-radius:6px;padding:1px 6px;background:var(--card)}.tg.A{border-left-color:var(--as)}.tg.pp{font-weight:800}
+.ft{color:var(--mut);font-size:12px;margin-top:18px}.gl{font-size:11px;font-weight:700;color:var(--mut)}.wo{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;border:1px solid var(--c);border-radius:99px;padding:2px 8px;color:var(--c)}.wo u{width:9px;height:5px;border-radius:2px;background:var(--line);text-decoration:none}.wo.r{--c:var(--r)}.wo.a{--c:var(--a)}.wo.g{--c:var(--g)}.wo.m{--c:var(--mut)}.wo.r u:nth-of-type(1),.wo.a u:nth-of-type(-n+2),.wo.g u{background:var(--c)}.tg.wf::after,.tg.wa::after{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:5px;background:var(--r)}.tg.wa::after{background:var(--a)}.e{position:relative;cursor:default}.e[data-n]:hover::after,.e[data-n]:focus::after{content:attr(data-n);position:absolute;left:0;bottom:calc(100% + 6px);z-index:5;background:var(--ink);color:var(--bg);padding:4px 9px;border-radius:7px;font-size:12px;font-weight:600;white-space:nowrap}.p.u{--c:var(--mut);background:none;border:1px dashed var(--c)}.lg{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12px;color:var(--mut);margin:8px 0 0}.lg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;background:var(--c)}.bt{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:9px;font-size:11px;color:var(--mut)}.lk{padding:2px 10px;font-size:11px;border-radius:99px}#hd{width:min(720px,94vw)}.hh{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}#hl{max-height:52vh;overflow:auto;padding-right:4px}.he{border-left:3px solid var(--line);padding:2px 0 2px 10px;margin:0 0 10px}.he b{font-size:12px}.he span{font-size:11px;color:var(--mut);margin-left:8px}.he p{margin:2px 0 0;font-size:13px}.ad{display:flex;gap:8px;margin-top:10px}.ad textarea{height:60px}#nd{width:min(760px,94vw);max-height:92vh;overflow:auto}#n_rf{height:80px}.fm{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0}.fm label{display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;color:var(--mut)}.fm .w{grid-column:1/-1}.fm input,.fm select{font-weight:400;color:var(--ink)}.fx{font-size:12px;margin:6px 0}.fx div{margin:3px 0}.fl{cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:7px 11px;font-size:13px}.fl:hover{border-color:var(--acc)}.bt{flex-wrap:wrap;justify-content:flex-start}.bt span{flex:1 1 100%}.fm label[hidden]{display:none}.fm select[multiple]{height:auto}.tg.c{opacity:.65;border-style:dashed}.rd{background:var(--r);color:#fff;border-color:var(--r)}#xd{width:min(480px,94vw)}#xd select,#xd input{width:100%;margin:4px 0}#cd{width:min(560px,94vw)}.ts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:20;background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:12px;display:flex;gap:12px;align-items:center;box-shadow:0 8px 24px #0005}.ts[hidden]{display:none}.ts button{background:none;color:var(--bg);border-color:var(--bg);padding:3px 10px}
+dialog{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:16px;width:min(680px,94vw);padding:16px}dialog::backdrop{background:#0008}
+textarea{width:100%;height:50vh;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;font:12px/1.5 ui-monospace,monospace}
+.dl{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+.rg{font-weight:800;font-size:12px;letter-spacing:.02em;border-radius:7px;padding:1px 8px;color:color-mix(in srgb,hsl(var(--h) 75% 50%) 60%,var(--ink));background:color-mix(in srgb,hsl(var(--h) 75% 50%) 16%,transparent)}.p.g{--c:var(--g)}.sq{margin:2px 0 8px}.sqh{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--mut);margin-bottom:3px}.pb{flex:1;height:4px;border-radius:2px;background:var(--line);overflow:hidden}.pb i{display:block;height:100%;background:var(--g)}.sqi{display:flex;gap:7px;align-items:flex-start;font-size:12px;margin:2px 0;cursor:pointer}.sqi input{margin-top:2px;padding:0;width:auto}.sqi b{color:var(--mut);min-width:26px;font-weight:700}.sqi input:checked~span{text-decoration:line-through;opacity:.55}.c:not(.o) .sqi.m{display:none}.c:not(.o) .sqi span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.c.o .sqm{display:none}.sqm{font-size:11px;color:var(--mut);margin-left:33px}.cw{display:grid;grid-template-columns:104px 1fr 128px 128px 34px;gap:6px;align-items:center;margin:4px 0}.cw.h{font-size:11px;font-weight:700;color:var(--mut)}.cw small{display:block;color:var(--mut)}.cw .bz{color:var(--a)}.cw input,.cw select{width:100%;font-size:12px;padding:5px 6px}@media(max-width:560px){.cw{grid-template-columns:1fr 1fr 34px}.cw.h{display:none}.cw>span{grid-column:1/-1}}.cr{display:flex;gap:8px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--line);cursor:pointer}.cr:hover{background:color-mix(in srgb,var(--acc) 10%,transparent)}.cr b{min-width:34px}.cr span{flex:1}.cr small{font-size:11px;color:var(--mut)}.cr .bz{color:var(--a)}.cr .fr{color:var(--g)}#n_cl2{max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:6px}.sqr{display:flex;gap:6px;align-items:center;margin:4px 0}.sqr input:nth-child(1){width:54px}.sqr input:nth-child(2){flex:1}.sqr label{display:flex;flex-direction:row;align-items:center;gap:4px;font-weight:400;white-space:nowrap}.sqr input[type=checkbox]{padding:0;width:auto}details.fx summary{cursor:pointer;color:var(--mut)}.ch:empty{display:none}#sd{width:min(560px,94vw)}
+.demo{background:color-mix(in srgb,var(--acc) 12%,transparent);border:1px solid var(--line);border-radius:12px;padding:8px 12px;margin-bottom:12px;font-size:12px}.demo[hidden]{display:none}#imp{width:min(560px,94vw)}#imp textarea{height:120px}</style></head><body>
+<header><div class="logo">FAST <span>OPS</span></div><div class="clk" id="clk"></div><span class="sp"></span><input id="q" type="search" placeholder="Search FA, tail, engineer, RTS, Assist, FBO, AMBER…"><input id="dt" type="date"><button id="br">Briefing</button><button id="nj">+ New job</button><button id="imb">⬆ Import PDF</button><button id="rsb" title="Back to the fictitious demo jobs">Reset demo</button><button id="th" title="Theme">◐</button></header>
+<main><div class="demo" id="demo"><b>Demo with fictitious jobs.</b> Click <b>⬆ Import PDF</b> and drop your current handover PDF: every fictitious job is replaced by yours. Ops only use the <b>Start Job</b> module of the Engineer app (no Daily Update, AMM reader, GA3671…).</div><div class="kpi" id="kpi"></div><div class="bar" id="bar"></div><div id="app"></div><p class="ft">Prototype · fictitious data until you import your handover PDF · Type rule (same as the Engineer app): RFS Type contains “Assist” → 🤝 Assist, otherwise ✅ RTS · Tap a card for details</p><p class="ft">WOA stage (handover header): FBO = FAB Business Office hasn’t sent the WOA yet · AMBER = WOA sent to the customer, not returned signed · RTS = signed WOA received</p></main>
+<dialog id="dlg"><textarea id="ta" readonly></textarea><div class="dl"><button id="cp">Copy</button><button onclick="$('dlg').close()">Close</button></div></dialog><dialog id="hd"><div class="hh"><b id="ht"></b><button onclick="$('hd').close()">Close</button></div><div id="hl"></div><div class="ad"><textarea id="nt" placeholder="Add an update (prototype: kept in memory only)…"></textarea><button id="nb">Add update</button></div></dialog><dialog id="nd"><div class="hh"><b id="n_h">New job</b><button onclick="$('nd').close()">Close</button></div><div class="dl" style="justify-content:flex-start"><label class="fl">📄 Scan an RFS or WCR (PDF)<input id="n_f" type="file" accept="application/pdf" hidden></label></div><div class="fx" id="n_i0">Your Engineer scan fills the form from the PDF (not connected in this prototype). Or type everything by hand below. To add a WCR to an existing job, open it with Edit.</div><details class="fx"><summary>Prototype demo (will disappear)</summary><div>These two buttons only simulate a scan with sample data, so you can see what happens:</div><div class="dl" style="justify-content:flex-start"><button type="button" id="n_b">Simulate an RFS scan</button><button type="button" id="n_c">Simulate a WCR scan</button></div></details><div class="fm"><label class="w">Same aircraft as…<select id="n_ac"></select></label><label>Type<select id="n_k"><option value="R">✅ RTS</option><option value="A">🤝 Assist</option></select></label><label>FA number<input id="n_i" placeholder="empty = potential job"></label><label>WOA stage<select id="n_w"><option value="?">Unknown</option><option value="F">FBO</option><option value="A">AMBER</option><option value="R">RTS</option></select></label><label>Tail<input id="n_r"></label><label>Model<input id="n_m"></label><label>S/N<input id="n_sn"></label><label>Customer / operator<input id="n_op" placeholder="company name (matters for some states)"></label><label>Customer code<input id="n_cc" placeholder="e.g. AA375"></label><label>Airport<input id="n_a"></label><label>FBO / site<input id="n_fb" placeholder="e.g. FBO Universal Aviation"></label><label>Intervention start<input id="n_d" type="date"></label><label>Intervention end<input id="n_d2" type="date"></label><label>Aircraft ETA<input id="n_ea" type="date"></label><label>Aircraft ETD<input id="n_ed" type="date"></label><label>Time<input id="n_t" type="time"></label><label>Payment terms<input id="n_p" placeholder="ZN30, ZCOD, ZCIA…"></label><label>CMP enrolled<select id="n_cm"><option value="">Unknown</option><option>Yes</option><option>No</option></select></label><label class="w">Parts: status / ETA (shows as a 📦 badge on the card; empty = none)<input id="n_pt" placeholder="e.g. due AM 27 Oct, backorder, ETA 30 Oct"></label><div hidden><select id="n_e1"></select><select id="n_e3" multiple></select><select id="n_e2" multiple></select></div><div class="w" id="n_cw"><b class="gl">Crew · one leader, any number of assistants and preps</b><div id="n_cr1"></div><div class="dl" style="justify-content:flex-start"><button type="button" class="lk" id="n_ca">+ Add an engineer</button></div><div id="n_cp" hidden><input id="n_cq" placeholder="Search a name, initials or base…"><div id="n_cl2"></div></div></div><div class="w" id="n_sl"><b class="gl">Squawks (SQ) to perform</b><div id="n_sr"></div><button type="button" class="lk" id="n_sa">+ Add a squawk</button></div><input id="n_tk" hidden><label class="w">Note shown on the card<input id="n_n"></label><div class="w" id="n_wl"><b class="gl">WCRs (tasks added by the customer)</b><div id="n_wr"></div><button type="button" class="lk" id="n_wa">+ Add a WCR</button></div><label class="w" id="n_cl" hidden>Reason for the change (optional, logged in the history)<input id="n_cr" placeholder="e.g. engineer off duty, blocked on another job"></label></div><div id="n_x" class="fx"></div><div class="dl"><button id="n_s" class="on">Add job</button></div></dialog><dialog id="xd"><div class="hh"><b id="x_t"></b><button onclick="$('xd').close()">Keep</button></div><select id="x_w"><option>Customer cancelled</option><option>Entered twice (duplicate)</option><option>Entered by mistake</option><option>Replaced by another RFS</option><option>Other</option></select><input id="x_n" placeholder="Note (optional)"><div id="x_m" class="fx"></div><div class="dl"><button id="x_s" class="rd">Remove job</button></div></dialog><dialog id="cd"><div class="hh"><b>Archive · closed and removed jobs</b><button onclick="$('cd').close()">Close</button></div><div id="cl"></div></dialog><dialog id="sd"><div class="hh"><b id="sd_t"></b><button onclick="$('sd').close()">Close</button></div><div class="fx">Start Job: the same screen as in the Engineer app. When the board is merged into the app, this button opens that screen directly, prefilled from the job. Below is what Ops adds to it.</div><div class="fm"><label>Registration<input id="sd_r" readonly></label><label>Model<input id="sd_m" readonly></label><label>S/N<input id="sd_s" readonly></label><label>Customer / operator<input id="sd_o" readonly></label><label class="w"><span><input type="checkbox" id="sd_c" checked disabled> 👷 I am preparing this job for a colleague</span><small>Always ticked and locked when Ops starts a job.</small></label><label class="w">Colleague’s name, select from team<select id="sd_n"></select></label></div><div id="sd_x" class="fx"></div><div class="dl"><button id="sd_g" class="on">Start job</button></div></dialog><dialog id="imp"><div class="hh"><b>Import your handover PDF</b><button onclick="$('imp').close()">Close</button></div><div class="fx">Drop the PDF you use today (“Assignments for handover”). Jobs, ETA/ETD, squawks, crew, WOA stage and the whole handover history are read, and every fictitious job is replaced. The type (RTS or Assist) is guessed from the squawks, and jobs whose aircraft left more than 2 days ago go to “Waiting for parts”: both can be corrected with Edit.</div><label class="fl" id="imp_l">📄 Choose or drop the PDF<input id="imp_f" type="file" accept="application/pdf" hidden></label><div id="imp_s" class="fx"></div><details class="fx"><summary>The PDF cannot be read? Paste its text instead</summary><textarea id="imp_t" placeholder="Open the PDF, select all, copy, paste here"></textarea><div class="dl"><button type="button" id="imp_b">Import the pasted text</button></div></details></dialog><div id="ts" class="ts" hidden><span id="ts_t"></span><button id="ts_u">Undo</button></div>
+<script>
+const rel=n=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+n);return String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")},rd=(n,t)=>{const d=new Date();d.setDate(d.getDate()+n);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+" "+t},mq=(n,...t)=>t.map((x,i)=>({r:"2."+(i+1),t:x,x:i<n?1:0}));
+const D=[
+{id:"FA90001",k:"R",ty:"G650",reg:"LX-DMO",ap:"Paris LBG",p:"RP",s:"AA",cd:{AA:[rel(1),null]},d:rel(0),e:rel(2),eta:rel(-1),etd:rel(4),w:"R",pt:"due tomorrow AM",pay:"ZN30",op:"Demo Aviation Ltd",sn:"6999",n:"Tyre pressure fault and fuel sumping. The customer wants the aircraft back on Friday. Part due tomorrow morning; Alberto joins the day after.",sq:mq(1,"TPMS nose tyres show dashes from time to time","280008 - FUEL TANK - SUMPING","315101 - PLANEVIEW CHARTS - UPDATE")},
+{id:"FA90002",k:"R",ty:"G700",reg:"N700DM",ap:"Geneva GVA",p:"JG",d:rel(1),e:rel(1),eta:rel(-1),etd:rel(4),w:"R",pay:"ZN30",op:"Demo Holdings Inc",sn:"87999",n:"Small job: the aircraft stays five days but the work is done on one day only.",sq:mq(0,"CABIN LIGHTING - REPLACE LEFT READING LIGHT")},
+{id:"FA90003",k:"R",ty:"GVII-600",reg:"T7-DMO",ap:"Paris LBG",p:"BOM",d:rel(2),e:rel(3),eta:rel(1),etd:rel(5),w:"A",pay:"ZCOD",wcr:[{t:"Add cabin LED replacement",s:1},{t:"Add database updates for the next flight",s:0}],op:"Demo Aero SA",sn:"73999",n:"WOA sent to the customer, not returned yet. Two WCRs: one signed, one waiting.",sq:mq(0,"FLIGHT READY INSPECTION 7 DAYS","346001.015 FMS NAV DATABASE - UPDATE","344603.015 EGPWS - DATABASE UPDATE")},
+{id:"FA90004",k:"R",ty:"G650",reg:"4K-DM01",ap:"Baku GYD",d:rel(3),e:rel(4),eta:rel(2),etd:rel(6),w:"F",pay:"ZCIA",op:"Demo Azerbaijan Airlines",sn:"6998",n:"Not allocated yet. The Business Office has not sent the WOA. Cash in advance: do not start before payment.",sq:mq(0,"346001.015 FMS NAV DATABASE - UPDATE","344603.015 EGPWS - DATABASE UPDATE","344604.015 CHARTS DATABASE - UPDATE","344605.015 MOVING MAP DATABASE - UPDATE")},
+{id:"FA90005",k:"A",ty:"G550",reg:"OK-DMO",ap:"Prague PRG",d:rel(4),e:rel(4),eta:rel(4),etd:rel(4),w:"R",op:"Demo Jet s.r.o.",sn:"5999",n:"Arrival support, no engineer yet.",sq:mq(0,"Meet the aircraft on arrival and support any last-minute issue")},
+{id:"FA90006",k:"R",ty:"G280",reg:"EI-DMO",ap:"Shannon SNN",p:"MP",s:"DM",cd:{DM:[rel(1),null]},d:rel(-1),e:rel(3),eta:rel(-2),etd:rel(5),w:"R",pay:"ZN30",op:"Demo Air Ltd",sn:"2999",n:"Five-day job. Mauritz started alone; Daniel joins in two days.",sq:mq(2,"AIRCRAFT RAMP INCIDENT - DAMAGE ASSESSMENT","BROKEN TOW BAR - STRUCTURAL INSPECTION","NDT OF THE LEFT MAIN GEAR DOOR","LEFT MAIN GEAR DOOR - REPAIR","FUNCTIONAL TEST AFTER REPAIR","REPORT TO ENGINEERING")},
+{id:"FA90007",k:"R",ty:"GIV",reg:"N50DM",ap:"Munich MUC",p:"ES",wait:rel(-20),goal:"part ETA in about 10 days",w:"R",pt:"backorder, ETA about 10 days",op:"Demo Charter GmbH",sn:"1999",n:"Waiting for the part. No firm date.",sq:mq(0,"POTABLE WATER SYSTEM - NO SUPPLY AT THE GALLEY SINK")},
+{id:"FA90008",k:"R",ty:"G700",reg:"9H-DMO",ap:"Madrid MAD",p:"RP",d:rel(0),e:rel(0),eta:rel(-1),etd:rel(1),w:"R",pay:"ZN30",op:"Demo Malta Ltd",sn:"87998",n:"Quick check before departure. Romain also leads FA90001 today: a heads-up, not a blocker.",sq:mq(0,"PRE-DEPARTURE WALKAROUND AND CAS REVIEW")},
+{id:"FA90009",k:"R",ty:"G650",reg:"SP-DMO",ap:"Warsaw WAW",p:"KW",d:rel(-3),e:rel(-1),eta:rel(-4),etd:rel(0),w:"R",pay:"ZN30",op:"Demo Polska Sp. z o.o.",sn:"6997",n:"All squawks are done. The end date has passed: close the job or extend the dates.",sq:mq(2,"CIO CARD - REPLACE","FUNCTIONAL TEST AFTER REPLACEMENT")},
+{id:"FA90010",k:"A",ty:"G700",reg:"A7-DMO",ap:"Doha DOH",p:"RH",d:rel(5),e:rel(5),eta:rel(4),etd:rel(7),w:"F",pay:"ZN30",op:"Demo Qatar Aviation",sn:"87997",sj:{to:"RH",at:rd(0,"08:40")},n:"Started by Ops for Roger while he was busy. The WOA is still with the Business Office.",sq:mq(0,"Departure support")},
+{id:"No FA yet",k:"R",ty:"G650",reg:"LX-DMP",ap:"Luxembourg LUX",d:rel(6),e:rel(6),w:"F",op:"Demo Aviation Ltd",sn:"6996",n:"Potential support: cost estimate sent, no RFS yet.",sq:mq(0,"ANNUAL INSPECTION (TO BE CONFIRMED)")}
+];
+const TEAM={};
+const OPS={AP:'Alexis Papadopoulos',KT:'Kerry Towns',PI:'Panos Iliakis',CS:'Charis Stylianides',AH:'Abigail Harvey-Robins',ME:'You (prototype)',DO:'Demo Ops'};
+const H={
+FA90001:[["DO",rd(0,"08:30"),"Part confirmed for tomorrow morning."],["DO",rd(-1,"15:10"),"Aircraft arrived. TPMS fault confirmed, part ordered."],["DO",rd(-2,"10:00"),"Job created from the RFS."]],
+FA90002:[["DO",rd(0,"09:05"),"The customer confirmed the work for tomorrow only."]],
+FA90003:[["DO",rd(-1,"11:40"),"WOA sent to the customer. First WCR signed."]],
+FA90004:[["DO",rd(0,"07:50"),"Waiting for the Business Office to send the WOA. The customer pays in advance."]],
+FA90005:[["DO",rd(-1,"16:20"),"Arrival support requested. No engineer yet."]],
+FA90006:[["DO",rd(0,"07:45"),"Day 2: SQ 1 and 2 closed. Daniel joins in two days."],["DO",rd(-1,"09:30"),"Job started by Mauritz, alone for now."]],
+FA90007:[["DO",rd(-4,"12:00"),"No update from the supplier. Still waiting."],["DO",rd(-9,"10:15"),"Part backordered, ETA about 10 days."],["DO",rd(-20,"08:40"),"Troubleshooting done, part needed."]],
+FA90008:[["DO",rd(0,"06:55"),"The customer asks for a quick check before departure."]],
+FA90009:[["DO",rd(-1,"17:30"),"All squawks closed. Waiting for the customer sign-off."]],
+FA90010:[["DO",rd(0,"08:40"),"Ops started the job for Roger, who is busy."]],
+"No FA yet":[["DO",rd(-1,"13:00"),"Cost estimate sent. No RFS yet."]]
+};
+const NM=e=>TEAM[e]||"",esc=s=>String(s).replace(/[&<>]/g,c=>"&#"+c.charCodeAt(0)+";");
+const PL=v=>/^ZCIA\b|CASH\s+IN\s+ADVANCE/.test(v)?"r":/^ZCOD\b|CASH\s+ON\s+DELIVERY/.test(v)?"a":"";
+const PMSG={r:"<b>ZCIA · cash in advance.</b> Funds must be received before kickoff. Do not start work, book travel or order parts without confirmation from FASTOPS / the Business Office or prior management approval.",a:"<b>ZCOD · cash on delivery.</b> Payment is due on delivery: confirm the arrangements with FastOPS, the Business Office or Management before the aircraft is released (RTS)."};
+const PM=f=>{const v=(f.pay||"").toUpperCase(),l=PL(v);return(f.fbo?"<br>Site: "+esc(f.fbo):"")+"<br>Payment terms: "+(v||"Unknown")+(f.cmp?" · CMP: "+f.cmp:"")+(l?`<br><b style="color:var(--${l})">→ ${PMSG[l]}</b>`:"")};
+const ed=e=>{const[a,b]=e[1].split(" ")[0].split("/");return new Date(Y,b-1,a)};
+const sd=f=>{const h=H[f.id];return h&&h.length?Math.max(Math.round((today-ed(h[0]))/864e5),0):99};
+const LU=f=>{const h=(H[f.id]||[])[0];return h?"🕒 "+h[1]+" · "+OPS[h[0]].split(" ")[0]:"🕒 no entry yet"};
+const LG='<div class="lg"><span>Card edge = urgency:</span><span><i style="--c:var(--r)"></i>act now (not allocated, FBO, AMBER within 24 h, ZCIA)</span><span><i style="--c:var(--a)"></i>watch (part pending, AMBER, unsigned WCR, double-booked engineer, ZCOD, approval to verify, no update for 2+ days)</span><span><i style="--c:var(--g)"></i>nothing to flag</span><span><i style="--c:var(--mut)"></i>long wait for a part</span><span><i style="--c:transparent;border:1px dashed var(--mut)"></i>no update logged today</span></div>';
+let Y=new Date().getFullYear();const $=s=>document.getElementById(s),sp=s=>s?s.split(" "):[],P=f=>sp(f.p),L="en-GB";
+const dt=s=>{const[m,d]=s.split("-");return new Date(Y,m-1,d)};
+let today=new Date();today.setHours(0,0,0,0);let V="b",F="all",T="all",W="all",Q="";
+const dd=s=>Math.round((dt(s)-today)/864e5);
+const fd=s=>dt(s).toLocaleDateString(L,{weekday:"short",day:"numeric",month:"short"});
+const tk=t=>/^\d/.test(t||"")?+t.slice(0,2)*60+ +t.slice(3,5):t=="AM"?480:t=="PM"?840:9999;
+const KN=f=>f.k=="A"?"Assist":"RTS",KI=f=>f.k=="A"?"🤝 Assist":"✅ RTS";const WS={F:["r","FBO","WOA not sent · chase FAB Business Office"],A:["a","AMBER","WOA with customer · chase the signature"],R:["g","RTS","WOA received"],"?":["m","?","WOA status not in the handover yet"]};const wk=f=>f.w||"R",wl=f=>wk(f)=="F"?"r":wk(f)=="A"?(f.d&&dd(f.d)<=1?"r":"a"):WU(f)?"a":"";const WU=f=>(f.wcr||[]).filter(c=>!c.s).length;
+const AC={},SN={},En=f=>f.e||f.d,Ac=f=>[f.eta||(AC[f.id]||[])[0],f.etd||(AC[f.id]||[])[1]];
+const conf=new Map,rl=(f,e)=>sp(f.p).includes(e)?"p":sp(f.s).includes(e)?"s":sp(f.r).includes(e)?"r":"",span=(f,e)=>{const c=(f.cd||{})[e]||[],a=c[0]||f.d,b=c[1]||(rl(f,e)=="r"?a:En(f));return[a,b<a?a:b]},calc=()=>{conf.clear();const X=[];D.forEach(f=>f.d&&[f.p,f.s,f.r].flatMap(sp).forEach(e=>{const[a,b]=span(f,e);X.push([e,a,b,f.id])}));X.forEach((x,i)=>X.forEach((y,j)=>{if(i<j&&x[0]==y[0]&&x[3]!=y[3]&&x[1]<=y[2]&&y[1]<=x[2])[x[3],y[3]].forEach(id=>(conf.get(id)||conf.set(id,new Set).get(id)).add(x[0]))}))};calc();
+const al=f=>{const a=[];if(!P(f).length&&!f.wait)a.push(["r","Not allocated"]);if(conf.has(f.id))a.push(["a","Double-booked · "+[...conf.get(f.id)].join(", ")]);if(f.pt)a.push(["a","📦 Part · "+f.pt]);if(f.sw)a.push(["v","Switch to Assist requested"]);if(f.was)a.push(["u","Rescheduled · was "+f.was]);if(!f.wait&&f.d&&dd(En(f))<0)a.push(["a","Past end · close or extend"]);if(f.aog)a.push(["r","AOG"]);const av=AV(f);if(av&&(av.level=="danger"||av.level=="warn"))a.push([av.level=="danger"?"r":"a","Auth · "+av.head.split(" — ").pop()]);const pv=(f.pay||"").toUpperCase(),pl=PL(pv);if(pl)a.push([pl,pv+" · "+(pl=="r"?"cash in advance":"cash on delivery")]);const s=sd(f);if(s==99)a.push(["a","No update yet"]);else if(s>1)a.push(["a","No update · "+s+" d"]);else if(s==1)a.push(["u","No update today"]);return a};
+const sc=f=>(P(f).length||f.wait?0:30)+(conf.has(f.id)?8:0)+({r:25,a:15}[wl(f)]||0)+(f.pt?10:0);
+const srt=(a,b)=>(a.d||"z").localeCompare(b.d||"z")||tk(a.t)-tk(b.t)||sc(b)-sc(a);
+const B=f=>{if(f.wait)return 4;const n=dd(f.d);return n<=0?0:n==1?1:n<=7?2:3};
+const BN=["Today","Tomorrow","This week","Later","Waiting for parts"];
+const vis=f=>(T=="all"||f.k==T)&&(W=="all"||wk(f)==W)&&(F=="all"||(F=="al"?al(f).some(x=>x[0]!="u")||wl(f):F=="nu"?sd(f)>0:!P(f).length&&!f.wait))&&(!Q||(JSON.stringify(f)+KN(f)+WS[wk(f)][1]+JSON.stringify(H[f.id]||"")+[f.p,f.s,f.r].flatMap(sp).map(NM).join(" ")).toLowerCase().includes(Q));
+const card=f=>{const a=al(f),w=wl(f),ws=WS[wk(f)],lv=a.some(x=>x[0]=="r")||w=="r"?"r":a.some(x=>x[0]=="a")||w=="a"?"a":f.wait?"m":"g",
+en=[...P(f).map(e=>[e,"L","p"]),...sp(f.s).map(e=>[e,"A","s"]),...sp(f.r).map(e=>[e,"Prep","r"])];
+return `<article class="c ${lv}${OPN.has(f.id)?" o":""}" onclick="tg(this,'${f.id}')"><div class="t1"><span class="fa">${f.id}</span><span class="rg" style="--h:${hu(f.reg)}">${f.reg}</span><span class="ty">${f.ty}</span><span class="kb ${f.k}">${KI(f)}</span></div>
+<div class="ap">📍 ${f.ap}${f.wait?` · waiting ${-dd(f.wait)} d`:` · ${f.t?f.t+" · ":""}${RG(f)}${ACW(f)}`}</div>
+<div class="ch">${en.map(([e,l,k])=>`<b class="e ${k=="p"?"":k}" tabindex="0" data-n="${NM(e)||e} · ${{p:"Leader",s:"Assistant",r:"Prep"}[k]}" onclick="event.stopPropagation()">${e}${l?`<i>${l}</i>`:""}</b>`).join("")}<span class="wo ${ws[0]}" title="${ws[2]}"><u></u><u></u><u></u>WOA · ${ws[1]}</span>${WX(f)}${AU(f)}${SJ(f)}</div><div class="ch">${a.map(([k,t])=>`<span class="p ${k}">${t}</span>`).join("")}${SB(f)}</div>
+${SQL(f)}<div class="n">${f.n}</div><div class="x">${"FA".includes(wk(f))?`<br><b style="color:var(--${ws[0]})">→ ${ws[2]}</b>`:""}${f.todo?`<br><b style="color:var(--a)">→ ${f.todo}</b>`:""}${f.goal?`<br>Target: ${f.goal}`:""}${f.rfs?`<br>${f.rfs}`:""}${PM(f)}${WL(f)}${PA(f)}${AUD(f)}</div><div class="bt"><span>${LU(f)}</span><button class="lk" onclick="event.stopPropagation();hist(${D.indexOf(f)})">History (${(H[f.id]||[]).length})</button><button class="lk" onclick="event.stopPropagation();ej2(${D.indexOf(f)})">Edit</button><button class="lk" onclick="event.stopPropagation();sj(${D.indexOf(f)})">▶ Start</button><button class="lk" onclick="event.stopPropagation();dn(${D.indexOf(f)})">✓ Done</button><button class="lk" title="Remove" onclick="event.stopPropagation();rm(${D.indexOf(f)})">✕</button></div></article>`};
+const sec=(t,l,c)=>l.length?`<h2 class="${c||""}">${t}<em>${l.length}</em></h2><div class="gr">${l.map(card).join("")}</div>`:"";
+const board=()=>{const X=D.filter(vis).sort(srt),na=X.filter(f=>!P(f).length&&!f.wait),r=X.filter(f=>!na.includes(f));
+return (sec("To allocate",na,"r")+BN.map((n,i)=>sec(n,r.filter(f=>B(f)==i))).join(""))||"<p>No results.</p>"};
+const eng=()=>{const E=[...new Set([...Object.keys(TEAM),...D.flatMap(f=>[f.p,f.s,f.r].flatMap(sp))])].sort();
+const H=[...Array(8)].map((_,i)=>{const d=new Date(today);d.setDate(d.getDate()+i);return"<th>"+d.toLocaleDateString(L,{weekday:"short",day:"numeric"})+"</th>"}).join("")+"<th>Later</th><th>Waiting</th>";
+const ro=(f,e)=>P(f).includes(e)?"P":sp(f.s).includes(e)?"S":sp(f.r).includes(e)?"Prep":"";
+const at=(e,i)=>D.filter(f=>{const r=ro(f,e);if(!(vis(f)&&r))return 0;if(i==9)return f.wait;if(!f.d)return 0;if(i==8)return dd(span(f,e)[0])>=8;const[s0,s1]=span(f,e),a=Math.max(dd(s0),0),b=Math.max(dd(s1),a);return a<=i&&i<=b});
+const row=e=>{let tot=0;const c=[...Array(10)].map((_,i)=>{const l=at(e,i);tot+=l.length;return`<td class="${l.length>1?"h":""}">${l.map(f=>`<span class="tg ${f.k} ${ro(f,e)=="P"?"pp":""} ${wk(f)=="F"?"wf":wk(f)=="A"?"wa":""} ${i>0&&i<8&&i>Math.max(dd(span(f,e)[0]),0)?"c":""}" title="${KN(f)} · WOA ${WS[wk(f)][1]} · ${f.reg} · ${f.ap}">${i>0&&i<8&&i>Math.max(dd(span(f,e)[0]),0)?"↳ ":""}${f.id.replace("FA","")} ${{P:"L",S:"A",Prep:"Prep"}[ro(f,e)]}</span>`).join("")}</td>`}).join("");return`<tr><th>${e} <small>${tot}</small>${NM(e)?`<br><small>${NM(e)}</small>`:""}</th>${c}</tr>`};
+return`<div class="tb"><table><tr><th></th>${H}</tr>${E.map(row).join("")}</table></div><p class="ft">Blue edge = ✅ RTS · violet edge = 🤝 Assist · L = leader (bold) · A = assistant · ↳ = job continues · amber cell = an engineer on 2+ jobs the same day (allowed, just a heads-up) · dot = WOA not received (red FBO, amber AMBER)</p>`};
+const kp=()=>{const live=D.filter(f=>!f.wait),t=live.filter(f=>dd(f.d)<=0),na=live.filter(f=>!P(f).length),fb=D.filter(f=>wk(f)=="F"),am=D.filter(f=>wk(f)=="A"),wt=D.filter(f=>f.wait),c=conf.size,
+cn=l=>`${l.filter(f=>f.k=="R").length} RTS · ${l.filter(f=>f.k=="A").length} Assist`;
+$("kpi").innerHTML=[["Today",t.length,"",cn(t)],["To allocate",na.length,na.length?"r":"",cn(na)],["FBO · WOA not sent",fb.length,fb.length?"r":"","chase FAB Business Office"],["AMBER · with customer",am.length,am.length?"a":"","chase the signature"],["Double-booked engineers",c,c?"a":"","jobs affected · warning only"],["Approval check",D.filter(f=>{const v=AV(f);return v&&(v.level=="warn"||v.level=="danger")}).length,D.some(f=>{const v=AV(f);return v&&(v.level=="warn"||v.level=="danger")})?"a":"","to verify"],["WCR unsigned",D.filter(f=>WU(f)).length,D.some(f=>WU(f))?"a":"","chase the customer"],["Waiting for parts",wt.length,"",cn(wt)],["No update today",D.filter(f=>sd(f)>0).length,"","of "+D.length+" jobs"]].map(([l,n,c,s])=>`<div class="k ${c}"><b>${n}</b><small>${l}</small><small>${s}</small></div>`).join("")};
+const btn=(a,k,v,l)=>`<button class="${v==k?"on":""}" data-${a}="${k}">${l}</button>`;
+const bar=()=>$("bar").innerHTML=[["b","Board"],["e","Engineers"]].map(([k,l])=>btn("v",k,V,l)).join("")+`<span class="sp"></span>`+[["all","All types"],["R","✅ RTS"],["A","🤝 Assist"]].map(([k,l])=>btn("t",k,T,l)).join("")+`<span class="gl">WOA</span>`+[["all","All WOA"],["F","FBO"],["A","AMBER"],["R","RTS"]].map(([k,l])=>btn("w",k,W,l)).join("")+`<span class="sp"></span>`+[["all","All"],["al","Alerts"],["na","To allocate"],["nu","No update today"]].map(([k,l])=>btn("f",k,F,l)).join("")+`<span class="sp"></span><button data-x="1">Archive (${CX.length})</button>`;
+const render=()=>{calc();kp();bar();$("app").innerHTML=V=="b"?LG+board():eng();try{SAVE()}catch(e){}};
+$("bar").onclick=e=>{const b=e.target.closest("button");if(!b)return;const d=b.dataset;if(d.v)V=d.v;if(d.t)T=d.t;if(d.f)F=d.f;if(d.x)return showCX();if(d.w)W=d.w;render()};
+$("q").oninput=e=>{Q=e.target.value.toLowerCase();render()};
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+$("dt").value=iso(today);$("dt").onchange=e=>{if(e.target.value){today=new Date(e.target.value+"T00:00");render()}};
+$("th").onclick=()=>{const r=document.documentElement,d=r.dataset.theme?r.dataset.theme=="dark":matchMedia("(prefers-color-scheme:dark)").matches;r.dataset.theme=d?"light":"dark"};
+$("br").onclick=()=>{const X=D.filter(f=>!f.wait).sort(srt),l=(t,a)=>a.length?`\n${t} (${a.length})\n`+a.map(f=>`• ${f.t?f.t+" ":""}[${KN(f).toUpperCase()}] ${f.id} ${f.reg} ${f.ap} — ${f.p||"to allocate"}${"FA".includes(wk(f))?" — WOA: "+WS[wk(f)][1]:""}\n   ${f.n}`).join("\n")+"\n":"";
+$("ta").value=`OPS BRIEFING — ${today.toLocaleDateString(L,{weekday:"long",day:"numeric",month:"long"})}\n`+l("TODAY",X.filter(f=>B(f)==0))+l("TOMORROW",X.filter(f=>B(f)==1))+l("TO ALLOCATE",X.filter(f=>!P(f).length))+l("WOA TO CHASE · FBO (FAB Business Office hasn’t sent it)",X.filter(f=>wk(f)=="F"))+l("WOA TO CHASE · AMBER (customer hasn’t signed)",X.filter(f=>wk(f)=="A"))+l("WCR TO CHASE (not signed)",D.filter(f=>WU(f)))+l("CASH TERMS · CHECK PAYMENT FIRST (ZCIA red, ZCOD amber)",D.filter(f=>PL((f.pay||"").toUpperCase())))+l("WAITING FOR PARTS",D.filter(f=>f.wait));$("cp").textContent="Copy";$("dlg").showModal()};
+$("cp").onclick=()=>{const t=$("ta");t.select();(navigator.clipboard?.writeText(t.value).catch(()=>document.execCommand("copy")))||document.execCommand("copy");$("cp").textContent="Copied ✓"};
+const tick=()=>{const n=new Date(),o={hour:"2-digit",minute:"2-digit"};$("clk").textContent=n.toLocaleTimeString(L,o)+" local · "+n.toLocaleTimeString(L,{...o,timeZone:"UTC"})+" UTC"};tick();setInterval(tick,3e4);
+let cur=0;
+const hist=i=>{cur=i;const f=D[i],h=H[f.id]||[];$("ht").textContent=f.id+" · "+f.reg+" · "+f.ap+" · "+KN(f)+" · WOA "+WS[wk(f)][1];$("hl").innerHTML=h.length?h.map(e=>`<div class="he"><b>${OPS[e[0]]}</b><span>${e[1]}</span><p>${esc(e[2])}</p></div>`).join(""):"<p>No entry yet for this job.</p>";$("nt").value="";$("hd").open||$("hd").showModal()};
+$("nb").onclick=()=>{const v=$("nt").value.trim();if(!v)return;const n=new Date(),p=x=>String(x).padStart(2,"0"),k=D[cur].id;(H[k]=H[k]||[]).unshift(["ME",p(today.getDate())+"/"+p(today.getMonth()+1)+" "+p(n.getHours())+":"+p(n.getMinutes()),v]);hist(cur);render()};
+const ST=()=>{const n=new Date(),p=x=>String(x).padStart(2,"0");return p(today.getDate())+"/"+p(today.getMonth()+1)+" "+p(n.getHours())+":"+p(n.getMinutes())};
+let RF="",RFC="";const gv=i=>$(i).value.trim();
+const chk=()=>{const v=gv("n_p").toUpperCase(),l=PL(v),i=gv("n_i"),d=gv("n_d").slice(5),e=gv("n_e1"),c=[];let h=l?`<div style="color:var(--${l})">⚠ ${PMSG[l]}</div>`:"";if(i&&D.some((f,j)=>f.id==i&&j!=EDI))h+=`<div style="color:var(--r)">⚠ ${esc(i)} is already on the board.</div>`;if(c.length)h+=`<div style="color:var(--a)">⚠ ${e} already leads ${c.map(f=>f.id).join(", ")} that day (warning only: you can still save).</div>`;const sb=gv("n_r")?D.filter((f,j)=>f.reg.toUpperCase()==gv("n_r").toUpperCase()&&j!=EDI):[];if(sb.length)h+=`<div style="color:var(--mut)">ℹ ${sb[0].reg} is already on the board (${sb.map(f=>f.id).join(", ")}): this RFS becomes its own job, with its own type, tasks and dates.</div>`;$("n_x").innerHTML=h+authLive()+stayWarn();crewUI()};
+$("nj").onclick=()=>{const o='<option value="">—</option>'+[...new Set([...Object.keys(TEAM),...D.flatMap(f=>[f.p,f.s,f.r].flatMap(sp))])].sort().map(e=>`<option value="${e}">${e}${TEAM[e]?" · "+TEAM[e]:""}</option>`).join("");["n_e1","n_e2","n_e3"].forEach(i=>$(i).innerHTML=o);$("n_ac").innerHTML='<option value="">New aircraft</option>'+[...new Set(D.map(f=>f.reg))].sort().map(r=>{const s=D.filter(f=>f.reg==r);return`<option value="${r}">${r} · ${s[0].ty} · ${s.map(f=>f.id).join(", ")}</option>`}).join("");$("n_f").value="";RF=RFC="";$("n_x").innerHTML="";$("nd").showModal()};
+$("nd").oninput=chk;$("nd").onchange=chk;
+const _rdPaste=()=>{const t="",m=(r,i=1)=>{const x=t.match(r);return x?x[i].trim():""},p=x=>String(x).padStart(2,"0"),mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+dm=r=>{const x=t.match(r);if(!x)return null;const h=x[4]%12+(/p/i.test(x[6])?12:0);return{iso:x[3]+"-"+p(x[1])+"-"+p(x[2]),t:p(h)+":"+x[5],s:+x[2]+" "+mo[x[1]-1]+" "+p(h)+":"+x[5]}},
+a=dm(/ETA Date\s+(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+)\s*([AP])M/i),b=dm(/ETD\s+(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+)\s*([AP])M/i),
+ty=m(/RFS Type\s+([^\n]*)/i).split(/\s+RFS ID/i)[0],set=(i,v)=>{if(v)$(i).value=v};
+if(ty)$("n_k").value=/assist/i.test(ty)?"A":"R";
+set("n_i",m(/Work Order\s+(FA\d+)/i));set("n_r",m(/Reg No\s+(\S+)/i));set("n_m",m(/Model\s+(\S+)/i));set("n_a",m(/Airport Dispatched To\s+(\S+)/i));
+if(a){$("n_d").value=a.iso;$("n_t").value=a.t}
+set("n_p",m(/Payment\s+Terms[ \t|:*_]*(?:\n[ \t|:*_]*){0,2}([A-Z][A-Z0-9]{2,7})\b/));
+set("n_tk",m(/WO Items\s+([\s\S]+)/i).replace(/\s*\n\s*/g," · "));
+RF=[m(/RFS ID\s+(RFS-\d+)/i),ty,m(/RFS Status\s+([^\n]*)/i),a&&b?"ETA "+a.s+" → ETD "+b.s:"",m(/Support Location\s+([^\n]+?)\s*(?:Assignments|\n|$)/i),m(/^Account\s+(?!Contact|ID)([^\n]+)/im)].filter(Boolean).join(" · ");
+RFC=m(/Enrolled\s+in\s+CMP\??\s*(Yes|No)/i);
+$("n_x").innerHTML=ty||a?'<div style="color:var(--g)">✓ RFS read: check the fields, allocate, then save.</div>':'<div style="color:var(--r)">Nothing recognised: paste the full RFS text.</div>';chk()};
+$("n_s").onclick=()=>{let id=gv("n_i");const d=gv("n_d");
+if(!id){id="No FA yet";let n=1;while(D.some(f=>f.id==id))id="No FA yet #"+(++n)}
+if(D.some(f=>f.id==id)||!gv("n_r")||!d){chk();if(!gv("n_r")||!d)$("n_x").innerHTML+='<div style="color:var(--r)">Tail and support date are required.</div>';return}
+const f={id,k:gv("n_k"),w:gv("n_w"),ty:gv("n_m")||"?",reg:gv("n_r"),ap:gv("n_a")||"?",d:d.slice(5),tk:gv("n_tk")||"—",n:gv("n_n")||"New job, no note yet.",p:gv("n_e1"),s:gv("n_e2"),r:gv("n_e3")};
+if(gv("n_t"))f.t=gv("n_t");if(gv("n_p"))f.pay=gv("n_p").toUpperCase();if(RF)f.rfs=RF;if(RFC)f.cmp=RFC;
+D.push(f);(H[id]=H[id]||[]).unshift(["ME",ST(),"Job created"+(RF?" from the RFS scan":"")+(gv("n_n")?". "+gv("n_n"):".")]);
+["n_i","n_r","n_m","n_a","n_d","n_t","n_p","n_tk","n_n","n_f"].forEach(i=>$(i).value="");RF=RFC="";$("nd").close();render()};
+const SAMPLE={doc_type:"RFS",work_order:"FA90100",model:"G650",serial_number:"6999",registration:"LX-DMO",location:"LFPB",rts_assist:"RTS",fbo:"FBO Demo Terminal",customer_name:"DEMO AVIATION LTD",enrolled_in_cmp:"Yes",payment_terms:"ZN30",work_items:[{label:"CABIN WINDOW SHADES - REPLACE"},{label:"FUEL TANK - SUMPING"}]};
+const applyRFS=p=>{if(/WCR|WORK_ORDER/i.test(p.doc_type||"")){const j=D.findIndex(f=>f.id==p.work_order),it=(p.work_items||[]).map(x=>x.label).join(" · ");if(j>=0){WC={j,it};$("n_x").innerHTML=`<div style="color:var(--g)">✓ ${esc(p.doc_type)} for ${esc(p.work_order)}: ${esc(it)}</div><div class="dl" style="justify-content:flex-start"><button class="on" onclick="addWcr()">Add to ${esc(p.work_order)}</button></div>`}else $("n_x").innerHTML=`<div style="color:var(--a)">${esc(p.doc_type)} for ${esc(p.work_order||"?")}: no such job on the board. Create the job first, or add the tasks by hand with Edit → “WCRs”.</div>`;return}const set=(i,v)=>{if(v)$(i).value=v},pay=String(p.payment_terms||"").trim().toUpperCase();$("n_k").value=/assist/i.test(p.rts_assist||"")?"A":"R";set("n_i",p.work_order);set("n_r",p.registration);set("n_m",p.model);set("n_a",p.location);set("n_fb",p.fbo);set("n_op",p.customer_company||p.customer_name);set("n_cc",p.customer_code);set("n_sn",p.serial_number);set("n_p",pay=="UNKNOWN"?"":pay);$("n_sr").innerHTML="";(p.work_items||[]).forEach(x=>sqrow("",x.label,0));if(/^(yes|no)$/i.test(p.enrolled_in_cmp||""))$("n_cm").value=p.enrolled_in_cmp[0].toUpperCase()+p.enrolled_in_cmp.slice(1).toLowerCase();RF=p.customer_name||"";chk();$("n_x").innerHTML='<div style="color:var(--g)">✓ RFS read by the Engineer scan: set the support date, allocate, then save.</div>'+$("n_x").innerHTML};
+$("n_b").onclick=()=>applyRFS(SAMPLE);
+$("n_f").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const sc0=HK.scanRfs||(window.G&&G.scanRfs);if(!sc0)throw 0;const r=await sc0(f);applyRFS(r.parsed||r)}catch(x){$("n_x").innerHTML='<div style="color:var(--a)">Scan unavailable here (it connects when this board is merged into the app). Fill the form by hand, or try the samples.</div>'}};
+$("n_ac").onchange=()=>{const s=D.filter(f=>f.reg==$("n_ac").value);if(!s.length)return;const p=s.find(x=>x.pay);$("n_r").value=s[0].reg;$("n_m").value=s[0].ty;if(p)$("n_p").value=p.pay;chk()};
+const CX=[];let RM=0,TT=0;
+const qs=t=>{$("q").value=t;Q=t.toLowerCase();render()};
+const SB=f=>{const s=D.filter(g=>g.reg==f.reg&&g!==f);return s.length?`<span class="p v" style="cursor:pointer" title="Other jobs on this aircraft: tap to filter" onclick="event.stopPropagation();qs('${f.reg}')">↔ ${s.map(g=>g.id).join(" · ")}</span>`:""};
+const toast=(t,fn)=>{$("ts_t").textContent=t;$("ts").hidden=false;$("ts_u").hidden=!fn;$("ts_u").onclick=()=>{fn&&fn();$("ts").hidden=true};clearTimeout(TT);TT=setTimeout(()=>$("ts").hidden=true,8000)};
+const back=j=>{const c=CX.splice(j,1)[0];D.push(c.f);(H[c.f.id]=H[c.f.id]||[]).unshift(["ME",ST(),c.k=="d"?"Job reopened.":"Job restored."]);render()};
+const rm=i=>{XM="rm";$("x_w").hidden=false;$("x_s").textContent="Remove job";$("x_s").className="rd";RM=i;const f=D[i],en=[...new Set([...P(f),...sp(f.s),...sp(f.r)])];$("x_t").textContent="Remove "+f.id+" · "+f.reg+"?";$("x_n").value="";$("x_m").innerHTML="<div>Before you remove it:</div>"+(en.length?"<div>• Tell "+en.map(e=>e+(NM(e)?" ("+NM(e)+")":"")).join(", ")+"</div>":"")+"<div>• Stop any travel, parts or consumables already ordered"+(f.pt?" ("+f.pt+")":"")+".</div><div>You can undo right after, and restore it later from “Removed”.</div>";$("xd").showModal()};
+$("x_s").onclick=()=>{const f=D[RM],w=$("x_w").value,n=$("x_n").value.trim();D.splice(RM,1);CX.unshift({f,w,n,at:ST()});(H[f.id]=H[f.id]||[]).unshift(["ME",ST(),"Job removed: "+w+(n?". "+n:".")]);$("xd").close();render();toast(f.id+" removed",()=>back(0))};
+const showCX=()=>{$("cl").innerHTML=CX.length?CX.map((c,j)=>`<div class="he"><b>${c.f.id} · ${c.f.reg}</b><span>${c.k=="d"?"✅ Closed":"🗑 Removed"} · ${c.at} · ${c.w}${c.n?" · "+esc(c.n):""}</span><p><button class="lk" onclick="back(${j});showCX()">${c.k=="d"?"Reopen":"Restore"}</button></p></div>`).join(""):"<p>The archive is empty.</p>";$("cd").open||$("cd").showModal()};
+let EDI=-1,XM="rm",WC=null;
+const RG=f=>{const e=En(f),n=dd(f.d),L=dd(e)-n+1;return L>1?fd(f.d)+" → "+fd(e)+(dd(e)<0?" · ended":n<=0?" · day "+(1-n)+"/"+L:" · "+L+" days"):fd(f.d)};
+const setMode=()=>{const e=EDI>=0;$("n_h").textContent=e?"Edit "+D[EDI].id:"New job";$("n_s").textContent=e?"Save changes":"Add job";$("n_cl").hidden=!e;$("n_ac").parentNode.hidden=e;$("n_i0").hidden=e};
+const nj0=$("nj").onclick;
+$("nj").onclick=()=>{EDI=-1;nj0();["n_i","n_r","n_m","n_a","n_d","n_d2","n_t","n_p","n_tk","n_n","n_fb","n_cr","n_cm"].forEach(i=>$(i).value="");$("n_wr").innerHTML="";$("n_k").value="R";$("n_w").value="?";setMode()};
+const ej=i=>{nj0();EDI=i;const f=D[i];[["n_k",f.k],["n_i",/^No FA/.test(f.id)?"":f.id],["n_w",f.w||"R"],["n_r",f.reg],["n_m",f.ty],["n_a",f.ap],["n_d",f.d?Y+"-"+f.d:""],["n_d2",f.d?Y+"-"+En(f):""],["n_t",/^\d/.test(f.t||"")?f.t:""],["n_p",f.pay||""],["n_fb",f.fbo||""],["n_cm",f.cmp||""],["n_tk",f.tk],["n_n",f.n],["n_cr",""]].forEach(([k,v])=>$(k).value=v);$("n_e1").value=sp(f.p)[0]||"";[...$("n_e3").options].forEach(o=>o.selected=!!o.value&&sp(f.r).includes(o.value));[...$("n_e2").options].forEach(o=>o.selected=!!o.value&&sp(f.s).includes(o.value));RF=f.rfs||"";RFC="";$("n_wr").innerHTML="";(f.wcr||[]).forEach(c=>wrow(c.t,c.s));setMode();chk()};
+$("n_s").onclick=()=>{const E=EDI>=0?D[EDI]:null,d=gv("n_d"),d2=gv("n_d2")||d,l=gv("n_e1"),pr=[...$("n_e3").selectedOptions].map(o=>o.value).filter(Boolean).join(" "),ag=[...$("n_e2").selectedOptions].map(o=>o.value).filter(Boolean),er=m=>{chk();$("n_x").innerHTML+='<div style="color:var(--r)">'+m+'</div>'};let id=gv("n_i");
+if(!id){id=E?E.id:"No FA yet";let n=1;while(D.some((f,j)=>f.id==id&&j!=EDI))id="No FA yet #"+(++n)}
+if(D.some((f,j)=>f.id==id&&j!=EDI))return er("That FA is already on the board.");
+if(!gv("n_r")||(!d&&!(E&&E.wait)))return er("Tail and start date are required.");
+if(d2<d)return er("The end date is before the start date.");
+
+const nv={id,k:gv("n_k"),w:gv("n_w"),ty:gv("n_m")||"?",reg:gv("n_r"),ap:gv("n_a")||"?",tk:gv("n_tk")||"—",n:gv("n_n")||"New job, no note yet.",p:l,s:ag.join(" "),r:pr,fbo:gv("n_fb"),cmp:gv("n_cm"),wcr:[...$("n_wr").children].map(r=>({t:r.children[0].value.trim(),s:r.children[1].firstChild.checked?1:0})).filter(c=>c.t)},pay=gv("n_p").toUpperCase(),t=gv("n_t");
+if(d){nv.d=d.slice(5);nv.e=d2.slice(5)}
+if(!E){if(t)nv.t=t;if(pay)nv.pay=pay;if(RF)nv.rfs=RF;if(RFC)nv.cmp=RFC;D.push(nv);(H[id]=H[id]||[]).unshift(["ME",ST(),"Job created"+(RF?" from the RFS scan":"")+(gv("n_n")?". "+gv("n_n"):".")])}
+else{const ch=[];["id","k","w","d","e","p","s","r","reg","ap","fbo","cmp"].forEach(x=>{const a=x=="e"?(E.d?En(E):""):E[x]||"",b=nv[x]||"";if(a!=b)ch.push(x+": "+(a||"—")+" → "+(b||"—"))});if((E.pay||"")!=pay)ch.push("pay: "+(E.pay||"—")+" → "+(pay||"—"));const ws2=w=>(w||[]).length?w.filter(c=>c.s).length+"/"+w.length+" signed":"none";if(JSON.stringify(E.wcr||[])!=JSON.stringify(nv.wcr))ch.push("WCR: "+ws2(E.wcr)+" → "+ws2(nv.wcr));if(d&&E.d&&(E.d!=nv.d||En(E)!=nv.e))nv.was=fd(E.d)+(En(E)!=E.d?" → "+fd(En(E)):"");
+if(id!=E.id){H[id]=(H[id]||[]).concat(H[E.id]||[]);delete H[E.id]}
+Object.assign(E,nv);if(pay)E.pay=pay;else delete E.pay;if(t)E.t=t;else if(!/^[AP]M$/.test(E.t||""))delete E.t;
+const hh=H[id]=H[id]||[],cr=gv("n_cr");hh.unshift(["ME",ST(),(ch.length?"Job updated ("+ch.join(", ")+")":"Job updated")+(cr?" — reason: "+cr:"")+"."])}
+$("nd").close();render()};
+const dn=i=>{XM="dn";RM=i;const f=D[i];$("x_t").textContent=(f.k=="A"?"🤝 Assistance provided · ":"✅ A/C RTS · ")+f.id+" · "+f.reg;$("x_w").hidden=true;$("x_n").value="";$("x_m").innerHTML="<div>This closes the job: it leaves the board and goes to the Archive, where you can reopen it.</div>";$("x_s").textContent=f.k=="A"?"Assistance provided":"Mark A/C RTS";$("x_s").className="on";$("xd").showModal()};
+$("x_s").onclick=()=>{const f=D[RM],n=$("x_n").value.trim(),d=XM=="dn",w=d?(f.k=="A"?"Assistance provided":"A/C RTS"):$("x_w").value;D.splice(RM,1);CX.unshift({f,w,n,at:ST(),k:d?"d":"r"});(H[f.id]=H[f.id]||[]).unshift(["ME",ST(),(d?"Job closed: ":"Job removed: ")+w+(n?". "+n:".")]);$("xd").close();render();toast(f.id+(d?" closed":" removed"),()=>back(0))};
+const addWcr=()=>{if(!WC)return;const f=D[WC.j];(f.wcr=f.wcr||[]).push({t:WC.it,s:0});(H[f.id]=H[f.id]||[]).unshift(["ME",ST(),"WCR added (not signed yet): "+WC.it]);$("nd").close();render();toast("WCR added to "+f.id+", not signed yet")};
+$("n_c").onclick=()=>applyRFS({doc_type:"WCR",work_order:"FA90001",work_items:[{label:"CABIN LIGHTING - REPLACE LEFT READING LIGHT"}]});
+const OPN=new Set,tg=(el,id)=>{el.classList.toggle("o");OPN.has(id)?OPN.delete(id):OPN.add(id)};
+const WX=f=>{const w=f.wcr||[];if(!w.length)return"";const n=w.filter(c=>c.s).length;return`<span class="wx ${n==w.length?"g":"a"}" title="${esc(w.map(c=>(c.s?"✓ ":"✗ ")+c.t).join("\n")).replace(/"/g,"&quot;")}">${w.map(c=>`<u class="${c.s?"f":""}"></u>`).join("")}WCR · ${n}/${w.length} signed</span>`};
+const WL=f=>{const i=D.indexOf(f);return(f.wcr||[]).map((c,j)=>`<br>WCR ${j+1}: <button class="lk" onclick="event.stopPropagation();tw(${i},${j})">${c.s?"✓ signed":"✗ not signed"}</button> ${esc(c.t)}`).join("")};
+const tw=(i,j)=>{const f=D[i],c=f.wcr[j];c.s=c.s?0:1;(H[f.id]=H[f.id]||[]).unshift(["ME",ST(),"WCR "+(c.s?"signed":"marked not signed")+": "+c.t]);render()};
+const wrow=(t,s)=>{const r=document.createElement("div");r.className="wr";r.innerHTML=`<input value="${esc(t||"").replace(/"/g,"&quot;")}" placeholder="WCR tasks"><label><input type="checkbox"${s?" checked":""}> signed</label><button type="button" class="lk">×</button>`;r.lastChild.onclick=()=>r.remove();$("n_wr").appendChild(r)};
+$("n_wa").onclick=()=>wrow("",0);
+/* ===== Ported verbatim from the Engineer app: Country / Authority Approvals check ===== */
+let KO_COUNTRY_APPROVALS=[];
+const EASA_COUNTRIES = new Set([
+  'Austria','Belgium','Bulgaria','Croatia','Cyprus','Czech Republic','Denmark','Estonia',
+  'Finland','France','Germany','Greece','Hungary','Iceland','Ireland','Italy','Latvia',
+  'Liechtenstein','Lithuania','Luxembourg','Malta','Netherlands','Norway','Poland','Portugal',
+  'Romania','Slovakia','Slovenia','Spain','Sweden','Switzerland'
+]);
+
+// Maps an aircraft registration prefix to its civil aviation authority acronym.
+function certFromRegistration(reg) {
+  const country = countryFromRegistration(reg);
+  if (EASA_COUNTRIES.has(country)) return 'EASA';
+  const special = {
+    'United States':'FAA',
+    'United Kingdom':'UK CAA',
+    'Qatar':'QCAA',
+    'United Arab Emirates':'GCAA',
+    'San Marino':'SMAR CAA',
+    'Isle of Man':'IOMAR',
+    'Guernsey':'2-REG',
+    'Bermuda':'BCAA',
+    'Cayman Islands':'CAACI',
+    'British Virgin Islands':'BVI CAA',
+    'Aruba':'Aruba DCA',
+    'Curaçao/Sint Maarten':'CCAA',
+    'Canada':'TCCA',
+    'China':'CAAC',
+    'Taiwan':'CAA Taiwan',
+    'Hong Kong':'HKCAD',
+    'Macau':'AACM',
+    'India':'DGCA',
+    'Brazil':'ANAC',
+    'Australia':'CASA',
+    'New Zealand':'NZ CAA',
+    'Egypt':'ECAA',
+    'Tanzania':'TCAA',
+    'South Africa':'SACAA',
+    'Saudi Arabia':'GACA',
+    'Singapore':'CAAS',
+    'Japan':'JCAB',
+    'South Korea':'MOLIT/KOCA',
+    'Turkey':'SHGM',
+    'Russia':'Rosaviatsia',
+    'Mexico':'AFAC',
+    'Israel':'CAAI',
+    'Azerbaijan':'SCAA',
+    'Pakistan':'PCAA',
+    'Bahrain':'BCAA',
+    'Morocco':'DAC Morocco',
+    'Thailand':'CAAT',
+    'Uganda':'CAAU',
+    'Oman':'Oman CAA',
+    'Burundi':'AACB',
+  };
+  return special[country] || '';
+}
+
+function countryFromRegistration(reg) {
+  const map = [
+    [/^YA-/,'Afghanistan'],[/^ZA-/,'Albania'],[/^7T-/,'Algeria'],[/^C3-/,'Andorra'],
+    [/^D2-/,'Angola'],[/^V2-/,'Antigua and Barbuda'],[/^L[VQ]-/,'Argentina'],[/^EK-/,'Armenia'],
+    [/^P4-/,'Aruba'],[/^VH-/,'Australia'],[/^OE-/,'Austria'],[/^4K-/,'Azerbaijan'],
+    [/^C6-/,'Bahamas'],[/^A9C-/,'Bahrain'],[/^S2-/,'Bangladesh'],[/^8P-/,'Barbados'],
+    [/^EW-/,'Belarus'],[/^OO-/,'Belgium'],[/^V3-/,'Belize'],[/^TY-/,'Benin'],
+    [/^VP-B/,'Bermuda'],[/^A5-/,'Bhutan'],[/^CP-/,'Bolivia'],[/^E7-/,'Bosnia and Herzegovina'],
+    [/^A2-/,'Botswana'],[/^P[PRTUS]-/,'Brazil'],[/^VP-L/,'British Virgin Islands'],[/^V8-/,'Brunei'],
+    [/^LZ-/,'Bulgaria'],[/^XT-/,'Burkina Faso'],[/^9U-/,'Burundi'],[/^XU-/,'Cambodia'],
+    [/^TJ-/,'Cameroon'],[/^C-[FG]/,'Canada'],[/^D4-/,'Cape Verde'],[/^VP-C/,'Cayman Islands'],
+    [/^TL-/,'Central African Republic'],[/^TT-/,'Chad'],[/^CC-/,'Chile'],[/^B-[0-9]/,'China'],
+    [/^B-[HKL]/,'Hong Kong'],[/^B-M/,'Macau'],[/^H[JK]-/,'Colombia'],[/^D6-/,'Comoros'],
+    [/^TN-/,'Republic of the Congo'],[/^9[ST]-/,'Democratic Republic of the Congo'],[/^E5-/,'Cook Islands'],
+    [/^TI-/,'Costa Rica'],[/^9A-/,'Croatia'],[/^CU-/,'Cuba'],[/^5B-/,'Cyprus'],
+    [/^OK-/,'Czech Republic'],[/^OY-/,'Denmark'],[/^J2-/,'Djibouti'],[/^J7-/,'Dominica'],
+    [/^HI-/,'Dominican Republic'],[/^4W-/,'East Timor'],[/^HC-/,'Ecuador'],[/^SU-/,'Egypt'],
+    [/^YS-/,'El Salvador'],[/^3C-/,'Equatorial Guinea'],[/^E3-/,'Eritrea'],[/^ES-/,'Estonia'],
+    [/^3D/,'Eswatini'],[/^ET-/,'Ethiopia'],[/^VP-F/,'Falkland Islands'],[/^DQ-/,'Fiji'],
+    [/^OH-/,'Finland'],[/^F-O/,'French Overseas Territory'],[/^F-/,'France'],[/^TR-/,'Gabon'],
+    [/^C5-/,'Gambia'],[/^4L-/,'Georgia'],[/^D-/,'Germany'],[/^9G/,'Ghana'],
+    [/^VP-G/,'Gibraltar'],[/^SX-/,'Greece'],[/^J3-/,'Grenada'],[/^TG-/,'Guatemala'],
+    [/^2-/,'Guernsey'],[/^3X-/,'Guinea'],[/^J5-/,'Guinea-Bissau'],[/^8R-/,'Guyana'],
+    [/^HH-/,'Haiti'],[/^HR-/,'Honduras'],[/^HA-/,'Hungary'],[/^TF-/,'Iceland'],
+    [/^VT-/,'India'],[/^PK-/,'Indonesia'],[/^EP-/,'Iran'],[/^YI-/,'Iraq'],
+    [/^E[IJ]-/,'Ireland'],[/^M-/,'Isle of Man'],[/^4X-|^4Z/,'Israel'],[/^I-/,'Italy'],
+    [/^TU-/,'Ivory Coast'],[/^6Y-/,'Jamaica'],[/^JA/,'Japan'],[/^JY-/,'Jordan'],
+    [/^UP-/,'Kazakhstan'],[/^5Y-/,'Kenya'],[/^T3-/,'Kiribati'],[/^Z6-/,'Kosovo'],
+    [/^9K-/,'Kuwait'],[/^EX-/,'Kyrgyzstan'],[/^RDPL/,'Laos'],[/^YL-/,'Latvia'],
+    [/^OD-/,'Lebanon'],[/^7P-/,'Lesotho'],[/^A8-/,'Liberia'],[/^5A-/,'Libya'],
+    [/^HB-.*Liechtenstein/i,'Liechtenstein'],[/^LY-/,'Lithuania'],[/^LX-/,'Luxembourg'],
+    [/^5R-/,'Madagascar'],[/^7Q-/,'Malawi'],[/^9M-/,'Malaysia'],[/^8Q-/,'Maldives'],
+    [/^TZ-/,'Mali'],[/^9H-/,'Malta'],[/^V7-/,'Marshall Islands'],[/^5T-/,'Mauritania'],
+    [/^3B-/,'Mauritius'],[/^X[ABC]-/,'Mexico'],[/^V6-/,'Micronesia'],[/^ER-/,'Moldova'],
+    [/^3A-/,'Monaco'],[/^JU-/,'Mongolia'],[/^4O-/,'Montenegro'],[/^VP-M/,'Montserrat'],
+    [/^CN-/,'Morocco'],[/^C9-/,'Mozambique'],[/^X[YZ]-/,'Myanmar'],[/^V5-/,'Namibia'],
+    [/^C2-/,'Nauru'],[/^9N-/,'Nepal'],[/^PH-/,'Netherlands'],[/^PJ-/,'Curaçao/Sint Maarten'],
+    [/^ZK-|^ZL-|^ZM-/,'New Zealand'],[/^YN-/,'Nicaragua'],[/^5U-/,'Niger'],[/^5N-/,'Nigeria'],
+    [/^P-/,'North Korea'],[/^Z3-/,'North Macedonia'],[/^LN-/,'Norway'],[/^A4O-/,'Oman'],
+    [/^AP-/,'Pakistan'],[/^HP-/,'Panama'],[/^P2-/,'Papua New Guinea'],[/^ZP-/,'Paraguay'],
+    [/^OB-/,'Peru'],[/^RP-/,'Philippines'],[/^SP-|^SN-/,'Poland'],[/^C[RS]-/,'Portugal'],
+    [/^A7-/,'Qatar'],[/^YR-/,'Romania'],[/^R[AF]-/,'Russia'],[/^9XR-/,'Rwanda'],
+    [/^V4-/,'Saint Kitts and Nevis'],[/^J6-/,'Saint Lucia'],[/^J8-/,'Saint Vincent and the Grenadines'],
+    [/^5W-/,'Samoa'],[/^T7-/,'San Marino'],[/^S9-/,'São Tomé and Príncipe'],[/^HZ-/,'Saudi Arabia'],
+    [/^6[VW]-/,'Senegal'],[/^YU-/,'Serbia'],[/^S7-/,'Seychelles'],[/^9L-/,'Sierra Leone'],
+    [/^9V-/,'Singapore'],[/^OM-/,'Slovakia'],[/^S5-/,'Slovenia'],[/^H4-/,'Solomon Islands'],
+    [/^6O-/,'Somalia'],[/^Z[STU]-/,'South Africa'],[/^HL/,'South Korea'],[/^Z8-/,'South Sudan'],
+    [/^EC-|^EM-/,'Spain'],[/^4R-/,'Sri Lanka'],[/^ST-/,'Sudan'],[/^PZ-/,'Suriname'],
+    [/^SE-/,'Sweden'],[/^HB-/,'Switzerland'],[/^YK-/,'Syria'],[/^B-/,'Taiwan'],
+    [/^EY-/,'Tajikistan'],[/^5H-/,'Tanzania'],[/^HS-/,'Thailand'],[/^5V-/,'Togo'],
+    [/^A3-/,'Tonga'],[/^9Y-/,'Trinidad and Tobago'],[/^TS-/,'Tunisia'],[/^TC-/,'Turkey'],
+    [/^EZ-/,'Turkmenistan'],[/^VQ-T/,'Turks and Caicos'],[/^T2-/,'Tuvalu'],[/^5X-/,'Uganda'],
+    [/^UR-/,'Ukraine'],[/^A6-/,'United Arab Emirates'],[/^G-/,'United Kingdom'],[/^N/,'United States'],
+    [/^CX-/,'Uruguay'],[/^UK/,'Uzbekistan'],[/^YJ-/,'Vanuatu'],[/^YV/,'Venezuela'],
+    [/^VN-/,'Vietnam'],
+  ];
+  reg = String(reg || '').toUpperCase().replace(/\s+/g, '');
+  for (const [re, country] of map) if (re.test(reg)) return country;
+  // Registrations often arrive without their hyphen ("4KAI700", "T7000"): retry with it inserted after 2, 1, then 3 characters.
+  if (reg && !reg.includes('-')) {
+    for (const n of [2, 1, 3]) {
+      if (reg.length <= n) continue;
+      const withDash = reg.slice(0, n) + '-' + reg.slice(n);
+      for (const [re, country] of map) if (re.test(withDash)) return country;
+    }
+  }
+  return '';
+}
+
+let KO_GSMODELS = [];   // [{ name, designation, family, aliases, snFrom, snTo, snList, isNew, showInPartOrders }, ...]
+
+const KO_GSMODELS_DEFAULT = [
+  { name: 'G650',   designation: 'GVI (G650)',               family: 'GVI',   snFrom: 6000,  snTo: 6999,  showInPartOrders: true },
+  { name: 'G650ER', designation: 'GVI (G650ER)',             family: 'GVI',   snFrom: 6000,  snTo: 6999,  showInPartOrders: true },
+  { name: 'G550',   designation: 'GV-SP (G550)',             family: 'GV-SP', snFrom: 5000,  snTo: 5999,  showInPartOrders: true },
+  { name: 'G500',   code: 'G500SP', designation: 'GV-SP (G500-5000 Series)', family: 'GV-SP', snFrom: 5000, snTo: 5999, showInPartOrders: true },
+  { name: 'G500',   code: 'G500',   designation: 'GVII-G500', family: 'GVII', snFrom: 72000, snTo: 72999, showInPartOrders: true },
+  { name: 'G600',   designation: 'GVII-G600',                family: 'GVII',  snFrom: 73000, snTo: 73999, showInPartOrders: true },
+  { name: 'G400',   designation: 'GVII-G400',                family: 'GVII',  isNew: true,  showInPartOrders: false },
+  { name: 'G700',   designation: 'GVIII-G700',               family: 'GVIII', snFrom: 87000, snTo: 87999, showInPartOrders: true },
+  { name: 'G800',   designation: 'GVIII-G800',               family: 'GVIII', snFrom: 88000, snTo: 88999, showInPartOrders: true },
+  { name: 'G450',   designation: 'GIV-X (G450)',             family: 'GIV-X', snFrom: 4000,  snTo: 4999,  showInPartOrders: true },
+  { name: 'G350',   designation: 'GIV-X (G350)',             family: 'GIV-X', snFrom: 4000,  snTo: 4999,  showInPartOrders: true },
+  { name: 'G280',   designation: 'G280 (G-VPA)',             family: 'G280',  snFrom: 2000,  snTo: 2999,  showInPartOrders: true },
+  { name: 'G200',   designation: 'G200 (G-1159D)',           family: 'G200',  aliases: ['GALAXY'], showInPartOrders: true },
+  { name: 'G150',   designation: 'G150 (G-1159C)',           family: 'G150',  showInPartOrders: true },
+  { name: 'G100',   designation: 'G100',                     family: 'G100',  aliases: ['ASTRA'], showInPartOrders: false },
+  { name: 'GIV',    designation: 'GIV',                      family: 'GIV',   aliases: ['GIVSP', 'GIVSR'], snFrom: 1000, snTo: 1999, showInPartOrders: false },
+  { name: 'GV',     designation: 'GV',                       family: 'GV',    snFrom: 501,   snTo: 699,   showInPartOrders: false },
+  { name: 'G300',   designation: '',                         family: 'G300',  isNew: true,  showInPartOrders: false },
+  { name: 'GIII',   designation: 'GIII',                     family: 'GIII',  showInPartOrders: false },
+  { name: 'GII',    designation: 'GII',                      family: 'GII',   aliases: ['GIIB'], showInPartOrders: false }
+];
+
+function koGsAliases(m) {
+  if (!m) return [];
+  return Array.isArray(m.aliases) ? m.aliases : (m.aliases && typeof m.aliases === 'object' ? Object.values(m.aliases) : []);
+}
+
+let KO_CUSTOMER_CODES = [];   // [{ code:'XXXXX', operator:'Swedish Air Force', notes:'' }]
+
+function koCountryKey(s) {
+  return String(s || '').toLowerCase().replace(/\s*\(.*?\)\s*/g, ' ').trim();
+}
+
+// ══════════════════════════════════════
+//  APPROVAL CHECK v2 — state of registry + aircraft model + operator   (rev 3)
+//
+//  Levels : ok (green) · warn (amber) · danger (red) · info (blue = cannot verify yet)
+//  Rule   : silence never means "approved". A green line only appears when the state IS one of the
+//           approvals on file AND the model / operator / scope were actually checked.
+//
+//  Inputs
+//   • state of registry : "Country of Registry" (RFS)  →  registration prefix (RFS / WCR / typed)
+//   • model             : the Model field and nothing else (RFS / WCR / typed / picked with a "Use …" button).
+//                         The S/N never decides a verdict: it only SUGGESTS a model (buttons) and flags a conflict.
+//                         A WOD has neither model nor registration → the banner asks for both.
+//   • operator          : Customer company (RFS Account / WOD Customer / WCR Customer)
+//  "FAR / Certification" is deliberately NOT used: it is often blank and it doesn't identify the state of registry.
+//
+//  A state with no type list of its own (blank in Manage list) follows the main Scope of Work = the
+//  "United Kingdom (home)" line: the aircraft type is checked against that line, never waved through.
+//
+//  This file = the (rev 3) logic above, with 2 changes ported in after comparing it against a second,
+//  independently-written proposal on the same 65 real projects (see guide §8 for the full comparison):
+//   • koParseApprovalType / koScoreRules: a type-list entry written as a bare shared name with no
+//     disambiguating context (e.g. "G500" alone) now still warns ('ambiguous-list') even when the
+//     aircraft being checked resolves unambiguously — the list entry's own wording needs a human too.
+//   • A brand-new aircraft not yet named by ANY approval (sibling match, viaFamily:false) is now 'danger'
+//     (red) instead of 'warn' (amber), to match "red everywhere until an admin adds it" everywhere else.
+// ══════════════════════════════════════
+
+// ── Aircraft models ─────────────────────────────────────────────────────────
+// Le catalogue des avions n'est PLUS écrit en dur ici : koRebuildModelIndex() (plus bas) le reconstruit depuis la liste partagée
+// Admin → Manage Team → ✈️ Gulfstream models (config/gulfstreamModels, chargée dans KO_GSMODELS) — liste de référence en repli.
+// HOW TO ADD AN AIRCRAFT (a future G900…) — no code change:
+//   • Admin → Gulfstream models → add its name (as written in documents), then fill in designation, family and S/N range.
+//   • While no approval names it yet, keep "New aircraft" ticked: a family mention such as "GVII" then does not cover it.
+//   • Any "G###" that is not in the list is still read as a type of its own (never "unrecognised", never silently OK).
+//   • Only a name Gulfstream re-used for two different aircraft needs code — see KO_TWINS (G500, G400, G300) and KO_FAMILY_ONLY below.
+// Filled by koRebuildModelIndex — code: internal id · family: siblings + family mentions · designation: what "Use …" writes in the Model field
+//   match: how documents write it (null = handled by KO_TWINS / KO_FAMILY_NAMES) · viaFamily:false → no family-level coverage
+//   pending:true → announced but no designation published yet (a bare name stays ambiguous)
+let KO_MODELS = [];
+let KO_MODEL_BY_CODE = {};
+let KO_MODEL_FAMILY  = {};
+let KO_FAMILY_ALL    = {};   // family → every code of the family
+let KO_FAMILY_VIA    = {};   // family → the codes a family-level mention covers
+let KO_FAMILY_NAMES  = [];   // how a family is written in documents ("GVII", "GVI Series", "GV-SP"…), longest first
+let KO_SN_RANGES     = [];   // [from, to, possible models (one button each), text shown in the banner]
+let KO_SN_EXACT       = {};  // exact S/N (small known series, e.g. G350) → codes — decides, unlike a range which only suggests
+let KO_SN_EXACT_LABEL = codes => codes.join(' / ');
+const koFamilyOf = c => KO_MODEL_FAMILY[c] || c;   // an aircraft the table doesn't know is its own family
+
+// A name Gulfstream used twice: an older aircraft and a newer one. The text decides ("GVII-G500" = new, "GV-SP (G500-5000 Series)"
+// = older); a bare name stays ambiguous (both codes) until the S/N says which generation.
+const KO_TWINS = [
+  { name: 'G500', token: /\bG[\s-]?500\b/, legacy: 'G500SP', legacyCtx: /\bGV[\s-]?SP\b|\bGV\b/,  next: 'G500', nextCtx: /\bGVII\b/ },
+  { name: 'G400', token: /\bG[\s-]?400\b/, legacy: 'GIV',    legacyCtx: /\bGIV\b(?![\s-]?X\b)/, next: 'G400', nextCtx: /\bGVII\b/ },
+  { name: 'G300', token: /\bG[\s-]?300\b/, legacy: 'GIV',    legacyCtx: /\bGIV\b(?![\s-]?X\b)/, next: 'G300', nextCtx: /\bGVII\b/ }
+];
+
+// Noms que Gulfstream a réutilisés (KO_TWINS) + noms reconnus uniquement via leur famille : le seul catalogue qui reste dans le code.
+const KO_TWIN_CODES = new Set();
+KO_TWINS.forEach(w => { KO_TWIN_CODES.add(w.legacy); KO_TWIN_CODES.add(w.next); });
+const KO_FAMILY_ONLY = new Set(['GV']);   // « GV » est le début de GV-SP / GVI / GVII / GVIII : sans cette règle, « GV-SP » serait lu GV + SP
+
+// Nom écrit dans un document → motif de reconnaissance : "G650ER" → G, séparateur facultatif, 650, séparateur facultatif, ER (jamais de regex saisie à la main).
+// tight = pour les noms de FAMILLE (GVII, GV-SP…) : pas de séparateur après le G, comme les anciens motifs écrits à la main (« G VI » n'est pas « GVI »).
+function koBuildMatcher(names, tight) {
+  const alts = (names || []).map(raw => {
+    const s = String(raw || '').trim().toUpperCase();
+    if (!s) return null;
+    let rest = s, parts = [];
+    if (/^G(?=\d|[IVX])/.test(rest)) { parts.push('G'); rest = rest.slice(1); }
+    (rest.match(/\d+|[A-Z]+/g) || [rest]).forEach(p => p && parts.push(p));
+    return parts.map((p, i) => (i ? ((tight && i === 1 && parts[0] === 'G') ? '' : '[\\s-]?') : '') + p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('');
+  }).filter(Boolean);
+  return alts.length ? new RegExp('\\b(?:' + alts.join('|') + ')\\b') : null;
+}
+
+// 6000–6999 → "6xxx" ; 501–699 → "501–699"
+function koSnRangeText(from, to) {
+  return (from % 1000 === 0 && to === from + 999) ? (from / 1000) + 'xxx' : from + '–' + to;
+}
+
+// Reconstruit TOUT le catalogue d'avions du contrôle des approvals (modèles, familles, plages de S/N) depuis KO_GSMODELS.
+// Appelée au chargement du module (liste de référence), puis après chaque chargement / modification de la liste partagée.
+// Liste vide ou illisible → liste de référence : le contrôle n'est jamais aveugle. Tout est construit à part puis échangé d'un coup.
+function koRebuildModelIndex() {
+  const rawList = Array.isArray(KO_GSMODELS) ? KO_GSMODELS : (KO_GSMODELS ? Object.values(KO_GSMODELS) : []);
+  const valid = rawList.filter(r => r && typeof r === 'object' && String(r.name || '').trim());
+  const source = valid.length ? valid : KO_GSMODELS_DEFAULT;
+
+  const models = [], byCode = {}, famOf = {}, famAll = {}, famVia = {}, snRaw = [], snExactRaw = [];
+  source.forEach(r => {
+    const name = String(r.name).trim();
+    const code = String(r.code || '').trim() || name.toUpperCase().replace(/[\s-]/g, '');
+    if (byCode[code]) return;                                    // deux entrées de même code : la première l'emporte
+    const family = String(r.family || '').trim() || code;
+    const names = [name].concat(koGsAliases(r).filter(Boolean));
+    const designation = String(r.designation || '').trim();
+    const m = {
+      code, family, designation, name,
+      match: (KO_TWIN_CODES.has(code) || KO_FAMILY_ONLY.has(code)) ? null : koBuildMatcher(names),
+      viaFamily: r.isNew !== true,
+      pending: !designation,
+      aliases: names.slice(1),
+      _len: Math.max(...names.map(n => String(n).length))
+    };
+    models.push(m);
+    byCode[code] = m; famOf[code] = family;
+    (famAll[family] = famAll[family] || []).push(code);
+    if (m.viaFamily) (famVia[family] = famVia[family] || []).push(code);
+    if (Number.isFinite(r.snFrom) && Number.isFinite(r.snTo) && r.snTo >= r.snFrom) snRaw.push([r.snFrom, r.snTo, code]);
+    (Array.isArray(r.snList) ? r.snList : []).forEach(n => { if (Number.isFinite(n)) snExactRaw.push([n, code]); });
+  });
+
+  // Une famille a son propre motif (« GVII Series ») quand elle compte 2+ avions, ou quand son seul avion n'a pas de motif direct (GIV, GV).
+  // Les autres orthographes d'un avion reconnu via sa famille (GIV : GIVSP, GIVSR) rejoignent le motif de la famille.
+  const famNames = Object.keys(famAll)
+    .filter(f => famAll[f].length > 1 || famAll[f].every(c => byCode[c].match === null))
+    .sort((a, b) => b.length - a.length || a.localeCompare(b))
+    .map(f => [f, koBuildMatcher([f].concat(...famAll[f].filter(c => byCode[c].match === null).map(c => byCode[c].aliases)), true)])
+    .filter(x => x[1]);
+
+  // Avions de même plage de S/N = une seule entrée avec un bouton par avion (ex. G650 / G650ER).
+  const ranges = [];
+  snRaw.forEach(([from, to, code]) => {
+    const hit = ranges.find(r => r[0] === from && r[1] === to);
+    if (hit) hit[2].push(code); else ranges.push([from, to, [code], '']);
+  });
+  ranges.forEach(r => { r[3] = r[2].map(c => byCode[c].name).join(' / ') + ' (' + koSnRangeText(r[0], r[1]) + ')'; });
+
+  // S/N exacts (petite série connue, ex. G350) : regroupés par numéro — un numéro DÉCIDE, il n'est jamais juste une suggestion,
+  // et l'emporte sur n'importe quelle plage snFrom/snTo qui le contiendrait aussi (ex. le G450 partage la tranche 4000-4999).
+  const exact = {};
+  snExactRaw.forEach(([n, code]) => { (exact[n] = exact[n] || []).push(code); });
+  const exactLabel = codes => codes.map(c => byCode[c].name).join(' / ') + ' (exact S/N)';  
+
+  // Le plus long nom d'abord : « G650ER » doit être lu avant « G650 » (l'ordre de la liste, lui, ne sert qu'à ordonner les boutons de S/N).
+  KO_MODELS = models.sort((a, b) => b._len - a._len);
+  KO_MODEL_BY_CODE = byCode; KO_MODEL_FAMILY = famOf; KO_FAMILY_ALL = famAll; KO_FAMILY_VIA = famVia;
+  KO_FAMILY_NAMES = famNames; KO_SN_RANGES = ranges;
+  KO_SN_EXACT = exact; KO_SN_EXACT_LABEL = exactLabel;
+}
+koRebuildModelIndex();
+// Text → the models it can mean.  { codes: [...], bare: [twin names left ambiguous], clash: [family that contradicts the model] }
+function koModelCodes(text) {
+  const src = ' ' + String(text || '').toUpperCase().replace(/[^A-Z0-9\s\-\/]/g, ' ') + ' ';
+  let t = src;
+  const explicit = new Set();
+  const bare = [];
+  const eat = (re, code) => { if (re.test(t)) { explicit.add(code); t = t.replace(re, ' '); } };
+
+  KO_TWINS.forEach(w => {
+    if (!w.token.test(t)) return;
+    t = t.replace(w.token, ' ');
+    if (w.nextCtx.test(src)) explicit.add(w.next);
+    else if (w.legacyCtx.test(src)) explicit.add(w.legacy);
+    else { explicit.add(w.legacy); explicit.add(w.next); bare.push(w.name); }
+  });
+  KO_MODELS.forEach(m => { if (m.match) eat(m.match, m.code); });
+  // any other "G###" is an aircraft this table doesn't know yet: a type of its own (never "unrecognised", never silently OK)
+  for (let g; (g = /\bG[\s-]?(\d{3})\b/.exec(t)); ) { explicit.add('G' + g[1]); t = t.replace(/\bG[\s-]?(\d{3})\b/, ' '); }
+
+  const families = [];
+  KO_FAMILY_NAMES.forEach(([name, re]) => { if (re.test(t)) { families.push(name); t = t.replace(re, ' '); } });
+  const codes = new Set(explicit);
+  const clash = [];
+  families.forEach(f => {
+    // "GVI (G650)" names one variant → only that one. "GVI Series" alone → the whole family (except viaFamily:false models).
+    if ((KO_FAMILY_ALL[f] || []).some(c => explicit.has(c))) return;
+    // "GVII-G700": the family contradicts the model (a G700 is a GVIII). The model is the more specific → keep it, and say so.
+    if (explicit.size) { clash.push({ family: f, codes: [...explicit] }); return; }
+    (KO_FAMILY_VIA[f] || []).forEach(c => codes.add(c));
+  });
+  return { codes: [...codes], bare, clash };
+}
+
+// The exact designation to write in the Model field ("Use …" button): the one of Admin → Gulfstream models.
+function koDesignation(code) {
+  const m = KO_MODEL_BY_CODE[code];
+  return (m && m.designation) || code;
+}
+
+// ── Serial numbers ──────────────────────────────────────────────────────────
+// Gulfstream's own numbering only (4–5 digits, plus the GV's 501–699). The IAI aircraft (G100 / G150 / G200) have overlapping
+// 3-digit numbers — the same number exists on a G150 and on a G200 — so they get NO range: the Model must be filled in.
+// A range never decides a verdict: it proposes buttons and flags a conflict with the Model.
+// The ranges are the "S/N from / to" of each aircraft in Admin → Gulfstream models (koRebuildModelIndex builds KO_SN_RANGES from them).
+function koModelFromSerial(sn) {
+  const m = String(sn || '').match(/(?:^|\D)(\d{3,5})(?!\d)/);       // a 3–5 digit number on its own (no look-behind: older Safari can't parse it)
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  // An exact S/N (small known series, e.g. G350) DECIDES — it wins even over a range that also contains this number (e.g. G450's).
+  const exactCodes = KO_SN_EXACT[n];
+  if (exactCodes && exactCodes.length) {
+    return { sn: m[1], codes: exactCodes.slice(), range: KO_SN_EXACT_LABEL(exactCodes), exact: true, options: exactCodes.map(code => ({ code, designation: koDesignation(code) })) };
+  }  
+  const hit = KO_SN_RANGES.find(r => n >= r[0] && n <= r[1]);
+  return hit ? { sn: m[1], codes: hit[2].slice(), range: hit[3], exact: false, options: hit[2].map(code => ({ code, designation: koDesignation(code) })) } : null;
+}
+
+// Model typed / scanned (+ S/N only to settle a twin name and to spot a conflict) → what the aircraft can be.
+function koResolveAircraft(model, sn) {
+  const text = String(model || '').trim();
+  const fromText = koModelCodes(text);
+  const snInfo = koModelFromSerial(sn);
+  let codes = fromText.codes.slice();
+  const twins = [];
+  fromText.bare.forEach(name => {                 // "G500" / "G400" / "G300" alone: the S/N generation says which one
+    const w = KO_TWINS.find(x => x.name === name);
+    if (snInfo && snInfo.codes.includes(w.legacy)) codes = codes.filter(c => c !== w.next);
+    else if (snInfo && snInfo.codes.includes(w.next)) codes = codes.filter(c => c !== w.legacy);
+    else twins.push(w);
+  });
+  const grp = c => { const f = koFamilyOf(c); return f === 'GV-SP' ? 'GV' : f; };
+  // Un S/N exact (petite série connue) est sûr au niveau de l'avion précis, pas juste de la famille :
+  // Model "G450" + S/N exact d'un G350 doit être signalé, même si les deux partagent la famille GIV-X.
+  const mismatch = !!snInfo && codes.length > 0 && !codes.some(c => snInfo.codes.some(s => snInfo.exact ? s === c : grp(s) === grp(c)));
+  return {
+    codes, twins, snInfo, mismatch, text, label: text, clash: fromText.clash,
+    unrecognized: !!text && !codes.length,
+    suggest: !codes.length && snInfo ? { text, snInfo } : null      // Model empty / unreadable: the S/N only SUGGESTS (buttons)
+  };
+}
+
+// ── Approval type strings ───────────────────────────────────────────────────
+// Convention used in the list:  "<type, free text> — <operator or scope> only"
+//   "GVIII-G700 (BR700) — Azerbaijan Airlines only"  → G700, operator restriction
+//   "G550 (GV-SP) — Base Maintenance only"           → G550, scope restriction
+function koParseApprovalType(str) {
+  let s = String(str || '');
+  let operator = '', scope = '';
+  const m = s.match(/\s+[—–-]+\s+(.+?)\s+only\b/i);
+  if (m) {
+    s = s.replace(m[0], ' ');
+    if (/\b(?:base|line)\s+maintenance\b/i.test(m[1])) scope = m[1].trim(); else operator = m[1].trim();
+  }
+  const scan = koModelCodes(s);
+  // Codes present ONLY because the type-list text itself names a shared name with no disambiguating context
+  // ("G500" alone can mean the older GV-SP or the new GVII-G500): the entry's own wording is ambiguous, so
+  // even an aircraft that resolves to one of them unambiguously still needs a human to confirm it (koScoreRules).
+  const bareCodes = new Set();
+  scan.bare.forEach(name => { const w = KO_TWINS.find(x => x.name === name); if (w) { bareCodes.add(w.legacy); bareCodes.add(w.next); } });
+  return { raw: String(str || '').trim(), codes: new Set(scan.codes), bareCodes, operator, scope };
+}
+
+// 'ok'      every possible model of the aircraft is covered
+// 'partial' only some of the possible models are covered (e.g. "G400" alone = older GIV or new G400, approval lists the GIV only)
+// 'sibling' same family but not that variant (approval lists G650ER, aircraft is G650)
+// 'none'    not covered
+function koMatchModel(acCodes, covered) {
+  if (acCodes.every(c => covered.has(c))) return 'ok';
+  if (acCodes.some(c => covered.has(c))) return 'partial';
+  const coveredFams = new Set([...covered].map(koFamilyOf));
+  return acCodes.some(c => coveredFams.has(koFamilyOf(c))) ? 'sibling' : 'none';
+}
+
+function koRulesOf(entry) {
+  const raw = Array.isArray(entry.aircraftTypes) ? entry.aircraftTypes : Object.values(entry.aircraftTypes || {});
+  return raw.map(koParseApprovalType);
+}
+
+// Best reading of the aircraft against a list of type rules (operator / scope restrictions included).
+function koScoreRules(ac, rules, operator) {
+  const scored = [];
+  let unreadable = 0;
+  for (const r of rules) {
+    if (!r.codes.size) { unreadable++; continue; }
+    const m = koMatchModel(ac.codes, r.codes);
+    if (m === 'none') continue;
+    if (m !== 'ok') { scored.push({ rank: 2, kind: 'variant', r, m }); continue; }
+    if (r.bareCodes && r.bareCodes.size && ac.codes.every(c => r.bareCodes.has(c))) { scored.push({ rank: 2, kind: 'ambiguous-list', r }); continue; }
+    if (r.scope) scored.push({ rank: 1, kind: 'scope', r });
+    else if (r.operator) {
+      const hit = koOperatorMatches(r.operator, operator);
+      scored.push({ rank: hit ? 0 : 1, kind: hit ? 'operator-ok' : 'operator', r });
+    } else scored.push({ rank: 0, kind: 'covered', r });
+  }
+  scored.sort((a, b) => a.rank - b.rank);
+  // An ambiguous name can be covered by several unrestricted lines together ("G500" = GV-SP or new: "GV-SP (G500/G550)" + "GVII-G500")
+  if (!scored.some(s => s.rank === 0) && ac.codes.length > 1) {
+    const plain = rules.filter(r => !r.operator && !r.scope && r.codes.size);
+    const union = new Set();
+    plain.forEach(r => r.codes.forEach(c => union.add(c)));
+    if (ac.codes.every(c => union.has(c))) {
+      const raw = plain.filter(r => ac.codes.some(c => r.codes.has(c))).map(r => r.raw).join(' + ');
+      scored.unshift({ rank: 0, kind: 'covered', r: { raw, codes: union, operator: '', scope: '' } });
+    }
+  }
+  return { best: scored[0], scored, unreadable };
+}
+
+// The main Scope of Work = the "United Kingdom (home)" line. A state with no type list of its own follows it.
+// → { entry, rules } (rules is empty when that line has no type restriction) · null when the line isn't in the list.
+function koMainScope() {
+  const list = Array.isArray(KO_COUNTRY_APPROVALS) ? KO_COUNTRY_APPROVALS : [];
+  const uk = list.find(c => koNormCountry(c.country) === 'united kingdom' && koApprovalBasis(c) === 'approval');
+  return uk ? { entry: uk, rules: koRulesOf(uk) } : null;
+}
+
+// Operator names are compared with every non-alphanumeric character removed, so "Winds Jet" = "WindsJet Aviation Ltd".
+function koCompact(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+}
+function koOperatorMatches(restriction, operator) {
+  const r = koCompact(restriction), o = koCompact(operator);
+  if (!r || !o) return false;
+  return o.includes(r) || (o.length >= 5 && r.includes(o));
+}
+
+// ── States ──────────────────────────────────────────────────────────────────
+const KO_COUNTRY_ALIASES = {
+  'usa': 'united states', 'u.s.a.': 'united states', 'us': 'united states', 'u.s.': 'united states',
+  'united states of america': 'united states', 'america': 'united states',
+  'uk': 'united kingdom', 'u.k.': 'united kingdom', 'great britain': 'united kingdom', 'england': 'united kingdom',
+  'uae': 'united arab emirates', 'u.a.e.': 'united arab emirates',
+  'ksa': 'saudi arabia', 'kingdom of saudi arabia': 'saudi arabia', 'saudi arabian': 'saudi arabia',
+  'indian': 'india', 'republic of india': 'india', 'barbadian': 'barbados',
+  'turkiye': 'turkey', 'türkiye': 'turkey', 'republic of turkey': 'turkey',
+  'cayman': 'cayman islands', 'hong kong sar': 'hong kong', 'republic of san marino': 'san marino'
+};
+function koNormCountry(s) {
+  const k = koCountryKey(s);
+  return KO_COUNTRY_ALIASES[k] || k;
+}
+
+// States that appear in the list but are NOT one of the 25 approvals (UK CAA + 24 foreign supplements):
+// they only have a release-statement template. Used ONLY for entries saved before the "basis" field existed;
+// the Manage list writes an explicit basis, which always wins.
+const KO_RELEASE_ONLY_DEFAULT = new Set(['australia', 'egypt', 'guernsey', 'hong kong', 'isle of man', 'new zealand', 'san marino', 'tanzania']);
+function koApprovalBasis(entry) {
+  if (entry && (entry.basis === 'approval' || entry.basis === 'release-only')) return entry.basis;
+  return KO_RELEASE_ONLY_DEFAULT.has(koNormCountry(entry && entry.country)) ? 'release-only' : 'approval';
+}
+
+function koApprovalsSummaryText() {
+  const list = Array.isArray(KO_COUNTRY_APPROVALS) ? KO_COUNTRY_APPROVALS : [];
+  const n = list.filter(c => koApprovalBasis(c) === 'approval').length;
+  return `(${n} approvals · ${list.length - n} release-only)`;
+}
+
+// Registration → state. Guards the "N" prefix: "N/A" or "NONE" must never read as a US tail number.
+function koRegCountry(reg) {
+  const r = String(reg || '').toUpperCase().replace(/[\s-]/g, '');
+  if (!r) return '';
+  if (r[0] === 'N' && !/^N[1-9][0-9A-Z]{0,4}$/.test(r)) return '';
+  return countryFromRegistration(String(reg).toUpperCase()) || '';
+}
+
+// Entries that apply to a state: its own entry, plus the EASA one when the state is an EASA member
+// (Sweden has a military-only entry, but a civil SE- aircraft is covered by EASA — the best verdict wins).
+function koFindApprovalEntries(countryName) {
+  const list = Array.isArray(KO_COUNTRY_APPROVALS) ? KO_COUNTRY_APPROVALS : [];
+  const key = koNormCountry(countryName);
+  if (!key) return [];
+  const found = [];
+  const own = list.find(c => koNormCountry(c.country) === key);
+  if (own) found.push(own);
+  if ([...EASA_COUNTRIES].some(n => n.toLowerCase() === key)) {
+    const easa = list.find(c => c !== own && /\beasa\b/i.test(c.country || ''));
+    if (easa) found.push(easa);
+  }
+  return found;
+}
+
+// ── Verdict for ONE list entry ──────────────────────────────────────────────
+const KO_APPROVAL_HEAD = {
+  'covered': 'approved', 'full-scope': 'approved', 'release-only': 'no dedicated GAL approval',
+  'type-not-covered': 'aircraft type NOT covered', 'model-unknown': 'model needed to verify',
+  'operator': 'operator restriction', 'scope': 'scope restriction', 'variant': 'verify the variant',
+  'types-unreadable': "type list can't be read automatically", 'flagged': 'special conditions',
+  'main-missing': 'main Scope of Work missing from the list', 'ambiguous-list': 'verify the model'
+};
+
+function koEvalApprovalEntry(entry, ac, operator, mainScope) {
+  const res = (level, kind, detail) => ({ level, kind, entry, name: entry.country || '', detail });
+
+  if (koApprovalBasis(entry) === 'release-only') {
+    return res('warn', 'release-only',
+      'Not one of the approvals on file: work would rely on the UK CAA / EASA approval plus the state-of-registry release wording. Confirm with Quality before accepting the job.');
+  }
+
+  let rules = koRulesOf(entry);
+  let viaMain = false;
+  let out;
+
+  if (!rules.length && !mainScope) {
+    out = res('warn', 'main-missing', 'This state has no type list of its own, so the main Scope of Work (the "United Kingdom (home)" line) applies — but that line is missing from the list, so the aircraft type cannot be checked. Admin → Manage list → Reset to reference list.');
+  } else if (!rules.length && !mainScope.rules.length) {
+    out = res('ok', 'full-scope', 'Full Scope of Work — no type restriction.');
+  } else {
+    if (!rules.length) { rules = mainScope.rules; viaMain = true; }   // no list of its own → the aircraft must be in the main Scope of Work
+    const typesLine = rules.map(r => r.raw).join('; ');
+    const whose = viaMain ? 'the main Scope of Work (the UK CAA line)' : 'this approval';
+    const follows = viaMain ? ', which this state follows' : '';
+
+    if (!ac.codes.length) {
+      const need = ac.unrecognized
+        ? `The model "${ac.text}" isn't recognised — check it (e.g. GVII-G600, GVI (G650)) or pick it from the Gulfstream models list.`
+        : "The Model field is empty — fill it in to check the aircraft type (the S/N alone isn't used to decide).";
+      out = res('warn', 'model-unknown', `${viaMain ? 'This state has no type list of its own: the main Scope of Work applies. ' : 'Type-restricted approval. '}${need} ${viaMain ? 'Types in the main Scope of Work' : 'Types on file'}: ${typesLine}.`);
+    } else {
+      const { best, scored, unreadable } = koScoreRules(ac, rules, operator);
+      if (!best) {
+        out = unreadable
+          ? res('warn', 'types-unreadable', `${ac.label} wasn't found in the type list, but ${unreadable} type entr${unreadable > 1 ? 'ies' : 'y'} couldn't be read automatically — verify manually. Types on file: ${typesLine}.`)
+          : res('danger', 'type-not-covered', `${ac.label} is NOT covered by ${whose}${follows}. Covered types: ${typesLine}. Do not accept the job without Quality's go-ahead.`);
+      } else if (best.kind === 'covered') {
+        out = viaMain
+          ? res('ok', 'full-scope', `${ac.label} is covered by ${whose}${follows}.`)
+          : res('ok', 'covered', `${ac.label} is covered (${best.r.raw}).`);
+      } else if (best.kind === 'operator-ok') {
+        out = res('ok', 'covered', `${ac.label} is covered (${best.r.raw}) — the operator matches.`);
+      } else if (best.kind === 'operator') {
+        const ops = [...new Set(scored.filter(s => s.kind === 'operator').map(s => s.r.operator))];
+        out = res('warn', 'operator', `${ac.label} is covered, but only for: ${ops.join(' / ')}. ${operator ? `This job's operator is "${operator}"` : 'No operator is filled in for this job (Customer company or Customer Code)'} — confirm with Quality that it is that operator.`);
+      } else if (best.kind === 'scope') {
+        out = res('warn', 'scope', `${ac.label} is covered, restricted to ${best.r.scope} only. Confirm that this job qualifies.`);
+      } else if (best.m === 'partial' && ac.twins.length) {
+        const w = ac.twins[0];
+        const nextDes = KO_MODEL_BY_CODE[w.next] && KO_MODEL_BY_CODE[w.next].pending ? 'not delivered yet' : koDesignation(w.next);
+        out = res('warn', 'variant', `"${w.name}" on its own can be the older aircraft (${koDesignation(w.legacy)}) or the new one (${nextDes}), and ${whose} covers only one of them (${best.r.raw}). Write the full designation or fill in the S/N.`);
+      } else if (best.kind === 'ambiguous-list') {
+        out = res('warn', 'ambiguous-list', `${whose === 'this approval' ? 'This approval' : 'The main Scope of Work'} lists "${best.r.raw}", which can mean more than one model — confirm with Quality that it covers ${ac.label}.`);
+      } else if (best.m === 'sibling' && ac.codes.some(c => KO_MODEL_BY_CODE[c] && KO_MODEL_BY_CODE[c].viaFamily === false)) {
+        const nc = ac.codes.find(c => KO_MODEL_BY_CODE[c] && KO_MODEL_BY_CODE[c].viaFamily === false);
+        out = res('danger', 'type-not-covered', `${ac.label} is a new aircraft that ${whose} doesn't name yet (closest: "${best.r.raw}"). Do not accept the job without Quality's go-ahead — once it is covered, an admin adds "${koDesignation(nc)}" to the type list (Manage list).`);
+      } else {
+        out = res('warn', 'variant', best.m === 'partial'
+          ? `The model is only known as "${ac.label}" and ${whose} covers only some variants (${best.r.raw}). Fill in the exact model (e.g. G650 vs G650ER) to verify.`
+          : `${viaMain ? 'The main Scope of Work' : 'The approval'} lists "${best.r.raw}", not ${ac.label} — same family, but confirm with Quality that this variant is covered.`);
+      }
+    }
+  }
+
+  if (out.level === 'ok' && entry.flagged) {
+    out = { ...out, level: 'warn', kind: 'flagged', detail: `${out.detail} Flagged in the approvals list: special conditions apply (see below).` };
+  }
+  return out;
+}
+
+// Notes about an empty Model whose S/N can't help (no range): the Model has to be typed.
+function koModelNotes(ac, sn) {
+  const notes = ac.clash.map(x => `"${ac.text}" mixes ${x.family} with ${x.codes.join(' / ')} (a ${koFamilyOf(x.codes[0])}) — read as ${x.codes.join(' / ')}; check the Model.`);
+  if (ac.codes.length || ac.text || !sn || ac.suggest) return notes;
+  const digits = (String(sn).match(/(?:^|\D)(\d{3,5})(?!\d)/) || [])[1] || '';
+  const n = parseInt(digits, 10);
+  return notes.concat([`S/N ${sn} doesn't identify the model${n && n < 501 ? ' (G150, G200 and older types share these numbers)' : ''} — fill in the Model.`]);
+}
+
+// ── Full verdict ────────────────────────────────────────────────────────────
+// input: { country, reg, model, sn, operator }  →  { level, head, detail, soft[], meta, suggest } | null (blank form)
+function koApprovalVerdict(input) {
+  const PLACEHOLDER = /^(?:n\/?a|tbd|tbc|unk(?:wn|nown)?|none|nil|-+|—|\?+)$/i;
+  const clean = s => { const t = String(s || '').trim(); return PLACEHOLDER.test(t) ? '' : t; };
+  const declared = clean(input.country);
+  const reg      = clean(input.reg).toUpperCase();
+  const model    = clean(input.model);
+  const sn       = clean(input.sn);
+  const custCode = clean(input.custCode);
+  const codeHit  = custCode ? koLookupCustomerCode(custCode) : null;
+  const rawOperator = clean(input.operator);                    // what's actually typed in Customer company — kept aside so a mismatch with the Customer Code gets flagged below instead of silently overridden
+  const operator = codeHit ? codeHit.operator : rawOperator;    // a matched Customer Code is a stable identifier and drives the approval decision itself
+  if (!declared && !reg && !model && !sn) return null;          // blank form: nothing to say yet
+
+  const regCountry  = koRegCountry(reg);
+  const countryName = declared || regCountry;
+  const ac = koResolveAircraft(model, sn);
+  const suggest = ac.suggest;
+  const modelNotes = koModelNotes(ac, sn);
+
+  if (!countryName) {
+    return { level: 'info', head: 'Approval check not possible yet', soft: modelNotes, meta: '', suggest,
+      detail: reg
+        ? `Registration "${reg}" isn't recognised and no Country of Registry is filled in — fix the registration or fill in the country to check the GAL approvals.${ac.codes.length ? '' : ' The Model is needed too.'}`
+        : `No Country of Registry and no registration yet, so the state of registry can't be checked against the GAL approvals. Fill in the registration (or the country)${ac.codes.length ? '.' : ' and the Model.'}` };
+  }
+
+  const list = Array.isArray(KO_COUNTRY_APPROVALS) ? KO_COUNTRY_APPROVALS : [];
+  if (!list.length) {
+    return { level: 'info', head: 'Approvals list is empty', soft: [], meta: '', suggest,
+      detail: "The GAL approvals list has no entry (not loaded yet, or emptied in the admin panel), so nothing can be checked. Admin → Manage list → Reset to reference list." };
+  }
+  const nApprovals = list.filter(c => koApprovalBasis(c) === 'approval').length;
+  let entries = koFindApprovalEntries(countryName);
+  let viaReg = false;
+  // The declared name isn't in the list (spelling, "Czechia"…) but the registration prefix is: the prefix is reliable.
+  if (!entries.length && declared && regCountry && koNormCountry(declared) !== koNormCountry(regCountry)) {
+    const alt = koFindApprovalEntries(regCountry);
+    if (alt.length) { entries = alt; viaReg = true; }
+  }
+  if (!entries.length) {
+    return { level: 'danger', head: `No GAL approval on file for "${countryName}"`, soft: [], meta: '', suggest: null,
+      detail: `Only ${nApprovals} approvals are on file (UK CAA + foreign supplements). Check with Quality whether GAL can work this aircraft before accepting the job.` };
+  }
+
+  const mainScope = koMainScope();
+  const evals = entries.map(e => koEvalApprovalEntry(e, ac, operator, mainScope));
+  const sev = { ok: 0, warn: 1, danger: 2 };
+  let best = evals.slice().sort((a, b) => sev[a.level] - sev[b.level])[0];   // stable: the state's own entry wins ties
+  // A state's own entry can restrict one type to a single operator (Sweden: GIV-SP / G550 → Swedish Air
+  // Force only) while the SAME type is ALSO covered with no restriction at all by a broader entry (EASA).
+  // These are two different, mutually exclusive regulatory bases (civil vs military, say), not redundant
+  // coverage of the same thing — so with the operator still unconfirmed, the unrestricted entry must not
+  // silently outrank the OTHER entry's unresolved operator/scope restriction for the same aircraft
+  // ("silence never means approved"). Once an operator IS known (typed, or resolved via a Customer Code)
+  // and clearly does NOT match the restriction, this no longer applies — a named, different operator is
+  // itself informative, not silence.
+  if (!operator && best.level === 'ok' && (best.kind === 'covered' || best.kind === 'full-scope')) {
+    const uncertain = evals.find(e => e !== best && (e.kind === 'operator' || e.kind === 'scope'));
+    if (uncertain) best = uncertain;
+  }
+  const isEasa = /\beasa\b/i.test(best.name) && koNormCountry(best.name) !== koNormCountry(countryName);
+  const v = {
+    level: best.level,
+    head: `${isEasa ? `${countryName} (${best.name})` : best.name} — ${KO_APPROVAL_HEAD[best.kind] || ''}`,
+    detail: best.detail,
+    meta: [best.entry.authority, best.entry.notes].filter(Boolean).join(' — '),
+    soft: [], suggest
+  };
+
+  let conflict = false;
+  if (codeHit) {
+    if (rawOperator && !koOperatorMatches(codeHit.operator, rawOperator)) {
+      v.soft.push(`⚠ Customer Code ${custCode.toUpperCase()} identifies the operator as "${codeHit.operator}", but Customer company says "${rawOperator}" — check which one is right (the approval above used the Customer Code).`);
+      conflict = true;
+    } else {
+      v.soft.push(`Operator "${codeHit.operator}" recognised from Customer Code ${custCode.toUpperCase()}${rawOperator ? '' : ' — Customer company is empty'}.`);
+    }
+  }
+  if (!declared && regCountry) v.soft.push(`State of registry taken from registration ${reg}.`);
+  if (viaReg) v.soft.push(`The Country field "${declared}" isn't in the list — the state was taken from registration ${reg} (${regCountry}).`);
+  else if (declared && regCountry && koNormCountry(declared) !== koNormCountry(regCountry)) {
+    v.soft.push(`⚠ The Country field says "${declared}" but registration ${reg} points to ${regCountry} — check which one is right.`);
+    conflict = true;
+  }
+  if (ac.mismatch) {
+    v.soft.push(ac.snInfo.exact
+      ? `⚠ S/N ${ac.snInfo.sn} is a known ${ac.snInfo.range} but the Model says "${ac.text}" — check both.`
+      : `⚠ S/N ${ac.snInfo.sn} is in the ${ac.snInfo.range} range but the Model says "${ac.text}" — check both.`);
+    conflict = true;
+  }
+  modelNotes.forEach(n => v.soft.push(n));
+  evals.filter(e => e !== best && e.level !== 'ok').forEach(e => {
+    v.soft.push(`Also on file for this state: ${e.name} — ${e.entry.notes || e.entry.authority || ''}`);
+  });
+  if (conflict && v.level === 'ok') v.level = 'warn';
+  return v;
+}
+
+// ── Rendering ───────────────────────────────────────────────────────────────
+function koNormCustomerCode(s) {
+  return String(s || '').trim().toUpperCase().replace(/\s+/g, '');
+}
+
+function koLookupCustomerCode(code) {
+  const key = koNormCustomerCode(code);
+  if (!key) return null;
+  const list = Array.isArray(KO_CUSTOMER_CODES) ? KO_CUSTOMER_CODES : [];
+  return list.find(c => koNormCustomerCode(c.code) === key) || null;
+}
+const CFG={ca:[],gs:[],cc:[]};
+KO_COUNTRY_APPROVALS=CFG.ca;KO_GSMODELS=CFG.gs;KO_CUSTOMER_CODES=CFG.cc;koRebuildModelIndex();
+/* ===== Ops additions ===== */
+const SQ={};
+const hu=s=>{let h=7;for(const c of String(s))h=(h*131+c.charCodeAt(0))%9973;return Math.round(h*137.508)%360};
+const fs=s=>dt(s).toLocaleDateString(L,{day:"numeric",month:"short"});
+const ACW=f=>{const[a,b]=Ac(f);return a&&b?" · ✈ "+fs(a)+" → "+fs(b):""};
+const qa=s=>esc(s||"").replace(/"/g,"&quot;");
+const sqs=f=>f.sq||(f.sq=(SQ[f.id]||[]).map(([r,t])=>({r,t,x:0})));
+D.forEach(f=>sqs(f));
+const SQL=f=>{const q=sqs(f),i=D.indexOf(f);if(!q.length)return'<div class="sq"><div class="sqh"><b>SQ</b><span>none listed yet: add them with Edit</span></div></div>';const n=q.filter(s=>s.x).length;return`<div class="sq"><div class="sqh"><b>SQ ${n}/${q.length}</b><span class="pb"><i style="width:${Math.round(100*n/q.length)}%"></i></span></div>${q.map((s,j)=>`<label class="sqi${j>3?" m":""}" onclick="event.stopPropagation()"><input type="checkbox"${s.x?" checked":""} onchange="sx(${i},${j})"><b>${esc(s.r||j+1)}</b><span>${esc(s.t)}</span></label>`).join("")}${q.length>4?`<div class="sqm">+${q.length-4} more SQ · tap the card</div>`:""}</div>`};
+const sx=(i,j)=>{const f=D[i],s=sqs(f)[j];s.x=s.x?0:1;(H[f.id]=H[f.id]||[]).unshift(["ME",ST(),"SQ "+(s.x?"done":"reopened")+": "+(s.r||j+1)+" "+s.t.slice(0,80)]);render()};
+const AUIN=f=>({country:"",reg:f.reg,model:f.ty,sn:f.sn||SN[f.id]||"",operator:f.op||"",custCode:f.cc||""});
+const AV=f=>{try{return (HK.verdict||koApprovalVerdict)(AUIN(f))}catch(e){return null}};
+const AU=f=>{const v=AV(f);return v&&v.level=="ok"?`<span class="p g" title="${qa(v.head)}">🛂 approved</span>`:""};
+const AUD=f=>{const v=AV(f);if(!v)return"";const k={ok:"g",warn:"a",danger:"r"}[v.level]||"mut";return`<br>Approval check: <b style="color:var(--${k})">${esc(v.head)}</b>${v.detail?"<br>"+esc(v.detail):""}${(v.soft||[]).map(s=>"<br>"+esc(s)).join("")}`};
+const authLive=()=>{const r=gv("n_r");if(!r)return"";let v;try{v=(HK.verdict||koApprovalVerdict)({country:"",reg:r,model:gv("n_m"),sn:gv("n_sn"),operator:gv("n_op"),custCode:gv("n_cc")})}catch(e){return""}const k={ok:"g",warn:"a",danger:"r"}[v.level]||"mut";return`<div style="color:var(--${k})">🛂 ${esc(v.head)}${v.detail?" — "+esc(v.detail):""}</div>`+(v.soft||[]).map(s=>`<div style="color:var(--mut)">${esc(s)}</div>`).join("")};
+const stayWarn=()=>{const a=gv("n_ea"),b=gv("n_ed"),d=gv("n_d"),e=gv("n_d2")||d;return a&&b&&d&&(d<a||e>b)?'<div style="color:var(--a)">⚠ The intervention is outside the aircraft stay (ETA–ETD). Warning only.</div>':""};
+const SJ=f=>f.sj?`<span class="p v" title="Started by Ops at ${esc(f.sj.at)}">▶ Started for ${esc(f.sj.to)}</span>`:"";
+let CR=[];const rn={p:"Leader",s:"Assistant",r:"Prep"};
+const busy=(e,a,b,ex)=>D.filter((f,j)=>j!=ex&&f.d&&rl(f,e)&&(()=>{const[x,y]=span(f,e);return x<=b&&a<=y})()).map(f=>f.id);
+const bz=c=>{const a=(c.f||gv("n_d")).slice(5),b=(c.t||(c.r=="r"?gv("n_d"):(gv("n_d2")||gv("n_d")))).slice(5),x=a?busy(c.e,a,b||a,EDI):[];return x.length?`<small class="bz">⚠ also on ${x.join(", ")} (warning only)</small>`:""};
+const crewUI=()=>{const d=gv("n_d").slice(5),d2=(gv("n_d2")||gv("n_d")).slice(5),nm=e=>(NM(e)||"").split(" · ");
+$("n_cr1").innerHTML=CR.length?'<div class="cw h"><span>Role</span><span>Engineer</span><span>From</span><span>To</span><span></span></div>'+CR.map((c,i)=>`<div class="cw"><select oninput="event.stopPropagation()" onchange="crSet(${i},'r',this.value)">${["p","s","r"].map(k=>`<option value="${k}"${c.r==k?" selected":""}>${rn[k]}</option>`).join("")}</select><span><b>${c.e}</b> ${esc(nm(c.e)[0]||"not in the roster")}<small>${esc(nm(c.e).slice(1).join(" · "))}</small>${bz(c)}</span><input type="date" value="${c.f}" oninput="event.stopPropagation()" onchange="crSet(${i},'f',this.value)"><input type="date" value="${c.t}" oninput="event.stopPropagation()" onchange="crSet(${i},'t',this.value)"><button type="button" class="lk" onclick="crDel(${i})">×</button></div>`).join("")+'<div class="fx">From / To are optional: empty = the whole intervention. Set From to let someone join later.</div>':'<div class="fx">No one yet. Add the leader first.</div>';
+const q=($("n_cq").value||"").toLowerCase();
+$("n_cl2").innerHTML=[...new Set([...Object.keys(TEAM),...D.flatMap(f=>[f.p,f.s,f.r].flatMap(sp))])].sort().filter(e=>!CR.some(c=>c.e==e)&&(e+" "+NM(e)).toLowerCase().includes(q)).map(e=>{const b=d?busy(e,d,d2||d,EDI):[];return`<div class="cr" onclick="crAdd('${e}')"><b>${e}</b><span>${esc(NM(e)||"not in the roster")}</span>${b.length?`<small class="bz">⚠ on ${b.join(", ")}</small>`:'<small class="fr">free</small>'}</div>`}).join("")||'<div class="fx">No match.</div>'};
+const crSet=(i,k,v)=>{const c=CR[i];c[k]=v;if(k=="r"&&v=="p")CR.forEach((x,j)=>{if(j!=i&&x.r=="p")x.r="s"});chk()};
+const crAdd=e=>{CR.push({e,r:CR.some(c=>c.r=="p")?"s":"p",f:"",t:""});$("n_cp").hidden=true;$("n_cq").value="";chk()};
+const crDel=i=>{CR.splice(i,1);chk()};
+$("n_ca").onclick=()=>{$("n_cp").hidden=!$("n_cp").hidden;crewUI()};
+$("n_cq").oninput=e=>{e.stopPropagation();crewUI()};
+const syncSel=()=>{const l=CR.find(c=>c.r=="p");$("n_e1").value=l?l.e:"";[["n_e2","s"],["n_e3","r"]].forEach(([id,k])=>[...$(id).options].forEach(o=>o.selected=!!o.value&&CR.some(c=>c.r==k&&c.e==o.value)))};
+const sqrow=(r,t,x)=>{const d=document.createElement("div");d.className="sqr";d.innerHTML=`<input value="${qa(r)}" placeholder="2.1"><input value="${qa(t)}" placeholder="Squawk / task"><label><input type="checkbox"${x?" checked":""}> done</label><button type="button" class="lk">×</button>`;d.lastChild.onclick=()=>d.remove();$("n_sr").appendChild(d)};
+const sqRows=()=>[...$("n_sr").children].map(d=>({r:d.children[0].value.trim(),t:d.children[1].value.trim(),x:d.children[2].firstChild.checked?1:0})).filter(s=>s.t);
+$("n_sa").onclick=()=>sqrow("","",0);
+const ej2=i=>{ej(i);const f=D[i];CR=[...sp(f.p).slice(0,1).map(e=>({e,r:"p"})),...sp(f.s).map(e=>({e,r:"s"})),...sp(f.r).map(e=>({e,r:"r"}))].map(c=>{const x=(f.cd||{})[c.e]||[];return{...c,f:x[0]?Y+"-"+x[0]:"",t:x[1]?Y+"-"+x[1]:""}});[["n_ea",Ac(f)[0]],["n_ed",Ac(f)[1]]].forEach(([k,v])=>$(k).value=v?Y+"-"+v:"");[["n_sn",f.sn||SN[f.id]||""],["n_op",f.op||""],["n_cc",f.cc||""],["n_pt",f.pt||""]].forEach(([k,v])=>$(k).value=v);$("n_sr").innerHTML="";sqs(f).forEach(s=>sqrow(s.r,s.t,s.x));$("n_cp").hidden=true;$("n_cq").value="";chk()};
+const nj1=$("nj").onclick;$("nj").onclick=()=>{nj1();CR=[];["n_ea","n_ed","n_sn","n_op","n_cc","n_cq","n_pt"].forEach(i=>$(i).value="");$("n_sr").innerHTML="";$("n_cp").hidden=true;chk()};
+const sv0=$("n_s").onclick;
+$("n_s").onclick=()=>{syncSel();const E=EDI>=0?D[EDI]:null,prev=E?JSON.stringify([sqs(E),E.cd||{}]):"";sv0();if($("nd").open)return;const f=E||D[D.length-1],cd={};CR.forEach(c=>{if(c.f||c.t)cd[c.e]=[c.f?c.f.slice(5):null,c.t?c.t.slice(5):null]});f.cd=cd;f.p=CR.filter(c=>c.r=="p").map(c=>c.e).join(" ");f.eta=gv("n_ea").slice(5)||undefined;f.etd=gv("n_ed").slice(5)||undefined;f.sn=gv("n_sn");f.op=gv("n_op");f.cc=gv("n_cc");const opt=E?(E.pt||""):"";if(gv("n_pt"))f.pt=gv("n_pt");else delete f.pt;if(opt!=(f.pt||""))(H[f.id]=H[f.id]||[]).unshift(["ME",ST(),"Parts: "+(opt||"none")+" → "+(f.pt||"none")+"."]);f.sq=sqRows();f.tk=f.sq.map(s=>s.t).join(" · ")||"—";if(E&&prev!=JSON.stringify([f.sq,f.cd]))(H[f.id]=H[f.id]||[]).unshift(["ME",ST(),"Squawk list or crew dates updated."]);render()};
+let SJI=0;
+const sj=i=>{SJI=i;const f=D[i];$("sd_t").textContent="▶ Start job · "+f.id+" · "+f.reg;[["sd_r",f.reg],["sd_m",f.ty],["sd_s",AUIN(f).sn],["sd_o",f.op||""]].forEach(([k,x])=>$(k).value=x);$("sd_n").innerHTML='<option value="">— select a colleague —</option>'+[...new Set([...Object.keys(TEAM),...D.flatMap(g=>[g.p,g.s,g.r].flatMap(sp))])].sort().map(e=>`<option value="${e}">${e} · ${esc(NM(e)||"not in the roster")}</option>`).join("");$("sd_n").value=sp(f.p)[0]||"";$("sd_x").innerHTML=AUD(f);$("sd").showModal()};
+$("sd_g").onclick=()=>{const f=D[SJI],c=$("sd_n").value;if(!c){$("sd_x").innerHTML+='<div style="color:var(--r)">Choose the colleague this job is prepared for.</div>';return}f.sj={to:c,at:ST()};if(!sp(f.p).length)f.p=c;(H[f.id]=H[f.id]||[]).unshift(["ME",ST(),"Job started by Ops for "+((NM(c)||"").split(" · ")[0]||c)+" (preparing for a colleague)."]);try{HK.startJob&&HK.startJob({id:f.id,reg:f.reg,model:f.ty,sn:AUIN(f).sn,customer:f.op||"",sq:sqs(f),colleague:c,colleagueName:(NM(c)||"").split(" · ")[0]})}catch(e){}$("sd").close();render();toast("Job started for "+c)};
+const PA=f=>f.pt?`<br>📦 Part: ${esc(f.pt)} <button class="lk" onclick="event.stopPropagation();pa(${D.indexOf(f)})">✓ arrived</button>`:"";
+const pa=i=>{const f=D[i];(H[f.id]=H[f.id]||[]).unshift(["ME",ST(),"Part arrived: "+f.pt+"."]);delete f.pt;render()};
+
+/* ===== Demo mode, hooks, persistence and handover-PDF import ===== */
+const HK=(()=>{try{return window.parent!==window&&window.parent.OPS_HOOKS||{}}catch(e){return{}}})(),LIVE=!!Object.keys(HK).length;
+if(HK.roster){Object.keys(TEAM).forEach(k=>delete TEAM[k]);Object.assign(TEAM,HK.roster)}
+D.forEach(f=>{f.tk=f.tk||(f.sq||[]).map(s=>s.t).join(" · ")||"—"});
+const DEMO0=JSON.stringify({D,H});let IMP=false,SV_T=0;const SAVEKEY="fast-ops-board-v1";
+const SAVE=()=>{clearTimeout(SV_T);SV_T=setTimeout(()=>{const s={D,H,CX,OPS,imp:IMP};try{localStorage.setItem(SAVEKEY,JSON.stringify(s))}catch(e){}try{HK.save&&HK.save(s)}catch(e){}},700)};
+const APPLY=s=>{D.length=0;D.push(...s.D);Object.keys(H).forEach(k=>delete H[k]);Object.assign(H,s.H||{});CX.length=0;CX.push(...(s.CX||[]));Object.assign(OPS,s.OPS||{});IMP=!!s.imp;D.forEach(f=>sqs(f))};
+try{if(LIVE)APPLY(HK.state||{D:[],H:{},CX:[],imp:true});else{const s=JSON.parse(localStorage.getItem(SAVEKEY)||"null");if(s&&s.D)APPLY(s)}}catch(e){}
+$("demo").hidden=IMP||LIVE;
+const MON={Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12},p2=n=>String(n).padStart(2,"0");
+const guessK=q=>{const t=q.map(s=>s.t).join(" ");return q.length&&/\b(arrival|departure|dep|arr|support|assist|stand ?by|meet)\b/i.test(t)&&!/\b(replace|update|database|sump\w*|inspection|troubleshoot\w*|install\w*|remove|download|lubrication|servic\w*|repair|fault|leak\w*|damage|check|test|cmc|cas)\b/i.test(t)?"A":"R"};
+const fixReg=r=>/^(?!N\d)[A-Z0-9]{2}[A-Z]{3}$/.test(r)?r.slice(0,2)+"-"+r.slice(2):r;
+const parseHO=raw=>{
+const t=raw.replace(/\r/g,"").replace(/[ \t]+/g," "),re=/(\w+) (?:Disabled|Enabled) AOG: ?(Yes|No)/g,ms=[];let m,yr=0;while(m=re.exec(t))ms.push(m);
+const jobs=[],hist={};
+ms.forEach((m,k)=>{
+let seg=t.slice(m.index+m[0].length,k+1<ms.length?ms[k+1].index:t.length);
+const ids=t.slice(Math.max(0,m.index-45),m.index).match(/FA\d{5}(?:#\d)?/g)||seg.slice(0,120).match(/FA\d{5}(?:#\d)?/g)||[],id=ids.find(x=>!x.includes("#"))||ids[0]||"No FA yet";
+seg=seg.replace(/(?:\s*FA\d{5}(?:#\d)?|\s*\(FA\d{5}\))+\s*$/,"");
+const eta=seg.match(/ETA: ?(\d\d)-\s*(\w{3})-\s*\d{4}/),etd=seg.match(/ETD: ?(\d\d)-\s*(\w{3})-\s*\d{4}/),h=seg.match(/(\d\d)-(\w{3})-(\d{4})\s+(\S+)\s+(\d{3,6})\s+(\S+)\s+([\s\S]*?)\s+-\s+([A-Z]{4})\b/);
+const si=seg.indexOf("Subject Management"),head=si>=0?seg.slice(0,si):seg,tags=[...head.matchAll(/\b([A-Z]{2,3})\((P|S|Prep)\)/g)],ldr=tags.filter(x=>x[2]=="P").map(x=>x[1]);
+const sq=[],sm=seg.match(/Subject Management([\s\S]*?)(?:Handover|$)/);
+if(sm){const ps=sm[1].split(/Defect\s+\d+\s+\((\d+\.\d+)\)\s*/);for(let i=1;i<ps.length;i+=2){const x=(ps[i+1]||"").replace(/\s+/g," ").trim().split(/\s[A-Z]{2,3}\((?:P|S|Prep)\)/)[0].trim();if(x)sq.push({r:ps[i],t:x,x:0})}}
+const hi=seg.indexOf("Handover"),hs=hi>=0?seg.slice(hi+8):"",ers=[...hs.matchAll(/([A-Z][\w’'\-]+(?: [A-Z][\w’'\-]+){1,3}):\s*(\d\d)\/(\d\d)\/\d{4}\s+(\d\d:\d\d)/g)],H1=[];
+ers.forEach((e,i)=>{const tx=hs.slice(e.index+e[0].length,i+1<ers.length?ers[i+1].index:hs.length).replace(/\s+/g," ").trim();H1.push([e[1],e[2]+"/"+e[3]+" "+e[4],tx||"(no text)"]);OPS[e[1]]=e[1]});
+const place=h?h[7].replace(/\s+/g," ").trim():"";
+const f={id,k:guessK(sq),ty:h?h[4]:"?",reg:h?fixReg(h[6]):"?",ap:h?place+" · "+h[8]:"?",p:ldr[0]||"",s:[...ldr.slice(1),...tags.filter(x=>x[2]=="S").map(x=>x[1])].join(" "),r:tags.filter(x=>x[2]=="Prep").map(x=>x[1]).join(" "),w:{RTS:"R",FBO:"F",AMBER:"A"}[m[1]]||"?",sn:h?h[5]:"",sq,tk:sq.map(x=>x.t).join(" · ")||"—",n:((H1[0]||[])[2]||"Imported from the handover PDF.").slice(0,240)};
+if(m[2]=="Yes")f.aog=true;
+if(eta)f.eta=p2(MON[eta[2]])+"-"+eta[1];if(etd)f.etd=p2(MON[etd[2]])+"-"+etd[1];
+if(h){f.d=p2(MON[h[2]])+"-"+h[1];yr=+h[3]}
+if(f.etd&&dd(f.etd)<-2){f.wait=f.eta||f.etd;delete f.d}
+const ex=jobs.find(j=>j.id==id);
+if(ex){ex.sq.push(...sq.filter(s=>!ex.sq.some(y=>y.t==s.t)));ex.tk=ex.sq.map(x=>x.t).join(" · ");ex.k=guessK(ex.sq);hist[id]=[...(hist[id]||[]),...H1];return}
+jobs.push(f);hist[id]=H1});
+return{jobs,hist,yr}};
+const pdfUrl=HK.pdfjsUrl||"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",pdfWorker=HK.pdfjsWorker||"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+const loadPdfjs=()=>window.pdfjsLib?Promise.resolve(window.pdfjsLib):new Promise((ok,ko)=>{const s=document.createElement("script");s.src=pdfUrl;s.onload=()=>{window.pdfjsLib.GlobalWorkerOptions.workerSrc=pdfWorker;ok(window.pdfjsLib)};s.onerror=()=>ko(new Error("pdf.js could not be loaded"));document.head.appendChild(s)});
+const pdfText=async file=>{const lib=await loadPdfjs(),pdf=await lib.getDocument({data:await file.arrayBuffer()}).promise;let out="";for(let i=1;i<=pdf.numPages;i++){const c=await(await pdf.getPage(i)).getTextContent();out+=c.items.map(x=>x.str+(x.hasEOL?"\n":" ")).join("")+"\n"}return out};
+const doText=txt=>{const r=parseHO(txt),s=$("imp_s");if(!r.jobs.length){s.innerHTML='<span style="color:var(--r)">No job found. Is it the “Assignments for handover” PDF?</span>';return}
+const prev=JSON.stringify({D,H,CX,imp:IMP});if(r.yr)Y=r.yr;
+D.length=0;D.push(...r.jobs);Object.keys(H).forEach(k=>delete H[k]);Object.assign(H,r.hist);CX.length=0;IMP=true;
+F="all";T="all";W="all";Q="";$("q").value="";$("demo").hidden=true;$("imp").close();render();
+toast("Imported "+r.jobs.length+" jobs from the PDF",()=>{const o=JSON.parse(prev);APPLY(o);$("demo").hidden=IMP||LIVE;render()})};
+const doImport=async file=>{if(!file)return;const s=$("imp_s");s.textContent="Reading the PDF…";try{doText(await pdfText(file))}catch(e){s.innerHTML='<span style="color:var(--r)">The PDF could not be read here ('+esc(e.message||e)+'). Use the paste option below.</span>'}};
+$("imb").onclick=()=>{$("imp_s").textContent="";$("imp").showModal()};
+$("imp_f").onchange=e=>doImport(e.target.files[0]);
+$("imp_b").onclick=()=>doText($("imp_t").value);
+const zn=$("imp_l");zn.ondragover=e=>e.preventDefault();zn.ondrop=e=>{e.preventDefault();doImport(e.dataTransfer.files[0])};
+$("rsb").onclick=()=>{APPLY({...JSON.parse(DEMO0),CX:[],imp:false});$("demo").hidden=LIVE;render();toast("Fictitious demo jobs restored")};
+
+render();
+</script></body></html>
