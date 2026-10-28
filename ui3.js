@@ -37,7 +37,7 @@
 
   function addLink(a) { var l = D.createElement('link'); Object.keys(a).forEach(function (k) { l.setAttribute(k, a[k]); }); D.head.appendChild(l); }
   addLink({ rel: 'preload', href: 'fonts/plus-jakarta-sans-latin-wght-normal.woff2', as: 'font', type: 'font/woff2', crossorigin: '' });
-  addLink({ rel: 'stylesheet', href: 'ui3.css?v=20261021a' });
+  addLink({ rel: 'stylesheet', href: 'ui3.css?v=20261024a' });
   addLink({ rel: 'stylesheet', href: 'ui3-tablet.css?v=20261021a' });                  // tablets (601-1099px + touch): loaded after ui3.css, so it only wins where it says so
   addLink({ rel: 'stylesheet', href: 'ui3-phone.css?v=20261021a' });   // phones
   D.documentElement.classList.add('u3-enabled');
@@ -338,6 +338,28 @@
       var cut = -1; kids.forEach(function (k, j) { if (cut < 0 && k.classList.contains('ko-section-lbl') && /co-engineers/i.test(txt(k))) cut = j; });
       return cut >= 0 && i >= cut ? 'b' : 'a';
     });
+    // « QE » (Qatar Executive) and « I am preparing this job for a colleague » change the Customer update emails (who receives them, first/third person):
+    // they sit at the top of Customer update, not under Recipients. Same elements, same ids: the app finds them exactly as before.
+    (function () {
+      var qa = D.getElementById('ko-qatar-toggle'), co = D.getElementById('ko-colleague-toggle'), nm = D.getElementById('ko-colleague-name-wrap');
+      var ql = qa && qa.closest('label'), cl = co && co.closest('label'), body = $('.ko-card-body', cards[3]);
+      if (!ql || !cl || !nm || !body || $('.u3-who', body)) return;
+      [ql, cl].forEach(function (l) { var d = l.previousElementSibling; if (d && d.classList.contains('ko-divider')) d.classList.add('u3-gone'); });   // their divider lines stay behind in Recipients: hide them
+      var box = el('div', 'u3-who'); box.setAttribute('data-u3pp', 'q');
+      box.appendChild(ql); box.appendChild(cl); box.appendChild(nm);
+      var intro = body.firstElementChild;                                  // the one-line « Tick the questions… » sentence stays first
+      body.insertBefore(box, intro && intro.tagName === 'P' ? intro.nextSibling : body.firstChild);
+    })();
+    // FBO page: the FBO lists are managed from here (before: only through Part request ▸ Manage list ▸ FBO directory, or the Details page)
+    (function () {
+      var body = $('.ko-card-body', cards[6]); if (!body || $('.u3-fbotools', body)) return;
+      var bar = el('div', 'u3-fbotools'); bar.setAttribute('data-u3pp', 'a');
+      bar.innerHTML = '<div class="u3-fbotools-t"><b>' + ICON.building + 'FBO list</b><span>Add an FBO, correct an email, a phone or an address. Used by the FBO suggestions, the FBO email and the shipping address.</span></div>' +
+        '<div class="u3-fbotools-b"><button type="button" class="btn primary u3-fbodir">' + ICON.building + 'FBO directory…</button>' +
+        '<button type="button" class="btn u3-fboaddr">' + ICON.notes + 'My FBO addresses…</button>' +
+        '<button type="button" class="btn u3-fborec">' + ICON.mail + 'FBO emails…</button></div>';
+      body.insertBefore(bar, body.firstChild);
+    })();
     buildParts(cards[5]);
     var ph = $('#u3-ph'); if (ph && !$('.u3-ksubs', ph)) {
       var ks = el('div', 'u3-ksubs'); ks.hidden = true;
@@ -586,6 +608,9 @@
       if (t.closest('.u3-back')) { setState('new'); return; }
       if (t.closest('.u3-godetails')) { tab('details'); return; }
       if ((b = t.closest('.u3-cra'))) { call('craOpenItem', b.getAttribute('data-id')); return; }
+      if (t.closest('.u3-fbodir')) { call('koManageFboDir'); return; }             // FBO page: the FBO directory window
+      if (t.closest('.u3-fboaddr')) { call('koManageShipAddr'); return; }           // FBO page: the saved FBO addresses (« Manage list »)
+      if (t.closest('.u3-fborec')) { setK('recips'); later('fborec', function () { var fb = D.getElementById('ko-recip-fbo'); if (fb) fb.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 80); return; }   // FBO email recipients
       if (t.closest('.u3-hub')) { call('openCorridorHub'); return; }
       var row = t.closest('.proj-item');
       if (row) { var btn = t.closest('button'); if (!btn && !/Transferred/i.test(row.textContent)) setState('project', 'details'); return; }
