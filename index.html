@@ -15,7 +15,7 @@
 <link rel="icon" href="icon-192.png"/>
 <!-- ui3 · new interface (PC, tablet, phone) — ON for everybody; a device that opens the app with ?ui3=0 keeps the classic interface (see ui3.js).
      ui3.js MUST stay BEFORE ui2.js. Delete these two lines (ui3 + ui2) to remove the new interfaces completely -->
-<script src="ui3.js?v=20261021b" defer></script>
+<script src="ui3.js?v=20261024a" defer></script>
 <!-- ui2 · previous new interface — OFF for everybody until you open the app with ?ui2=1 (see ui2.js). Delete this line to remove it -->
 <script src="ui2.js" defer></script>
 <style>
@@ -979,6 +979,8 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
     <button class="btn" onclick="openSignatureModal()" title="Personalize your email signature">✍️ Signature</button>
   </div>
   <button class="btn" id="btn-gmail-sync-status" onclick="koConnectGmailSync()" style="display:none;font-size:11px"></button>
+  <button class="btn" id="btn-push-status" onclick="koPushToggle()" style="display:none;font-size:11px"></button>
+  <button class="btn" id="btn-push-off" onclick="koPushOff()" title="Turn notifications off on this device" style="display:none;font-size:11px">🔕 Off</button>
   <button class="btn-start-job" id="btn-start-job" onclick="openKickoff()" style="display:none">🚀 Start Job</button>
 </div>
 
@@ -1054,7 +1056,7 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
 
 <!-- STEP 3 -->
 <div class="card">
-  <div class="card-head"><span class="step-badge">STEP 3</span><h2>Condition — work items</h2><span id="sqa-status" style="font-size:10.5px;color:var(--g400);white-space:nowrap"></span></div>
+  <div class="card-head"><span class="step-badge">STEP 3</span><h2>Condition — work items</h2><button class="btn" type="button" style="margin-left:auto;font-size:11px;padding:3px 8px" onclick="event.stopPropagation();craCsOpen(false)" title="CMP cards and steps of this job: edit them, copy or download the list">📋 CMP list</button><span id="sqa-status" style="font-size:10.5px;color:var(--g400);white-space:nowrap"></span></div>
   <div class="card-body">
     <div id="items-container"></div>
     <button class="btn-add" onclick="addItem()">+ Add work item</button>
@@ -3508,6 +3510,600 @@ G.koConnectGmailSync = async function() {
   }
   window.addEventListener('message', handler);
 };
+
+// ═══════════════════════════════════════════════════════════════════
+//  PUSH NOTIFICATIONS — étape 1 (côté appli)
+//  • Boutons « Enable notifications » / « Off » (à côté de « Gmail connected »)
+//  • Un appui sur une notification ouvre l'écran « message prêt » (modèles modifiables + statut du jour)
+//  Rien ici n'envoie d'email : l'envoi à toute la chaîne arrive à l'étape 2.
+// ═══════════════════════════════════════════════════════════════════
+let _koPushPending   = null;   // intention issue d'un clic sur notification : { kind, fa, pid, owner, action }
+let _koPushProfileId = null;   // profil pour lequel le bouton a déjà été rendu
+let _koPushLastTs    = 0;      // horodatage du dernier clic traité : dédoublonne les trois chemins (adresse, message, cache)
+
+// Modèles de messages (même style « Dear All, » que les modèles de Start Job). `status` = pastilles du Daily update à cocher.
+// Jetons : {I} = I / We · {we} = I / we (milieu de phrase) · {am} = am / are · {my} = my / our · {My} = My / Our · {pass} = pass / passes.
+// Pas de formule de politesse finale (« Kind regards »…) : elle vient de votre signature (« My email signature »).
+const KO_PUSH_TEMPLATES = [
+  { key: 'arrived_started', emoji: '🔧',   label: 'Arrived & started',         status: ['arrived', 'work_started'],        text: 'Dear All,\n\n{I} have arrived on site and have started working on the aircraft.\n{I} will keep you updated as the work progresses.' },
+  { key: 'arrived',         emoji: '🧑‍🔧', label: 'Arrived on site',           status: ['arrived'],                        text: 'Dear All,\n\n{I} have arrived on site and will start working on the aircraft shortly.\nUpdate to follow tonight.' },
+  { key: 'at_fbo',          emoji: '🛂',   label: 'At the FBO, awaiting pass', status: [],                                 text: 'Dear All,\n\n{I} {am} at the FBO, awaiting the airport {pass} to be ready.\nUpdate to follow tonight.' },
+  { key: 'in_progress',     emoji: '🛠️',   label: 'Work in progress',          status: ['work_started'],                   text: 'Dear All,\n\nWork is ongoing on the aircraft.\n{I} will send a further update tonight.' },
+  { key: 'eta',             emoji: '🕒',   label: 'ETA on site',               status: [],                                 text: 'Dear All,\n\nPlease note that {we} will be on site at [HH:MM] local time.\n{I} will confirm once {we} {am} at the aircraft.' },
+  { key: 'delayed',         emoji: '⏰',   label: 'Delayed, new ETA',          status: [],                                 text: 'Dear All,\n\nPlease note that {my} arrival on site is delayed. {My} new ETA is [HH:MM] local time.\nApologies for the inconvenience — {we} will keep you updated.' },
+  { key: 'waiting_parts',   emoji: '⏳',   label: 'Waiting for parts',         status: ['parts_pending'],                  text: 'Dear All,\n\n{I} {am} on site. The work is currently on hold pending the arrival of the parts.\n{I} will provide a further update as soon as {we} have more information.' },
+  { key: 'parts_received',  emoji: '📦',   label: 'Parts received, resuming',  status: ['parts_received', 'work_started'], text: 'Dear All,\n\nThe parts have been received and {we} {am} resuming the work.\n{I} will keep you updated on the progress.' },
+  { key: 'waiting_ac',      emoji: '🛬',   label: 'Waiting for A/C',           status: ['waiting_ac'],                     text: 'Dear All,\n\n{I} {am} on site and waiting for the aircraft, new ETA is [HH:MM].\n{I} will start as soon as the aircraft is available.' },
+  { key: 'done_today',      emoji: '🏁',   label: 'Done for today',            status: ['done_today'],                     text: 'Dear All,\n\nSupport for today is now complete.\n{I} will resume the intervention on [date].' }
+];
+
+// « I » ou « We » : une seule rédaction, deux versions grammaticalement correctes.
+function koPushFill(text, mode) {
+  const we = mode === 'We';
+  const map = { I: we ? 'We' : 'I', we: we ? 'we' : 'I', am: we ? 'are' : 'am', my: we ? 'our' : 'my', My: we ? 'Our' : 'My', pass: we ? 'passes' : 'pass' };
+  return String(text).replace(/\{(I|we|am|my|My|pass)\}/g, (m, k) => map[k]);
+}
+// Nombre d'ingénieurs sur le projet : le responsable (Lead) + les collègues ajoutés à l'étape 6 (même lecture que projColleagueIds).
+function koPushTeamSize(proj) {
+  if (!proj) return 0;
+  const cols = Array.isArray(proj.colleagues) ? proj.colleagues : Object.values(proj.colleagues || {});
+  return 1 + cols.filter(c => c && c.id).length;
+}
+
+function koPushSupported()  { return ('serviceWorker' in navigator) && ('PushManager' in window) && ('Notification' in window); }
+function koPushIsIos()      { return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+function koPushIsStandalone() { return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; }
+function koPushSleep(ms)    { return new Promise(r => setTimeout(r, ms)); }
+function koPushEsc(s)       { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function koPushB64urlToUint8(s) {
+  s = String(s || '').replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  const bin = atob(s), out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+async function koPushGetSub() {
+  if (!koPushSupported()) return null;
+  try { const reg = await navigator.serviceWorker.ready; return await reg.pushManager.getSubscription(); } catch (e) { return null; }
+}
+function koPushPostSubscription(sub) {
+  return koWorkerFetch('/push/subscribe', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subscription: sub.toJSON(), tz: Intl.DateTimeFormat().resolvedOptions().timeZone })
+  });
+}
+
+// ─── Boutons ───
+async function koPushRender() {
+  const btn = document.getElementById('btn-push-status');
+  const off = document.getElementById('btn-push-off');
+  if (!btn) return;
+  const base = 'font-size:11px;padding:6px 10px;display:inline-flex;';
+  const amber = base + 'background:var(--al);color:var(--amb);border-color:#d4b800';
+  const green = base + 'background:var(--gl);color:var(--gd);border-color:var(--gb)';
+  if (off) off.style.display = 'none';
+  if (!koPushSupported()) {
+    btn.textContent = (koPushIsIos() && !koPushIsStandalone()) ? '🔔 Notifications — add the app to your Home Screen' : '🔔 Notifications not supported here';
+    btn.style.cssText = amber;
+    return;
+  }
+  if (Notification.permission === 'denied') { btn.textContent = '🔕 Notifications blocked — allow them in settings'; btn.style.cssText = amber; return; }
+  const sub = Notification.permission === 'granted' ? await koPushGetSub() : null;
+  if (sub) {
+    btn.textContent = '🔔 Notifications on — tap to test';
+    btn.style.cssText = green;
+    if (off) off.style.cssText = base + 'padding:6px 8px';
+  } else {
+    btn.textContent = '🔔 Enable notifications';
+    btn.style.cssText = amber;
+  }
+}
+
+G.koPushToggle = async function() {
+  if (!koPushSupported()) {
+    alert(koPushIsIos() && !koPushIsStandalone()
+      ? 'On iPhone/iPad, notifications only work once the app is added to the Home Screen: open it in Safari, tap Share → "Add to Home Screen", then open the app from the new icon.'
+      : 'This browser does not support push notifications.');
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    alert('Notifications are blocked for this app. Allow them in your phone/browser settings (site settings → Notifications), then come back.');
+    return;
+  }
+  if (!_koSessionToken) { alert('Please sign in again first.'); return; }
+  const sub = Notification.permission === 'granted' ? await koPushGetSub() : null;
+  if (sub) await koPushSendTest(); else await koPushEnable();
+};
+
+async function koPushEnable() {
+  const btn = document.getElementById('btn-push-status');
+  if (btn) btn.textContent = '⏳ Enabling…';
+  try {
+    const perm = await Notification.requestPermission();            // premier await : doit rester dans le geste de l'utilisateur (Safari)
+    if (perm !== 'granted') return;
+    const reg = await navigator.serviceWorker.ready;
+    const kr = await koWorkerFetch('/push/vapid-public', { method: 'POST' });
+    const kd = await kr.json().catch(() => ({}));
+    if (!kr.ok || !kd.publicKey) throw new Error(kd.error === 'push_not_configured' ? 'Push is not configured on the server: ' + (kd.hint || 'VAPID key missing') : (kd.error || 'Server error'));
+    const appKey = koPushB64urlToUint8(kd.publicKey);
+
+    let sub = await reg.pushManager.getSubscription();
+    if (sub) {   // un ancien abonnement créé avec une autre clé ferait échouer subscribe()
+      const cur = sub.options && sub.options.applicationServerKey ? new Uint8Array(sub.options.applicationServerKey) : null;
+      if (!cur || cur.length !== appKey.length || cur.some((b, i) => b !== appKey[i])) { await sub.unsubscribe(); sub = null; }
+    }
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: appKey });
+
+    const r = await koPushPostSubscription(sub);
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+    await koPushSendTest();
+  } catch (e) {
+    alert('Could not enable notifications: ' + e.message);
+  } finally {
+    koPushRender();
+  }
+}
+
+async function koPushSendTest() {
+  try {
+    const r = await koWorkerFetch('/push/test', { method: 'POST' });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) alert('The test notification could not be sent' + (d.error ? ': ' + d.error : '') + '.');
+  } catch (e) { alert('The test notification could not be sent: ' + e.message); }
+}
+
+G.koPushOff = async function() {
+  const sub = await koPushGetSub();
+  if (sub) {
+    try {
+      await koWorkerFetch('/push/unsubscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) });
+    } catch (e) {}
+    try { await sub.unsubscribe(); } catch (e) {}
+  }
+  koPushRender();
+};
+
+// ─── Clic sur une notification → intention en attente, traitée dès que la session est ouverte ───
+// (l'appli demande le PIN à chaque ouverture : l'intention attend donc la connexion).
+// Elle peut arriver par trois chemins (voir sw.js) : adresse « ?fastpush= », message du service worker, ou copie dans le cache.
+function koPushAccept(intent) {
+  if (!intent || !intent.kind) return;
+  const ts = Number(intent.ts) || 0;
+  if (ts && ts <= _koPushLastTs) return;                      // déjà reçue par un autre chemin
+  if (ts && Date.now() - ts > 15 * 60 * 1000) return;         // clic trop ancien : on ne rouvre pas un écran périmé
+  if (ts) _koPushLastTs = ts;
+  _koPushPending = intent;
+}
+function koPushStoreUrl() { return new URL('__fastpush__', location.href).href; }
+async function koPushClearStored() {
+  try {
+    const C = window.caches; if (!C) return;
+    const url = koPushStoreUrl();
+    for (const k of await C.keys()) { const c = await C.open(k); await c.delete(url); }
+  } catch (e) {}
+}
+async function koPushReadStored() {
+  try {
+    const C = window.caches; if (!C) return;
+    const res = await C.match(koPushStoreUrl()); if (!res) return;
+    const it = await res.json();
+    await koPushClearStored();
+    koPushAccept(it);
+  } catch (e) {}
+}
+(function koPushReadLaunchIntent() {
+  try {
+    const u = new URL(location.href);
+    const raw = u.searchParams.get('fastpush');
+    if (raw) {
+      koPushAccept(JSON.parse(new TextDecoder().decode(koPushB64urlToUint8(raw))));
+      u.searchParams.delete('fastpush');
+      history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
+    }
+  } catch (e) {}
+  koPushReadStored();
+})();
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', ev => {
+    if (ev.data && ev.data.type === 'fast-push' && ev.data.intent) { koPushAccept(ev.data.intent); koPushClearStored(); }
+  });
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') koPushReadStored(); });
+
+function koPushTick() {
+  if (!curProfile || !_koSessionToken) return;
+  if (_koPushProfileId !== curProfile.id) {
+    _koPushProfileId = curProfile.id;
+    koPushRender();
+    koPushReadStored();
+    // Si les notifications sont déjà actives sur cet appareil, on rafraîchit son fuseau horaire (voyage) — le rappel part à 9h LOCALES.
+    if (koPushSupported() && Notification.permission === 'granted') {
+      koPushGetSub().then(sub => { if (sub) koPushPostSubscription(sub).catch(() => {}); });
+    }
+  }
+  if (_koPushPending) {
+    const it = _koPushPending; _koPushPending = null;
+    koPushOpenScreen(it);
+  }
+}
+setInterval(koPushTick, 1500);
+
+// ─── Écran « message prêt » ───
+// ═══════════════════════════════════════════════════════════════════
+//  PUSH NOTIFICATIONS — étape 2 : répondre à toute la chaîne « UPDATE », avec confirmation
+//  Le Worker retrouve la chaîne dans VOTRE Gmail et calcule les destinataires ; l'envoi se fait ici,
+//  dans le navigateur, avec la même autorisation Google (gmail.compose) que vos brouillons actuels.
+//  Rien ne part sans le bouton « Yes, send now » de l'écran de confirmation.
+// ═══════════════════════════════════════════════════════════════════
+function koPushTrimSep(s) { return String(s || '').replace(/[\s\/\-–—:|,;]+$/, '').trim(); }
+
+function koPushRawMessage(to, cc, subject, html, inReplyTo, references) {
+  const clean = s => String(s || '').replace(/[\r\n]+/g, ' ').trim();
+  const lines = ['To: ' + to.join(', ')];
+  if (cc.length) lines.push('Cc: ' + cc.join(', '));
+  lines.push('Subject: =?UTF-8?B?' + toB64(clean(subject)) + '?=');
+  if (clean(inReplyTo)) lines.push('In-Reply-To: ' + clean(inReplyTo));
+  if (clean(references)) lines.push('References: ' + clean(references));
+  lines.push('MIME-Version: 1.0', 'Content-Type: text/html; charset=UTF-8', 'Content-Transfer-Encoding: base64', '');
+  lines.push((toB64(html).match(/.{1,76}/g) || []).join('\r\n'));
+  return toB64(lines.join('\r\n')).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// Appelée par l'écran « message prêt » (étape 1) : ajoute le panneau d'envoi sous les boutons.
+function koPushMailMount(ctx) {
+  const { ov, intent, ta, stBtn, close, proj, getCurrent } = ctx;
+  const row = stBtn && stBtn.parentNode;
+  if (!row) return;
+
+  const panel = document.createElement('div');
+  panel.id = 'ko-push-mail';
+  panel.style.cssText = 'margin-top:14px;border-top:1px solid #e3e6ea;padding-top:12px';
+  panel.innerHTML =
+    '<div style="font-weight:700;font-size:13px;margin-bottom:6px">✉️ Reply to the whole update chain</div>' +
+    '<div id="kpm-chain" style="font-size:12px;color:#333">🔎 Looking for the chain…</div>' +
+    '<div id="kpm-rcpt" style="margin-top:8px"></div>' +
+    '<label id="kpm-tick-wrap" style="display:none;align-items:center;gap:6px;margin-top:8px;font-size:12px;font-weight:400;text-transform:none;letter-spacing:normal;color:#1a1a1a;cursor:pointer"><input type="checkbox" id="kpm-tick" checked style="width:auto;margin:0"> Also tick today\'s status in the Daily update</label>' +
+    '<div style="margin-top:10px"><button type="button" id="kpm-send" class="btn primary" style="font-size:13px;padding:9px 12px" disabled>✉️ Send to everyone…</button></div>' +
+    '<div id="kpm-confirm" style="display:none;margin-top:10px;border:2px solid #c0392b;border-radius:10px;padding:10px;background:#fff8f6"></div>' +
+    '<div id="kpm-msg" style="font-size:12px;margin-top:8px;min-height:16px"></div>';
+  row.insertAdjacentElement('afterend', panel);
+
+  const $ = id => panel.querySelector('#' + id);
+  const chainEl = $('kpm-chain'), rcptEl = $('kpm-rcpt'), tickWrap = $('kpm-tick-wrap'), tickEl = $('kpm-tick');
+  const sendBtn = $('kpm-send'), confirmEl = $('kpm-confirm'), msgEl = $('kpm-msg');
+  const S = { info: null, alts: [], to: [], cc: [], self: '', sent: false, busy: false };
+  const esc = koPushEsc;
+  const fmtDate = ms => ms ? new Date(ms).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+  const setMsg = (t, kind) => { msgEl.style.color = kind === 'err' ? '#a33' : kind === 'ok' ? '#2d5a2d' : '#555'; msgEl.textContent = t || ''; };
+
+  // Préfixes de sujet attendus (pour reconnaître la chaîne UPDATE de CE projet parmi les autres emails du même FA)
+  const tpl = (proj && proj.subjectTemplateUsed) || (curProfile && curProfile.subjectTemplate) || DEFAULT_SUBJECT_TEMPLATE;
+  const sd = { wo: (proj && proj.wo) || intent.fa, model: (proj && proj.model) || '', sn: (proj && proj.sn) || '', reg: (proj && proj.reg) || '', loc: (proj && proj.loc) || '', desc: '' };
+  const updatePrefix = koPushTrimSep(buildEmailSubject(tpl, Object.assign({ type: 'UPDATE' }, sd)));
+  const customerPrefix = koPushTrimSep(buildEmailSubject(tpl.includes('{TYPE}') ? tpl.replace(/\{TYPE\}/g, 'CUSTOMER UPDATE') : tpl.replace(/^UPDATE\b/i, 'CUSTOMER UPDATE'), sd));
+
+  function recipientsCount() { return S.to.length + S.cc.length; }
+  function refresh() {
+    const cur = getCurrent && getCurrent();
+    tickWrap.style.display = cur && cur.status && cur.status.length ? 'flex' : 'none';
+    sendBtn.disabled = !(S.info && recipientsCount() > 0 && ta.value.trim() && !S.sent && !S.busy);
+  }
+
+  function renderChain() {
+    const i = S.info;
+    let h = '✉️ <b>' + esc(i.subject) + '</b><br><span style="color:#777">' + i.count + ' message' + (i.count > 1 ? 's' : '') + ' · last ' + esc(fmtDate(i.lastDate)) +
+            (i.lastWasMine ? ' · your own message: the reply goes to the same people' : '') + '</span>';
+    if (i.rank >= 2) h += '<div style="color:#8a5a00;margin-top:4px">⚠️ This does not look like the « UPDATE » chain — check it is the right one.</div>';
+    if (S.alts.length > 1) {
+      h += '<select id="kpm-pick" style="margin-top:6px;width:100%;font-size:12px;padding:6px">' +
+        S.alts.map(a => '<option value="' + esc(a.threadId) + '"' + (a.threadId === i.threadId ? ' selected' : '') + '>' + esc(a.subject.slice(0, 70)) + ' · ' + a.count + ' msg · ' + esc(fmtDate(a.lastDate)) + '</option>').join('') + '</select>';
+    }
+    h += '<div id="kpm-other-wrap" style="margin-top:6px"><button type="button" id="kpm-other" class="btn" style="font-size:11px;padding:3px 8px">🔎 Not the right chain? Search by subject</button></div>';
+    chainEl.innerHTML = h;
+    const pick = chainEl.querySelector('#kpm-pick');
+    if (pick) pick.onchange = () => load({ threadId: pick.value });
+    const other = chainEl.querySelector('#kpm-other');
+    if (other) other.onclick = () => {
+      const wrap = chainEl.querySelector('#kpm-other-wrap');
+      wrap.innerHTML = '<div style="display:flex;gap:6px"><input id="kpm-q2" placeholder="Part of the subject…" style="flex:1;font-size:13px;padding:7px;border:1px solid #ccc;border-radius:6px"><button type="button" id="kpm-search2" class="btn" style="font-size:12px;padding:6px 10px">Search</button></div>';
+      const q2 = wrap.querySelector('#kpm-q2'), b2 = wrap.querySelector('#kpm-search2');
+      b2.onclick = () => { if (q2.value.trim()) load({ subjectContains: q2.value.trim() }); };
+      q2.onkeydown = ev => { if (ev.key === 'Enter') b2.onclick(); };
+      q2.focus();
+    };
+  }
+  function renderRcpt() {
+    const chips = (list, kind) => list.map((a, n) =>
+      '<span style="display:inline-flex;align-items:center;gap:4px;background:#eef2f7;border-radius:14px;padding:3px 4px 3px 9px;margin:2px 4px 2px 0;font-size:12px" title="' + esc(a.name || a.email) + '">' + esc(a.email) +
+      '<button type="button" data-k="' + kind + '" data-i="' + n + '" style="border:none;background:#d5dbe3;border-radius:50%;width:18px;height:18px;line-height:16px;font-size:11px;cursor:pointer;padding:0" aria-label="Remove">✕</button></span>').join('');
+    rcptEl.innerHTML = S.info
+      ? '<div style="font-size:12px"><b>To:</b> ' + (chips(S.to, 'to') || '<i style="color:#a33">nobody</i>') + '</div>' +
+        (S.cc.length ? '<div style="font-size:12px;margin-top:2px"><b>Cc:</b> ' + chips(S.cc, 'cc') + '</div>' : '')
+      : '';
+  }
+  rcptEl.addEventListener('click', ev => {
+    const b = ev.target.closest('button[data-k]'); if (!b || S.sent || S.busy) return;
+    S[b.dataset.k].splice(Number(b.dataset.i), 1);
+    confirmEl.style.display = 'none'; renderRcpt(); refresh();
+  });
+
+  function showProblem(html) { chainEl.innerHTML = html; rcptEl.innerHTML = ''; refresh(); }
+  async function load(opts) {
+    S.info = null; S.to = []; S.cc = []; confirmEl.style.display = 'none'; setMsg(''); refresh();
+    chainEl.innerHTML = '🔎 Looking for the update chain…'; rcptEl.innerHTML = '';
+    let r, d;
+    try {
+      r = await koWorkerFetch('/mail/find-thread', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.assign({ faNumber: intent.fa, updatePrefix, customerPrefix }, opts || {}))
+      });
+      d = await r.json().catch(() => ({}));
+    } catch (e) { showProblem('❌ Could not reach the server: ' + esc(e.message) + ' <button type="button" id="kpm-retry" class="btn" style="font-size:12px;padding:4px 8px">Retry</button>'); const b = chainEl.querySelector('#kpm-retry'); if (b) b.onclick = () => load(opts); return; }
+    if (r.status === 409) {
+      showProblem('⚠️ ' + (d.reason === 'expired' ? 'Your Gmail connection (Reply Sync) has expired.' : 'Gmail is not connected for Reply Sync yet.') +
+        ' <button type="button" id="kpm-conn" class="btn" style="font-size:12px;padding:4px 8px">Connect Gmail</button><div style="color:#777;margin-top:4px">Then reopen this window.</div>');
+      const b = chainEl.querySelector('#kpm-conn'); if (b) b.onclick = () => { if (G.koConnectGmailSync) G.koConnectGmailSync(); };
+      return;
+    }
+    if (r.status === 502 && d.error === 'gmail_search_failed') {
+      const auth = d.status === 401 || d.status === 403;
+      showProblem('❌ Gmail refused the search (HTTP ' + esc(String(d.status || '?')) + ').' + (auth ? ' Your Gmail connection may need to be renewed.' : '') +
+        ' <button type="button" id="kpm-retry" class="btn" style="font-size:12px;padding:4px 8px">Retry</button>' + (auth ? ' <button type="button" id="kpm-conn2" class="btn" style="font-size:12px;padding:4px 8px">Connect Gmail</button>' : ''));
+      const rb = chainEl.querySelector('#kpm-retry'); if (rb) rb.onclick = () => load(opts);
+      const cb = chainEl.querySelector('#kpm-conn2'); if (cb) cb.onclick = () => { if (G.koConnectGmailSync) G.koConnectGmailSync(); };
+      return;
+    }
+    if (!r.ok) { showProblem('❌ ' + esc(d.error || ('HTTP ' + r.status)) + ' <button type="button" id="kpm-retry" class="btn" style="font-size:12px;padding:4px 8px">Retry</button>'); const b = chainEl.querySelector('#kpm-retry'); if (b) b.onclick = () => load(opts); return; }
+    S.self = d.self || ''; S.alts = d.alternatives || [];
+    if (!d.selected) {
+      showProblem('No email chain found for <b>' + esc(intent.fa) + '</b> in the last 6 months.<div style="margin-top:6px;display:flex;gap:6px"><input id="kpm-q" placeholder="Part of the subject…" style="flex:1;font-size:13px;padding:7px;border:1px solid #ccc;border-radius:6px"><button type="button" id="kpm-search" class="btn" style="font-size:12px;padding:6px 10px">Search</button></div>');
+      const b = chainEl.querySelector('#kpm-search'), q = chainEl.querySelector('#kpm-q');
+      if (b) b.onclick = () => { if (q.value.trim()) load({ subjectContains: q.value.trim() }); };
+      if (q) q.onkeydown = ev => { if (ev.key === 'Enter' && b) b.onclick(); };
+      return;
+    }
+    S.info = d.selected; S.to = d.selected.to.slice(); S.cc = d.selected.cc.slice();
+    renderChain(); renderRcpt(); refresh();
+  }
+
+  function validate() {
+    const text = ta.value.trim();
+    if (S.sent) return 'This message was already sent.';
+    if (!S.info) return 'No chain selected.';
+    if (!text) return 'Write or pick a message first.';
+    const ph = /\[[^\]\n]{1,30}\]/.exec(text);
+    if (ph) return 'Replace ' + ph[0] + ' in the message first.';
+    if (!recipientsCount()) return 'No recipient left.';
+    return '';
+  }
+
+  sendBtn.onclick = () => {
+    const err = validate(); if (err) { setMsg(err, 'err'); return; }
+    setMsg('');
+    const list = l => l.map(a => esc(a.email)).join(', ');
+    const toL = S.to.length ? S.to : S.cc, ccL = S.to.length ? S.cc : [];
+    const n = toL.length + ccL.length;
+    confirmEl.innerHTML =
+      '<div style="font-weight:700;font-size:13px;margin-bottom:6px">Send this message to ' + n + ' ' + (n > 1 ? 'people' : 'person') + '?</div>' +
+      '<div style="font-size:12px"><b>To:</b> ' + list(toL) + '</div>' + (ccL.length ? '<div style="font-size:12px"><b>Cc:</b> ' + list(ccL) + '</div>' : '') +
+      '<div style="font-size:12px;margin-top:4px"><b>In:</b> ' + esc(S.info.replySubject) + '</div>' +
+      '<div style="font-size:12px;white-space:pre-wrap;background:#fff;border:1px solid #e3d5d0;border-radius:6px;padding:8px;margin-top:6px;max-height:140px;overflow:auto">' + esc(ta.value.trim()) + '</div>' +
+      '<div style="display:flex;gap:8px;margin-top:10px"><button type="button" id="kpm-yes" class="btn primary" style="background:#c0392b;border-color:#c0392b;font-size:13px;padding:9px 12px">Yes, send now</button>' +
+      '<button type="button" id="kpm-no" class="btn" style="font-size:13px;padding:9px 12px">Cancel</button></div>';
+    confirmEl.style.display = '';
+    const yes = confirmEl.querySelector('#kpm-yes'), no = confirmEl.querySelector('#kpm-no');
+    no.onclick = () => { confirmEl.style.display = 'none'; };
+    yes.onclick = () => doSend(yes, no);
+  };
+
+  async function doSend(yes, no) {
+    if (S.busy || S.sent) return;
+    S.busy = true; yes.disabled = no.disabled = true; refresh(); setMsg('⏳ Checking Google sign-in…');
+    try {
+      if (!(gToken && Date.now() < gTokenExp)) {
+        const ok = await ensureGTokenAsync();
+        if (!ok) throw new Error('Google sign-in was cancelled — nothing was sent.');
+      }
+      // Le compte Google qui envoie doit être celui dont la boîte contient la chaîne (un threadId n'existe que dans SA boîte).
+      let me = '';
+      try {
+        const pr = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', { headers: { Authorization: 'Bearer ' + gToken } });
+        if (pr.ok) me = String((await pr.json()).emailAddress || '').toLowerCase();
+      } catch (e) {}
+      if (S.self && me && me !== S.self) throw new Error('You are signed in to Google as ' + me + ', but this chain is in the mailbox of ' + S.self + '. Nothing was sent.');
+
+      let to = S.to.map(a => a.email), cc = S.cc.map(a => a.email);
+      if (me) { to = to.filter(e => e !== me); cc = cc.filter(e => e !== me); }
+      if (!to.length) { to = cc; cc = []; }
+      if (!to.length) throw new Error('No recipient left — nothing was sent.');
+      if (![...to, ...cc].every(e => /^[^\s<>",;@]+@[^\s<>",;@]+$/.test(e))) throw new Error('One of the addresses looks invalid — nothing was sent.');
+
+      const html = '<div style="line-height:1.6;white-space:pre-wrap">' + koFormatEmailHtml(ta.value.trim()) + '</div>' + koBuildSignatureHtml();
+      const raw = koPushRawMessage(to, cc, S.info.replySubject, html, S.info.inReplyTo, S.info.references);
+
+      setMsg('⏳ Sending…');
+      let res;
+      try {
+        res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + gToken },
+          body: JSON.stringify({ raw, threadId: S.info.threadId })
+        });
+      } catch (netErr) {
+        throw new Error('No answer from Gmail — the message may or may not have been sent. Check your Sent folder before trying again.');
+      }
+      if (!res.ok) {
+        if (res.status === 401) { gToken = null; updateAuthUI(false); throw new Error('Google session expired — nothing was sent. Tap “Yes, send now” again.'); }
+        const er = await res.json().catch(() => ({}));
+        throw new Error((er.error && er.error.message) || ('Gmail error ' + res.status));
+      }
+
+      S.sent = true; confirmEl.style.display = 'none';
+      const total = to.length + cc.length;
+      setMsg('✅ Sent to ' + total + (total > 1 ? ' people.' : ' person.'), 'ok');
+      const cur = getCurrent && getCurrent();
+      if (tickEl.checked && cur && cur.status && cur.status.length) {
+        try { await koPushApplyStatus(intent, cur.status); setMsg('✅ Sent to ' + total + (total > 1 ? ' people' : ' person') + ' and status ticked.', 'ok'); setTimeout(close, 2200); }
+        catch (te) { setMsg('✅ Sent to ' + total + (total > 1 ? ' people' : ' person') + ' — but the status could not be ticked: ' + te.message, 'err'); }
+      } else { setTimeout(close, 2200); }
+    } catch (e) {
+      setMsg('❌ ' + e.message, 'err');
+      yes.disabled = no.disabled = false;
+    } finally {
+      S.busy = false; refresh();
+    }
+  }
+
+  ta.addEventListener('input', () => { confirmEl.style.display = 'none'; refresh(); });
+  const chips = ov.querySelector('#ko-push-chips');
+  if (chips) chips.addEventListener('click', () => setTimeout(() => { confirmEl.style.display = 'none'; refresh(); }, 0));
+  refresh();
+  load();
+}
+
+async function koPushWaitLeadApplied() {
+  // Le lead du projet ouvert est posé dans le sélecteur UNE FOIS la liste d'équipe chargée (_pendingLeadId / renderStep6Me).
+  // Cocher un statut avant ça déclencherait une sauvegarde avec un lead vide : on attend, sinon on n'écrit rien.
+  for (let i = 0; i < 28; i++) {
+    const sel = document.getElementById('lead-eng-sel');
+    if (!_pendingLeadId || (sel && sel.value === _pendingLeadId)) return true;
+    await koPushSleep(250);
+  }
+  return false;
+}
+
+async function koPushApplyStatus(intent, keys) {
+  if (intent.owner !== curProfile.id && !_sharedOwners[intent.pid]) {    // projet d'un collègue : sa référence arrive avec la liste des projets
+    for (let i = 0; i < 40 && !_sharedOwners[intent.pid]; i++) await koPushSleep(500);
+    if (!_sharedOwners[intent.pid]) throw new Error('The project list is still loading — try again in a few seconds.');
+  }
+  await G.loadProject(intent.pid);
+  if (curProj !== intent.pid) throw new Error('Could not open this project.');
+  if (!(await koPushWaitLeadApplied())) throw new Error('The team list is still loading — nothing was changed, try again in a few seconds.');
+
+  const label = todayLabel();
+  const findBlock = () => Array.from(document.querySelectorAll('#updates-container .update-day')).find(el => el.dataset.date === label);
+  let block = findBlock();
+  if (!block) { G.addTodayUpdate(); block = findBlock(); }
+  if (!block) throw new Error("Could not create today's update.");
+  for (const key of keys) {
+    let cur = [];
+    try { cur = JSON.parse(block.dataset.dayStatuses || '[]'); } catch (e) { cur = []; }
+    if (!cur.includes(key)) G.toggleDayStatus(block.id, key);          // ne décoche jamais un statut déjà posé
+  }
+}
+
+async function koPushOpenScreen(intent) {
+  if (!intent || intent.kind !== 'morning' || !intent.fa) return;
+  const old = document.getElementById('ko-push-overlay'); if (old) old.remove();
+
+  let proj = null;
+  try {
+    const snap = await get(ref(db, 'team/' + intent.owner + '/projects/' + intent.pid));
+    if (snap.exists()) proj = snap.val();
+  } catch (e) { /* le titre se contente alors du numéro FA */ }
+
+  const title = koPushEsc(intent.fa + ((proj && (proj.reg || proj.model)) ? ' — ' + (proj.reg || proj.model) : ''));
+  const meta  = [proj && proj.loc, proj && proj.site_arrival ? 'site arrival: ' + proj.site_arrival : ''].filter(Boolean).map(koPushEsc).join(' · ');
+
+  const ov = document.createElement('div');
+  ov.id = 'ko-push-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center';
+  ov.innerHTML =
+    '<style>#ko-push-overlay button:disabled{opacity:.45;cursor:not-allowed}</style>' +
+    '<div style="background:#fff;color:#1a1a1a;width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px 16px 22px;box-shadow:0 -8px 30px rgba(0,0,0,.25);font-family:inherit">' +
+      '<div style="display:flex;align-items:flex-start;gap:10px">' +
+        '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:16px">' + title + '</div>' +
+        (meta ? '<div style="font-size:12px;color:#666;margin-top:2px">' + meta + '</div>' : '') + '</div>' +
+        '<button type="button" id="ko-push-close" style="border:none;background:#f0f0f0;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer" aria-label="Close">✕</button>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:12px 0 2px;font-size:12px;color:#666"><span>Write as:</span>' +
+        '<button type="button" id="ko-push-m-I" style="border:1px solid #d5dbe3;border-radius:14px;padding:4px 12px;font-size:13px;cursor:pointer">I</button>' +
+        '<button type="button" id="ko-push-m-We" style="border:1px solid #d5dbe3;border-radius:14px;padding:4px 12px;font-size:13px;cursor:pointer">We</button>' +
+        '<span id="ko-push-m-note" style="font-size:11px;color:#888"></span></div>' +
+      '<div style="font-size:12px;color:#666;margin:8px 0 6px">Pick a message — you can edit it below.</div>' +
+      '<div id="ko-push-chips" style="display:flex;flex-wrap:wrap;gap:6px"></div>' +
+      '<textarea id="ko-push-text" rows="6" style="width:100%;box-sizing:border-box;margin-top:10px;font-size:14px;padding:10px;border:1px solid #ccc;border-radius:8px;font-family:inherit" placeholder="Pick a message above, or type your own…"></textarea>' +
+      '<div id="ko-push-hint" style="font-size:11px;color:#777;margin-top:4px"></div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">' +
+        '<button type="button" id="ko-push-copy" class="btn" style="font-size:13px;padding:9px 12px">📋 Copy message</button>' +
+        '<button type="button" id="ko-push-status" class="btn" style="font-size:13px;padding:9px 12px" disabled>☑ Tick today\'s status</button>' +
+      '</div>' +
+      '<div id="ko-push-msg" style="font-size:12px;margin-top:10px;min-height:16px"></div>' +
+    '</div>';
+  document.body.appendChild(ov);
+
+  const $ = id => document.getElementById(id);
+  const ta = $('ko-push-text'), chips = $('ko-push-chips'), hint = $('ko-push-hint'), msg = $('ko-push-msg'), stBtn = $('ko-push-status');
+  let current = null;
+  const team = koPushTeamSize(proj);
+  let mode = team >= 2 ? 'We' : 'I';                      // plusieurs ingénieurs sur le projet → « We »
+  const noteEl = $('ko-push-m-note');
+  noteEl.textContent = !proj ? '(project data not available)' : team >= 2 ? '(auto: ' + team + ' engineers on this project)' : '(auto: you are the only engineer on this project)';
+  function paintMode() {
+    ['I', 'We'].forEach(k => { const b = $('ko-push-m-' + k), on = mode === k; b.style.background = on ? '#1a4a7a' : '#f3f5f8'; b.style.color = on ? '#fff' : '#1a1a1a'; });
+  }
+  paintMode();
+
+  const close = () => { ov.remove(); };
+  $('ko-push-close').onclick = close;
+  ov.addEventListener('click', ev => { if (ev.target === ov) close(); });
+
+  function select(tpl, focusPlaceholder) {
+    current = tpl;
+    ta.value = koPushFill(tpl.text, mode);
+    chips.querySelectorAll('button').forEach(b => {
+      const on = b.dataset.key === tpl.key;
+      b.style.background = on ? '#1a4a7a' : '#f3f5f8'; b.style.color = on ? '#fff' : '#1a1a1a';
+    });
+    const labels = tpl.status.map(k => DAY_STATUS_META[k] ? DAY_STATUS_META[k].label : k);
+    stBtn.disabled = !tpl.status.length;
+    hint.textContent = labels.length ? 'Ticks in today\'s Daily update: ' + labels.join(', ') : 'This message does not change today\'s status.';
+    if (focusPlaceholder) {
+      ta.focus();
+      const i = ta.value.indexOf('[');
+      if (i >= 0) ta.setSelectionRange(i, ta.value.indexOf(']', i) + 1);
+    }
+  }
+  ['I', 'We'].forEach(k => {
+    $('ko-push-m-' + k).onclick = () => {
+      if (mode === k) return;
+      const edited = current && ta.value !== koPushFill(current.text, mode);
+      if (edited && !window.confirm('Switch to "' + k + '"? This replaces the text you edited.')) return;
+      mode = k; paintMode();
+      if (current) select(current, false);
+    };
+  });
+  KO_PUSH_TEMPLATES.forEach(t => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.dataset.key = t.key; b.textContent = t.emoji + ' ' + t.label;
+    b.style.cssText = 'border:1px solid #d5dbe3;border-radius:18px;padding:7px 11px;font-size:13px;cursor:pointer;background:#f3f5f8;color:#1a1a1a';
+    b.onclick = () => select(t, true);
+    chips.appendChild(b);
+  });
+
+  $('ko-push-copy').onclick = async () => {
+    try { await navigator.clipboard.writeText(ta.value); msg.style.color = '#2d5a2d'; msg.textContent = '✓ Copied'; }
+    catch (e) { ta.select(); msg.style.color = '#7a5a00'; msg.textContent = 'Select the text and copy it manually.'; }
+  };
+  stBtn.onclick = async () => {
+    if (!current || !current.status.length) return;
+    stBtn.disabled = true; msg.style.color = '#555'; msg.textContent = '⏳ Opening the project…';
+    try {
+      await koPushApplyStatus(intent, current.status);
+      msg.style.color = '#2d5a2d'; msg.textContent = '✓ Ticked in today\'s Daily update.';
+      setTimeout(close, 1200);
+    } catch (e) {
+      msg.style.color = '#a33'; msg.textContent = '❌ ' + e.message;
+      stBtn.disabled = false;
+    }
+  };
+
+  koPushMailMount({ ov, intent, ta, stBtn, close, proj, getCurrent: () => current });   // étape 2 : panneau d'envoi
+  // L'action choisie sur la notification (Android) présélectionne le modèle.
+  const pre = KO_PUSH_TEMPLATES.find(t => t.key === intent.action);
+  if (pre) select(pre, pre.key === 'eta');
+}
 
 function renderGmailSyncStatus() {
   if (!curProfile) return;
@@ -7503,6 +8099,53 @@ function sqaDateLabel(e) {
 const sqaNormReg = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 // ── Index de recherche, construit par tranches pour ne pas figer l'écran ──
+// ── Mots de la recherche d'archive (assistant Resolution + pastille de l'étape 3) ──
+// Plus fin que smartDiagTokens (qui reste en place pour le REX de l'équipe) :
+//  · « light » et « CB » ne sont plus ignorés (« light » était un mot vide, « CB » faisait moins de 3 lettres) ;
+//  · « circuit breaker », « C/B », « breaker » = « CB » ; « popped / jumped » = « tripped » ; « gly » = « galley » ; « lighting / lamp » = « light » ;
+//  · la phrase type d'une MEL (« MEL if not repairable during this limited downtime ») est retirée de la REQUÊTE : ses mots rares
+//    (« limited », « downtime », « repairable ») pesaient plus lourd que la vraie panne.
+const SQA_SYN = {
+  gly: 'galley', lav: 'lavatory', lavs: 'lavatory', ltg: 'light', lighting: 'light', lamp: 'light', lamps: 'light',
+  popped: 'tripped', pop: 'tripped', pops: 'tripped', popping: 'tripped', jumped: 'tripped', jumps: 'tripped', tripping: 'tripped', trip: 'tripped', trips: 'tripped', breaker: 'cb', cbs: 'cb'
+};
+const SQA_NOISE_RES = [
+  /\bmel\b[^.;\n]*?\b(?:not\s+repairable|repairable|limited\s+downtime|downtime)\b[^.;\n]*/gi,
+  /\b(?:if\s+)?not\s+repairable\b/gi,
+  /\bduring\s+(?:this|the)\s+(?:limited\s+)?downtime\b/gi
+];
+let sqaStopCache = null;
+function sqaStop() {
+  if (!sqaStopCache) sqaStopCache = new Set(Array.from(SQUAWK_STOP_WORDS).filter(w => w !== 'light' && w !== 'lights'));
+  return sqaStopCache;
+}
+function sqaTokenSeq(text, isQuery) {
+  let s = String(text || '').toLowerCase().replace(/\bcircuit[\s-]*breakers?\b/g, ' cb ').replace(/\bc\s*\/\s*bs?\b/g, ' cb ');
+  if (isQuery) SQA_NOISE_RES.forEach(re => { s = s.replace(re, ' '); });
+  const stop = sqaStop(), out = [];
+  for (let w of s.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)) {
+    if (!w) continue;
+    w = SQA_SYN[w] || smartDiagStem(w);
+    if (!(w.length >= 3 || w === 'cb') || stop.has(w) || SMART_DIAG_GENERIC_WORDS.has(w) || /^\d+$/.test(w)) continue;
+    out.push(w);
+  }
+  return out;
+}
+function sqaTokens(text, isQuery) { return new Set(sqaTokenSeq(text, isQuery)); }
+// deux mots de la requête côte à côte (à 2 mots près, dans un sens ou l'autre) dans un texte : « galley light », « cb tripped »
+function sqaPairHits(seq, pairs) {
+  let n = 0;
+  for (const [a, b] of pairs) {
+    let hit = false;
+    for (let i = 0; i < seq.length && !hit; i++) {
+      if (seq[i] !== a && seq[i] !== b) continue;
+      const want = seq[i] === a ? b : a;
+      for (let j = i + 1; j <= i + 2 && j < seq.length; j++) if (seq[j] === want) { hit = true; break; }
+    }
+    if (hit) n++;
+  }
+  return n;
+}
 async function sqaBuild(shards) {
   const entries = [], fam = [], woNum = [];
   const idxD = new Map(), idxX = new Map(), pnIdx = new Map();
@@ -7513,8 +8156,8 @@ async function sqaBuild(shards) {
       const i = entries.length;
       const pr = sqaPartRows(e);
       pr.forEach(r => { const seenP = new Set(); [r[1], r[2]].forEach(c => { const k = sqaPnNorm(c); if (k.length >= 5 && !seenP.has(k)) { seenP.add(k); add(pnIdx, k, i); } }); });
-      const dTok = smartDiagTokens(String(e.d || '') + ' ' + pr.map(r => r[0]).join(' '));
-      const xTok = smartDiagTokens(String(e.x || ''));
+      const dTok = sqaTokens(String(e.d || '') + ' ' + pr.map(r => r[0]).join(' '), false);
+      const xTok = sqaTokens(String(e.x || ''), false);
       dTok.forEach(t => add(idxD, t, i));
       xTok.forEach(t => { if (!dTok.has(t)) add(idxX, t, i); });
       entries.push(e);
@@ -7670,7 +8313,8 @@ function sqaPaintStatus() {
 // Résultat : un SQ par WO (le meilleur), du plus au moins pertinent.
 function sqaSearch(query, opts = {}) {
   if (!sqaIsReady()) return [];
-  const Q = [...smartDiagTokens(query)];
+  const QS = sqaTokenSeq(query, true);
+  const Q = [...new Set(QS)];
   if (!Q.length) return [];
   const N = sqa.N;
   const acc = new Map();            // n° de SQ → { pts, w, m:[mots] }
@@ -7720,6 +8364,16 @@ function sqaSearch(query, opts = {}) {
       matched: a.m.slice().sort((x, y) => info.get(y).w - info.get(x).w).slice(0, 5)
     });
   });
+  // Mots voisins de la requête retrouvés côte à côte (« galley light », « cb tripped ») : bonus aux 60 meilleurs
+  if (QS.length >= 2) {
+    const pairs = [];
+    for (let k = 0; k + 1 < QS.length; k++) if (QS[k] !== QS[k + 1] && !pairs.some(p => p[0] === QS[k] && p[1] === QS[k + 1])) pairs.push([QS[k], QS[k + 1]]);
+    rows.sort((a, b) => b.score - a.score);
+    rows.slice(0, 60).forEach(r => {
+      const hits = sqaPairHits(sqaTokenSeq(r.e.d, false), pairs) * 0.3 + sqaPairHits(sqaTokenSeq(r.e.x, false), pairs) * 0.12;
+      if (hits) r.score += Math.min(hits, 0.9);
+    });
+  }
   // Un seul SQ par WO : le plus pertinent ; à égalité proche, celui qui porte les pièces.
   const groups = new Map();
   for (const r of rows) {
@@ -7749,6 +8403,381 @@ function sqaSearchStep3(query, opts = {}) {
   return rows.slice(0, 1);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// RECHERCHE v2 DANS L'ARCHIVE — assistant « Resolution » du Corridor
+// Index lexical construit à la demande (quelques secondes, la 1re fois de la session) :
+//   · BM25 sur la PANNE + le titre des cartes CMP liées (+ la RÉSOLUTION en appoint plafonné)
+//   · radicaux (leak/leaking/leakage), abréviations (gly, lav, cb, hyd…), fautes de frappe (requête ET archive)
+//   · codes collés (AP1, HF2…), n° de carte CMP (280008) et de tâche AMM (33-25-09) cherchables
+//   · retour de pertinence : les mots des meilleurs cas rattrapent les autres façons de dire la même panne
+//   · chapitre ATA dominant, modèle, avion, résolution détaillée : petits bonus
+//   · cas identiques d'autres WO regroupés (« ×N jobs ») au lieu d'envahir la liste
+// En cas d'erreur, sqfFind() retombe sur l'ancien moteur (sqaSearch).
+// ═══════════════════════════════════════════════════════════════════════════
+const SQF = { K1: 1.2, BD: 0.45, BT: 0.45, BX: 0.7, WD: 1, WT: 0.8, CAPDT: 1, CAPX: 0.5, GEN: 0.5, PRFK: 12, PRFN: 6, PRFW: 0.35,
+  ATAW: 0.12, PHR: 0.05, FAM: 0.1, REG: 0.1, REC: 0.03, RICH: 0.06, COVW: 0.3, DUPD: 0.85, DUPX: 0.6 };
+const SQF_STOP = new Set(('a an the and or of to in on at by for from with without as is are was were be been being it its this that these those there here ' +
+  'i we you he she they them our your their my me us not no yes do does did done doing has have had having can could will would shall should may might must ' +
+  'if then than so but also only just very too more most less least some any all each both other another such same ' +
+  'when while during after before again once until upon over under into onto out off up down about above below between through per via which who whom whose what where why how ' +
+  'please pls kindly thanks thank cmp airframe amm aomm iaw irw sfsr card cards task tasks wo sq sqk item items customer ref refer reference attached attach photo photos picture see note notes noted found reported report reports crew').split(' '));
+// mots génériques : gardés dans l'index, mais ils pèsent peu dans la requête (ils ne suffisent jamais à faire un résultat)
+const SQF_GEN = new Set(('inop inoperative inoperable unserviceable defective faulty broken damaged damage working work operate operating operation issue problem intermittent abnormal erratic ' +
+  'unable cannot need needs needed required request requested done still new message code fault fail failure failed warning caution advisory replace replaced replacement repair repaired install installed removal remove removed ' +
+  'inspect inspection test tested testing reset clean cleaned service servicing check checked carried performed completed complete satisfactory success successfully confirmed ' +
+  'applied functional operational normal rts ops system aircraft unit part item left right front rear upper lower side aft fwd forward lh rh main general maintenance ' +
+  'troubleshoot troubleshooting assist assistance support technical urgent require help status').split(' '));
+// abréviations et variantes → forme commune
+const SQF_SYN = {
+  gly: 'galley', galy: 'galley', lav: 'lavatory', lavs: 'lavatory', toilet: 'lavatory', washroom: 'lavatory', restroom: 'lavatory', wc: 'lavatory',
+  ltg: 'light', lighting: 'light', lamp: 'light', illum: 'illuminat',
+  popped: 'trip', pop: 'trip', pops: 'trip', popping: 'trip', jumped: 'trip', jumps: 'trip', breaker: 'cb', breakers: 'cb', cbs: 'cb',
+  temp: 'temperature', temps: 'temperature', hyd: 'hydraulic', hydr: 'hydraulic', elec: 'electrical', eng: 'engine', engs: 'engine', press: 'pressure', pres: 'pressure',
+  indic: 'indication', msg: 'message', msgs: 'message', mssg: 'message', inoperative: 'inop', inoperable: 'inop',
+  tyre: 'tire', tyres: 'tire', batt: 'battery', gen: 'generator', xpdr: 'transponder', xpndr: 'transponder', cmpt: 'compartment', compt: 'compartment',
+  conn: 'connector', recpt: 'receptacle', brk: 'brake', brks: 'brake', oxy: 'oxygen', o2: 'oxygen', odour: 'odor', smell: 'odor',
+  weep: 'leak', weeping: 'leak', seep: 'leak', seepage: 'leak', seeping: 'leak', drip: 'leak', dripping: 'leak', leakage: 'leak',
+  oscillating: 'fluctuat', oscillation: 'fluctuat', unstable: 'fluctuat', jammed: 'jam', seized: 'jam', stuck: 'jam', binding: 'jam',
+  corroded: 'corros', corrosion: 'corros', corrode: 'corros', wiring: 'wire', luggage: 'baggage', aluminium: 'aluminum'
+};
+const SQF_MODEL_RE = /^(?:g\d{3,4}[a-z]{0,3}|gv?i{1,3}|gviii|gvii|giv|gv|gvi|\d{3}er)$/;
+const SQF_NOISE_RES = [   // phrases toutes faites des squawks clients (requête seulement)
+  /\bmel\b[^.;\n]*?\b(?:not\s+repairable|repairable|limited\s+downtime|downtime)\b[^.;\n]*/gi,
+  /\b(?:if\s+)?not\s+repairable\b/gi,
+  /\bduring\s+(?:this|the)\s+(?:limited\s+)?downtime\b/gi
+];
+const sqf = { src: null, ready: false, building: null, buildFor: null, failed: false };
+const sqfStemCache = new Map();
+function sqfUndouble(s) { return s.length >= 5 && /([^aeiouyls])\1$/.test(s) ? s.slice(0, -1) : s; }
+// Radical : doors→door, tripped→trip, leaking→leak, indicator/indication→indicat, replacement→replac…
+function sqfStem(w) {
+  if (w.length < 5) return w;
+  let c = sqfStemCache.get(w); if (c !== undefined) return c;
+  let s = w;
+  if (/ies$/.test(s) && s.length > 5) s = s.slice(0, -3) + 'y';
+  else if (/(?:ches|shes|sses|xes|zes)$/.test(s)) s = s.slice(0, -2);
+  else if (/s$/.test(s) && !/(?:ss|us|is)$/.test(s)) s = s.slice(0, -1);
+  if (s.length >= 6 && /ing$/.test(s)) s = sqfUndouble(s.slice(0, -3));
+  else if (s.length >= 6 && /ied$/.test(s)) s = s.slice(0, -3) + 'y';
+  else if (s.length >= 5 && /ed$/.test(s) && !/eed$/.test(s)) s = sqfUndouble(s.slice(0, -2));
+  if (s.length >= 8 && /ment$/.test(s)) s = s.slice(0, -4);
+  else if (s.length >= 7 && /(?:ation|ition)$/.test(s)) s = s.slice(0, -3);
+  else if (s.length >= 7 && /ion$/.test(s)) s = s.slice(0, -3);
+  else if (s.length >= 7 && /(?:or|er)$/.test(s)) s = sqfUndouble(s.slice(0, -2));
+  else if (s.length >= 7 && /age$/.test(s)) s = s.slice(0, -3);
+  else if (s.length >= 9 && /ical$/.test(s)) s = s.slice(0, -2);
+  else if (s.length >= 8 && /(?:al|ly)$/.test(s)) s = s.slice(0, -2);
+  else if (s.length >= 7 && /ness$/.test(s)) s = s.slice(0, -4);
+  if (s.length >= 5 && /e$/.test(s)) s = s.slice(0, -1);
+  sqfStemCache.set(w, s);
+  return s;
+}
+// Modèle → famille (G650, G700…). Les anciennes entrées « GVII-500 / GVII-600 » (= G500 / G600) sont reconnues aussi.
+function sqfFam(t) {
+  const f = smartDiagFamily(t); if (f) return f;
+  const m = /GVII\D{0,3}(\d{3})/i.exec(String(t || ''));
+  return m ? 'G' + m[1] : '';
+}
+// Jetons d'un texte, dans l'ordre : « ~mot » = mot générique ; « #332509 » = tâche AMM ; « n280008 » = n° de carte CMP
+function sqfTok(text, isQuery) {
+  let s = String(text || '').toLowerCase().replace(/[’']/g, '');
+  if (s.indexOf('/') >= 0) s = s.replace(/\bc\s*\/\s*bs?\b/g, ' cb ').replace(/\bw\s*\/\s*o\b/g, ' without ').replace(/\bu\s*\/\s*s\b/g, ' unserviceable ')
+    .replace(/\ba\s*\/\s*c\b/g, ' aircraft ').replace(/\b[ps]\s*\/\s*n\b/g, ' ').replace(/\b[lr]\s*\/\s*h\b/g, ' ').replace(/\bt\s*\/\s*o\b/g, ' takeoff ');
+  if (s.indexOf('circuit') >= 0) s = s.replace(/\bcircuit[\s-]*breakers?\b/g, ' cb ');
+  if (s.indexOf('hand') >= 0) s = s.replace(/\bleft[\s-]*hand\b|\bright[\s-]*hand\b/g, ' ');
+  if (s.indexOf('ref') >= 0) s = s.replace(/\bx[\s-]*ref(?:er(?:ence)?)?\b/g, ' ');
+  if (isQuery) SQF_NOISE_RES.forEach(re => { s = s.replace(re, ' '); });
+  const out = [];
+  const re = /\b(\d{2})-(\d{2})-(\d{2})[a-z]?\b/g; let m;
+  while ((m = re.exec(s))) { if (m[1] === '00') continue; out.push('#' + m[1] + m[2] + m[3]); out.push('#' + m[1] + m[2]); }
+  s = s.replace(re, ' ');
+  for (let w of s.replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)) {
+    if (!w) continue;
+    if (/^\d+$/.test(w)) { if (w.length >= 5 && w.length <= 6) out.push('n' + w); continue; }   // n° de carte CMP (5-6 chiffres) ; le reste = bruit
+    if (SQF_MODEL_RE.test(w) || /^fa\d{4,6}$/.test(w) || w.length > 18) continue;
+    if (/\d/.test(w)) {
+      if (/^[a-z]{2,5}\d{1,2}[a-z]?$/.test(w)) { out.push(w); const b = w.replace(/\d.*$/, ''); if (b.length >= 2 && !SQF_STOP.has(b)) out.push(b); }   // « AP1 » → ap1 + ap
+      else if (w.length >= 4 && w.length <= 14 && !/^\d{6,}[a-z]*$/.test(w)) out.push(w);
+      continue;
+    }
+    if (SQF_SYN[w]) w = SQF_SYN[w];
+    if (SQF_STOP.has(w)) continue;
+    let t = sqfStem(w);
+    if (SQF_SYN[t]) t = SQF_SYN[t];
+    if (!(t.length >= 3 || t === 'cb') || SQF_STOP.has(t)) continue;
+    out.push(SQF_GEN.has(w) || SQF_GEN.has(t) ? '~' + t : t);
+  }
+  return out;
+}
+const sqfPlain = a => a.map(x => x[0] === '~' ? x.slice(1) : x);
+// La requête contient-elle au moins un mot qui n'est pas générique ?
+function sqfSpecific(text) { return sqfTok(text, true).some(t => t[0] !== '~'); }
+function sqfCmpTitles(e) {   // titres + n° des cartes CMP liées : ce qui a vraiment été fait, avec les noms de composants
+  let c = e && e.c; if (!c) return '';
+  if (!Array.isArray(c)) c = Object.values(c);
+  const out = [];
+  for (const row of c) {
+    if (!row || typeof row !== 'object') continue;
+    if (row[1]) out.push(String(row[1]));
+    const no = String(row[0] || '').replace(/\D/g, ''); if (no.length >= 5 && no.length <= 6) out.push(no);
+  }
+  return out.join(' ');
+}
+function sqfAtaOf(e) {   // chapitre ATA : champ « a », sinon 1re tâche AMM citée
+  const a = parseInt(e && e.a, 10); if (a >= 5 && a <= 97) return a;
+  const f = Array.isArray(e.f) ? e.f.join(' ') : (e.f && typeof e.f === 'object' ? Object.values(e.f).join(' ') : String(e.f || ''));
+  const m = /\b(\d{2})-\d{2}-\d{2}\b/.exec(f);
+  if (m) { const v = +m[1]; if (v >= 21 && v <= 97 && v !== 91) return v; }
+  return 0;
+}
+function sqfIsReady() { return !!(sqf.ready && sqf.src === sqa.entries && sqaIsReady()); }
+// Prépare l'index en arrière-plan (par petites tranches, l'écran reste fluide). Résout true/false, ne rejette jamais.
+function sqfReady() {
+  if (sqfIsReady()) return Promise.resolve(true);
+  if (!sqaIsReady()) return sqaReady().then(ok => (ok && sqaIsReady()) ? sqfReady() : false);
+  const src = sqa.entries;
+  if (sqf.building && sqf.buildFor === src) return sqf.building;
+  sqf.buildFor = src; sqf.failed = false;
+  sqf.building = sqfBuild(src).then(ix => {
+    if (sqa.entries !== src) return sqfReady();   // l'archive a changé pendant la construction
+    Object.assign(sqf, ix, { src, ready: true, failed: false, building: null });
+    return true;
+  }).catch(err => { console.warn('sqfBuild', err); sqf.failed = true; sqf.building = null; return false; });
+  return sqf.building;
+}
+async function sqfBuild(entries) {
+  const N = entries.length;
+  const pD = new Map(), pT = new Map(), pX = new Map(), dfm = new Map();
+  const lenD = new Float32Array(N), lenT = new Float32Array(N), lenX = new Float32Array(N);
+  const ata = new Uint8Array(N), fam = new Array(N), woNum = new Float64Array(N);
+  let woMin = Infinity, woMax = 0;
+  const add = (map, t, i, tf) => { let a = map.get(t); if (!a) map.set(t, a = []); a.push(i, tf); };
+  for (let i = 0; i < N; i++) {
+    if (i % 250 === 249) await sqaSleep(0);
+    const e = entries[i];
+    const dT = sqfPlain(sqfTok(String(e.d || '') + ' ' + sqaPartRows(e).map(r => r[0]).join(' '), false));
+    const tT = sqfPlain(sqfTok(sqfCmpTitles(e), false));
+    const xT = sqfPlain(sqfTok(e.x, false));
+    const seen = new Set();
+    const cnt = (arr, map) => { const m = new Map(); arr.forEach(t => m.set(t, (m.get(t) || 0) + 1)); m.forEach((tf, t) => { add(map, t, i, tf); seen.add(t); }); };
+    cnt(dT, pD); cnt(tT, pT); cnt(xT, pX);
+    seen.forEach(t => dfm.set(t, (dfm.get(t) || 0) + 1));
+    lenD[i] = dT.length; lenT[i] = tT.length; lenX[i] = xT.length;
+    ata[i] = sqfAtaOf(e); fam[i] = sqfFam(e.t);
+    const mm = /(\d{4,6})/.exec(e.w || ''); woNum[i] = mm ? parseInt(mm[1], 10) : 0;
+    if (woNum[i]) { woMin = Math.min(woMin, woNum[i]); woMax = Math.max(woMax, woNum[i]); }
+  }
+  // Fautes de frappe dans l'archive : un mot rare (≥ 7 lettres, ≤ 2 cas) à 1 lettre d'un mot très fréquent, même 1re lettre → rattaché à ce mot
+  const dels = w => { const o = [w]; for (let k = 0; k < w.length; k++) o.push(w.slice(0, k) + w.slice(k + 1)); return o; };
+  const delIdx = new Map();
+  dfm.forEach((df, t) => { if (df >= 10 && /^[a-z]{6,}$/.test(t)) dels(t).forEach(d => { let a = delIdx.get(d); if (!a) delIdx.set(d, a = []); a.push(t); }); });
+  const canon = new Map();
+  dfm.forEach((df, t) => {
+    if (df > 2 || !/^[a-z]{7,}$/.test(t)) return;
+    let best = null, bdf = 0;
+    dels(t).forEach(d => { const c = delIdx.get(d); if (c) c.forEach(w => { const wdf = dfm.get(w); if (w !== t && w[0] === t[0] && Math.abs(w.length - t.length) <= 1 && wdf >= 10 * df && wdf > bdf) { best = w; bdf = wdf; } }); });
+    if (best) canon.set(t, best);
+  });
+  canon.forEach((w, t) => {
+    for (const map of [pD, pT, pX]) {
+      const pt = map.get(t); if (!pt) continue;
+      let pw = map.get(w); if (!pw) map.set(w, pw = []);
+      const pos = new Map(); for (let z = 0; z < pw.length; z += 2) pos.set(pw[z], z);
+      for (let z = 0; z < pt.length; z += 2) { const at = pos.get(pt[z]); if (at !== undefined) pw[at + 1] += pt[z + 1]; else { pos.set(pt[z], pw.length); pw.push(pt[z], pt[z + 1]); } }
+      map.delete(t);
+    }
+    dfm.set(w, (dfm.get(w) || 0) + (dfm.get(t) || 0)); dfm.delete(t);
+  });
+  const avg = a => { let s = 0; for (let i = 0; i < N; i++) s += a[i]; return Math.max(1, s / N); };
+  const vocabByLen = new Map();
+  dfm.forEach((df, t) => { if (/^[a-z]{4,}$/.test(t)) { let a = vocabByLen.get(t.length); if (!a) vocabByLen.set(t.length, a = []); a.push(t); } });
+  return { N, pD, pT, pX, dfm, lenD, lenT, lenX, avgD: avg(lenD), avgT: avg(lenT), avgX: avg(lenX), ata, fam, woNum, woMin: woMin === Infinity ? 0 : woMin, woMax, vocabByLen, canon,
+    cache: { d: new Map(), s: new Map(), x: new Map() } };
+}
+// Jeux de mots (panne + cartes CMP) et séquences, calculés à la demande puis gardés
+function sqfDSeq(i) {
+  let s = sqf.cache.s.get(i); if (s) return s;
+  const e = sqf.src[i];
+  s = sqfPlain(sqfTok(String(e.d || '') + ' ' + sqfCmpTitles(e), false)).map(t => sqf.canon.get(t) || t);
+  sqf.cache.s.set(i, s); return s;
+}
+function sqfDSet(i) { let s = sqf.cache.d.get(i); if (!s) sqf.cache.d.set(i, s = new Set(sqfDSeq(i))); return s; }
+function sqfXSet(i) {
+  let s = sqf.cache.x.get(i); if (s) return s;
+  s = new Set(sqfPlain(sqfTok(sqf.src[i].x, false)).filter(t => t[0] !== '#' && !/\d/.test(t)).map(t => sqf.canon.get(t) || t).slice(0, 60));
+  sqf.cache.x.set(i, s); return s;
+}
+function sqfLev(a, b, max) {   // distance d'édition bornée (avec permutation de 2 lettres)
+  const la = a.length, lb = b.length; if (Math.abs(la - lb) > max) return max + 1;
+  let prev2 = null, prev = new Array(lb + 1), cur = new Array(lb + 1);
+  for (let j = 0; j <= lb; j++) prev[j] = j;
+  for (let i = 1; i <= la; i++) {
+    cur[0] = i; let rowMin = i;
+    for (let j = 1; j <= lb; j++) {
+      const cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
+      let v = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+      if (prev2 && i > 1 && j > 1 && a.charCodeAt(i - 1) === b.charCodeAt(j - 2) && a.charCodeAt(i - 2) === b.charCodeAt(j - 1)) v = Math.min(v, prev2[j - 2] + 1);
+      cur[j] = v; if (v < rowMin) rowMin = v;
+    }
+    if (rowMin > max) return max + 1;
+    prev2 = prev; prev = cur; cur = new Array(lb + 1);
+  }
+  return prev[lb];
+}
+function sqfFuzzy(t) {   // mot de l'archive le plus proche (1 faute, 2 si long), le plus fréquent ; null si aucun
+  const max = t.length >= 9 ? 2 : 1; let best = null, bd = 9, bdf = -1;
+  for (let L = t.length - max; L <= t.length + max; L++) {
+    const arr = sqf.vocabByLen.get(L); if (!arr) continue;
+    for (const v of arr) {
+      if (v === t || (v[0] !== t[0] && max === 1 && v[1] !== t[1])) continue;
+      const d = sqfLev(t, v, max); if (d > max) continue;
+      const df = sqf.dfm.get(v) || 0;
+      if (d < bd || (d === bd && df > bdf)) { best = v; bd = d; bdf = df; }
+    }
+  }
+  return best && bdf >= (t.length === 4 ? 25 : 3) ? best : null;   // un mot de 4 lettres ne se corrige que vers un mot très courant
+}
+// Recherche. Retourne des lignes { i, e, level: close|possible|weak, cov, score, sameFamily, sameReg, matched, dup } triées.
+function sqfSearch(query, opts) {
+  opts = opts || {};
+  if (!sqfIsReady()) return [];
+  const N = sqf.N;
+  const raw = sqfTok(query, true);
+  if (!raw.length) return [];
+  const terms = new Map();   // terme → { t, qw (poids), orig (vient de la requête) }
+  const addTerm = (t, qw, orig) => { const cur = terms.get(t); if (!cur) terms.set(t, { t, qw, orig }); else { cur.qw = Math.max(cur.qw, qw); cur.orig = cur.orig || orig; } };
+  const seqCore = [];
+  for (const r of raw) {
+    const gen = r[0] === '~'; let t = gen ? r.slice(1) : r;
+    const w = gen ? SQF.GEN : 1;
+    if (!sqf.dfm.has(t) && /^[a-z]{4,}$/.test(t)) { const f = sqfFuzzy(t); if (f) { addTerm(f, w * (t.length === 4 ? 0.6 : 0.85), true); if (!gen) seqCore.push(f); continue; } }
+    addTerm(t, w, true);
+    if (!gen) seqCore.push(t);
+  }
+  if (terms.size > 24) { const keep = [...terms.values()].sort((a, b) => b.qw - a.qw).slice(0, 24); terms.clear(); keep.forEach(k => terms.set(k.t, k)); }
+  const idfOf = t => { const df = sqf.dfm.get(t) || 0; return Math.log(1 + (N - df + 0.5) / (df + 0.5)); };
+  const score = tlist => {
+    const sc = new Float32Array(N), cv = new Float32Array(N), nm = new Uint8Array(N), mask = new Int32Array(N), tmp = new Float32Array(N), tx = new Float32Array(N);
+    const touched = [], tl = [];
+    let k = 0, sumW = 0, sumWo = 0;
+    for (const q of tlist) {
+      const idf = idfOf(q.t) * q.qw;
+      if (!(sqf.dfm.get(q.t) > 0)) { k++; continue; }
+      sumW += idf; if (q.orig) sumWo += idf;
+      tl.length = 0;
+      const run = (map, wf, b, lenArr, avgLen, arr) => {
+        const p = map.get(q.t); if (!p) return;
+        for (let z = 0; z < p.length; z += 2) {
+          const i = p[z]; if (tmp[i] === 0 && tx[i] === 0) tl.push(i);
+          arr[i] += wf * p[z + 1] / (1 - b + b * lenArr[i] / avgLen);
+        }
+      };
+      run(sqf.pD, SQF.WD, SQF.BD, sqf.lenD, sqf.avgD, tmp); run(sqf.pT, SQF.WT, SQF.BT, sqf.lenT, sqf.avgT, tmp); run(sqf.pX, 1, SQF.BX, sqf.lenX, sqf.avgX, tx);
+      for (const i of tl) {
+        const a = tmp[i], x = tx[i];
+        const sDT = a > 0 ? Math.min(SQF.CAPDT, a * (SQF.K1 + 1) / (SQF.K1 + a)) : 0;           // dans la panne / les cartes CMP : compte plein
+        const sX = x > 0 ? Math.min(SQF.CAPX, SQF.CAPX * x * (SQF.K1 + 1) / (SQF.K1 + x)) : 0;   // dans la résolution seule : compte la moitié au plus
+        if (sc[i] === 0 && cv[i] === 0) touched.push(i);
+        sc[i] += idf * (sDT + (1 - sDT) * sX);
+        if (q.orig) { cv[i] += idf * (a > 0 ? 1 : 0.5); nm[i]++; }
+        if (k < 31) mask[i] |= (1 << k);
+        tmp[i] = 0; tx[i] = 0;
+      }
+      k++;
+    }
+    return { sc, cv, nm, mask, touched, sumW, sumWo };
+  };
+  let S = score([...terms.values()]);
+  if (!S.sumW) return [];
+  // ── retour de pertinence + chapitre ATA dominant (d'après les meilleurs cas) ──
+  let ataMass = null;
+  const top = S.touched.slice().sort((a, b) => S.sc[b] - S.sc[a]).slice(0, SQF.PRFK);
+  if (top.length) {
+    const m = new Map(); let tot = 0;
+    top.forEach((i, r) => { const a = sqf.ata[i]; const w = S.sc[i] / (1 + r * 0.15); tot += w; if (a) m.set(a, (m.get(a) || 0) + w); });
+    let best = 0, ba = 0; m.forEach((v, a) => { if (v > best) { best = v; ba = a; } });
+    if (ba && tot && best / tot >= 0.35) ataMass = { a: ba, share: best / tot };
+  }
+  if (top.length >= 3) {
+    const cand = new Map();
+    top.forEach((i, r) => { const w = S.sc[i] / (1 + r * 0.2); sqfDSet(i).forEach(t => { if (terms.has(t) || !/^[a-z]{4,}$/.test(t)) return; let c = cand.get(t); if (!c) cand.set(t, c = { n: 0, w: 0 }); c.n++; c.w += w; }); });
+    const picks = [...cand.entries()].filter(([t, c]) => c.n >= 2 && (sqf.dfm.get(t) || 0) <= N * 0.03)
+      .map(([t, c]) => [t, c.w * idfOf(t) * (c.n / top.length)]).sort((a, b) => b[1] - a[1]).slice(0, SQF.PRFN);
+    if (picks.length) { picks.forEach(([t]) => addTerm(t, SQF.PRFW, false)); S = score([...terms.values()]); }
+  }
+  const sumW = S.sumW, sumWo = S.sumWo || 1;
+  const reg = sqaNormReg(opts.reg), wo = String(opts.currentWo || '').toUpperCase();
+  const span = Math.max(1, sqf.woMax - sqf.woMin);
+  const rows = [];
+  for (const i of S.touched) {
+    const e = sqf.src[i];
+    if (opts.onlyWithParts && !sqaPartRows(e).length) continue;
+    if (wo && String(e.w || '').toUpperCase() === wo) continue;
+    const cov = S.cv[i] / sumWo;   // part (pondérée) des mots de la requête retrouvés ; un mot vu seulement dans la résolution compte ½
+    let level = null;
+    if (cov >= 0.62 && S.nm[i] >= 2) level = 'close';
+    else if (cov >= 0.38) level = 'possible';
+    else if (opts.relaxed && cov >= 0.18) level = 'weak';
+    if (!level) continue;
+    rows.push({ i, e, level, cov, score: S.sc[i] / sumW + SQF.COVW * cov, pts: S.nm[i], sameFamily: null, sameReg: false, mask: S.mask[i] });
+  }
+  for (const r of rows) {
+    const fam = opts.targetFamily && sqf.fam[r.i] ? sqf.fam[r.i] === opts.targetFamily : null;
+    r.sameFamily = fam; r.sameReg = !!reg && sqaNormReg(r.e.r) === reg;
+    if (fam) r.score += SQF.FAM;
+    if (r.sameReg) r.score += SQF.REG;
+    if (sqf.woNum[r.i]) r.score += SQF.REC * Math.max(0, Math.min(1, (sqf.woNum[r.i] - sqf.woMin) / span));
+    r.score += SQF.RICH * Math.min(1, Math.log(1 + sqf.lenX[r.i]) / Math.log(41));   // résolution détaillée = meilleure source
+    if (ataMass && sqf.ata[r.i]) r.score += sqf.ata[r.i] === ataMass.a ? SQF.ATAW * ataMass.share : -SQF.ATAW * 0.25;
+  }
+  rows.sort((a, b) => b.score - a.score);
+  // mots voisins dans la requête qui restent voisins dans la panne du cas → petit bonus
+  const pairs = []; for (let k = 0; k + 1 < seqCore.length; k++) if (seqCore[k] !== seqCore[k + 1]) pairs.push([seqCore[k], seqCore[k + 1]]);
+  if (pairs.length) {
+    for (const r of rows.slice(0, 80)) {
+      const seq = sqfDSeq(r.i); let n = 0;
+      for (const [a, b] of pairs) {
+        for (let i = 0; i < seq.length; i++) {
+          if (seq[i] !== a && seq[i] !== b) continue;
+          const w = seq[i] === a ? b : a; let hit = false;
+          for (let j = i + 1; j <= i + 2 && j < seq.length; j++) if (seq[j] === w) { hit = true; break; }
+          if (hit) { n++; break; }
+        }
+      }
+      if (n) r.score += Math.min(n, 3) * SQF.PHR;
+    }
+    rows.sort((a, b) => b.score - a.score);
+  }
+  // un seul squawk par WO
+  const seenWo = new Set(), picked = [];
+  for (const r of rows) {
+    const key = r.e.w && r.e.w !== '?' ? r.e.w : '?' + r.i;
+    if (seenWo.has(key)) continue; seenWo.add(key); picked.push(r);
+    if (picked.length >= 120) break;
+  }
+  // même cas recopié dans d'autres WO (panne ET résolution quasi identiques) : une seule ligne, avec le nombre de WO
+  const out = [];
+  for (const r of picked) {
+    const sd = sqfDSet(r.i); let dupOf = -1, xr = null;
+    for (let k = 0; k < out.length && k < 40; k++) {
+      const o = sqfDSet(out[k].i); let inter = 0; const small = sd.size < o.size ? sd : o, big = small === sd ? o : sd;
+      small.forEach(t => { if (big.has(t)) inter++; });
+      if (inter / Math.max(1, sd.size + o.size - inter) < SQF.DUPD) continue;
+      xr = xr || sqfXSet(r.i); const xo = sqfXSet(out[k].i); let xi = 0; xr.forEach(t => { if (xo.has(t)) xi++; });
+      if ((xr.size + xo.size) ? xi / (xr.size + xo.size - xi) >= SQF.DUPX : true) { dupOf = k; break; }
+    }
+    if (dupOf >= 0) { out[dupOf].dup = (out[dupOf].dup || 0) + 1; (out[dupOf].dupIdx = out[dupOf].dupIdx || []).push(r.i); continue; }
+    out.push(r);
+  }
+  const termArr = [...terms.values()];
+  out.forEach(r => { r.matched = termArr.filter((q, k) => k < 31 && (r.mask & (1 << k)) && q.orig).sort((a, b) => idfOf(b.t) - idfOf(a.t)).slice(0, 5).map(q => q.t); delete r.mask; });
+  return out;
+}
+// Point d'entrée : nouveau moteur si l'index est prêt, sinon (ou en cas d'erreur) l'ancien.
+function sqfFind(query, opts) {
+  if (sqfIsReady()) { try { return sqfSearch(query, opts); } catch (err) { console.warn('sqfSearch', err); } }
+  return sqaSearch(query, opts);
+}
 // Start Job : propositions de P/N, au format de squawkHistory pour passer dans la même fenêtre de suggestion.
 // Les cas qui ont posé exactement les mêmes P/N sont regroupés (« used N× »). On propose le P/N posé (« on »),
 // à défaut celui déposé ; jamais de S/N (ceux du passé ne concernent pas cet avion).
@@ -8177,7 +9206,7 @@ function craStripXref(line) {
 }
 
 // ───────────────────────── Références AMM ─────────────────────────
-const CRA_MODEL_SRC = '(?:G[IVX]{1,4}[-\\s])?G\\d{3,4}[A-Z]{0,3}';
+const CRA_MODEL_SRC = '(?:\\bG[IVX]{1,4}\\s*[-–—]?\\s*)?G\\d{3,4}[A-Z]{0,3}';   // « GVIII-G700 », « GVIII- G700 », « gvIII -g700 », « GVIII G700 »
 const CRA_AMMNEXT_RE = new RegExp('^(?:\\d|ch(?:ap(?:ter)?)?\\b|task\\b|ata\\b|section\\b|rev\\b|' + CRA_MODEL_SRC + '\\b)', 'i');
 // le manuel : « AMM », « AOMM », « MM » (le modèle peut lui être collé : « G450AMM », ou le chapitre : « AMM22-10-00 »)
 const CRA_AMM_RE = /(^|[^A-Za-z]|G\d{3,4}[A-Z]{0,3})(AOMM|AMM|MM)(?![A-Za-z])/gi;
@@ -8228,11 +9257,11 @@ function craAmmScan(line) {
     const end = date ? date.e : rev.e;
     // modèle d'avion collé à AMM : « G700 AMM » ou « AOMM G700 25-21-04 »
     let model = null;
-    const before = line.slice(Math.max(0, kwS - 14), kwS);
-    const mb = new RegExp('(' + CRA_MODEL_SRC + ')\\s*$').exec(before);
+    const before = line.slice(Math.max(0, kwS - 24), kwS);
+    const mb = new RegExp('(' + CRA_MODEL_SRC + ')\\s*$', 'i').exec(before);
     if (mb) { const s = kwS - (before.length - mb.index); model = { s, e: s + mb[1].length, t: mb[1] }; }
     else {
-      const ma = new RegExp('^\\s*(' + CRA_MODEL_SRC + ')').exec(line.slice(after, after + 14));
+      const ma = new RegExp('^\\s*(' + CRA_MODEL_SRC + ')', 'i').exec(line.slice(after, after + 24));
       if (ma) { const s = after + ma[0].lastIndexOf(ma[1]); model = { s, e: s + ma[1].length, t: ma[1] }; }
     }
     out.push({ start: kwS, end, model, rev, date });
@@ -8971,12 +10000,13 @@ function craAmmPiece(kind, i, ctx, html) {
     if (!ctx.dateObj) return craPhOut(CRA_TYPE_LABEL.AMM_DATE, html);
     return craFillOut(craFormatDate(ctx.dateObj, a.date ? a.date.style : ctx.dateStyle, a.date ? a.date.upper : false), html);
   }
-  // modèle d'avion : remplacé seulement si la famille de l'ancien texte n'est pas celle de l'avion du jour
+  // modèle d'avion : l'ancien texte est réécrit dès que le modèle EXACT n'est pas celui de l'avion du jour (G650 ≠ G650ER, G700 ≠ G800)
   const orig = a.model;
   const f0 = craFamily(orig), f1 = craFamily(ctx.curModel);
-  if (!f1 || !f0 || f0 === f1) return craEsc2(orig, html);
+  const exact = x => ((/G\d{3,4}[A-Z]{0,3}/i.exec(String(x || '')) || [''])[0]).toUpperCase();
+  if (!f1 || !f0 || exact(orig) === exact(ctx.curModel)) return craEsc2(orig, html);
   const cur = ctx.curModel.replace(/\s+/g, '');
-  const out = /^G[IVX]+-/i.test(orig) && CRA_GEN[f1] ? CRA_GEN[f1] + '-' + cur : cur;
+  const out = /^G[IVX]+\s*[-–—]?/i.test(orig) && CRA_GEN[f1] ? CRA_GEN[f1] + '-' + cur : cur;
   return craFillOut(out, html);
 }
 const craEsc2 = (s, html) => (html ? craEsc(s) : s);
@@ -9302,10 +10332,12 @@ function craPrefsSave(P) {
 }
 // Le projet = son n° de WO (à défaut, l'immatriculation)
 function craProjKey() { const c = cra && cra.ctx, k = String((c && (c.wo || c.reg)) || '').toUpperCase().replace(/[^A-Z0-9_-]/g, '_').slice(0, 40); return /^[A-Z0-9_-]{1,40}$/.test(k) ? k : ''; }
-function craAmmLast(model) { const L = craPrefsRaw().last[craFamily(model) || '_']; return L && L.rev ? L : null; }
+// clé de « dernière révision saisie » : le modèle exact (G650ER ≠ G650) ; à défaut la famille
+function craLastKey(m) { const n = craModelName(m).toUpperCase().replace(/[^A-Z0-9]/g, ''); return /^G\d/.test(n) ? n : (craFamily(m) || '_'); }
+function craAmmLast(model) { const L = craPrefsRaw().last[craLastKey(model)]; return L && L.rev ? L : null; }
 // Révision AMM : celle de CE projet. La révision d'un autre projet n'est jamais reprise toute seule (un autre avion peut avoir une autre révision) : un bouton la propose.
 function craAmmPref(model) {
-  const P = craPrefsRaw(), k = craProjKey(), mine = k && P.amm[k], last = P.last[craFamily(model) || '_'] || null;
+  const P = craPrefsRaw(), k = craProjKey(), mine = k && P.amm[k], last = P.last[craLastKey(model)] || null;
   const add = x => (x ? x.add !== 0 : true);
   if (mine && (mine.rev || mine.date)) return { rev: mine.rev, date: mine.date, addDate: add(mine), own: true };
   if (!k && last && last.rev) return { rev: last.rev, date: last.date, addDate: add(last) };   // aucun projet identifiable : comme avant (dernière saisie pour ce modèle)
@@ -9314,7 +10346,7 @@ function craAmmPref(model) {
 function craAmmSave() {
   const A = cra && cra.S && cra.S.amm;
   if (!A) return;
-  const P = craPrefsRaw(), k = craProjKey(), fam = craFamily(A.model) || '_';
+  const P = craPrefsRaw(), k = craProjKey(), fam = craLastKey(A.model);
   const prevU = Math.max(k && P.amm[k] ? P.amm[k].u : 0, P.last[fam] ? P.last[fam].u : 0);
   const rec = { rev: String(A.rev || '').trim(), date: String(A.date || '').trim(), add: A.addDate === false ? 0 : 1, u: Math.max(Date.now(), prevU + 1) };
   if (k) P.amm[k] = rec;
@@ -9443,7 +10475,7 @@ const CRA_HTML = `
       <div id="cra-rows"></div>
       <div class="cra-sec">3 · Fill in (old job → this job)</div>
       <div id="cra-fields"></div>
-      <div class="cra-sec">4 · CMP cards and release statement</div>
+      <div class="cra-sec">4 · CMP cards and release statement <button type="button" class="cra-lnk" data-act="cs-open" style="text-transform:none;letter-spacing:0;margin-left:6px">📋 Edit cards &amp; steps…</button></div>
       <div id="cra-cmp"></div>
       <div class="cra-sec">5 · Calibrated tools</div>
       <div id="cra-tools"></div>
@@ -9551,6 +10583,249 @@ function craClose() {
   closeModal('modal-cra');
   cra = null;
 }
+// ───────────────────────── Fenêtre « CMP cards & steps » ─────────────────────────
+// Les cartes CMP (n° + titre) et les étapes (2.x.y) des anciens squawks, corrigeables à la main, puis la liste de TOUTES les cartes CMP du
+// projet (WO) à copier ou télécharger d'un coup : « 280005.004 », « 314664.002 »… Gardé sur l'appareil, par projet.
+const CRA_LS_CS = 'fast.cra.cs';
+const CRA_CS_CSS = `
+#modal-cra-cs .modal{padding:1.1rem 1.25rem;max-width:780px}
+#modal-cra-cs .cs-head{font-size:12px;font-weight:700;color:var(--gd);margin-bottom:2px;word-break:break-word}
+#modal-cra-cs .cs-sec{font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 6px}
+#modal-cra-cs .cs-sub{font-size:12px;font-weight:700;margin:8px 0 4px}
+#modal-cra-cs .cs-note{font-size:12px;color:var(--g600);background:var(--g50);border:1px dashed var(--g200);border-radius:var(--r);padding:8px 10px;margin-bottom:6px}
+#modal-cra-cs .cs-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+#modal-cra-cs .cs-row small{font-size:10.5px;color:var(--g600);white-space:nowrap}
+#modal-cra-cs input[type=checkbox]{width:auto;flex:none}
+#modal-cra-cs input[type=text],#modal-cra-cs textarea{padding:6px 8px;border:1px solid var(--g200);border-radius:var(--r);font-size:13px;font-family:inherit;background:#fff;min-width:0}
+#modal-cra-cs .cs-no{width:128px;flex:none;font-variant-numeric:tabular-nums}
+#modal-cra-cs .cs-ti{flex:1}
+#modal-cra-cs .cs-step{border:1px solid var(--g200);border-radius:var(--r);padding:6px 8px;margin-bottom:6px;background:#fff}
+#modal-cra-cs .cs-step textarea{width:100%;resize:vertical;box-sizing:border-box}
+#modal-cra-cs .cs-step-h{display:flex;gap:6px;align-items:center;font-size:11.5px;font-weight:700;margin-bottom:4px}
+#modal-cra-cs .cs-x{margin-left:auto;border:none;background:none;color:var(--g400);font-size:17px;cursor:pointer;line-height:1}
+#modal-cra-cs .cs-btns{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+#modal-cra-cs .cs-count{font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px}
+#modal-cra-cs #cs-status{font-size:11.5px;margin-top:6px;min-height:16px}
+#modal-cra-cs .modal-btns{position:sticky;bottom:-1.1rem;background:#fff;padding:10px 0 2px;margin-top:10px;border-top:1px solid var(--g200)}
+`;
+const CRA_CS_HTML = `
+<div class="modal-bg cbk-keep" id="modal-cra-cs">
+  <div class="modal">
+    <h3>📋 CMP cards &amp; steps</h3>
+    <div class="cs-head" id="cs-head"></div>
+    <div id="cs-from" style="display:none"></div>
+    <div id="cs-project"></div>
+    <div id="cs-steps"></div>
+    <div id="cs-status"></div>
+    <div class="modal-btns"><button type="button" class="btn primary" data-act="cs-close">Close</button></div>
+  </div>
+</div>`;
+let craCs = null;
+
+// N° de carte CMP au format de Corridor : 280005.004 (6 chiffres, point, 3 chiffres). Les cartes sans suffixe (G650 : 324215) restent telles quelles.
+function craCmpFmt(raw) {
+  const s = String(raw == null ? '' : raw).trim();
+  let m = /^(\d{6})\s*[.,]\s*(\d{1,3})$/.exec(s);
+  if (m) return m[1] + '.' + ('00' + m[2]).slice(-3);
+  m = /^(\d{6})(\d{3})$/.exec(s);
+  if (m) return m[1] + '.' + m[2];
+  if (/^\d{5,7}$/.test(s)) return s;
+  m = /(\d{6}\.\d{3})/.exec(s);
+  return m ? m[1] : s;
+}
+function craCsUid() { return 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function craCsKey() {
+  const c = cra && cra.ctx;
+  const raw = String((c && (c.wo || c.reg)) || gv('f_wo') || gv('f_reg') || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_').slice(0, 40);
+  return /^[A-Z0-9_-]{1,40}$/.test(raw) ? raw : '_';
+}
+function craCsGet(k) {
+  const all = craLsGet(CRA_LS_CS, {}), d = (all && all[k]) || {};
+  return { cards: Array.isArray(d.cards) ? d.cards : [], steps: Array.isArray(d.steps) ? d.steps : [] };
+}
+function craCsPut() {
+  if (!craCs) return;
+  const all = Object.assign({}, craLsGet(CRA_LS_CS, {}));
+  all[craCs.key] = { cards: craCs.data.cards, steps: craCs.data.steps, at: Date.now() };
+  Object.keys(all).sort((a, b) => ((all[b] || {}).at || 0) - ((all[a] || {}).at || 0)).slice(25).forEach(x => delete all[x]);   // 25 projets au plus
+  craLsSet(CRA_LS_CS, all);
+}
+function craCsEnsureDom() {
+  if (craEl('modal-cra-cs')) return;
+  if (!craEl('cra-cs-style')) { const st = document.createElement('style'); st.id = 'cra-cs-style'; st.textContent = CRA_CS_CSS; document.head.appendChild(st); }
+  document.body.insertAdjacentHTML('beforeend', CRA_CS_HTML);
+  const root = craEl('modal-cra-cs');
+  root.addEventListener('click', craCsOnClick);
+  root.addEventListener('input', craCsOnInput);
+  root.addEventListener('change', craCsOnInput);
+}
+// fromResolution = true : ouverte depuis la fenêtre « Resolution text » → on propose les cartes et étapes des anciens squawks cochés
+G.craCsOpen = function (fromResolution) {
+  craCsEnsureDom();
+  craCs = { key: craCsKey(), sq: '', cand: null, data: null };
+  craCs.data = craCsGet(craCs.key);
+  const s = cra;
+  if (fromResolution && s && s.model) {
+    const m = s.model, ctx = craCtx(m, s.S);
+    craCs.sq = (s.ctx && s.ctx.heading) || 'Squawk';
+    craCs.cand = {
+      cards: m.cmp.map(c => ({
+        id: craCsUid(), on: !!(s.S.cmp[c.key] && s.S.cmp[c.key].on), title: c.title || '',
+        no: /^\d{5,7}(\.\d{3})?$/.test(String(c.oldNo)) ? craCmpFmt(c.oldNo) : '',
+        was: /^\d\.\d+/.test(String(c.origin)) ? String(c.origin).replace(/~.*$/, '') : (/^\d\.\d+$/.test(String(c.oldNo)) ? String(c.oldNo) : ''),
+        deduced: String(c.origin).indexOf('~') >= 0
+      })),
+      steps: m.rows.filter(r => r.kind === 'step').map(r => ({
+        id: craCsUid(), on: r.src === 0, no: r.stepNo || '', text: craPlain(craRenderLine(r.text, ctx, 'text')), src: r.src
+      }))
+    };
+  }
+  craEl('cs-head').textContent = 'Project ' + (craCs.key === '_' ? '(no WO number yet)' : craCs.key) + (craCs.sq ? ' · ' + craCs.sq : '');
+  craEl('cs-status').textContent = '';
+  craCsPaint();
+  openModal('modal-cra-cs');
+};
+function craCsPaint() { craCsPaintFrom(); craCsPaintProject(); craCsPaintSteps(); }
+function craCsPaintFrom() {
+  const box = craEl('cs-from'), c = craCs.cand;
+  if (!c) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = '';
+  let h = '<div class="cs-sec">From the past squawks you ticked</div><div class="cs-note">Correct what is wrong (number, title, text), tick what this job needs, then add it to the project list below.</div><div class="cs-sub">CMP cards</div>';
+  if (!c.cards.length) h += '<div class="cs-note">No CMP card is linked to these squawks in the archive. Add one by hand in the project list below.</div>';
+  c.cards.forEach(x => {
+    h += '<div class="cs-row"><input type="checkbox" data-act="cs-c-on" data-id="' + escAttr(x.id) + '"' + (x.on ? ' checked' : '') + '/>' +
+      '<input type="text" class="cs-no" data-act="cs-c-no" data-id="' + escAttr(x.id) + '" value="' + escAttr(x.no) + '" placeholder="280005.004" autocomplete="off"/>' +
+      '<input type="text" class="cs-ti" data-act="cs-c-ti" data-id="' + escAttr(x.id) + '" value="' + escAttr(x.title) + '" placeholder="Card title" autocomplete="off"/>' +
+      '<small>' + (x.was ? 'was ' + escHtml(x.was) : '') + (x.deduced ? ' · deduced' : '') + '</small></div>';
+  });
+  h += '<div class="cs-sub">Steps</div>';
+  if (!c.steps.length) h += '<div class="cs-note">No step is recorded for these squawks in the archive. Steps (2.1.1, 2.1.2…) appear here once the archive has been published with them.</div>';
+  c.steps.forEach(x => {
+    h += '<div class="cs-step"><div class="cs-step-h"><input type="checkbox" data-act="cs-s-on" data-id="' + escAttr(x.id) + '"' + (x.on ? ' checked' : '') + '/>' +
+      '<span>' + (x.no ? 'Step ' + escHtml(x.no) : 'Step') + '</span></div>' +
+      '<textarea rows="2" data-act="cs-s-tx" data-id="' + escAttr(x.id) + '" spellcheck="false">' + escHtml(x.text) + '</textarea></div>';
+  });
+  h += '<div class="cs-btns"><button type="button" class="btn primary" data-act="cs-add-from">➕ Add the ticked ones to the project list</button></div>';
+  box.innerHTML = h;
+}
+function craCsPaintProject() {
+  const d = craCs.data, withNo = d.cards.filter(c => craCmpFmt(c.no)).length;
+  let h = '<div class="cs-sec">CMP cards of the whole project<span class="cs-count">' + d.cards.length + (d.cards.length ? ' card(s) · ' + withNo + ' with a number' : '') + '</span></div>';
+  if (!d.cards.length) h += '<div class="cs-note">Nothing yet. Add the cards of a squawk with the button above (open this window from “4 · CMP cards” in the Resolution text), or add one by hand.</div>';
+  d.cards.forEach(c => {
+    h += '<div class="cs-row"><input type="text" class="cs-no" data-act="cs-no" data-id="' + escAttr(c.id) + '" value="' + escAttr(c.no) + '" placeholder="280005.004" autocomplete="off"/>' +
+      '<input type="text" class="cs-ti" data-act="cs-ti" data-id="' + escAttr(c.id) + '" value="' + escAttr(c.title) + '" placeholder="Card title" autocomplete="off"/>' +
+      '<small title="' + escAttr((c.sq || []).join(' · ')) + '">' + escHtml(smartDiagShort((c.sq || []).join(' · '), 28)) + '</small>' +
+      '<button type="button" class="cs-x" data-act="cs-del-card" data-id="' + escAttr(c.id) + '" title="Remove this card">×</button></div>';
+  });
+  h += '<div class="cs-btns"><button type="button" class="btn" data-act="cs-add-card">＋ Add a card</button>' +
+    '<button type="button" class="btn" data-act="cs-copy-nums">📋 Copy the numbers</button>' +
+    '<button type="button" class="btn" data-act="cs-copy-all">📋 Copy numbers + titles</button>' +
+    '<button type="button" class="btn" data-act="cs-dl-txt">⬇ .txt</button>' +
+    '<button type="button" class="btn" data-act="cs-dl-csv">⬇ .csv (Excel)</button></div>';
+  craEl('cs-project').innerHTML = h;
+}
+function craCsPaintSteps() {
+  const d = craCs.data;
+  let h = '<div class="cs-sec">Steps of the whole project<span class="cs-count">' + d.steps.length + '</span></div>';
+  if (!d.steps.length) h += '<div class="cs-note">No step saved yet.</div>';
+  d.steps.forEach(x => {
+    h += '<div class="cs-step"><div class="cs-step-h"><span>' + escHtml(x.sq || 'Squawk') + (x.no ? ' · step ' + escHtml(x.no) : '') + '</span>' +
+      '<button type="button" class="cs-x" data-act="cs-del-step" data-id="' + escAttr(x.id) + '" title="Remove this step">×</button></div>' +
+      '<textarea rows="2" data-act="cs-st-tx" data-id="' + escAttr(x.id) + '" spellcheck="false">' + escHtml(x.text) + '</textarea></div>';
+  });
+  h += '<div class="cs-btns"><button type="button" class="btn" data-act="cs-add-step">＋ Add a step</button><button type="button" class="btn" data-act="cs-copy-steps">📋 Copy all steps</button></div>';
+  craEl('cs-steps').innerHTML = h;
+}
+// numéros uniques, au format Corridor, dans l'ordre croissant
+function craCsNumbers() {
+  const seen = {}, out = [];
+  craCs.data.cards.forEach(c => { const n = craCmpFmt(c.no); if (/^\d{5,7}(\.\d{3})?$/.test(n) && !seen[n]) { seen[n] = 1; out.push(n); } });
+  return out.sort();
+}
+function craCsStatus(msg) { const el = craEl('cs-status'); if (el) el.textContent = msg; }
+function craCsMissing() { return craCs.data.cards.filter(c => !/^\d{5,7}(\.\d{3})?$/.test(craCmpFmt(c.no))).length; }
+function craCsDownload(name, text, mime) {
+  const blob = new Blob([text], { type: mime + ';charset=utf-8' }), url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+function craCsCsv() {
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const rows = [['CMP number', 'Title', 'Squawk(s)'].map(q).join(',')];
+  craCs.data.cards.slice().sort((a, b) => craCmpFmt(a.no).localeCompare(craCmpFmt(b.no))).forEach(c => rows.push([craCmpFmt(c.no), c.title, (c.sq || []).join(' | ')].map(q).join(',')));
+  return '\ufeff' + rows.join('\r\n');
+}
+async function craCsOnClick(ev) {
+  const t = ev.target && ev.target.closest ? ev.target.closest('[data-act]') : null;
+  if (!t || !craCs || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+  const a = t.dataset.act, id = t.dataset.id, d = craCs.data, key = craCs.key === '_' ? 'project' : craCs.key;
+  if (a === 'cs-close') { closeModal('modal-cra-cs'); craCs = null; return; }
+  if (a === 'cs-add-from') {
+    const c = craCs.cand;
+    if (!c) return;
+    let nc = 0, ns = 0;
+    c.cards.filter(x => x.on).forEach(x => {
+      const no = craCmpFmt(x.no), same = d.cards.find(y => (no && craCmpFmt(y.no) === no) || (!no && y.title && y.title === x.title));
+      if (same) { if (craCs.sq && (same.sq || []).indexOf(craCs.sq) < 0) (same.sq = same.sq || []).push(craCs.sq); if (!same.title && x.title) same.title = x.title; return; }
+      d.cards.push({ id: craCsUid(), no, title: x.title, sq: craCs.sq ? [craCs.sq] : [] }); nc++;
+    });
+    c.steps.filter(x => x.on && String(x.text).trim()).forEach(x => {
+      if (d.steps.some(y => y.sq === craCs.sq && y.no === x.no && y.text === x.text)) return;
+      d.steps.push({ id: craCsUid(), sq: craCs.sq, no: x.no, text: x.text }); ns++;
+    });
+    craCsPut(); craCsPaint();
+    craCsStatus('✓ ' + nc + ' card(s) and ' + ns + ' step(s) added to the project list.');
+  }
+  else if (a === 'cs-add-card') { d.cards.push({ id: craCsUid(), no: '', title: '', sq: [] }); craCsPut(); craCsPaintProject(); const el = craEl('cs-project').querySelectorAll('.cs-no'); if (el.length && el[el.length - 1].focus) el[el.length - 1].focus(); }
+  else if (a === 'cs-add-step') { d.steps.push({ id: craCsUid(), sq: craCs.sq, no: '', text: '' }); craCsPut(); craCsPaintSteps(); }
+  else if (a === 'cs-del-card') { d.cards = d.cards.filter(x => x.id !== id); craCsPut(); craCsPaintProject(); }
+  else if (a === 'cs-del-step') { d.steps = d.steps.filter(x => x.id !== id); craCsPut(); craCsPaintSteps(); }
+  else if (a === 'cs-copy-nums' || a === 'cs-copy-all') {
+    const nums = craCsNumbers();
+    if (!nums.length) { craCsStatus('No card has a CMP number yet.'); return; }
+    const byNo = {}; d.cards.forEach(c => { const n = craCmpFmt(c.no); if (n && !byNo[n]) byNo[n] = c.title; });
+    const txt = nums.map(n => a === 'cs-copy-all' ? n + (byNo[n] ? ' — ' + byNo[n] : '') : n).join('\n');
+    const ok = await craClip(txt), miss = craCsMissing();
+    craCsStatus(ok ? '✓ ' + nums.length + ' number(s) copied.' + (miss ? ' ' + miss + ' card(s) without a number are not in the list.' : '') : '❌ The browser refused the copy.');
+  }
+  else if (a === 'cs-dl-txt') {
+    const nums = craCsNumbers();
+    if (!nums.length) { craCsStatus('No card has a CMP number yet.'); return; }
+    craCsDownload('CMP_' + key + '.txt', nums.join('\r\n') + '\r\n', 'text/plain');
+    craCsStatus('✓ CMP_' + key + '.txt downloaded (' + nums.length + ' numbers).');
+  }
+  else if (a === 'cs-dl-csv') {
+    if (!d.cards.length) { craCsStatus('No card yet.'); return; }
+    craCsDownload('CMP_' + key + '.csv', craCsCsv(), 'text/csv');
+    craCsStatus('✓ CMP_' + key + '.csv downloaded.');
+  }
+  else if (a === 'cs-copy-steps') {
+    if (!d.steps.length) { craCsStatus('No step saved yet.'); return; }
+    const ok = await craClip(d.steps.map(x => (x.sq ? x.sq + (x.no ? ' · ' + x.no : '') + '\n' : '') + x.text).join('\n\n'));
+    craCsStatus(ok ? '✓ ' + d.steps.length + ' step(s) copied.' : '❌ The browser refused the copy.');
+  }
+}
+function craCsOnInput(ev) {
+  const t = ev.target;
+  if (!t || !t.dataset || !craCs) return;
+  const a = t.dataset.act, id = t.dataset.id, d = craCs.data, c = craCs.cand, isChange = ev.type === 'change';
+  const cand = c && id ? (c.cards.find(x => x.id === id) || c.steps.find(x => x.id === id)) : null;
+  if (a === 'cs-c-on' || a === 'cs-s-on') { if (cand) cand.on = !!t.checked; return; }
+  if (a === 'cs-c-no') { if (cand) { if (isChange) { cand.no = craCmpFmt(t.value); t.value = cand.no; } else cand.no = t.value; } return; }
+  if (a === 'cs-c-ti') { if (cand) cand.title = t.value; return; }
+  if (a === 'cs-s-tx') { if (cand) cand.text = t.value; return; }
+  if (a === 'cs-no' || a === 'cs-ti') {
+    const x = d.cards.find(y => y.id === id);
+    if (!x) return;
+    if (a === 'cs-ti') x.title = t.value;
+    else if (isChange) { x.no = craCmpFmt(t.value); t.value = x.no; } else x.no = t.value;
+    craCsPut();
+    return;
+  }
+  if (a === 'cs-st-tx') { const x = d.steps.find(y => y.id === id); if (x) { x.text = t.value; craCsPut(); } }
+}
+
 // Lien affiché sous chaque cas de l'archive dans la pastille Smart Diagnosis (appelé par sqaCaseHtml)
 function craCaseLink(e, itemId) {
   if (itemId == null || !e || String(e.x || '').trim().length < 8) return '';
@@ -9576,24 +10851,30 @@ function craSearchNow(pin) {
     return;
   }
   sqaTouch();
+  if (!sqfIsReady() && !(sqf.failed && sqf.buildFor === sqa.entries)) {   // nouveau moteur : index prêt en quelques secondes (1re fois de la session)
+    s.loading = true;
+    craPaintAll();
+    sqfReady().then(() => { if (cra !== s) return; s.loading = false; craSearchNow(pin); });
+    return;
+  }
   const keep = s.sel.map(i => s.cands[i]).filter(Boolean);
   const fam = smartDiagFamily(s.ctx.model);
-  const famOf = e => (fam && e.t && smartDiagFamily(e.t) ? smartDiagFamily(e.t) === fam : null);
+  const famOf = e => (fam && e.t && sqfFam(e.t) ? sqfFam(e.t) === fam : null);
   const q = s.query;
   const woRe = /\b(FA\d{4,6}|T\d-\d{3})\b/i;
   const wo = woRe.exec(q);
   let rows = [];
-  if (wo && !smartDiagTokens(q.replace(woRe, ' ')).size) {   // « FA33369 » (ou « WO FA33369 ») : les squawks de ce WO
+  if (wo && !sqfSpecific(q.replace(woRe, ' '))) {   // « FA33369 » (ou « WO FA33369 ») : les squawks de ce WO
     const W = wo[1].toUpperCase();
     rows = sqa.entries.filter(e => String(e.w || '').toUpperCase() === W && String(e.x || '').trim().length >= 8)
       .sort((a, b) => String(a.n).localeCompare(String(b.n), 'en', { numeric: true })).slice(0, 30)
       .map(e => ({ e, level: 'wo', matched: [], sameFamily: famOf(e), sameReg: false }));
     if (!rows.length) s.msg = 'No squawk with a resolution found for WO ' + W + ' in the archive.';
   } else if (q) {
-    if (!smartDiagTokens(q.replace(woRe, ' ')).size) s.msg = 'Only generic words in this description — add a specific word (system, component, CMP number…) or a WO number such as FA33369.';
+    if (!sqfSpecific(q.replace(woRe, ' '))) s.msg = 'Only generic words in this description — add a specific word (system, component, CMP number…) or a WO number such as FA33369.';
     else {
       // liste large (relaxed) : à choisir à la main ; les résultats « faibles » ne servent qu'à compléter quand il y a peu de bons résultats
-      const all = sqaSearch(q.replace(woRe, ' '), { targetFamily: fam, reg: s.ctx.reg, currentWo: s.ctx.wo, relaxed: true }).filter(r => String(r.e.x || '').trim().length >= 8);
+      const all = sqfFind(q.replace(woRe, ' '), { targetFamily: fam, reg: s.ctx.reg, currentWo: s.ctx.wo, relaxed: true }).filter(r => String(r.e.x || '').trim().length >= 8);
       const strong = all.filter(r => r.level !== 'weak').slice(0, CRA_MAX_CAND);
       rows = strong.concat(all.filter(r => r.level === 'weak').slice(0, Math.max(0, CRA_MIN_FILL - strong.length)));
     }
@@ -9634,7 +10915,7 @@ function craPill(cls, txt) { return '<span class="cra-pill ' + cls + '">' + txt 
 function craPaintCands() {
   const s = cra, box = craEl('cra-cands');
   let h = '';
-  if (s.loading) h += '<div class="cra-note">📚 Loading the WP archive… (a few seconds the first time on this device)</div>';
+  if (s.loading) h += '<div class="cra-note">📚 ' + (sqaIsReady() ? 'Preparing the search…' : 'Loading the WP archive…') + ' (a few seconds the first time on this device)</div>';
   else if (s.msg) h += '<div class="cra-note">' + escHtml(s.msg) + '</div>';
   else if (!s.cands.length) h += '<div class="cra-note">No similar past squawk found. Try other words (system, component, CMP number) or a WO number such as FA33369.</div>';
   const full = s.sel.length >= CRA_MAX_SRC;
@@ -9649,7 +10930,8 @@ function craPaintCands() {
       c.sameFamily === true ? craPill('bl', 'Same model') : (c.sameFamily === false ? craPill('', 'Other model') : ''),
       c.sameReg ? craPill('ok', 'Same aircraft') : '',
       insp ? craPill('bl', '🔍 ' + escHtml(insp)) : '',
-      sqaCmpLinks(e).length ? craPill('', '📋 ' + sqaCmpLinks(e).length + ' CMP') : ''
+      sqaCmpLinks(e).length ? craPill('', '📋 ' + sqaCmpLinks(e).length + ' CMP') : '',
+      c.dup ? craPill('', '×' + (c.dup + 1) + ' jobs') : ''
     ].filter(Boolean).join('');
     h += '<label class="cra-cand' + (on ? ' sel' : '') + (!on && full ? ' dis' : '') + '">' +
       '<input type="checkbox" data-act="cand" data-i="' + i + '"' + (on ? ' checked' : '') + (!on && full ? ' disabled' : '') + '/>' +
@@ -9871,6 +11153,7 @@ function craOnClick(ev) {
   else if (a === 'draft-del') { craDraftSet(s.ctx.draftKey, null); s.copied = ''; craPaintStatus(); }
   else if (a === 'use') craCopy(true);
   else if (a === 'more') { s.showAll = !s.showAll; craPaintCands(); }
+  else if (a === 'cs-open') { if (!s.model) { alert('Tick at least one past squawk first.'); return; } craCsOpen(true); }
   else if (a === 'cand-full') {
     ev.preventDefault();
     const i = +t.dataset.i;
@@ -13633,7 +14916,7 @@ function acPayLevel(v) {                                    // '' | 'amber' | 'r
 }
 function acPayMsg(v, lvl) {
   return lvl === 'red'
-    ? '<b>' + escHtml(v) + '</b> — <b>cash in advance</b>. Funds must be received BEFORE the project starts: do not start the project, the travel or the parts order until an email is received from FASTOPS or the Business Office, or until management approves.'
+    ? '<b>' + escHtml(v) + '</b> — <b>cash in advance</b>. Funds must be received prior to project kickoff. Do not initiate work, book travel, or order parts without confirmation from FASTOPS or the Business Office, or prior management approval.'
     : '<b>' + escHtml(v) + '</b> — <b>cash on delivery</b>. Payment is due on delivery: confirm the payment arrangements with FastOPS, Business Office or Management before the aircraft is released (RTS).';
 }
 // Lit « Enrolled in CMP » et « Payment Terms » dans le TEXTE du PDF (RFS seulement). Étiquette absente ou sans valeur → Unknown.
@@ -14633,7 +15916,7 @@ if ('serviceWorker' in navigator) {
 //  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
 //  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v37';
+const CURRENT_VERSION = 'v38';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -15447,6 +16730,7 @@ G.openKickoff = async function(forceWo) {
   koInitToggles();
   await koRestoreState(forceWo);
   await G.koSyncTeamRecips?.();
+  await koAutoQatar(forceWo).catch(e => console.warn('koAutoQatar failed:', e));   // Qatar Executive customer → the Qatar recipients toggle is ticked
   document.querySelectorAll('#ko-parts-tbody .ko-desc-ta').forEach(koAutoGrow);
 
   // Auto-add scanned customer email to customer recipients if not already present
@@ -15502,7 +16786,7 @@ G.koStartFromProject = async function(pid) {
   sv('ko_reg', proj.reg);
   sv('ko_wo', proj.wo);
   sv('ko_icao', proj.loc);
-  sv('ko_defect', (proj.items && proj.items[0]?.label) || proj.job_desc || '');
+  sv('ko_defect', proj.job_desc || (proj.items && proj.items[0]?.label) || '');
   sv('ko_cust_name', proj.cust_name || '');
   koAutoImportQuestions();   // ICAO du projet hors Europe → coche Broker + IOR  
   
@@ -15753,6 +17037,36 @@ G.koToggleQatar = async function(checked) {
     document.getElementById('ko-qatar-toggle').checked = false;
   }
 };
+
+// ══════════════════════════════════════
+//  QATAR EXECUTIVE — the toggle above is ticked automatically when the customer is Qatar Executive
+//  The toggle is not saved with the Start Job draft, so this runs each time Start Job opens (once the draft is restored).
+//  The customer is read from Step 2, whatever the scanned document was:
+//   · RFS  → company « Qatar Executive W.L.L. » (field « Account ») and code BQ036 (« Account ID »)
+//   · WOD  → names its customer « Qatar Airways » even for a Qatar Executive aircraft: the e-mail (…@qatarexec.com.qa) and the code BQ036 identify it
+//   · WCR  → nothing to do: it is merged into a job that already has its customer, and it never changes it (it only says « Qatar Airways »)
+//  Unticked by hand for a given WO → stays unticked for that WO.
+// ══════════════════════════════════════
+const KO_QATAR_EXEC_CODES = ['BQ036'];
+function koIsQatarExecutive() {
+  const company = (gv('f_cust_company') || '').toLowerCase(), email = (gv('f_cust_email') || '').toLowerCase(), code = (gv('f_cust_code') || '').trim().toUpperCase();
+  return /qatar\s*executive/.test(company) || /@qatarexec\./.test(email) || KO_QATAR_EXEC_CODES.includes(code);
+}
+async function koAutoQatar(forceWo) {
+  const cb = document.getElementById('ko-qatar-toggle');
+  if (!cb || cb.checked || !koIsQatarExecutive()) return;
+  const wo = (gv('f_wo') || '').trim().toUpperCase(), koWo = (gv('ko_wo') || forceWo || '').trim().toUpperCase();
+  if (wo && koWo && wo !== koWo) return;                                // Start Job of another WO than the project on screen: Step 2 is not its customer
+  if (cb.dataset.userOff && cb.dataset.userOff === wo) return;          // unticked by hand for this job: leave it
+  cb.checked = true;
+  await G.koToggleQatar(true);
+}
+document.addEventListener('change', e => {                              // remembers a MANUAL change (a change made by the code has isTrusted = false)
+  const cb = e.target;
+  if (cb && cb.id === 'ko-qatar-toggle' && e.isTrusted) {
+    if (cb.checked) delete cb.dataset.userOff; else cb.dataset.userOff = (gv('f_wo') || '').trim().toUpperCase() || '_';
+  }
+});
 
 // ══════════════════════════════════════
 //  FBO CO-ENGINEERS + COLLEAGUE SELECT — load from Firebase
@@ -16489,7 +17803,1060 @@ function koComputeSubjects() {
   };
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  📝 WORDING — the text of your emails, in your own words   (patch « wording »)
+//
+//  · Start Job (Customer / Travel / Part request / FBO): your own greeting (Dear / Hello / Hi…, customer’s full name or
+//    first name), opening sentence and closing sentence — plus, in Customer update, your own introduction sentence.
+//    An empty box = the standard text of the app, which the window shows under each box.
+//    The details of the job are filled in for you. A word in { } (such as {FIRST} or {REG}) only shows up in a box when
+//    you type one or when it comes from a draft: the window then says what it is.
+//  · Shortcut: type your lines straight into a draft, click “💾 Save from this draft” → the window opens pre-filled.
+//  · FAST Update (Email Intro message): your own saved intro messages, one click to reuse them on any project.
+//  Saved in your Firebase profile (team/<your id>/emailWording) AND on this device, so nothing is lost while
+//  the Firebase rule is not there. The only change to existing code is koComputeBodies() just below this block.
+// ══════════════════════════════════════════════════════════════════════════════
+const EMW_TYPES = ['customer', 'travel', 'parts', 'fbo'];
+const EMW_TITLE = { customer: 'Customer update', travel: 'Travel request', parts: 'Part request', fbo: 'FBO' };
+// What the app writes when a box is left empty (the window shows it under each box).
+// g = greeting (Customer update: the customer’s name; Travel / Part request: “Team”; FBO: “Duty Manager”),
+// i = introduction sentence (Customer update only). The closing sentences are in EMW_END.
+const EMW_STD = {
+  customer: { g: 'Dear {NAME},', i: 'My name is {ME}, the Authorized FAST Service Provider for Gulfstream in this region.' },
+  travel:   { g: 'Dear {NAME},' },
+  parts:    { g: 'Dear {NAME},' },
+  fbo:      { g: 'Dear {NAME},' }
+};
+// Standard last line that your closing sentence replaces (otherwise it is added at the end)
+const EMW_END = { travel: 'Thank you.', fbo: 'Please let me know if you require any further details.' };
+const EMW_NONE = '{NONE}';          // stored in “i” / “c” when the engineer leaves the standard sentence out
+const EMW_WORDS = ['Dear', 'Hello', 'Hi', 'Good morning', 'Good afternoon'];      // greeting words offered in the window
+const EMW_EXAMPLE = 'Joanna Smith';      // example customer name, shown in the window while no customer is filled in Start Job
+// Fields = words in { }, replaced by the data of each job. The window never asks you to type one (the greeting lists and
+// “Save from this draft” put them in for you); when one is in a box, the window says what it is.
+const EMW_INFO = {
+  NAME:      'who the email is addressed to: the customer, “Team” or “Duty Manager”',
+  FIRST:     'the customer’s first name (for example Joanna)',
+  CUSTOMER:  'the customer’s full name (for example Joanna Smith)',
+  ME:        'your name',
+  ENGINEER:  'your name',
+  COLLEAGUE: 'the name of your colleague, when you prepare the job for a colleague',
+  REG:       'the aircraft registration (for example T7-MINT)',
+  ICAO:      'the airport (for example LFMN)',
+  WO:        'the work order number (for example FA33036)',
+  MODEL:     'the aircraft type (for example GVIII-G700)'
+};
+// Only used by the preview if the real email cannot be built
+const EMW_SAMPLE = {
+  customer: 'Dear [Customer name],\n\nMy name is [ENGINEER], the Authorized FAST Service Provider for Gulfstream in this region.\nI\'m scheduled to work on the defect regarding the [DEFECT].\n',
+  travel:   'Dear Team,\n\nCould you please book a flight from [FROM] to [TO] for a maintenance mission.\n\nPlease prioritise direct flights when possible.\n\nThank you.',
+  parts:    'Dear Team,\n\nPlease process the order for the following parts and tools as soon as possible:\n\n- \n\nShipping Address:\nThe shipping address will be provided shortly.',
+  fbo:      'Dear Duty Manager,\n\nMy name is [ENGINEER], and I am writing to coordinate maintenance for [REG] at [ICAO].\n\nPlease let me know if you require any further details.'
+};
+const EMW_CSS = `
+#emw-modal .emw-note{font-size:12px;color:var(--g600,#6c757d);margin:0 0 12px;line-height:1.5}
+#emw-modal .emw-tabs{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 12px;border-bottom:2px solid var(--g200,#e9ecef)}
+#emw-modal .emw-tab{flex:1 1 auto;padding:7px 6px;font-size:12px;font-weight:700;cursor:pointer;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--g600,#6c757d);text-transform:none;letter-spacing:0;box-shadow:none}
+#emw-modal .emw-tab.on{color:var(--gd,#2d5a2d);border-bottom-color:var(--gd,#2d5a2d)}
+@media (max-width:520px){#emw-modal .emw-tab{flex:1 1 calc(50% - 4px);padding:9px 6px}}
+#emw-modal input[type=text],#emw-modal textarea{width:100%;box-sizing:border-box;font:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--g200,#e9ecef);border-radius:var(--r,8px)}
+#emw-modal textarea{min-height:54px;resize:vertical;line-height:1.45}
+#emw-modal textarea:disabled{background:var(--g100,#f1f3f5);color:var(--g400,#adb5bd);cursor:not-allowed}
+#emw-modal select{font:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--g200,#e9ecef);border-radius:var(--r,8px);background:#fff;color:inherit;max-width:100%;width:auto}
+#emw-modal label small,#emw-modal small.emw-sub{font-weight:400;text-transform:none;letter-spacing:0;color:var(--g600,#6c757d);font-size:11px}
+#emw-modal small.emw-sub{display:block;margin-top:5px;line-height:1.45}
+#emw-modal .emw-grow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#emw-modal .emw-grow input[type=text]{flex:1 1 180px;width:auto;min-width:0}
+#emw-modal .emw-to{font-size:13px;font-weight:600;color:var(--g900,#212529)}
+#emw-modal small.emw-std{display:block;margin-top:6px;font-size:12px;line-height:1.7;color:var(--g600,#6c757d);font-weight:400;text-transform:none;letter-spacing:0}
+#emw-modal .emw-orig{padding:1px 6px;border-radius:4px;background:var(--g100,#f1f3f5);color:var(--g900,#212529);font-weight:600;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+#emw-modal .emw-acts{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:6px}
+#emw-modal .emw-link{font-size:12px;padding:0;border:0;background:none;color:var(--gd,#2d5a2d);font-weight:600;cursor:pointer;text-transform:none;letter-spacing:0;box-shadow:none;text-decoration:underline;width:auto}
+#emw-modal .emw-link:disabled{color:var(--g400,#adb5bd);cursor:not-allowed;text-decoration:none}
+#emw-modal .emw-none{display:flex;align-items:center;gap:6px;font-size:12px;margin:0;color:var(--g600,#6c757d);font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer}
+#emw-modal .emw-none input{width:auto;margin:0;flex:none}
+#emw-modal .emw-fnotes{font-size:12px;line-height:1.5;margin:0 0 12px;padding:8px 11px;border:1px solid var(--g200,#e9ecef);background:var(--g50,#f8f9fa);border-radius:var(--r,8px);color:var(--g800,#343a40)}
+#emw-modal .emw-fnotes ul{margin:4px 0 0 18px;padding:0}
+#emw-modal .emw-fnotes b{font:600 12px/1.4 ui-monospace,Menlo,Consolas,monospace}
+#emw-modal .emw-prev{font-size:12px;line-height:1.55;white-space:pre-wrap;word-break:break-word;background:var(--g50,#f8f9fa);border:1px solid var(--g200,#e9ecef);border-radius:var(--r,8px);padding:8px 10px;max-height:340px;overflow:auto}
+#emw-modal .emw-mine{background:rgba(250,204,21,.4);color:inherit;border-radius:3px;box-shadow:0 0 0 1px rgba(250,204,21,.4)}
+#emw-modal .emw-gap{display:block;margin:5px 0;text-align:center;font-size:11px;font-style:italic;color:var(--g400,#adb5bd)}
+#emw-modal .emw-status{font-size:12px;line-height:1.5;margin-top:8px}
+#emw-modal .emw-status.ok{color:#1a7f37}
+#emw-modal .emw-status.warn{color:#92400e;background:#fef3c7;border:1px solid #d97706;border-radius:var(--r,8px);padding:8px 10px}
+#emw-modal .emw-status code{font-size:11px;word-break:break-all;background:#fff;padding:1px 4px;border-radius:4px}
+#emw-modal .emw-from{font-size:12px;line-height:1.5;margin:0 0 12px;padding:9px 11px;border:1px solid #93c5fd;background:#eff6ff;border-radius:var(--r,8px);color:#1e3a8a}
+#emw-modal .emw-from ul{margin:6px 0 0 18px;padding:0}
+#emw-modal .emw-from li{margin:3px 0}
+#emw-intro-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 6px}
+#emw-intro-row .emw-lbl{font-size:11px;font-weight:700;color:var(--g600,#6c757d);text-transform:none;letter-spacing:0}
+#emw-intro-row .emw-it{display:inline-flex;align-items:stretch}
+#emw-intro-row .emw-it .btn{font-size:11px;padding:4px 8px;border-top-right-radius:0;border-bottom-right-radius:0}
+#emw-intro-row .emw-x{font-size:11px;padding:0 7px;cursor:pointer;border:1px solid var(--g200,#e9ecef);border-left:0;background:var(--g50,#f8f9fa);border-radius:0 var(--r,8px) var(--r,8px) 0;color:var(--g600,#6c757d)}
+#emw-intro-row .emw-hint{flex-basis:100%;font-size:10px;color:var(--g400,#adb5bd);text-transform:none;letter-spacing:0}
+/* buttons bar: always visible at the bottom of the window (Save is never hidden below the fold, even on a small screen) and it wraps instead of
+   overflowing on a narrow phone. « :where() » keeps this rule as weak as the app's own .modal-btns, so the phone layout of the new interface still wins */
+:where(#emw-modal) .modal-btns{position:sticky;bottom:-1.5rem;background:#fff;padding:10px 0 2px;margin-top:10px;border-top:1px solid var(--g200,#e9ecef);flex-wrap:wrap}
+/* touch screens and phones: finger-sized tabs, link, tick-box and ✕ (the app's tablet / phone CSS cannot reach these classes); nothing under 11px */
+@media (pointer:coarse),(max-width:600px){
+#emw-modal .emw-tab{display:inline-flex;align-items:center;justify-content:center;min-height:42px;font-size:13px}
+#emw-modal .emw-link{display:inline-flex;align-items:center;min-height:40px;padding:0 2px;font-size:13px}
+#emw-modal .emw-none{min-height:40px;font-size:13px}
+#emw-modal .emw-none input{width:24px;height:24px}
+#emw-intro-row .emw-x{min-width:40px;font-size:13px}
+#emw-intro-row .emw-hint{font-size:11px}
+}
+`;
+const EMW = { prof: null, id: '', data: {}, draft: {}, type: 'customer', introSig: null, from: null, demo: false };
+function emwStyle() {
+  if (document.getElementById('emw-style')) return;
+  const st = document.createElement('style');
+  st.id = 'emw-style';
+  st.textContent = EMW_CSS;
+  document.head.appendChild(st);
+}
+
+// ── Storage ─────────────────────────────────────────────────────────────────
+function emwLocalGet(id) {
+  try { const raw = localStorage.getItem('fast_wording_' + id); const d = raw ? JSON.parse(raw) : null; return d && typeof d === 'object' ? d : null; }
+  catch (e) { return null; }
+}
+function emwLocalSet(id, d) {
+  try { if (d) localStorage.setItem('fast_wording_' + id, JSON.stringify(d)); else localStorage.removeItem('fast_wording_' + id); }
+  catch (e) { /* private mode / storage full: the Firebase copy is still saved */ }
+}
+function emwIntros(d) {
+  const raw = d && d.intros;
+  const list = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? Object.values(raw) : []);
+  return list.filter(x => x && typeof x.n === 'string' && typeof x.t === 'string' && x.n && x.t);
+}
+// Active wording of the signed-in engineer: the copy in the Firebase profile or the one kept on this device, whichever is newer
+function emwData() {
+  const p = curProfile;
+  if (!p || !p.id) return {};
+  if (EMW.prof !== p) {
+    EMW.prof = p; EMW.id = p.id;
+    const cloud = p.emailWording && typeof p.emailWording === 'object' ? p.emailWording : null;
+    const local = emwLocalGet(p.id);
+    EMW.data = (cloud && (!local || (cloud.u || 0) >= (local.u || 0))) ? cloud : (local || {});
+  }
+  return EMW.data || {};
+}
+// Keeps only what is really filled in (null = nothing at all)
+function emwClean(d) {
+  const out = {};
+  const str = (v, n) => String(v == null ? '' : v).replace(/\r/g, '').trim().slice(0, n);
+  EMW_TYPES.forEach(t => {
+    const s = d && d[t];
+    if (!s || typeof s !== 'object') return;
+    const o = {};
+    (t === 'customer' ? ['g', 'o', 'i', 'c'] : ['g', 'o', 'c']).forEach(k => {      // the introduction box exists in Customer update only
+      const v = str(s[k], k === 'g' ? 200 : 1500);
+      if (v && !((k === 'g' || k === 'o') && v.toUpperCase() === EMW_NONE)) o[k] = v;
+    });
+    if (Object.keys(o).length) out[t] = o;
+  });
+  const intros = emwIntros(d).map(x => ({ n: str(x.n, 40), t: str(x.t, 3000) })).filter(x => x.n && x.t).slice(0, 20);
+  if (intros.length) out.intros = intros;
+  return Object.keys(out).length ? out : null;
+}
+// Saves on this device first (never lost), then in the Firebase profile
+async function emwPersist(nd) {
+  const p = curProfile;
+  if (!p || !p.id) throw new Error('You are not signed in.');
+  const clean = emwClean(nd);
+  if (clean) clean.u = Date.now();
+  EMW.prof = p; EMW.id = p.id; EMW.data = clean || {};
+  emwLocalSet(p.id, clean);
+  let cloud = false, err = '';
+  try {
+    await set(ref(db, 'team/' + p.id + '/emailWording'), clean);
+    cloud = true;
+    if (clean) p.emailWording = clean; else delete p.emailWording;
+  } catch (e) { err = String((e && (e.code || e.message)) || e); }
+  return { cloud, err, empty: !clean };
+}
+
+// ── The wording itself ──────────────────────────────────────────────────────
+// First name of the customer (the app's own “Dear …” line uses the full name). Several people or a placeholder: kept whole.
+function emwFirstName(full) {
+  const s = String(full == null ? '' : full).trim();
+  if (!s || s.charAt(0) === '[' || /[,;&\/]|\s(?:and|et)\s/i.test(s)) return s;
+  const w = s.split(/\s+/);
+  while (w.length > 1 && /^(?:mr|mrs|ms|miss|mx|dr|prof|capt|captain|cpt|sir|mme|mlle|m)\.?$/i.test(w[0])) w.shift();
+  return w[0];
+}
+function emwCtx(name) {
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const cust = v('ko_cust_name') || v('f_cust_name') || (EMW.demo ? EMW_EXAMPLE : '');            // same source as the app's “Dear …” line (the window's preview uses an example while it is empty)
+  const me = (curProfile && curProfile.name) || '[ENGINEER]';
+  let col = '';
+  try { if (document.getElementById('ko-colleague-toggle')?.checked) { const c = koGetColleagueName(); if (c && c.slice(0, 2) !== '__') col = c; } } catch (e) { /* no colleague */ }
+  return {
+    NAME: name, FIRST: emwFirstName(cust) || '[Customer name]', CUSTOMER: cust || '[Customer name]', ME: me, ENGINEER: me, COLLEAGUE: col || '[COLLEAGUE]',
+    REG: v('ko_reg') || '[REG]', ICAO: v('ko_icao') || '[ICAO]', WO: v('ko_wo') || '[WO]', MODEL: v('ko_model') || '[MODEL]'
+  };
+}
+function emwFill(s, ctx) {
+  return String(s).replace(/\{(NAME|FIRST|CUSTOMER|ME|ENGINEER|COLLEAGUE|REG|ICAO|WO|MODEL)\}/gi, (m, k) => { const v = ctx[k.toUpperCase()]; return v == null ? m : v; });
+}
+// text = the email as the app writes it. Returns it with your greeting / opening sentence / introduction / closing sentence.
+// Any problem → the standard text is returned untouched (an email is never blocked by this).
+function koMyWording(type, text, cfgIn) {
+  try {
+    if (typeof text !== 'string') return text;
+    const cfg = cfgIn || emwData()[type];
+    if (!cfg) return text;
+    const s = k => String(cfg[k] == null ? '' : cfg[k]).replace(/\r/g, '').trim();
+    const only = k => { const x = s(k); return x.toUpperCase() === EMW_NONE ? '' : x; };      // “leave out” only exists for i and c
+    const g = only('g'), o = only('o'), i = type === 'customer' ? s('i') : '', c = s('c');    // the introduction exists in Customer update only
+    if (!g && !o && !i && !c) return text;
+    const noI = i.toUpperCase() === EMW_NONE, noC = c.toUpperCase() === EMW_NONE;     // “leave the standard sentence out”
+    const lines = text.split('\n');
+    const m = /^Dear (.*),[ \t]*$/.exec(lines[0]);
+    const ctx = emwCtx(m ? m[1] : '');
+    if (m) {
+      if (g) lines[0] = emwFill(g, ctx);
+      if (o) lines.splice(1, 0, '', ...emwFill(o, ctx).split('\n'));
+      // preparing the job for a colleague: the standard sentence names the colleague, so it is kept
+      if (i && !document.getElementById('ko-colleague-toggle')?.checked) {
+        const k = lines.findIndex((l, n) => n > 0 && l.startsWith('My name is '));
+        if (k > 0) {
+          if (noI) { lines.splice(k, 1); if (k < lines.length && lines[k] === '' && lines[k - 1] === '') lines.splice(k, 1); }
+          else lines.splice(k, 1, ...emwFill(i, ctx).split('\n'));
+        }
+      }
+    }
+    let out = lines.join('\n');
+    if (c) {
+      const end = EMW_END[type];                                  // Travel / FBO: your closing replaces the standard last line
+      const t = out.replace(/\s+$/, '');
+      const has = !!end && t.endsWith('\n' + end);
+      if (noC) { if (has) out = t.slice(0, t.length - end.length).replace(/\s+$/, ''); }
+      else out = has ? t.slice(0, t.length - end.length) + emwFill(c, ctx) : t + '\n\n' + emwFill(c, ctx);
+    }
+    return out;
+  } catch (e) {
+    console.warn('Wording skipped (standard text used):', e);
+    return text;
+  }
+}
+// Lines written by your wording: ✨ Polish must leave them exactly as they are
+function emwLockedLines() {
+  const out = new Set();
+  const d = emwData();
+  EMW_TYPES.forEach(t => {
+    const cfg = d[t];
+    if (!cfg) return;
+    const name = t === 'customer' ? (document.getElementById('ko_cust_name')?.value || gv('f_cust_name') || '[Customer name]') : (t === 'fbo' ? 'Duty Manager' : 'Team');
+    const ctx = emwCtx(name);
+    (t === 'customer' ? ['g', 'o', 'i', 'c'] : ['g', 'o', 'c']).forEach(k => {
+      if (!cfg[k] || String(cfg[k]).trim().toUpperCase() === EMW_NONE) return;
+      emwFill(cfg[k], ctx).split('\n').map(l => l.trim()).filter(Boolean).forEach(l => out.add(l));
+    });
+  });
+  return out;
+}
+try {
+  if (typeof koPolishVerbatim === 'function') {
+    const emwVerbatim = koPolishVerbatim;
+    koPolishVerbatim = function () {
+      const set0 = emwVerbatim();
+      try { emwLockedLines().forEach(l => set0.add(l)); } catch (e) { /* Polish keeps working without the lock */ }
+      return set0;
+    };
+  }
+} catch (e) { /* ✨ Polish may then reword your own sentences — nothing else changes */ }
+
+// The standard text of one email, as the app writes it today
+function emwStdBody(type) {
+  try {
+    const fn = { customer: koBuildCustomerBody, travel: koBuildTravelBody, parts: koBuildPartsBody, fbo: koBuildFboBody }[type];
+    const t = fn();
+    if (typeof t === 'string' && t.trim()) return t;
+  } catch (e) { /* preview falls back to a short sample */ }
+  return EMW_SAMPLE[type] || '';
+}
+function emwRefreshDrafts() {
+  try { if (document.getElementById('kickoff-panel')?.style.display === 'block') koUpdatePreview(); }
+  catch (e) { console.warn('Wording: the previews could not be refreshed —', e); }
+}
+
+// ── The window (Start Job emails) ───────────────────────────────────────────
+const emwEl = id => document.getElementById(id);
+// Who the standard greeting is addressed to. For the customer: the name typed in Start Job, or an example while it is empty
+function emwTo(type) {
+  if (type === 'travel' || type === 'parts') return 'Team';
+  if (type === 'fbo') return 'Duty Manager';
+  const v = id => (emwEl(id)?.value || '').trim();
+  return v('ko_cust_name') || v('f_cust_name') || EMW_EXAMPLE;
+}
+// The values used for the examples written in the window
+function emwExampleCtx(type) {
+  const to = emwTo(type), c = emwCtx(to);
+  if (type === 'customer') { c.CUSTOMER = to; c.FIRST = emwFirstName(to); }
+  return c;
+}
+// Greeting: a word + the name. 'Hello {FIRST},' → { word: 'Hello', name: 'first' } ('' = the standard greeting).
+// null = a greeting of another shape: the window keeps it as a whole line.
+function emwGreetParse(type, g) {
+  const t = String(g == null ? '' : g).trim();
+  if (!t) return { word: 'Dear', name: 'full' };
+  const m = /^(.+?) \{(NAME|CUSTOMER|FIRST)\},$/i.exec(t);
+  if (!m) return null;
+  const k = m[2].toUpperCase();
+  if (type !== 'customer' && k !== 'NAME') return null;
+  return { word: m[1].trim(), name: k === 'FIRST' ? 'first' : 'full' };
+}
+function emwGreetBuild(type, word, name) {
+  const w = String(word == null ? '' : word).replace(/[{}]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
+  if (!w) return '';
+  const g = w + ' ' + (type === 'customer' && name === 'first' ? '{FIRST}' : '{NAME}') + ',';
+  return g === EMW_STD[type].g ? '' : g;                         // the standard greeting is stored as “nothing”
+}
+function emwGreetValue() {
+  const sel = emwEl('emw-gw');
+  if (!sel) return '';
+  if (sel.value === '=') return emwEl('emw-gline').value;
+  const word = sel.value === '*' ? emwEl('emw-gword').value : sel.value;
+  return emwGreetBuild(EMW.type, word, emwEl('emw-gn').value === 'first' ? 'first' : 'full');
+}
+function emwFields() {
+  const none = k => { const c = emwEl('emw-' + k + '-none'); return !!c && c.checked; };
+  const cust = EMW.type === 'customer';
+  return {
+    g: emwGreetValue(),
+    o: emwEl('emw-o')?.value || '',
+    i: cust ? (none('i') ? EMW_NONE : (emwEl('emw-i')?.value || '')) : '',
+    c: none('c') ? EMW_NONE : (emwEl('emw-c')?.value || '')
+  };
+}
+function emwStore() { EMW.draft[EMW.type] = emwFields(); }
+// Writes “Standard text: …” under a box
+function emwSetStd(id, text, after) {
+  const el = emwEl(id);
+  if (!el) return;
+  el.textContent = 'Standard text: ';
+  if (text) {
+    const b = document.createElement('span');
+    b.className = 'emw-orig';
+    b.textContent = text;
+    el.appendChild(b);
+  } else {
+    const i = document.createElement('i');
+    i.textContent = 'none';
+    el.appendChild(i);
+  }
+  if (after) el.appendChild(document.createTextNode(' ' + after));
+}
+// Greeting block: which controls are visible, the standard greeting and the result
+function emwGreetUi() {
+  const t = EMW.type, sel = emwEl('emw-gw');
+  if (!sel) return;
+  const mode = sel.value, cust = t === 'customer';
+  emwEl('emw-gword').style.display = mode === '*' ? '' : 'none';
+  emwEl('emw-gline').style.display = mode === '=' ? '' : 'none';
+  emwEl('emw-gn').style.display = (cust && mode !== '=') ? '' : 'none';
+  emwEl('emw-gto').style.display = (!cust && mode !== '=') ? '' : 'none';
+  const ctx = emwExampleCtx(t), g = emwGreetValue();
+  const eg = cust && emwTo(t) === EMW_EXAMPLE ? '(example name)' : '';      // no customer in Start Job yet: the window shows an example
+  emwSetStd('emw-g-std', emwFill(EMW_STD[t].g, ctx), eg);
+  const res = emwEl('emw-g-res');
+  res.style.display = g ? '' : 'none';
+  res.textContent = g ? 'Your greeting: ' + emwFill(g, ctx) + (eg ? ' ' + eg : '') : '';
+}
+// Only when a box contains a word in { }: says what it is (the window never asks you to type one)
+function emwFieldNotes() {
+  const el = emwEl('emw-fnotes');
+  if (!el) return;
+  const f = emwFields(), known = [], unknown = [];
+  if (emwEl('emw-gw').value !== '=') f.g = '';                       // a greeting made with the lists shows no { } word: nothing to explain
+  ['g', 'o', 'i', 'c'].forEach(k => {
+    String(f[k] || '').replace(/\{([A-Za-z]+)\}/g, (m, n) => {
+      const u = n.toUpperCase();
+      if (u === 'NONE') return m;
+      const list = EMW_INFO[u] ? known : unknown;
+      if (list.indexOf(u) < 0) list.push(u);
+      return m;
+    });
+  });
+  el.textContent = '';
+  if (!known.length && !unknown.length) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.appendChild(document.createTextNode('A word between { } is filled in by the app for each email:'));
+  const ul = document.createElement('ul');
+  const li = (u, txt) => { const x = document.createElement('li'), b = document.createElement('b'); b.textContent = '{' + u + '}'; x.appendChild(b); x.appendChild(document.createTextNode(txt)); ul.appendChild(x); };
+  known.forEach(u => li(u, ' = ' + EMW_INFO[u]));
+  unknown.forEach(u => li(u, ' is not a known field: it will be written as it is.'));
+  el.appendChild(ul);
+}
+// Start and end of the email as it will be written with your words (your lines highlighted; a long unchanged middle is folded)
+function emwPreview() {
+  const el = emwEl('emw-prev');
+  if (!el) return;
+  const clean = s => String(s).replace(/\r/g, '').replace(/\*\*([^*\n]+)\*\*/g, '$1');      // the ** marks only make the headings bold in the real email
+  let std = clean(emwStdBody(EMW.type)), out;
+  if (EMW.type === 'customer' && emwTo('customer') === EMW_EXAMPLE) std = std.replace(/^Dear \[Customer name\],/, 'Dear ' + EMW_EXAMPLE + ',');   // no customer in Start Job yet: the same example as above
+  EMW.demo = true;
+  try { out = clean(koMyWording(EMW.type, std, emwFields())); } finally { EMW.demo = false; }
+  const stdSet = new Set(std.split('\n').map(l => l.trim()));
+  const rows = out.replace(/\s+$/, '').split('\n').map(l => ({ t: l, mine: !!l.trim() && !stdSet.has(l.trim()) }));
+  const shown = [];
+  for (let i = 0; i < rows.length;) {
+    if (rows[i].mine) { shown.push(rows[i++]); continue; }
+    let j = i;
+    while (j < rows.length && !rows[j].mine) j++;
+    if (j - i > 8) shown.push(...rows.slice(i, i + 3), { gap: true }, ...rows.slice(j - 2, j));
+    else shown.push(...rows.slice(i, j));
+    i = j;
+  }
+  el.textContent = '';
+  shown.forEach((r, n) => {
+    if (r.gap) {
+      const g = document.createElement('span');
+      g.className = 'emw-gap';
+      g.textContent = '⋯ the rest of the email stays as usual ⋯';
+      el.appendChild(g);
+      return;
+    }
+    if (r.mine) { const s = document.createElement('span'); s.className = 'emw-mine'; s.textContent = r.t; el.appendChild(s); }
+    else el.appendChild(document.createTextNode(r.t));
+    if (n < shown.length - 1 && !shown[n + 1].gap) el.appendChild(document.createTextNode('\n'));
+  });
+}
+function emwChanged() { emwGreetUi(); emwFieldNotes(); emwPreview(); }
+function emwLoadTab() {
+  const t = EMW.type, d = EMW.draft[t] || {}, cust = t === 'customer', end = EMW_END[t] || '';
+  // greeting: the word, the name (customer only) — or a whole line when the saved greeting has another shape
+  const sel = emwEl('emw-gw'), old = sel.querySelector('option[value="="]');
+  if (old) old.remove();
+  const p = emwGreetParse(t, d.g);
+  emwEl('emw-gn').value = 'full'; emwEl('emw-gword').value = ''; emwEl('emw-gline').value = '';
+  if (p) {
+    const known = EMW_WORDS.indexOf(p.word) >= 0;
+    sel.value = known ? p.word : '*';
+    emwEl('emw-gword').value = known ? '' : p.word;
+    emwEl('emw-gn').value = p.name;
+  } else {
+    const o = document.createElement('option');
+    o.value = '='; o.textContent = 'My own line';
+    sel.appendChild(o);
+    sel.value = '=';
+    emwEl('emw-gline').value = String(d.g || '');
+  }
+  const to = emwTo(t), cut = s => s.length > 26 ? s.slice(0, 25) + '…' : s, gn = emwEl('emw-gn'), eg = cust && to === EMW_EXAMPLE ? 'e.g. ' : '';
+  gn.options[0].textContent = 'Full name (' + eg + cut(to) + ')';
+  gn.options[1].textContent = 'First name only (' + eg + cut(emwFirstName(to)) + ')';
+  emwEl('emw-gto').textContent = to + ',';
+  // opening sentence
+  emwEl('emw-o').value = d.o || '';
+  emwSetStd('emw-o-std', '', '— the email goes straight on after the greeting.');
+  // introduction (Customer update only) and closing: the box, “leave out” and what the standard sentence is
+  emwEl('emw-i-wrap').style.display = cust ? '' : 'none';
+  emwEl('emw-i-col').style.display = (cust && document.getElementById('ko-colleague-toggle')?.checked) ? '' : 'none';      // said only when it matters: this job is being prepared for a colleague
+  emwEl('emw-c-acts').style.display = end ? '' : 'none';                 // nothing to edit or leave out when the app has no standard closing
+  [['i', cust], ['c', !!end]].forEach(([k, hasStd]) => {
+    const el = emwEl('emw-' + k), none = emwEl('emw-' + k + '-none'), raw = String(d[k] || '');
+    const isNone = raw.trim().toUpperCase() === EMW_NONE;
+    el.value = isNone ? '' : raw;
+    el.disabled = isNone && hasStd;
+    none.checked = isNone && hasStd;
+  });
+  if (cust) emwSetStd('emw-i-std', emwFill(EMW_STD.customer.i, emwExampleCtx('customer')), '— yours replaces it.');
+  emwSetStd('emw-c-std', end, end ? '— yours replaces it.' : '— yours is added at the end, just before your signature.');
+  document.querySelectorAll('#emw-tabs .emw-tab').forEach(b => b.classList.toggle('on', b.dataset.type === t));
+  emwBanner();
+  emwChanged();
+}
+// Blue note at the top of the window when it was opened with “💾 Save from this draft”
+function emwBanner() {
+  const el = document.getElementById('emw-from');
+  if (!el) return;
+  const f = EMW.from;
+  el.textContent = '';
+  if (!f || f.type !== EMW.type) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  const b = document.createElement('b');
+  b.textContent = '✍️ Taken from your ' + EMW_TITLE[f.type] + ' draft. ';
+  el.appendChild(b);
+  el.appendChild(document.createTextNode('Check the boxes below, then press 💾 Save. Nothing is saved until you do.'));
+  if (f.notes && f.notes.length) {
+    const ul = document.createElement('ul');
+    f.notes.forEach(n => { const li = document.createElement('li'); li.textContent = n; ul.appendChild(li); });
+    el.appendChild(ul);
+  }
+}
+function emwStatusLine(r) {
+  const el = document.getElementById('emw-status');
+  if (!el) return;
+  const d = emwData();
+  const has = EMW_TYPES.some(t => d[t]);
+  const inCloud = !!(curProfile && curProfile.emailWording && d.u && curProfile.emailWording.u === d.u);
+  el.className = 'emw-status';
+  el.textContent = '';
+  if (!r && EMW.from) { el.textContent = 'Not saved yet — press 💾 Save to keep this wording.'; return; }      // window just pre-filled from a draft
+  if (r && r.cloud) {
+    el.classList.add('ok');
+    el.textContent = r.empty ? '✅ Back to the standard texts (saved in your profile).' : '✅ Saved in your profile — your next emails use these words.';
+  } else if ((r && !r.cloud) || (has && !inCloud)) {
+    el.classList.add('warn');
+    el.appendChild(document.createTextNode('⚠️ Saved on THIS device only: your profile could not be updated' + (r && r.err ? ' (' + r.err + ')' : '') + '. The Firebase rule for “emailWording” is probably missing — please ask your admin.'));
+    if (isAdmin) {
+      const div = document.createElement('div');
+      div.style.marginTop = '6px';
+      div.appendChild(document.createTextNode('Admin: Firebase › Realtime Database › Rules — add this line right under the "signature" line, click Publish, then press 💾 Save here again: '));
+      const code = document.createElement('code');
+      code.textContent = '"emailWording": { ".write": "auth.uid === $uid" },';
+      div.appendChild(code);
+      el.appendChild(div);
+    }
+  } else if (has) {
+    el.textContent = 'Saved in your profile. Empty boxes use the standard text.';
+  } else {
+    el.textContent = 'Nothing saved yet: the standard texts are used.';
+  }
+}
+function emwModalEnsure() {
+  if (emwEl('emw-modal')) return;
+  emwStyle();
+  const m = document.createElement('div');
+  m.className = 'modal-bg cbk-keep';
+  m.id = 'emw-modal';
+  m.innerHTML =
+    '<div class="modal" style="max-width:580px">' +
+      '<h3>📝 Personalize the wording of your emails</h3>' +
+      '<p class="emw-note">Add your own words to your Start Job emails. The standard text is shown in grey under each box — <b>leave a box empty to keep it</b>. It is saved in your profile and used for all your next emails.</p>' +
+      '<div class="emw-from" id="emw-from" style="display:none"></div>' +
+      '<div class="emw-tabs" id="emw-tabs"></div>' +
+      '<div class="fg"><label for="emw-gw">Greeting</label>' +
+        '<div class="emw-grow">' +
+          '<select id="emw-gw"><option value="Dear">Dear</option><option value="Hello">Hello</option><option value="Hi">Hi</option><option value="Good morning">Good morning</option><option value="Good afternoon">Good afternoon</option><option value="*">Other…</option></select>' +
+          '<input type="text" id="emw-gword" maxlength="60" autocomplete="off" placeholder="Your greeting word(s)" aria-label="Your greeting word(s)" style="display:none"/>' +
+          '<select id="emw-gn" aria-label="Customer name in the greeting"><option value="full"></option><option value="first"></option></select>' +
+          '<span class="emw-to" id="emw-gto"></span>' +
+          '<input type="text" id="emw-gline" maxlength="200" autocomplete="off" placeholder="Your whole greeting line" aria-label="Your whole greeting line" style="display:none"/>' +
+        '</div>' +
+        '<small class="emw-std" id="emw-g-res"></small>' +
+        '<small class="emw-std" id="emw-g-std"></small></div>' +
+      '<div class="fg"><label for="emw-o">Opening sentence <small>(optional — goes right after the greeting)</small></label><textarea id="emw-o" rows="2" placeholder="e.g. I hope you are doing well."></textarea>' +
+        '<small class="emw-std" id="emw-o-std"></small></div>' +
+      '<div class="fg" id="emw-i-wrap"><label for="emw-i">Introduction sentence <small>(optional)</small></label><textarea id="emw-i" rows="2" placeholder="Leave empty to keep the standard sentence"></textarea>' +
+        '<small class="emw-std" id="emw-i-std"></small>' +
+        '<div class="emw-acts"><button type="button" class="emw-link" id="emw-i-edit">✏️ Start from the standard sentence</button>' +
+          '<label class="emw-none" for="emw-i-none"><input type="checkbox" id="emw-i-none"/> Leave it out</label></div>' +
+        '<small class="emw-sub" id="emw-i-col" style="display:none">You are preparing this job for a colleague: the standard sentence is kept (it names your colleague), so your own introduction is not used for it.</small></div>' +
+      '<div class="fg"><label for="emw-c">Closing sentence <small>(optional)</small></label><textarea id="emw-c" rows="2" placeholder="e.g. Thank you for your support."></textarea>' +
+        '<small class="emw-std" id="emw-c-std"></small>' +
+        '<div class="emw-acts" id="emw-c-acts"><button type="button" class="emw-link" id="emw-c-edit">✏️ Start from the standard sentence</button>' +
+          '<label class="emw-none" for="emw-c-none"><input type="checkbox" id="emw-c-none"/> Leave it out</label></div></div>' +
+      '<div class="emw-fnotes" id="emw-fnotes" style="display:none"></div>' +
+      '<div class="fg"><label>Preview <small>(start and end of the email, with your current Start Job data — your own words are highlighted)</small></label><div class="emw-prev" id="emw-prev"></div></div>' +
+      '<div class="emw-status" id="emw-status"></div>' +
+      '<div class="err-msg" id="emw-err"></div>' +
+      '<div class="modal-btns">' +
+        '<button type="button" class="btn" id="emw-clear" title="Empty all the boxes of this email: the standard text is used">↩ Standard text</button>' +
+        '<button type="button" class="btn" id="emw-close">Close</button>' +
+        '<button type="button" class="btn primary" id="emw-save">💾 Save</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(m);
+  const tabs = m.querySelector('#emw-tabs');
+  EMW_TYPES.forEach(t => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'emw-tab'; b.dataset.type = t; b.textContent = EMW_TITLE[t];
+    b.onclick = () => { emwStore(); EMW.type = t; emwLoadTab(); };
+    tabs.appendChild(b);
+  });
+  m.querySelector('#emw-gw').addEventListener('change', () => {
+    emwChanged();
+    const sel = emwEl('emw-gw');
+    if (sel.value === '*') emwEl('emw-gword').focus();
+    else if (sel.value === '=') emwEl('emw-gline').focus();
+  });
+  m.querySelector('#emw-gn').addEventListener('change', emwChanged);
+  ['emw-gword', 'emw-gline', 'emw-o', 'emw-i', 'emw-c'].forEach(id => m.querySelector('#' + id).addEventListener('input', emwChanged));
+  ['i', 'c'].forEach(k => {
+    m.querySelector('#emw-' + k + '-none').addEventListener('change', ev => { emwEl('emw-' + k).disabled = ev.target.checked; emwChanged(); });
+    m.querySelector('#emw-' + k + '-edit').onclick = () => {          // copies the standard sentence into the box, so you only change the words you want
+      const txt = k === 'i' ? emwFill(EMW_STD.customer.i, emwExampleCtx('customer')) : (EMW_END[EMW.type] || '');
+      if (!txt) return;
+      const el = emwEl('emw-' + k);
+      emwEl('emw-' + k + '-none').checked = false;
+      el.disabled = false; el.value = txt; el.focus();
+      emwChanged();
+    };
+  });
+  m.querySelector('#emw-clear').onclick = () => { EMW.draft[EMW.type] = { g: '', o: '', i: '', c: '' }; emwLoadTab(); };
+  m.querySelector('#emw-close').onclick = () => closeModal('emw-modal');
+  m.querySelector('#emw-save').onclick = emwSave;
+}
+function emwOpen(type, from) {
+  try {
+    if (!curProfile || !curProfile.id) { alert('Please sign in first.'); return; }
+    emwModalEnsure();
+    const d = emwData();
+    EMW.draft = {};
+    EMW_TYPES.forEach(t => { EMW.draft[t] = Object.assign({ g: '', o: '', i: '', c: '' }, d[t] || {}); });
+    EMW.type = EMW_TYPES.includes(type) ? type : 'customer';
+    EMW.from = null;
+    if (from && from.vals) {                                   // opened by “💾 Save from this draft”: boxes pre-filled, nothing saved yet
+      Object.keys(from.vals).forEach(k => { EMW.draft[EMW.type][k] = from.vals[k]; });
+      EMW.from = { type: EMW.type, notes: from.notes || [] };
+    }
+    emwEl('emw-err').textContent = '';
+    emwLoadTab();
+    emwStatusLine();
+    openModal('emw-modal');
+  } catch (e) {
+    console.warn('Wording window:', e);
+    alert('Sorry, the wording window could not open: ' + (e.message || e));
+  }
+}
+async function emwSave() {
+  const btn = document.getElementById('emw-save'), er = document.getElementById('emw-err');
+  er.textContent = '';
+  try {
+    emwStore();
+    const nd = { intros: emwIntros(emwData()) };
+    EMW_TYPES.forEach(t => { nd[t] = EMW.draft[t]; });
+    btn.disabled = true;
+    const r = await emwPersist(nd);
+    EMW.from = null;
+    emwBanner();
+    emwRefreshDrafts();
+    emwIntroSync();
+    emwStatusLine(r);
+    emwAnnounce(r);
+    if (r.cloud) setTimeout(() => closeModal('emw-modal'), 1400);
+  } catch (e) {
+    er.textContent = '❌ ' + (e.message || e);
+  }
+  btn.disabled = false;
+}
+
+// A lasting message under the drafts (Start Job), because the window closes by itself
+function emwAnnounce(r) {
+  try {
+    if (document.getElementById('kickoff-panel')?.style.display !== 'block' || typeof koSetStatus !== 'function') return;
+    const hand = EMW_TYPES.filter(t => { const b = document.getElementById('ko-prev-body-' + t); return b && b.dataset.userEdited === '1'; });
+    const tail = hand.length ? ' Drafts you typed in by hand keep your text — click “🔄 Reset to auto-generated” on them to apply your wording.' : '';
+    if (r && r.cloud) koSetStatus('done', (r.empty ? '✅ Back to the standard texts.' : '✅ Your wording is saved — your next drafts use it.') + tail);
+    else koSetStatus('done', '⚠️ Your wording is saved on this device only (your profile could not be updated — see the 📝 window).' + tail);
+  } catch (e) { /* the window already shows the result */ }
+}
+
+// ── 💾 Save from this draft ─────────────────────────────────────────────────
+// You type your own lines straight into a draft; this finds them by comparing the draft with the standard text.
+// The wording window then opens pre-filled — nothing is saved until you press its Save button.
+const emwNorm = s => String(s == null ? '' : s).replace(/\*\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+// Non-empty lines of a text + the number of the paragraph each one belongs to (paragraphs are separated by a blank line)
+function emwDraftLines(text) {
+  const out = [];
+  let par = 0, gap = false;
+  String(text == null ? '' : text).replace(/\r/g, '').replace(/ /g, ' ').split('\n').slice(0, 3000).forEach(raw => {
+    const t = raw.trim();
+    if (!t) { gap = true; return; }
+    if (gap && out.length) par++;
+    gap = false;
+    out.push({ t, k: emwNorm(t), par });
+  });
+  return out;
+}
+// Longest common run of identical lines (order kept): returns, for each line of A and of B, the index of its partner (or -1)
+function emwLcs(A, B) {
+  const n = A.length, m = B.length, L = [];
+  for (let i = 0; i <= n; i++) L.push(new Uint16Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  const mA = new Array(n).fill(-1), mB = new Array(m).fill(-1);
+  let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (A[i] === B[j]) { mA[i] = j; mB[j] = i; i++; j++; }
+    else if (L[i + 1][j] >= L[i][j + 1]) i++;
+    else j++;
+  }
+  return [mA, mB];
+}
+// 0…1: how many words two lines share (an edited standard line still looks like the original)
+function emwSim(a, b) {
+  const w = s => new Set(String(s).match(/[a-z0-9]+/g) || []);
+  const A = w(a), B = w(b);
+  if (!A.size || !B.size) return 0;
+  let n = 0;
+  A.forEach(x => { if (B.has(x)) n++; });
+  return n / (A.size + B.size - n);
+}
+// pairs = [[value, '{FIELD}'], …]: every value found as a whole word (case kept) becomes its field. Too short / placeholder values are skipped.
+function emwSwap(text, pairs) {
+  const seen = new Set(), list = [];
+  pairs.forEach(([val, field]) => {
+    const v = String(val == null ? '' : val).trim();
+    if (v.length < 3 || v.charAt(0) === '[' || seen.has(v)) return;
+    seen.add(v);
+    list.push([v, field]);
+  });
+  if (!list.length) return { text, n: 0 };
+  list.sort((x, y) => y[0].length - x[0].length);                     // the longest first (“Joanna Smith” before “Joanna”)
+  const map = new Map(list);
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp('(^|[^A-Za-z0-9_])(' + list.map(x => esc(x[0])).join('|') + ')(?![A-Za-z0-9_])', 'g');
+  let n = 0;
+  return { text: String(text).replace(re, (m, pre, val) => { n++; return pre + map.get(val); }), n };
+}
+// This job's values (customer, registration, airport…) become fields again, so your wording works for the next jobs too.
+// Your own name stays as it is: the wording is yours only.
+function emwUnfill(text, type, field, name) {
+  const ctx = emwCtx(name);
+  const order = field === 'g'
+    ? ['NAME', 'CUSTOMER', 'FIRST', 'COLLEAGUE', 'REG', 'ICAO', 'WO', 'MODEL']
+    : ['CUSTOMER', 'FIRST', 'COLLEAGUE', 'REG', 'ICAO', 'WO', 'MODEL'];
+  return emwSwap(text, order.map(k => [ctx[k], '{' + k + '}']));
+}
+// sText = the standard text, tText = the draft as typed. Returns { vals: {g,o,i,c}, notes: […], other: n } — or { fail }.
+// A value left out of vals = the draft does not let me tell; '' = standard text; EMW_NONE = the standard sentence was deleted.
+function emwExtract(type, sText, tText, colleague) {
+  const r = { vals: {}, notes: [], other: 0, name: '' };
+  const S = emwDraftLines(sText), T = emwDraftLines(tText);
+  if (S.length < 2 || !T.length) { r.fail = 'the draft is empty.'; return r; }
+  const [mS, mT] = emwLcs(S.map(l => l.k), T.map(l => l.k));
+  const take = new Array(T.length).fill(false);          // typed lines taken as your wording
+  r.name = ((/^Dear (.*),\s*$/.exec(S[0].t)) || [])[1] || '';
+  let unf = 0;
+  const fin = (k, text) => { const u = emwUnfill(text, type, k, r.name); unf += u.n; return u.text; };
+  const text = js => { const out = []; let last = null; js.forEach(j => { if (last !== null) out.push(T[j].par === last ? '\n' : '\n\n'); out.push(T[j].t); last = T[j].par; }); return out.join(''); };
+  const nKept = mT.filter((x, j) => j > 0 && x > 0).length;
+  if (nKept < Math.max(1, Math.floor((S.length - 1) / 4))) { r.fail = 'too much of the standard text was changed, so I cannot tell which lines are yours.'; return r; }
+
+  // 1. greeting = the first line
+  if (mT[0] === 0) r.vals.g = '';
+  else if (mT[0] > 0) r.notes.push('Greeting: the first line of the draft is not a greeting, so that box is unchanged.');
+  else if (T[0].t.length > 120) r.notes.push('Greeting: the first line of the draft is too long to be a greeting, so that box is unchanged.');
+  else { r.vals.g = fin('g', T[0].t); take[0] = true; }
+
+  // 2. between the greeting and the first standard line that is still there: your opening, and your introduction
+  let fm = 1;
+  while (fm < T.length && !(mT[fm] > 0)) fm++;
+  const sStop = fm < T.length ? mT[fm] : S.length;
+  const gone = [];
+  for (let k = 1; k < sStop; k++) gone.push(k);
+  const kI = S.findIndex((l, n) => n > 0 && l.t.startsWith('My name is '));          // the standard introduction sentence (Customer update and FBO)
+  const introGone = kI > 0 && gone.includes(kI);
+  const cand = [];
+  for (let j = 1; j < fm; j++) {
+    if (mT[j] >= 0) continue;
+    if (gone.some(k => k !== kI && emwSim(S[k].k, T[j].k) >= 0.5)) continue;       // an edited standard line, not your wording
+    cand.push(j);
+  }
+  const groups = [];
+  cand.forEach(j => { const l = groups[groups.length - 1]; if (l && l.par === T[j].par) l.js.push(j); else groups.push({ par: T[j].par, js: [j] }); });
+  const introG = (introGone && groups.length) ? groups.pop() : null;               // the last paragraph replaces the introduction
+  const openJs = [].concat(...groups.map(g => g.js));
+  r.vals.o = fin('o', text(openJs));
+  openJs.forEach(j => { take[j] = true; });
+  if (kI > 0 && type === 'customer') {                                              // only Customer update has an introduction box (FBO: those lines count as “other lines”)
+    if (colleague) {
+      if (introGone) r.notes.push('Introduction: not taken — you are preparing this job for a colleague, and the standard sentence (it names your colleague) is always kept then.');
+    } else if (!introGone) r.vals.i = '';
+    else if (introG) { r.vals.i = fin('i', text(introG.js)); introG.js.forEach(j => { take[j] = true; }); }
+    else { r.vals.i = EMW_NONE; r.notes.push('Introduction: you deleted the standard sentence, so “leave out” is ticked.'); }
+  }
+
+  // 3. after the last standard line that is still there: your closing
+  const sLast = S.length - 1;
+  const hasEnd = !!EMW_END[type] && S[sLast].k === emwNorm(EMW_END[type]);
+  const bodyLast = hasEnd ? sLast - 1 : sLast;
+  let closing;                                                                      // undefined = the draft does not let me tell
+  let lastT = -1;
+  mT.forEach((x, j) => { if (x > 0) lastT = j; });
+  if (hasEnd) {
+    if (mS[sLast] >= 0 || (bodyLast >= 1 && mS[bodyLast] >= 0)) {
+      let lb = -1;
+      for (let j = T.length - 1; j >= 1; j--) { if (mT[j] > 0 && mT[j] <= bodyLast) { lb = j; break; } }
+      const from = lb >= 0 ? lb + 1 : fm;
+      const goneEnd = [];
+      for (let k = (lb >= 0 ? mT[lb] + 1 : 1); k <= bodyLast; k++) if (mS[k] < 0) goneEnd.push(k);
+      const js = [];
+      for (let j = from; j < T.length; j++) {
+        if (take[j]) continue;
+        if (mT[j] === sLast) js.push(j);
+        else if (mT[j] < 0 && !goneEnd.some(k => emwSim(S[k].k, T[j].k) >= 0.5)) js.push(j);
+      }
+      if (js.length === 1 && mT[js[0]] === sLast) closing = '';
+      else if (!js.length) { closing = EMW_NONE; r.notes.push('Closing: you deleted the standard sentence, so “leave out” is ticked.'); }
+      else { closing = fin('c', text(js)); js.forEach(j => { take[j] = true; }); }
+    }
+  } else if (mS[sLast] >= 0) {
+    const js = [];
+    for (let j = mS[sLast] + 1; j < T.length; j++) if (mT[j] < 0 && !take[j]) js.push(j);
+    closing = js.length ? fin('c', text(js)) : '';
+    js.forEach(j => { take[j] = true; });
+  }
+  if (closing !== undefined) r.vals.c = closing;
+  else if (T.some((l, j) => j > lastT && mT[j] < 0 && !take[j] && !S.some((s2, k) => mS[k] < 0 && emwSim(s2.k, l.k) >= 0.5))) r.notes.push('Closing: not taken — the last lines of the standard text were changed in your draft, so I cannot tell where your closing starts. Type it in the box if you want one.');
+
+  // 4. what is left
+  T.forEach((l, j) => { if (mT[j] < 0 && !take[j]) r.other++; });
+  if (type === 'customer' && r.vals.g && !/\{(NAME|FIRST|CUSTOMER)\}/i.test(r.vals.g)) r.notes.push('Greeting: it does not contain the customer’s name, so every customer will get exactly this greeting.');
+  if (unf) r.notes.push('Details of THIS job (customer, registration, airport, work order, aircraft type) were replaced by fields that change with each job, so your wording also works for your next jobs.');
+  if (r.other) r.notes.push(r.other + ' other line' + (r.other > 1 ? 's' : '') + ' you changed in the draft ' + (r.other > 1 ? 'are' : 'is') + ' not part of the wording: ' + (r.other > 1 ? 'they stay' : 'it stays') + ' in this draft only.');
+  return r;
+}
+function emwSaveFromDraft(type) {
+  try {
+    if (!curProfile || !curProfile.id) { alert('Please sign in first.'); return; }
+    const el = document.getElementById('ko-prev-body-' + type);
+    if (!el) return;
+    const what = type === 'customer' ? 'greeting, opening sentence, introduction or closing sentence' : 'greeting, opening sentence or closing sentence';
+    if (el.dataset.userEdited !== '1') {
+      alert('Nothing to save yet.\n\nType your own ' + what + ' straight into this draft, then click “💾 Save from this draft” again.');
+      return;
+    }
+    let std = '';
+    try { std = { customer: koBuildCustomerBody, travel: koBuildTravelBody, parts: koBuildPartsBody, fbo: koBuildFboBody }[type](); } catch (e) { std = ''; }
+    const r = emwExtract(type, std, koPolishPlain(el), !!document.getElementById('ko-colleague-toggle')?.checked);
+    if (r.fail) { alert('I could not find your own lines in this draft: ' + r.fail + '\n\nOpen “📝 My wording” and type them there instead.'); return; }
+    const cur = emwData()[type] || {}, ctx = emwCtx(r.name);
+    const changed = Object.keys(r.vals).filter(k => emwFill(String(r.vals[k] || ''), ctx).trim() !== emwFill(String(cur[k] || ''), ctx).trim());
+    if (!changed.length) {
+      alert('Nothing new to save: the ' + (type === 'customer' ? 'greeting, opening, introduction and closing' : 'greeting, opening and closing') + ' of this draft are already your saved wording.');
+      return;
+    }
+    emwOpen(type, r);
+  } catch (e) {
+    console.warn('Save from draft:', e);
+    alert('Sorry, I could not read this draft: ' + (e.message || e));
+  }
+}
+
+// ── FAST Update: your own saved Email Intro messages ───────────────────────
+function emwIntroSuggestName(text) {
+  const ls = text.split('\n').map(l => l.trim()).filter(Boolean);
+  if (ls.length > 1 && /^(?:Dear|Hi|Hello|Good (?:morning|afternoon|evening))\b/i.test(ls[0])) ls.shift();
+  let n = (ls[0] || 'My text').replace(/^please (?:note|be advised)(?: that)?\s*/i, '').replace(/[.!]+$/, '');
+  n = n.charAt(0).toUpperCase() + n.slice(1);
+  if (n.length > 34) n = (/\s/.test(n.charAt(34)) ? n.slice(0, 34) : n.slice(0, 34).replace(/\s+\S*$/, '')) + '…';
+  return n;
+}
+// A text kept for later must not carry this project's date / airport / team / customer / aircraft: they become fields again,
+// and are filled in with the data of the project you use the text on
+function emwIntroToTemplate(t) {
+  try {
+    const d = introFormatDate();
+    if (d && d !== '[date]' && d.length > 3) t = t.split(d).join('{DATE}');
+    const l = koAptCityIcao(gv('f_loc'));
+    if (l && l !== '[location]' && l.length > 2) t = t.split(l).join('{LOC}');
+    if (introGetTeamNames().length) t = t.split(introTeamPhrase()).join('{TEAM}');
+    const v = id => (document.getElementById(id)?.value || '').trim();
+    t = emwSwap(t, [[v('f_cust_name'), '{CUSTOMER}'], [emwFirstName(v('f_cust_name')), '{FIRST}'], [v('f_reg'), '{REG}'], [v('f_wo'), '{WO}'], [curProfile && curProfile.name, '{ME}']]).text;
+  } catch (e) { /* the text is saved as typed */ }
+  return t;
+}
+function emwIntroUse(i) {
+  const it = emwIntros(emwData())[i];
+  if (!it) return;
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const mine = { CUSTOMER: v('f_cust_name') || '[Customer name]', FIRST: emwFirstName(v('f_cust_name')) || '[Customer name]', REG: v('f_reg') || '[REG]', WO: v('f_wo') || '[WO]', ME: curProfile?.name || '[ENGINEER]' };
+  const t = it.t.replace(/\{(CUSTOMER|FIRST|REG|WO|ME)\}/gi, (m, k) => mine[k.toUpperCase()]);
+  if (typeof G.setIntroMsg === 'function') G.setIntroMsg(t);   // fills {DATE} {LOC} {TEAM} like the ready-made texts
+  else { const ta = document.getElementById('f_intro_msg'); if (ta) ta.value = t; }
+}
+async function emwIntroSave() {
+  try {
+    const ta = document.getElementById('f_intro_msg');
+    let text = (ta?.value || '').trim();
+    if (!curProfile || !curProfile.id) return;
+    if (!text) { alert('✏️ Write your message in the box first (or click a ready-made text and edit it), then click “Save as my text”.'); return; }
+    text = emwIntroToTemplate(text);
+    const name = String(prompt('Name of this text (it becomes a button):', emwIntroSuggestName(text)) || '').trim().slice(0, 40);
+    if (!name) return;
+    const list = emwIntros(emwData()).map(x => ({ n: x.n, t: x.t }));
+    const k = list.findIndex(x => x.n.toLowerCase() === name.toLowerCase());
+    if (k >= 0) {
+      if (!confirm('A saved text called “' + name + '” already exists. Replace it?')) return;
+      list[k] = { n: name, t: text };
+    } else {
+      if (list.length >= 20) { alert('You can keep up to 20 texts: delete one first (✕).'); return; }
+      list.push({ n: name, t: text });
+    }
+    const nd = Object.assign({}, emwData(), { intros: list });
+    const r = await emwPersist(nd);
+    emwIntroSync();
+    if (!r.cloud) alert('⚠️ “' + name + '” is saved on this device only (your profile could not be updated: ' + (r.err || 'unknown error') + '). Ask your admin to add the Firebase rule “emailWording” — see the 📝 Wording window.');
+  } catch (e) { alert('❌ The text could not be saved: ' + (e.message || e)); }
+}
+async function emwIntroDelete(i) {
+  try {
+    const list = emwIntros(emwData()).map(x => ({ n: x.n, t: x.t }));
+    if (!list[i]) return;
+    if (!confirm('Delete your saved text “' + list[i].n + '”?')) return;
+    list.splice(i, 1);
+    await emwPersist(Object.assign({}, emwData(), { intros: list }));
+    emwIntroSync();
+  } catch (e) { alert('❌ The text could not be deleted: ' + (e.message || e)); }
+}
+function emwIntroRender() {
+  const row = document.getElementById('emw-intro-row'), btn = document.getElementById('emw-intro-save');
+  if (!row) return;
+  const on = !!(curProfile && curProfile.id);
+  row.style.display = on ? '' : 'none';
+  if (btn) btn.style.display = on ? '' : 'none';
+  row.textContent = '';
+  if (!on) return;
+  const lbl = document.createElement('span');
+  lbl.className = 'emw-lbl';
+  lbl.textContent = '⭐ My texts:';
+  row.appendChild(lbl);
+  const list = emwIntros(emwData());
+  if (!list.length) {
+    const none = document.createElement('span');
+    none.className = 'emw-lbl';
+    none.style.fontWeight = '400';
+    none.textContent = 'none yet — write your message below, then click “💾 Save as my text”.';
+    row.appendChild(none);
+  }
+  list.forEach((it, i) => {
+    const w = document.createElement('span');
+    w.className = 'emw-it';
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn'; b.textContent = '⭐ ' + it.n; b.title = it.t.length > 300 ? it.t.slice(0, 300) + '…' : it.t;
+    b.onclick = () => emwIntroUse(i);
+    const x = document.createElement('button');
+    x.type = 'button'; x.className = 'emw-x'; x.textContent = '✕'; x.title = 'Delete this saved text';
+    x.onclick = () => emwIntroDelete(i);
+    w.appendChild(b); w.appendChild(x);
+    row.appendChild(w);
+  });
+  const hint = document.createElement('span');
+  hint.className = 'emw-hint';
+  hint.textContent = 'Each saved text is one click away on any project: the customer, aircraft, date, airport and team of that project are filled in for you.';
+  row.appendChild(hint);
+}
+function emwIntroSync() {
+  const ta = document.getElementById('f_intro_msg');
+  if (!ta || !ta.parentElement) return;
+  emwStyle();
+  let row = document.getElementById('emw-intro-row');
+  if (!row) {
+    row = document.createElement('div');
+    row.id = 'emw-intro-row';
+    const presets = Array.from(ta.parentElement.querySelectorAll('button')).find(b => /setIntroMsg\(/.test(b.getAttribute('onclick') || ''));
+    if (presets && presets.parentElement) presets.parentElement.insertAdjacentElement('afterend', row);
+    else ta.insertAdjacentElement('beforebegin', row);
+    EMW.introSig = null;
+  }
+  if (!document.getElementById('emw-intro-save')) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn'; b.id = 'emw-intro-save';
+    b.style.cssText = 'font-size:11px;padding:4px 8px;margin-left:6px';
+    b.textContent = '💾 Save as my text';
+    b.title = 'Keep this message in “⭐ My texts” so you can reuse it on any project';
+    b.onclick = emwIntroSave;
+    const imp = ta.parentElement.querySelector('.ai-improve-btn');
+    if (imp) imp.insertAdjacentElement('afterend', b); else ta.insertAdjacentElement('afterend', b);
+    EMW.introSig = null;
+  }
+  const sig = (curProfile && curProfile.id ? curProfile.id : '') + '#' + (emwData().u || 0) + '#' + emwIntros(emwData()).length;
+  if (sig !== EMW.introSig) { EMW.introSig = sig; emwIntroRender(); }
+}
+
+// ── Buttons and help text, added to the existing screens ────────────────────
+function emwInject() {
+  const sig = document.querySelector('.eng-bar button[onclick*="openSignatureModal"]');
+  if (sig) {
+    let b = document.getElementById('emw-bar-btn');
+    if (!b) {
+      b = document.createElement('button');
+      b.type = 'button'; b.className = sig.className || 'btn'; b.id = 'emw-bar-btn';
+      b.title = 'Personalize the wording of your emails (greeting, opening sentence, closing…)';
+      b.onclick = () => emwOpen('customer');
+      sig.insertAdjacentElement('afterend', b);
+    }
+    const svg = sig.querySelector('svg');            // new interface (ui3): same icon + plain name as its sister buttons
+    const look = svg ? 'u3' : 'plain';
+    if (b.dataset.look !== look) {
+      b.dataset.look = look;
+      b.textContent = '';
+      if (svg) { b.insertAdjacentHTML('beforeend', svg.outerHTML); b.appendChild(document.createTextNode('My email wording')); }
+      else b.textContent = '📝 Wording';
+    }
+  }
+  EMW_TYPES.forEach(t => {
+    const panel = document.getElementById('ko-prev-panel-' + t);
+    if (!panel) return;
+    let b = document.getElementById('emw-btn-' + t);
+    if (!b) {
+      b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn'; b.id = 'emw-btn-' + t;
+      b.style.cssText = 'font-size:12px;margin-left:4px';
+      b.textContent = '📝 My wording';
+      b.title = 'Your own greeting, opening sentence and closing for this email';
+      b.onclick = () => emwOpen(t);
+      const anchor = panel.querySelector('button[onclick^="koResetDraftPreview"]');
+      if (anchor) anchor.insertAdjacentElement('afterend', b); else panel.appendChild(b);
+    }
+    if (!document.getElementById('emw-save-btn-' + t)) {
+      const s = document.createElement('button');
+      s.type = 'button'; s.className = 'btn'; s.id = 'emw-save-btn-' + t;
+      s.style.cssText = 'font-size:12px;margin-left:4px';
+      s.textContent = '💾 Save from this draft';
+      s.title = 'Type your own greeting / opening sentence / closing in this draft, then click here to keep them for all your next emails of this type';
+      s.onclick = () => emwSaveFromDraft(t);
+      b.insertAdjacentElement('afterend', s);
+    }
+  });
+  // Start Job: a button in the header of the “Drafts to generate” card (it must not fold the card)
+  const head = Array.from(document.querySelectorAll('#kickoff-panel .ko-card-head')).find(h => /Drafts to generate/.test(h.textContent || ''));
+  if (head && !document.getElementById('emw-head-btn')) {
+    const hb = document.createElement('button');
+    hb.type = 'button'; hb.className = 'btn'; hb.id = 'emw-head-btn';
+    hb.style.cssText = 'font-size:12px;white-space:nowrap;pointer-events:auto;cursor:pointer';
+    hb.textContent = '📝 My wording';
+    hb.title = 'Personalize the wording of your emails (greeting, opening sentence, closing…)';
+    hb.onclick = ev => { ev.stopPropagation(); ev.preventDefault(); emwOpen(emwGuessType()); };
+    const h3 = head.querySelector('h3');
+    if (h3) h3.insertAdjacentElement('afterend', hb); else head.appendChild(hb);
+  }
+  // New interface (ui3): the header keeps its Gmail status / Replies buttons in a box that wraps on a narrow screen — the button joins them
+  // (next to the title it pushed the whole page sideways on a 320-360px phone)
+  const hb2 = document.getElementById('emw-head-btn'), kdh = head && head.querySelector('.u3-kdh');
+  if (hb2 && kdh && hb2.parentNode !== kdh) kdh.insertBefore(hb2, kdh.firstChild);
+}
+// The email whose preview is open in Start Job (the window opens on that tab)
+function emwGuessType() {
+  const t = EMW_TYPES.find(x => document.getElementById('ko-prev-panel-' + x)?.style.display === 'block');
+  return t || 'customer';
+}
+function emwHelp() {
+  const h = Array.from(document.querySelectorAll('.help-section h4')).find(x => /Personalizing your emails/.test(x.textContent || ''));
+  if (!h || h.dataset.emw) return;
+  h.dataset.emw = '1';
+  const sec = h.parentElement;
+  const p = Array.from(sec.querySelectorAll('p')).find(x => /Two buttons in the engineer bar/.test(x.textContent || ''));
+  if (p) p.innerHTML = p.innerHTML.replace('Two buttons', 'Three buttons');
+  const li = Array.from(sec.querySelectorAll('li')).find(x => /Signature/.test(x.textContent || ''));
+  if (li) {
+    const n = document.createElement('li');
+    n.innerHTML = '<strong>📝 Wording</strong> — choose how your Start Job emails begin and end: the greeting (Dear, Hello, Hi… with the customer’s full name or just the first name), an opening sentence, your own introduction (Customer update) and a closing sentence. The standard text is shown under each box and is kept when a box is left empty. <em>Shortcut:</em> in Start Job, type your own lines straight into a draft and click “💾 Save from this draft” — the window opens pre-filled, and nothing is saved until you press Save. A draft you typed in by hand is never overwritten: click “🔄 Reset to auto-generated” to apply your wording to it. In the FAST Update screen, <em>⭐ My texts</em> (under the ready-made intro messages) keeps your own intro messages: write one, click “💾 Save as my text”, and reuse it with one click on any project. <em>Advanced:</em> in your sentences you can also type {FIRST} (customer’s first name), {REG}, {ICAO}, {WO} or {MODEL}: they are filled in for each job.';
+    li.insertAdjacentElement('afterend', n);
+  }
+}
+function emwTick() {
+  try { emwInject(); } catch (e) { console.warn('Wording buttons:', e); }
+  try { emwIntroSync(); } catch (e) { console.warn('Wording texts:', e); }
+  try { emwHelp(); } catch (e) { /* help text is optional */ }
+}
+setTimeout(emwTick, 0);
+setInterval(() => { if (!document.hidden) emwTick(); }, 1500);
+
 function koComputeBodies() {
+  // Mots de l'ingénieur (📝 Wording) appliqués aux 4 mails ; tout problème = texte standard inchangé
+  const std = koComputeBodiesStd();
+  if (!std || typeof std !== 'object' || typeof std.then === 'function') return std;
+  const out = {};
+  Object.keys(std).forEach(k => { out[k] = koMyWording(k, std[k]); });
+  return out;
+}
+
+function koComputeBodiesStd() {
   return {
     customer: koBuildCustomerBody(),
     travel:   koBuildTravelBody(),
@@ -17376,6 +19743,20 @@ document.addEventListener('input', e => {
 // ── Save airline numbers when the app goes to background / is closed
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') { clearTimeout(window._koAirTimer); koSaveAirlines(); }
+});
+
+// ── « Defect / job description » (Start Job) = « Job description (email subject suffix) » (Details) : un seul texte.
+// Ce qu'on tape dans Start Job est recopié dans Details et sauvegardé avec le projet.
+// (Dans l'autre sens : Start Job reprend le texte de Details à chaque ouverture, voir koStartFromProject.)
+document.addEventListener('input', e => {
+  if (e.target?.id !== 'ko_defect') return;
+  const det = document.getElementById('f_job_desc');
+  if (!det || !curProj) return;
+  const wo = (document.getElementById('ko_wo')?.value || '').trim();
+  if (!wo || wo !== (document.getElementById('f_wo')?.value || '').trim()) return;   // seulement si Start Job et Details sont sur le même WO
+  if (det.value === e.target.value) return;
+  det.value = e.target.value;
+  G.autosave();
 });
 
 // ── Auto-save kickoff state on any input or checkbox change
@@ -23644,6 +26025,143 @@ function koInitPolishUI() {
   });
 }
 koInitPolishUI();
+
+// ══════════════════════════════════════
+//  MÉTÉO AÉROPORT — pastille METAR/TAF sous le titre du projet (ui3), ou sous « A/C Location » (interface classique)
+// ══════════════════════════════════════
+;(function wxInit() {
+  'use strict';
+  if (window._wxInit) return; window._wxInit = true;
+  var TTL = 10 * 60 * 1000;
+  var memo = {};                       // { ICAO: { t, d } } cache de la session
+  var box = null, cur = '', seen = null, token = 0, openPanel = false, lastData = null, lastTry = 0;
+
+  var st = document.createElement('style');
+  st.textContent = [
+    '.wx-box{margin-top:6px;font-size:12.5px;line-height:1.35}',
+    '.wx-chip{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px 7px;max-width:100%;padding:4px 11px;border-radius:99px;border:1px solid var(--g200,#e5e7eb);background:#fff;color:var(--g800,#1f2937);cursor:pointer;font:inherit;text-align:left}',
+    '.wx-chip:hover{border-color:var(--gb,#cbd5e1)}',
+    '.wx-dot{width:9px;height:9px;border-radius:50%;background:#9ca3af;flex:none}',
+    '.wx-VFR .wx-dot{background:#16a34a}.wx-MVFR .wx-dot{background:#2563eb}.wx-IFR .wx-dot{background:#dc2626}.wx-LIFR .wx-dot{background:#c026d3}',
+    '.wx-ago{color:var(--g600,#6b7280)}',
+    '.wx-panel{margin-top:6px;padding:10px 12px;border:1px solid var(--g200,#e5e7eb);border-radius:12px;background:#fff;max-width:560px}',
+    '.wx-panel h4{margin:0;font-size:11px;letter-spacing:.04em;color:var(--g600,#6b7280)}',
+    '.wx-panel pre{margin:4px 0 10px;white-space:pre-wrap;word-break:break-word;font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;color:var(--g800,#1f2937)}',
+    '.wx-foot{display:flex;flex-wrap:wrap;gap:10px;align-items:center;color:var(--g600,#6b7280);font-size:11.5px}',
+    '.wx-foot button{border:1px solid var(--gb,#cbd5e1);background:#fff;border-radius:99px;padding:3px 11px;font:inherit;cursor:pointer}'
+  ].join('');
+  document.head.appendChild(st);
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function ago(ms) {
+    if (!ms) return '';
+    var m = Math.max(0, Math.round((Date.now() - ms) / 60000));
+    return m < 60 ? m + ' min ago' : Math.floor(m / 60) + ' h ago';
+  }
+
+  // Texte tapé dans A/C Location → code ICAO (code ICAO/IATA reconnu par la base d'aéroports ; on ne devine jamais un nom de ville)
+  function icaoOf(raw) {
+    var v = String(raw || '').trim();
+    if (!v) return '';
+    if (typeof koAptResolve === 'function') {
+      try { var a = koAptResolve(v); if (a && a.icao) return String(a.icao).toUpperCase(); } catch (e) {}
+      try { if (typeof koAptLoad === 'function' && koAptLoad()) return ''; } catch (e) {}
+    }
+    var m = v.toUpperCase().match(/\b[A-Z]{4}\b/);
+    return m ? m[0] : '';
+  }
+
+  function summary(d) {
+    var m = d && d.metar, p = [];
+    if (!m) return '';
+    if (m.cat) p.push(m.cat);
+    if (m.wspd != null) {
+      var dir = (m.wdir == null || m.wdir === 'VRB') ? 'VRB' : ('00' + Math.round(m.wdir)).slice(-3) + '°';
+      p.push(dir + '/' + m.wspd + (m.wgst ? 'G' + m.wgst : '') + ' kt');
+    }
+    if (m.temp != null) p.push(Math.round(m.temp) + ' °C');
+    if (m.qnh != null) p.push('QNH ' + Math.round(m.qnh));
+    return p.join(' · ');
+  }
+
+  function panelHtml(d) {
+    var m = d.metar;
+    return '<div class="wx-panel">' +
+      '<h4>METAR' + (d.name ? ' · ' + esc(d.name) : '') + '</h4><pre>' + esc(m && m.raw ? m.raw : 'No METAR available') + '</pre>' +
+      '<h4>TAF</h4><pre>' + esc(d.taf || 'No TAF available') + '</pre>' +
+      '<div class="wx-foot"><span>Source: NOAA Aviation Weather Center</span><button type="button" class="wx-refresh">Refresh</button></div></div>';
+  }
+
+  function render(d, err) {
+    if (!box) return;
+    if (!cur) { box.hidden = true; return; }
+    box.hidden = false;
+    var cat = d && d.metar && d.metar.cat ? d.metar.cat : '', label;
+    if (err) label = '<span class="wx-ago">Weather unavailable — tap to retry</span>';
+    else if (!d) label = '<span class="wx-ago">Weather…</span>';
+    else if (!d.metar && !d.taf) label = '<span class="wx-ago">No METAR/TAF for ' + esc(cur) + '</span>';
+    else label = '<b>' + esc(cur) + '</b><span>' + esc(d.metar ? (summary(d) || 'METAR') : 'No METAR · TAF only') + '</span>' +
+      (d.metar && d.metar.obsTime ? '<span class="wx-ago wx-age">' + ago(d.metar.obsTime) + '</span>' : '') +
+      (d.stale ? '<span class="wx-ago">(old data)</span>' : '');
+    box.innerHTML = '<button type="button" class="wx-chip wx-' + esc(cat) + '" title="METAR / TAF — tap for details"><i class="wx-dot"></i>' + label + '</button>' +
+      (openPanel && d ? panelHtml(d) : '');
+  }
+
+  function load(force) {
+    var icao = cur, my = ++token, quiet = !!(force && lastData && lastData.icao === icao);   // rafraîchissement : l'ancienne météo reste affichée
+    lastTry = Date.now();
+    if (!icao) { render(null); return; }
+    var c = memo[icao];
+    if (!force && c && Date.now() - c.t < TTL) { lastData = c.d; render(c.d); return; }
+    if (!quiet) { lastData = null; render(null); }
+    koWorkerFetch('/weather', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ icao: icao }) })
+      .then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          if (!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status));
+          return j;
+        });
+      })
+      .then(function (d) { memo[icao] = { t: Date.now(), d: d }; if (my === token) { lastData = d; render(d); } })
+      .catch(function () { if (my === token) { if (quiet && lastData) render(lastData); else render(null, true); } });
+  }
+
+  // Place la pastille : sous le titre du projet (ui3) ; sinon sous le champ A/C Location (interface classique)
+  function mount() {
+    if (!box) {
+      box = document.createElement('div'); box.className = 'wx-box'; box.id = 'wx-box'; box.hidden = true;
+      box.addEventListener('click', function (e) {
+        var t = e.target, rb = t.closest('.wx-refresh');
+        if (rb) { rb.textContent = 'Refreshing…'; rb.disabled = true; load(true); return; }
+        if (t.closest('.wx-chip')) {
+          if (!lastData) { load(true); return; }
+          openPanel = !openPanel; render(lastData);
+        }
+      });
+    }
+    var host = document.querySelector('#u3-ph .u3-pt'), ps = host && host.querySelector('.u3-ps');
+    if (ps) { if (box.previousElementSibling !== ps) ps.insertAdjacentElement('afterend', box); return; }
+    var sug = document.getElementById('fbo-suggestions-step2');
+    if (sug && box.previousElementSibling !== sug) sug.insertAdjacentElement('afterend', box);
+  }
+
+  // Surveille A/C Location (saisie, ouverture d'un projet, scan RFS…) : il faut que le code soit stable sur 2 passages avant d'appeler le Worker
+  function tick() {
+    mount();
+    var ageEl = box && box.querySelector('.wx-age');
+    if (ageEl && lastData && lastData.metar) ageEl.textContent = ago(lastData.metar.obsTime);
+    var kp = document.getElementById('kickoff-panel');
+    var el = document.getElementById(kp && getComputedStyle(kp).display !== 'none' ? 'ko_icao' : 'f_loc');   // page Start Job ouverte : l'aéroport est dans « ICAO airport » (ko_icao)
+    var icao = el ? icaoOf(el.value) : '';
+    if (icao !== seen) { seen = icao; return; }
+    if (icao === cur) {
+      if (cur && !document.hidden && Date.now() - lastTry > TTL && (typeof _koSessionToken === 'undefined' || _koSessionToken)) load(true);   // rafraîchit toutes les 10 min si l'onglet est ouvert et la session active
+      return;
+    }
+    cur = icao; openPanel = false;
+    load(false);
+  }
+  setInterval(tick, 1200);
+})();
 
 </script>
 
