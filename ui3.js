@@ -354,10 +354,8 @@
     (function () {
       var body = $('.ko-card-body', cards[6]); if (!body || $('.u3-fbotools', body)) return;
       var bar = el('div', 'u3-fbotools'); bar.setAttribute('data-u3pp', 'a');
-      bar.innerHTML = '<div class="u3-fbotools-t"><b>' + ICON.building + 'FBO list</b><span>Add an FBO, correct an email, a phone or an address. Used by the FBO suggestions, the FBO email and the shipping address.</span></div>' +
-        '<div class="u3-fbotools-b"><button type="button" class="btn primary u3-fbodir">' + ICON.building + 'FBO directory…</button>' +
-        '<button type="button" class="btn u3-fboaddr">' + ICON.notes + 'My FBO addresses…</button>' +
-        '<button type="button" class="btn u3-fborec">' + ICON.mail + 'FBO emails…</button></div>';
+      bar.innerHTML = '<div class="u3-fbotools-t"><b>' + ICON.building + 'FBO list</b><span>The FBOs this app uses: the FBO suggestions, the FBO email and the shipping address all come from this list. Add an FBO, or correct an email, a phone or an address.</span></div>' +
+        '<div class="u3-fbotools-b"><button type="button" class="btn primary u3-fboaddr">' + ICON.notes + 'My FBO addresses…</button></div>';
       body.insertBefore(bar, body.firstChild);
     })();
     buildParts(cards[5]);
