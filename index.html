@@ -15,7 +15,7 @@
 <link rel="icon" href="icon-192.png"/>
 <!-- ui3 · new interface (PC, tablet, phone) — ON for everybody; a device that opens the app with ?ui3=0 keeps the classic interface (see ui3.js).
      ui3.js MUST stay BEFORE ui2.js. Delete these two lines (ui3 + ui2) to remove the new interfaces completely -->
-<script src="ui3.js?v=20261024a" defer></script>
+<script src="ui3.js?v=20261029a" defer></script>
 <!-- ui2 · previous new interface — OFF for everybody until you open the app with ?ui2=1 (see ui2.js). Delete this line to remove it -->
 <script src="ui2.js" defer></script>
 <style>
@@ -2305,7 +2305,7 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
 <div class="modal-bg" id="modal-fbodir">
   <div class="modal" style="max-width:640px">
     <h3>📇 FBO directory</h3>
-    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">Reference list shared with the whole team — never used as a recipient. «→ My list» copies a line into your FBO list (you check it first). Lines marked <b>official</b> with a source page are re-checked automatically about once a month.</p>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:10px"><b>A reference book of FBOs, by airport, shared with the whole team.</b> The app never takes an email or an address from it on its own — only from <b>My FBO addresses</b>. An FBO is missing there? Find it here, check its details, then tap <b>«→ My FBO addresses»</b> to copy it over (nothing is saved until you confirm).<br>Lines marked <b>official</b> are re-checked automatically about once a month against their source page.</p>
     <div class="cbk-warn cbk-warn-sm">
       <div class="cbk-warn-t">⚠️ Confirm the FBO details before you use them</div>
       Addresses, emails and phone numbers in this list can be out of date or wrong. Before you send an email or ship parts, confirm them: ask the FBO directly, or check another reliable way (the customer, the FBO website).
@@ -2339,8 +2339,8 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
 <!-- SHIPPING ADDRESSES MANAGE MODAL -->
 <div class="modal-bg" id="modal-shipaddr">
   <div class="modal" style="max-width:560px">
-    <h3>📦 Manage shipping addresses</h3>
-    <p style="font-size:12px;color:var(--g600);margin-bottom:10px">Shared with the whole team. Grouped by airport (ICAO).</p>
+    <h3>📦 My FBO addresses</h3>
+    <p style="font-size:12px;color:var(--g600);margin-bottom:10px"><b>The FBOs this app really uses.</b> The FBO suggestions, the FBO email and the shipping address all come from this list. It is shared with the whole team — a correction made here helps everybody. Grouped by airport (ICAO).<br>FBO not in the list? Look for it in the <b>FBO directory</b> (button at the bottom), then copy it here.</p>
     <div class="cbk-warn cbk-warn-sm">
       <div class="cbk-warn-t">⚠️ Confirm the FBO details before you use them</div>
       Addresses, emails and phone numbers in this list can be out of date or wrong. Before you send an email or ship parts, confirm them: ask the FBO directly, or check another reliable way (the customer, the FBO website).
@@ -2354,7 +2354,7 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
       <textarea id="sa-new-body" placeholder="Full address (street, city, country…)" style="flex:1 1 100%;min-height:50px;font-size:12px;padding:5px 8px"></textarea>
       <button class="btn primary" onclick="koAddShipAddr()" style="width:100%">+ Add</button>
     </div>
-    <div class="modal-btns"><button class="btn" onclick="closeModal('modal-shipaddr');koManageFboDir()">📇 FBO directory…</button><button class="btn primary" onclick="closeModal('modal-shipaddr')">Done</button></div>
+    <div class="modal-btns"><button class="btn" onclick="closeModal('modal-shipaddr');koManageFboDir()">📇 Find an FBO in the FBO directory…</button><button class="btn primary" onclick="closeModal('modal-shipaddr')">Done</button></div>
   </div>
 </div>
 
@@ -3231,6 +3231,7 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
 	  <h4 style="margin-top:1rem">🏢 FBO Coordination</h4>
       <p>This email contacts the FBO at the aircraft location to introduce the engineer and arrange ground support. Configure it with:</p>
       <ul>
+        <li><strong>FBO list</strong> — at the top of the FBO page, <strong>My FBO addresses…</strong> opens the list the app really uses (FBO suggestions, FBO email, shipping address). It is shared with the whole team. An FBO is missing? Tap <strong>Find an FBO in the FBO directory…</strong> at the bottom of that window: the directory is only a reference book, the app never uses it on its own. Find your FBO there, check its details, then tap <strong>→ My FBO addresses</strong> to copy it over.</li>        
         <li><strong>Equipment checklist</strong> — tick what you need the FBO to provide: GPU (115 Vac / 28 Vdc), Oxygen, Nitrogen (High or Low pressure), Steps / Airstair (standard or engine-height), Hangar space, Lavatory service, High Power Bay. A free-text field lets you add anything else.</li>
         <li><strong>Co-engineers on site</strong> — if other FAST engineers will be present, add their names here. They are listed in the FBO email introduction so the FBO knows who to expect.</li>
         <li><strong>Optional questions</strong> — tick to include: how many days advance notice they need, a note that the intervention is pending authorisation, a request for their parts delivery shipping address, a request to confirm their FBO address (taken automatically from the FBO list), a request to act as Importer of Record (IOR) for imported parts (asks for the legal entity details and warns that parts won't be dispatched until an IOR is confirmed and that taxes and duties may apply), a transport / ground transfer request (reveals an optional planned arrival time field), a request for their access documentation requirements, or a request for their toolbox / equipment documentation requirements. Add further custom questions in the free-text field.</li>
@@ -22229,7 +22230,7 @@ function koFboDirRenderManage() {
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         <input value="${escAttr(d.airport || '')}" oninput="koFboDirEdit(${i},'airport',this.value)" placeholder="ICAO" style="width:70px;font-size:12px;padding:5px 8px;text-transform:uppercase"/>
         <input value="${escAttr(d.label || '')}" oninput="koFboDirEdit(${i},'label',this.value)" placeholder="FBO name" style="flex:1;min-width:150px;font-size:12px;padding:5px 8px"/>
-        <button type="button" class="btn" onclick="koFboDirUse(${i})" title="Copy this line into your FBO list (you check it first)" style="font-size:11px;padding:3px 8px">→ My list</button>
+        <button type="button" class="btn" onclick="koFboDirUse(${i})" title="Copy this FBO into My FBO addresses (you check it first)" style="font-size:11px;padding:3px 8px">→ My FBO addresses</button>
         <button type="button" onclick="koFboDirDelete(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px">🗑</button>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:5px">
