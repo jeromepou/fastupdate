@@ -451,11 +451,11 @@
     var c = $('#u3-corridor');
     if (!c) { c = el('div', 'u3-corridor'); c.id = 'u3-corridor'; c.setAttribute('data-u3g', 'corridor'); app.appendChild(c); }
     var items = $$('#items-container .item-row').map(function (r, i) { var inp = $('input[type=text]', r); return { id: r.getAttribute('data-item-id') || '', n: i + 1, label: inp ? inp.value.trim() : '' }; });
-    var cra = typeof W.craOpenItem === 'function';
+    var cra = typeof W.craOpenItem === 'function', sheet = typeof W.cshOpen === 'function';   // Corridor sheet (avantmodif.html): when it is there, the buttons open it
     var rows = items.length ? items.map(function (it) {
-      return '<div class="u3-crow"><b>SQ 2.' + it.n + '</b><span>' + esc(it.label || '(no description)') + '</span>' + (cra && it.id ? '<button type="button" class="btn u3-cra" data-id="' + esc(it.id) + '">' + ICON.pen + 'Resolution</button>' : '') + '</div>';
+      return '<div class="u3-crow"><b>SQ 2.' + it.n + '</b><span>' + esc(it.label || '(no description)') + '</span>' + ((cra || sheet) && it.id ? '<button type="button" class="btn u3-cra" data-id="' + esc(it.id) + '">' + (sheet && typeof W.cshStateOf === 'function' ? '<i class="csh-dot ' + W.cshStateOf(it.id) + '"></i>' : '') + ICON.pen + 'Resolution</button>' : '') + '</div>';
     }).join('') : '<p class="u3-muted">Add the work items in Daily update first.</p>';
-    c.innerHTML = '<div class="card"><div class="card-head"><h2>A · Fill from the archives</h2></div><div class="card-body"><p>Pick a work item: the assistant searches the past squawks and writes the resolution text for you.</p><div class="u3-clist">' + rows + '</div></div></div>' +
+    c.innerHTML = '<div class="card"><div class="card-head"><h2>A · Fill from the archives</h2></div><div class="card-body"><p>' + (sheet ? 'Write the resolution, the steps and the CMP cards of each squawk in the Corridor sheet: it finds similar past squawks for you, and the engineers of the job see it live.' : 'Pick a work item: the assistant searches the past squawks and writes the resolution text for you.') + '</p>' + (sheet ? '<div class="u3-cshbar"><button type="button" class="btn primary u3-csh">' + ICON.clip + 'Open the Corridor sheet</button></div>' : '') + '<div class="u3-clist">' + rows + '</div></div></div>' +
       '<div class="card u3-cdown"><div class="card-head"><h2>B · Corridor is down</h2></div><div class="card-body"><p>Official worksheets, pre-filled from this job:<br><b>GAL.F.PLN.105</b> Line Maintenance Worksheet + CRS, one sheet per squawk<br><b>GAL.F.PLN.107</b> Continuation Worksheet, extra resolution lines<br><b>GAL.F.OPS.208</b> Manual Worksheet Register, every squawk of the job</p><button type="button" class="btn primary u3-hub">' + ICON.clip + 'Open the Corridor-down worksheets</button></div></div>';
   }
 
@@ -497,7 +497,7 @@
     if (pc) pc.textContent = n ? n + (n > 1 ? ' projects' : ' project') + ' in this list' : 'No project yet. Create one with “New project”.';
     var np = $('#u2-n-proj'); if (np) np.textContent = n || '';
     B.style.setProperty('--u2-crumb', JSON.stringify(P === 'projects' ? 'Projects' : (P === 'new' || P === 'check') ? 'Projects / New project' : 'Projects / ' + title));
-    if (P === 'project' && T === 'corridor' && vis($('#u3-corridor'))) { var s2 = JSON.stringify($$('#items-container .item-row').map(function (r) { var i = $('input[type=text]', r); return i ? i.value : ''; })); if (B._cs !== s2) { B._cs = s2; buildCorridor(); } }
+    if (P === 'project' && T === 'corridor' && vis($('#u3-corridor'))) { var s2 = JSON.stringify($$('#items-container .item-row').map(function (r) { var i = $('input[type=text]', r); return [i ? i.value : '', typeof W.cshStateOf === 'function' ? W.cshStateOf(r.getAttribute('data-item-id')) : '']; })); if (B._cs !== s2) { B._cs = s2; buildCorridor(); } }
   });
 
   /* ---------- actions ---------- */
@@ -605,7 +605,8 @@
       if (t.closest('.u3-manual-go')) { setState('check'); return; }
       if (t.closest('.u3-back')) { setState('new'); return; }
       if (t.closest('.u3-godetails')) { tab('details'); return; }
-      if ((b = t.closest('.u3-cra'))) { call('craOpenItem', b.getAttribute('data-id')); return; }
+      if (t.closest('.u3-csh')) { call('cshOpen'); return; }
+      if ((b = t.closest('.u3-cra'))) { call(typeof W.cshOpen === 'function' ? 'cshOpen' : 'craOpenItem', b.getAttribute('data-id')); return; }
       if (t.closest('.u3-fbodir')) { call('koManageFboDir'); return; }             // FBO page: the FBO directory window
       if (t.closest('.u3-fboaddr')) { call('koManageShipAddr'); return; }           // FBO page: the saved FBO addresses (« Manage list »)
       if (t.closest('.u3-fborec')) { setK('recips'); later('fborec', function () { var fb = D.getElementById('ko-recip-fbo'); if (fb) fb.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 80); return; }   // FBO email recipients
