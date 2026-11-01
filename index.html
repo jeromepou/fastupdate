@@ -15,7 +15,7 @@
 <link rel="icon" href="icon-192.png"/>
 <!-- ui3 · new interface (PC, tablet, phone) — ON for everybody; a device that opens the app with ?ui3=0 keeps the classic interface (see ui3.js).
      ui3.js MUST stay BEFORE ui2.js. Delete these two lines (ui3 + ui2) to remove the new interfaces completely -->
-<script src="ui3.js?v=20261029a" defer></script>
+<script src="ui3.js?v=20261101a" defer></script>
 <!-- ui2 · previous new interface — OFF for everybody until you open the app with ?ui2=1 (see ui2.js). Delete this line to remove it -->
 <script src="ui2.js" defer></script>
 <style>
@@ -1056,7 +1056,7 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
 
 <!-- STEP 3 -->
 <div class="card">
-  <div class="card-head"><span class="step-badge">STEP 3</span><h2>Condition — work items</h2><button class="btn" type="button" style="margin-left:auto;font-size:11px;padding:3px 8px" onclick="event.stopPropagation();craCsOpen(false)" title="CMP cards and steps of this job: edit them, copy or download the list">📋 CMP list</button><span id="sqa-status" style="font-size:10.5px;color:var(--g400);white-space:nowrap"></span></div>
+  <div class="card-head"><span class="step-badge">STEP 3</span><h2>Condition — work items</h2><button class="btn" type="button" style="margin-left:auto;font-size:11px;padding:3px 8px" onclick="event.stopPropagation();cshOpen()" title="Resolutions, steps and CMP cards of this job, laid out like the Work Order Detail: copy each field into Corridor">📑 Corridor sheet</button><span id="sqa-status" style="font-size:10.5px;color:var(--g400);white-space:nowrap"></span></div>
   <div class="card-body">
     <div id="items-container"></div>
     <button class="btn-add" onclick="addItem()">+ Add work item</button>
@@ -2758,7 +2758,9 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
 
 <div class="modal-bg" id="modal-corridor-hub">
   <div class="modal" style="max-width:560px">
-    <h3>📄 Corridor down? — paper worksheets</h3>
+    <h3>📄 Corridor</h3>
+    <button type="button" class="btn cbk-prep" onclick="closeModal('modal-corridor-hub');cshOpen()"><b>📑 Corridor is working — prepare my squawks</b><span>Resolutions built from past squawks, steps and CMP cards, laid out like a Work Order Detail: copy each field into Corridor.</span></button>
+    <div style="font-size:12px;font-weight:700;color:var(--g800);margin:14px 0 4px">Corridor down? — paper worksheets</div>
     <p style="font-size:12px;color:var(--g600);margin-bottom:4px">Generates the official Gulfstream forms as PDF, pre-filled from this job, so the release can be done on paper. Print them, then initial, sign and stamp by hand. <b>Do this before you mark the A/C RTS</b> — marking RTS archives the job and clears the form.</p>
     <div id="cbk-ctx" style="font-size:12px;font-weight:600;margin:6px 0 12px"></div>
     <div class="cbk-warn">
@@ -3567,6 +3569,21 @@ async function koPushGetSub() {
   if (!koPushSupported()) return null;
   try { const reg = await navigator.serviceWorker.ready; return await reg.pushManager.getSubscription(); } catch (e) { return null; }
 }
+// Rappel du matin = 9h LOCALES : le Worker lit le fuseau enregistré avec l'abonnement de cet appareil.
+// On le renvoie donc dès qu'il change (voyage) — à l'ouverture ET à chaque retour au premier plan.
+// Si le Worker refuse (session expirée…), _koPushTzSynced reste inchangé et on retente au passage suivant.
+let _koPushTzSynced = '';
+async function koPushSyncTz() {
+  try {
+    if (!koPushSupported() || Notification.permission !== 'granted' || !curProfile || !_koSessionToken) return;
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (!tz || tz === _koPushTzSynced) return;
+    const sub = await koPushGetSub();
+    if (!sub) return;
+    const r = await koPushPostSubscription(sub);
+    if (r.ok) _koPushTzSynced = tz;
+  } catch (e) {}
+}
 function koPushPostSubscription(sub) {
   return koWorkerFetch('/push/subscribe', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -3710,9 +3727,10 @@ if ('serviceWorker' in navigator) {
     if (ev.data && ev.data.type === 'fast-push' && ev.data.intent) { koPushAccept(ev.data.intent); koPushClearStored(); }
   });
 }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') koPushReadStored(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { koPushReadStored(); koPushSyncTz(); } });
 
 function koPushTick() {
+  if (!curProfile || !_koSessionToken) _koPushProfileId = null;   // déconnecté (même sans rechargement de page) : la prochaine connexion renverra le fuseau
   if (!curProfile || !_koSessionToken) return;
   if (_koPushProfileId !== curProfile.id) {
     _koPushProfileId = curProfile.id;
@@ -3720,7 +3738,7 @@ function koPushTick() {
     koPushReadStored();
     // Si les notifications sont déjà actives sur cet appareil, on rafraîchit son fuseau horaire (voyage) — le rappel part à 9h LOCALES.
     if (koPushSupported() && Notification.permission === 'granted') {
-      koPushGetSub().then(sub => { if (sub) koPushPostSubscription(sub).catch(() => {}); });
+      _koPushTzSynced = ''; koPushSyncTz();
     }
   }
   if (_koPushPending) {
@@ -6950,6 +6968,7 @@ async function doSaveInner() {
     // update() et non set() : ne réécrit que les clés du projet, jamais une copie périmée de
     // ga3671Tags (fiches GA3671 sauvegardées, écrites à part — parfois pendant cette sauvegarde).
     delete toSave.ga3671Tags; delete toSave.signoffs;   // signoffs : signatures des squawks, écrites à part par chaque engineer
+    delete toSave.csh;   // csh : fiche Corridor (résolutions, steps, cartes CMP), écrite à part par chaque engineer
     _liveSelfRev = toSave.rev;
     await update(ref(db, projPath(toSave.id)), toSave);
     if (curProj === toSave.id) _projBaseRev = toSave.rev;
@@ -7256,6 +7275,7 @@ G.addItem = function(label = '', explicitId = null) {
       <div class="item-label-row">
         <input type="text" value="${label.replace(/"/g,'&quot;')}" placeholder="Work item description" 
                oninput="autosave(); triggerSmartDiagSearch(this, ${id})"/>
+        <button type="button" class="csh-open" onclick="cshOpen(${id})" title="Resolution, steps and CMP cards of this squawk (Corridor sheet)"><i class="csh-dot empty"></i>📑<span class="csh-open-t"> Resolution</span></button>
       </div>
       <div class="smart-diag-container" id="smart-diag-${id}" style="display:none;margin-top:4px"></div>
     </div>
@@ -7263,7 +7283,7 @@ G.addItem = function(label = '', explicitId = null) {
   c.appendChild(d);
   syncNewItemToExistingUpdateDays();
   G.renumberItemBadges();   // NOUVEAU
-
+  if (typeof cshRefreshDots === 'function') cshRefreshDots();
   if (label.trim().length > 3) {
     const inputEl = d.querySelector('input');
     triggerSmartDiagSearch(inputEl, id);
@@ -10476,7 +10496,7 @@ const CRA_HTML = `
       <div id="cra-rows"></div>
       <div class="cra-sec">3 · Fill in (old job → this job)</div>
       <div id="cra-fields"></div>
-      <div class="cra-sec">4 · CMP cards and release statement <button type="button" class="cra-lnk" data-act="cs-open" style="text-transform:none;letter-spacing:0;margin-left:6px">📋 Edit cards &amp; steps…</button></div>
+      <div class="cra-sec">4 · CMP cards and release statement <button type="button" class="cra-lnk" data-act="cs-open" style="text-transform:none;letter-spacing:0;margin-left:6px">📑 Add the ticked cards &amp; steps to the Corridor sheet</button></div>
       <div id="cra-cmp"></div>
       <div class="cra-sec">5 · Calibrated tools</div>
       <div id="cra-tools"></div>
@@ -10535,7 +10555,7 @@ function craDraftSet(key, text) {
 function craOpen(opts) {
   craEnsureDom();
   cra = {
-    ctx: { heading: opts.heading || '', model: gv('f_model'), reg: gv('f_reg'), wo: gv('f_wo').trim().toUpperCase(), cmpCur: opts.cmpCur || '', cycleCur: opts.cycleCur || '', onUse: opts.onUse || null, draftKey: opts.draftKey || '' },
+    ctx: { heading: opts.heading || '', model: gv('f_model'), reg: gv('f_reg'), wo: gv('f_wo').trim().toUpperCase(), cmpCur: opts.cmpCur || '', cycleCur: opts.cycleCur || '', onUse: opts.onUse || null, draftKey: opts.draftKey || '', itemId: opts.itemId || 0 },
     query: opts.query || '', cands: [], sel: [], model: null, S: null, loading: false, msg: '', showAll: true, toolForm: null, copied: ''
   };
   craEl('cra-q').value = cra.query;
@@ -10555,13 +10575,13 @@ G.craOpenItem = function(id) {
   if (!row) return;
   const label = ((row.querySelector('input') || {}).value || '').trim();
   const no = Array.from(document.querySelectorAll('#items-container .item-row')).indexOf(row) + 1;
-  craOpen({ query: label, heading: 'Squawk 2.' + no + (label ? ' — ' + label : ''), cmpCur: craCmpFromText(label), cycleCur: craCycleFromText(label), draftKey: craDraftKey(no, label) });
+  craOpen({ query: label, heading: 'Squawk 2.' + no + (label ? ' — ' + label : ''), cmpCur: craCmpFromText(label), cycleCur: craCycleFromText(label), draftKey: craDraftKey(no, label), itemId: id, useLabel: '⬇ Put in the Corridor sheet', onUse: text => cshStoreRes(id, text, true) && (setTimeout(() => cshOpen(id), 0), true) });
 };
 G.craOpenCase = function(id, w, n) {
   const row = document.getElementById('item-' + id);
   const label = row ? ((row.querySelector('input') || {}).value || '').trim() : '';
   const no = row ? Array.from(document.querySelectorAll('#items-container .item-row')).indexOf(row) + 1 : 0;
-  craOpen({ query: label, heading: (no ? 'Squawk 2.' + no : 'Squawk') + (label ? ' — ' + label : ''), cmpCur: craCmpFromText(label), cycleCur: craCycleFromText(label), pin: { w, n }, draftKey: craDraftKey(no, label) });
+  craOpen({ query: label, heading: (no ? 'Squawk 2.' + no : 'Squawk') + (label ? ' — ' + label : ''), cmpCur: craCmpFromText(label), cycleCur: craCycleFromText(label), pin: { w, n }, draftKey: craDraftKey(no, label), itemId: row ? id : 0, useLabel: '⬇ Put in the Corridor sheet', onUse: row ? (text => cshStoreRes(id, text, true) && (setTimeout(() => cshOpen(id), 0), true)) : null });
 };
 G.craOpenSheet = function(btn) {
   const card = btn && btn.closest ? btn.closest('.lmx-sheet') : null;
@@ -10584,45 +10604,7 @@ function craClose() {
   closeModal('modal-cra');
   cra = null;
 }
-// ───────────────────────── Fenêtre « CMP cards & steps » ─────────────────────────
-// Les cartes CMP (n° + titre) et les étapes (2.x.y) des anciens squawks, corrigeables à la main, puis la liste de TOUTES les cartes CMP du
-// projet (WO) à copier ou télécharger d'un coup : « 280005.004 », « 314664.002 »… Gardé sur l'appareil, par projet.
-const CRA_LS_CS = 'fast.cra.cs';
-const CRA_CS_CSS = `
-#modal-cra-cs .modal{padding:1.1rem 1.25rem;max-width:780px}
-#modal-cra-cs .cs-head{font-size:12px;font-weight:700;color:var(--gd);margin-bottom:2px;word-break:break-word}
-#modal-cra-cs .cs-sec{font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 6px}
-#modal-cra-cs .cs-sub{font-size:12px;font-weight:700;margin:8px 0 4px}
-#modal-cra-cs .cs-note{font-size:12px;color:var(--g600);background:var(--g50);border:1px dashed var(--g200);border-radius:var(--r);padding:8px 10px;margin-bottom:6px}
-#modal-cra-cs .cs-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
-#modal-cra-cs .cs-row small{font-size:10.5px;color:var(--g600);white-space:nowrap}
-#modal-cra-cs input[type=checkbox]{width:auto;flex:none}
-#modal-cra-cs input[type=text],#modal-cra-cs textarea{padding:6px 8px;border:1px solid var(--g200);border-radius:var(--r);font-size:13px;font-family:inherit;background:#fff;min-width:0}
-#modal-cra-cs .cs-no{width:128px;flex:none;font-variant-numeric:tabular-nums}
-#modal-cra-cs .cs-ti{flex:1}
-#modal-cra-cs .cs-step{border:1px solid var(--g200);border-radius:var(--r);padding:6px 8px;margin-bottom:6px;background:#fff}
-#modal-cra-cs .cs-step textarea{width:100%;resize:vertical;box-sizing:border-box}
-#modal-cra-cs .cs-step-h{display:flex;gap:6px;align-items:center;font-size:11.5px;font-weight:700;margin-bottom:4px}
-#modal-cra-cs .cs-x{margin-left:auto;border:none;background:none;color:var(--g400);font-size:17px;cursor:pointer;line-height:1}
-#modal-cra-cs .cs-btns{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
-#modal-cra-cs .cs-count{font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px}
-#modal-cra-cs #cs-status{font-size:11.5px;margin-top:6px;min-height:16px}
-#modal-cra-cs .modal-btns{position:sticky;bottom:-1.1rem;background:#fff;padding:10px 0 2px;margin-top:10px;border-top:1px solid var(--g200)}
-`;
-const CRA_CS_HTML = `
-<div class="modal-bg cbk-keep" id="modal-cra-cs">
-  <div class="modal">
-    <h3>📋 CMP cards &amp; steps</h3>
-    <div class="cs-head" id="cs-head"></div>
-    <div id="cs-from" style="display:none"></div>
-    <div id="cs-project"></div>
-    <div id="cs-steps"></div>
-    <div id="cs-status"></div>
-    <div class="modal-btns"><button type="button" class="btn primary" data-act="cs-close">Close</button></div>
-  </div>
-</div>`;
-let craCs = null;
-
+// ───────────────────────── Fiche Corridor 📑 (remplace l'ancienne fenêtre « CMP cards & steps ») ─────────────────────────
 // N° de carte CMP au format de Corridor : 280005.004 (6 chiffres, point, 3 chiffres). Les cartes sans suffixe (G650 : 324215) restent telles quelles.
 function craCmpFmt(raw) {
   const s = String(raw == null ? '' : raw).trim();
@@ -10634,198 +10616,775 @@ function craCmpFmt(raw) {
   m = /(\d{6}\.\d{3})/.exec(s);
   return m ? m[1] : s;
 }
-function craCsUid() { return 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
-function craCsKey() {
-  const c = cra && cra.ctx;
-  const raw = String((c && (c.wo || c.reg)) || gv('f_wo') || gv('f_reg') || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_').slice(0, 40);
+
+// Résolutions, steps et cartes CMP du job, rangés comme dans un Work Order Detail (WOD) : une carte par squawk client (2.1, 2.2…),
+// chacune avec Discrepancy, Resolution (ton texte, enregistré tout seul), steps 2.x.y et cartes CMP (qui deviennent les tâches 4.x de Corridor).
+// Chaque champ a son bouton 📋 : on colle champ par champ dans Corridor. Remplace l'ancienne fenêtre « CMP cards & steps » (plus de .csv ni de .txt).
+// Gardé sur l'appareil, par WO (clé « fast.csh »). Les anciens brouillons « 💾 Save » et l'ancienne liste CMP/steps y sont repris à la 1re ouverture.
+const CSH_LS = 'fast.csh';
+const CSH_NO_RE = /^\d{5,7}(\.\d{3})?$/;
+let csh = null;          // fiche ouverte (null = fermée)
+let cshDotT = 0, cshSaveT = 0;
+const cshEl = id => document.getElementById(id);
+const cshUid = () => 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const cshCss = `
+.csh-open{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;color:var(--g800);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex:none}
+.csh-open:hover{background:var(--gl);border-color:var(--gb)}
+.csh-dot{width:8px;height:8px;border-radius:50%;background:var(--g400);display:inline-block;flex:none}
+.csh-dot.draft{background:#d99a00}.csh-dot.ready{background:#2e8b2e}
+@media(max-width:520px){.csh-open-t{display:none}}
+html body.u3-on .csh-open-t{display:inline}
+.u3-cshbar{margin:0 0 12px}
+.cbk-prep{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;text-align:left;padding:10px 12px;margin-bottom:8px;white-space:normal;border-color:var(--gb)!important;background:var(--gl)!important}
+.cbk-prep span{font-size:11px;font-weight:400;color:var(--g600)}
+#modal-csh .modal{max-width:980px;padding:0;display:flex;flex-direction:column;overflow:hidden;margin:.6rem}
+#modal-csh .csh-top{padding:14px 18px 8px;border-bottom:1px solid var(--g200);flex:none}
+#modal-csh .csh-top h3{margin:0 0 2px;font-size:16px}
+#modal-csh .csh-ctx{font-size:12px;color:var(--g600);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+#modal-csh .csh-tabs{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center}
+#modal-csh .csh-tab{padding:6px 12px;border:1px solid var(--g200);border-radius:20px;background:#fff;font-size:12px;font-weight:700;cursor:pointer;color:var(--g600)}
+#modal-csh .csh-tab.on{background:var(--gd);color:#fff;border-color:var(--gd)}
+#modal-csh .csh-saved{margin-left:auto;font-size:11px;color:var(--g600)}
+#modal-csh .csh-pre{display:flex;gap:8px;align-items:center;font-size:11px;color:var(--g600);margin:0 0 8px}
+#modal-csh .csh-pre label{text-transform:none;letter-spacing:0;font-weight:600;font-size:11px;white-space:nowrap;margin:0}
+#modal-csh .csh-pre input{width:170px;max-width:60%}
+#modal-csh .csh-scroll{overflow-y:auto;padding:12px 18px 16px;flex:1;min-height:200px}
+#modal-csh .csh-foot{padding:10px 18px;border-top:1px solid var(--g200);display:flex;gap:8px;justify-content:flex-end;flex:none;background:#fff}
+#modal-csh textarea,#modal-csh input[type=text]{width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--g200);border-radius:var(--r);font-size:13px;font-family:inherit;background:#fff;min-width:0;line-height:1.4}
+#modal-csh textarea{resize:vertical;display:block}
+#modal-csh textarea:focus,#modal-csh input[type=text]:focus{outline:2px solid var(--gb);outline-offset:0;border-color:var(--gd)}
+#modal-csh input[type=checkbox]{width:auto;flex:none}
+#modal-csh .csh-itemh{margin:14px 0 8px;padding:7px 10px;background:var(--gl);color:var(--gd);border:1px solid var(--gb);border-radius:var(--r);font-size:12px;font-weight:700}
+#modal-csh .csh-itemh:first-child{margin-top:0}
+#modal-csh .csh-cnt{font-weight:400;color:var(--g600);margin-left:6px}
+#modal-csh .csh-sq{border:1px solid var(--g200);border-radius:var(--rlg);margin-bottom:8px;background:#fff}
+#modal-csh .csh-sq.open{border-color:var(--gb);box-shadow:var(--sh)}
+#modal-csh .csh-sq-h{display:flex;gap:10px;align-items:center;width:100%;padding:10px 12px;background:none;border:0;text-align:left;cursor:pointer;font:inherit;color:inherit}
+#modal-csh .csh-no{font-size:12px;font-weight:700;color:#fff;background:var(--gd);border-radius:6px;padding:2px 7px;flex:none;font-variant-numeric:tabular-nums}
+#modal-csh .csh-disc{flex:1;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#modal-csh .csh-pills{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+#modal-csh .csh-chev{color:var(--g400);flex:none}
+#modal-csh .csh-sq-b{padding:2px 12px 12px}
+#modal-csh .csh-pill{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;white-space:nowrap;background:var(--g100);color:var(--g600)}
+#modal-csh .csh-pill.ok{background:var(--gl);color:var(--gd)}
+#modal-csh .csh-pill.am{background:var(--al);color:var(--amb)}
+#modal-csh .csh-pill.bl{background:var(--bl);color:var(--blue)}
+#modal-csh .csh-fld{margin-bottom:10px}
+#modal-csh .csh-lbl{display:flex;gap:8px;align-items:center;margin:8px 0 4px;font-size:12px;color:var(--g600)}
+#modal-csh .csh-lbl i{font-style:italic;font-weight:600}
+#modal-csh .csh-meta{font-size:10.5px;color:var(--g400);margin-left:auto}
+#modal-csh .csh-cp{margin-left:auto;padding:2px 9px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;font-size:11px;font-weight:600;cursor:pointer;color:var(--g800)}
+#modal-csh .csh-meta+.csh-cp{margin-left:0}
+#modal-csh .csh-cp:hover{background:var(--gl)}
+#modal-csh .csh-cp.done{background:var(--gl);color:var(--gd);border-color:var(--gb)}
+#modal-csh .csh-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+#modal-csh .csh-ok{display:flex;gap:6px;align-items:center;font-size:12px;font-weight:600;color:var(--gd);margin:0 auto 0 0;text-transform:none;letter-spacing:0}
+#modal-csh .csh-sec{font-size:12px;font-weight:700;color:var(--g800);margin:14px 0 6px;padding-top:10px;border-top:1px dashed var(--g200)}
+#modal-csh .csh-card{border:1px solid var(--g200);border-radius:var(--r);padding:8px 10px;margin-bottom:8px;background:var(--g50)}
+#modal-csh .csh-card-h{display:flex;gap:8px;align-items:center;font-size:12px;margin-bottom:2px}
+#modal-csh .csh-grow{flex:1}
+#modal-csh .csh-x{border:0;background:none;color:var(--g400);font-size:18px;line-height:1;cursor:pointer;margin-left:auto}
+#modal-csh .csh-x:hover{color:var(--red)}
+#modal-csh .csh-row{display:flex;gap:6px;align-items:center;margin:4px 0}
+#modal-csh .csh-cno{width:128px!important;flex:none;font-variant-numeric:tabular-nums}
+#modal-csh .csh-ro{font-size:12.5px;background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:6px 9px;color:var(--g800);white-space:pre-wrap;word-break:break-word}
+#modal-csh .csh-note{font-size:12px;color:var(--g600);background:var(--g50);border:1px dashed var(--g200);border-radius:var(--r);padding:8px 10px;margin:6px 0}
+#modal-csh .csh-note.ok{background:var(--gl);border-color:var(--gb);color:var(--gd)}
+#modal-csh .csh-note.am{background:var(--al);border-color:#e5c76b;color:var(--amb)}
+#modal-csh .csh-find{margin-top:10px;padding:10px;border:1px solid var(--gb);border-radius:var(--r);background:#fbfdfb}
+#modal-csh .csh-case{border:1px solid var(--g200);border-radius:var(--r);padding:8px 10px;margin-top:8px;background:#fff}
+#modal-csh .csh-case-t{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;font-weight:700;color:var(--g800);margin-bottom:4px;flex-wrap:wrap}
+#modal-csh .csh-ln{font-size:12px;color:var(--g800);margin:3px 0;word-break:break-word}
+#modal-csh .csh-ln.csh-full{white-space:pre-wrap}
+#modal-csh .csh-lnk{border:0;background:none;color:var(--blue);font-size:11px;font-weight:700;cursor:pointer;padding:0}
+#modal-csh .csh-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+#modal-csh .csh-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center;font-size:11px;color:var(--g600)}
+#modal-csh .csh-chip{border:1px solid var(--gb);background:var(--gl);color:var(--gd);border-radius:14px;padding:3px 9px;font-size:11px;font-weight:600;cursor:pointer;text-align:left}
+#modal-csh .csh-chip.on{background:var(--g100);border-color:var(--g200);color:var(--g600)}
+#modal-csh .csh-sec2{font-size:11px;font-weight:700;color:var(--g600);margin:12px 0 2px}
+#modal-csh .csh-nums{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.5}
+@media (pointer:coarse){
+#modal-csh .csh-cp{min-height:34px;padding:6px 12px;font-size:12px}
+#modal-csh .csh-tab{min-height:38px;padding:8px 14px}
+#modal-csh .csh-chip{min-height:34px;padding:6px 12px}
+#modal-csh .csh-x{min-width:38px;min-height:38px;font-size:24px}
+#modal-csh .csh-sq-h{min-height:48px}
+#modal-csh .csh-ok{min-height:40px}
+#modal-csh input[type=checkbox]{width:20px;height:20px}
+#modal-csh textarea,#modal-csh input[type=text]{font-size:16px}
+.csh-open{min-height:36px}
+}
+@media(max-width:520px){#modal-csh .csh-top,#modal-csh .csh-scroll,#modal-csh .csh-foot{padding-left:10px;padding-right:10px}#modal-csh .csh-sq-h{flex-wrap:wrap;row-gap:4px}#modal-csh .csh-pills{order:5;flex-basis:100%;justify-content:flex-start}#modal-csh .csh-cno{width:104px!important}}
+`;
+const CSH_HTML = `
+<div class="modal-bg cbk-keep" id="modal-csh">
+  <div class="modal">
+    <div class="csh-top">
+      <h3>📑 Corridor sheet</h3>
+      <div class="csh-ctx"><span id="csh-ctx"></span></div>
+      <div class="csh-tabs" id="csh-tabs"></div>
+    </div>
+    <div class="csh-scroll" id="csh-scroll"><div id="csh-body"></div></div>
+    <div class="csh-foot"><button type="button" class="btn primary" data-act="close">Close</button></div>
+  </div>
+</div>`;
+
+// ── Données : par job, par work item (clé « i<id> », stable même si l'ordre change) ──
+// PARTAGÉ : quand le job est enregistré, la fiche vit dans le projet (team/{propriétaire}/projects/{projet}/csh), comme les signatures :
+// couverte par les règles Firebase (propriétaire + Lead + Assist), écoutée en direct, jamais réécrite par l'enregistrement du projet.
+// Une copie reste sur l'appareil (clé « fast.csh »). Fusion champ par champ (3 voies) : ce que tu as tapé et pas encore envoyé n'est jamais écrasé en silence.
+const CSY = { key: '', path: '', data: null, unsub: null, sync: 'local', err: '', input: 0, pushing: false, again: false, saved: 0, pushT: 0, rT: 0 };
+function cshWoKey() {
+  const raw = String(gv('f_wo') || gv('f_reg') || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_').slice(0, 40);
   return /^[A-Z0-9_-]{1,40}$/.test(raw) ? raw : '_';
 }
-function craCsGet(k) {
-  const all = craLsGet(CRA_LS_CS, {}), d = (all && all[k]) || {};
-  return { cards: Array.isArray(d.cards) ? d.cards : [], steps: Array.isArray(d.steps) ? d.steps : [] };
+const cshKey = () => curProj ? 'P_' + String(curProj).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 60) : cshWoKey();
+const cshPath = () => (curProfile && curProj) ? projPath(curProj) + '/csh' : '';
+function cshRead(key) {
+  const all = craLsGet(CSH_LS, {}) || {}, mine = all[key], d = mine || (key.slice(0, 2) === 'P_' && cshWoKey() !== '_' ? all[cshWoKey()] : null) || {};   // 1re ouverture du job enregistré : reprend la fiche gardée sous le n° de WO
+  return { sq: d.sq && typeof d.sq === 'object' ? d.sq : {}, pre: String(d.pre || ''), mig: !!d.mig, base: mine && mine.base && typeof mine.base === 'object' ? mine.base : undefined };
 }
-function craCsPut() {
-  if (!craCs) return;
-  const all = Object.assign({}, craLsGet(CRA_LS_CS, {}));
-  all[craCs.key] = { cards: craCs.data.cards, steps: craCs.data.steps, at: Date.now() };
-  Object.keys(all).sort((a, b) => ((all[b] || {}).at || 0) - ((all[a] || {}).at || 0)).slice(25).forEach(x => delete all[x]);   // 25 projets au plus
-  craLsSet(CRA_LS_CS, all);
+function cshWrite(key, data) {
+  const all = Object.assign({}, craLsGet(CSH_LS, {}));
+  all[key] = { sq: data.sq, pre: data.pre, mig: data.mig, base: data.base, at: Date.now() };
+  Object.keys(all).sort((a, b) => ((all[b] || {}).at || 0) - ((all[a] || {}).at || 0)).slice(30).forEach(k => delete all[k]);   // 30 jobs au plus
+  craLsSet(CSH_LS, all);
 }
-function craCsEnsureDom() {
-  if (craEl('modal-cra-cs')) return;
-  if (!craEl('cra-cs-style')) { const st = document.createElement('style'); st.id = 'cra-cs-style'; st.textContent = CRA_CS_CSS; document.head.appendChild(st); }
-  document.body.insertAdjacentHTML('beforeend', CRA_CS_HTML);
-  const root = craEl('modal-cra-cs');
-  root.addEventListener('click', craCsOnClick);
-  root.addEventListener('input', craCsOnInput);
-  root.addEventListener('change', craCsOnInput);
+function cshRecOf(d, id) {
+  const k = 'i' + id, r = d.sq[k] || (d.sq[k] = {});
+  if (typeof r.res !== 'string') r.res = '';
+  r.ok = !!r.ok;
+  if (!Array.isArray(r.steps)) r.steps = [];
+  if (!Array.isArray(r.cards)) r.cards = [];
+  return r;
 }
-// fromResolution = true : ouverte depuis la fenêtre « Resolution text » → on propose les cartes et étapes des anciens squawks cochés
-G.craCsOpen = function (fromResolution) {
-  craCsEnsureDom();
-  craCs = { key: craCsKey(), sq: '', cand: null, data: null };
-  craCs.data = craCsGet(craCs.key);
-  const s = cra;
-  if (fromResolution && s && s.model) {
-    const m = s.model, ctx = craCtx(m, s.S);
-    craCs.sq = (s.ctx && s.ctx.heading) || 'Squawk';
-    craCs.cand = {
-      cards: m.cmp.map(c => ({
-        id: craCsUid(), on: !!(s.S.cmp[c.key] && s.S.cmp[c.key].on), title: c.title || '',
-        no: /^\d{5,7}(\.\d{3})?$/.test(String(c.oldNo)) ? craCmpFmt(c.oldNo) : '',
-        was: /^\d\.\d+/.test(String(c.origin)) ? String(c.origin).replace(/~.*$/, '') : (/^\d\.\d+$/.test(String(c.oldNo)) ? String(c.oldNo) : ''),
-        deduced: String(c.origin).indexOf('~') >= 0
-      })),
-      steps: m.rows.filter(r => r.kind === 'step').map(r => ({
-        id: craCsUid(), on: r.src === 0, no: r.stepNo || '', text: craPlain(craRenderLine(r.text, ctx, 'text')), src: r.src
-      }))
-    };
+const cshR = id => cshRecOf(csh.data, id);
+function cshItems() {
+  return Array.from(document.querySelectorAll('#items-container .item-row')).map((row, i) => ({
+    id: parseInt(row.dataset.itemId, 10) || (i + 1), num: i + 1, label: String(((row.querySelector('input') || {}).value) || '')
+  }));
+}
+// Forme Firebase : des objets indexés par id (jamais de tableaux : deux personnes peuvent ajouter un step en même temps) ; « o » = ordre d'affichage
+function cshToMap(d) {
+  const m = {};
+  Object.keys(d.sq || {}).forEach(k => {
+    const r = d.sq[k], o = {};
+    if (!r || !/^i\d+$/.test(k)) return;
+    if (r.res) o.res = r.res;
+    if (r.ok) o.ok = true;
+    if (r.steps && r.steps.length) { o.steps = {}; r.steps.forEach((s, i) => { o.steps[s.id] = { o: i, d: s.desc || '', n: s.note || '' }; }); }
+    if (r.cards && r.cards.length) { o.cards = {}; r.cards.forEach((c, i) => { o.cards[c.id] = { o: i, no: c.no || '', t: c.title || '', r: c.res || '' }; }); }
+    if (r.by) { o.by = r.by; o.bn = r.bn || ''; o.at = r.at || 0; }          // dernier à avoir modifié ce squawk (pour « X a mis à jour la fiche »)
+    if (r.rb) { o.rb = r.rb; o.rn = r.rn || ''; o.ra = r.ra || 0; }          // auteur de la résolution (affiché à côté du texte)
+    if (Object.keys(o).length) m[k] = o;
+  });
+  if (d.pre) m.pre = d.pre;
+  return m;
+}
+function cshFromMap(m) {
+  const d = { sq: {}, pre: String((m && m.pre) || '') };
+  const ord = x => Object.keys(x || {}).map(id => Object.assign({ id }, x[id])).sort((a, b) => ((a.o || 0) - (b.o || 0)) || (a.id < b.id ? -1 : 1));
+  Object.keys(m || {}).forEach(k => {
+    if (!/^i\d+$/.test(k)) return;
+    const o = m[k] || {};
+    d.sq[k] = { res: String(o.res || ''), ok: !!o.ok, by: o.by || '', bn: o.bn || '', at: o.at || 0, rb: o.rb || '', rn: o.rn || '', ra: o.ra || 0,
+      steps: ord(o.steps).map(s => ({ id: s.id, desc: String(s.d || ''), note: String(s.n || '') })),
+      cards: ord(o.cards).map(c => ({ id: c.id, no: String(c.no || ''), title: String(c.t || ''), res: String(c.r || '') })) };
+  });
+  return d;
+}
+function cshFlat(m, p, out) {   // { 'i1/res': '…', 'i1/steps/<id>/d': '…' } — vide / faux = absent
+  out = out || {}; p = p || '';
+  Object.keys(m || {}).forEach(k => {
+    const v = m[k], q = p ? p + '/' + k : k;
+    if (v && typeof v === 'object') cshFlat(v, q, out); else if (v !== '' && v !== false && v != null) out[q] = v;
+  });
+  return out;
+}
+function cshUnflat(f) {
+  const m = {};
+  Object.keys(f).forEach(p => { const a = p.split('/'); let c = m; a.slice(0, -1).forEach(k => { c = c[k] && typeof c[k] === 'object' ? c[k] : (c[k] = {}); }); c[a[a.length - 1]] = f[p]; });
+  return m;
+}
+// Un snapshot Firebase arrive : fusion à 3 voies (base = dernier état connu du serveur, local = la fiche, distant = le snapshot)
+function cshApplyRemote(rm) {
+  const d = CSY.data, first = d.base === undefined, me = (curProfile && curProfile.id) || '';
+  const L = cshFlat(cshToMap(d)), B = cshFlat(d.base || {}), R = cshFlat(rm || {}), M = {}, conf = new Set();
+  new Set(Object.keys(L).concat(Object.keys(B), Object.keys(R))).forEach(p => {
+    const lv = L[p], bv = B[p], rv = R[p];
+    let v;
+    if (rv === bv) v = lv;                       // rien de neuf chez les autres : on garde la fiche
+    else if (lv === bv || lv === rv) v = rv;     // seuls les autres ont changé ce champ
+    else { v = first ? rv : lv; if (!first && !/\/(by|bn|at|rb|rn|ra)$/.test(p)) conf.add(p.split('/')[0]); }   // modifié des deux côtés : ma version reste (1re synchro : celle du serveur)
+    if (v !== undefined) M[p] = v;
+  });
+  const nd = cshFromMap(cshUnflat(M));
+  d.sq = nd.sq; d.pre = nd.pre; d.base = rm || {};
+  const N = cshFlat(cshToMap(d));
+  CSY.sync = 'ok'; CSY.err = '';
+  cshWrite(CSY.key, d); cshRefreshDots();
+  const changed = new Set(), authors = new Set();
+  Object.keys(N).concat(Object.keys(L)).forEach(p => { if (N[p] !== L[p]) changed.add(p.split('/')[0]); });
+  const items = cshItems(), no = k => { const it = items.find(x => 'i' + x.id === k); return it ? '2.' + it.num : ''; };
+  changed.forEach(k => { const r = d.sq[k]; if (r && r.bn && r.by !== me) authors.add(r.bn); });
+  if (authors.size) liveToast('🔄 ' + Array.from(authors).join(', ') + ' updated the Corridor sheet (' + Array.from(changed).map(no).filter(Boolean).slice(0, 4).join(', ') + ')');
+  if (conf.size) liveToast('⚠️ A colleague also edited ' + Array.from(conf).map(no).filter(Boolean).join(', ') + ' — your version was kept');
+  if (csh && changed.size) cshRepaintLater();
+  cshPush();
+  cshPaintSaved();
+}
+function cshRepaintLater() {   // jamais pendant que tu tapes : on attend 2,5 s sans saisie
+  clearTimeout(CSY.rT);
+  if (!csh) return;
+  if (Date.now() - CSY.input < 2500) { CSY.rT = setTimeout(cshRepaintLater, 1200); return; }
+  cshPaint();
+}
+// Envoie seulement les champs qui ont changé (update multi-chemins) ; reprend tout seul si le réseau tombe
+async function cshPush() {
+  const path = CSY.path, d = CSY.data;
+  if (!path || !d) return;
+  if (CSY.pushing) { CSY.again = true; return; }
+  const me = (curProfile && curProfile.id) || '', nm = (curProfile && curProfile.name) || '';
+  let L = cshFlat(cshToMap(d)); const B = cshFlat(d.base || {}), touched = new Set(), touchedRes = new Set();
+  Object.keys(L).concat(Object.keys(B)).forEach(p => {
+    if (L[p] === B[p] || /\/(by|bn|at|rb|rn|ra)$/.test(p)) return;
+    touched.add(p.split('/')[0]);
+    if (/^i\d+\/(res|ok)$/.test(p)) touchedRes.add(p.split('/')[0]);
+  });
+  const now = Date.now();
+  touched.forEach(k => { if (/^i\d+$/.test(k) && d.sq[k]) { d.sq[k].by = me; d.sq[k].bn = nm; d.sq[k].at = now; } });   // dernier à avoir modifié le squawk
+  touchedRes.forEach(k => { if (d.sq[k]) { d.sq[k].rb = me; d.sq[k].rn = nm; d.sq[k].ra = now; } });                      // auteur de la résolution
+  L = cshFlat(cshToMap(d));
+  const up = {};
+  Object.keys(L).forEach(p => { if (L[p] !== B[p]) up[p] = L[p]; });
+  Object.keys(B).forEach(p => { if (!(p in L)) up[p] = null; });
+  if (!Object.keys(up).length) { if (CSY.sync !== 'ok') { CSY.sync = 'ok'; cshPaintSaved(); } return; }
+  CSY.pushing = true; CSY.sync = 'saving'; cshPaintSaved();
+  try {
+    await update(ref(db, path), up);
+    d.base = cshUnflat(L); CSY.sync = 'ok'; CSY.err = ''; CSY.saved = Date.now();
+    if (CSY.data === d) cshWrite(CSY.key, d);
+  } catch (err) {
+    CSY.sync = 'err'; CSY.err = String((err && (err.message || err.code)) || err);
+    console.warn('Corridor sheet — sharing:', err);
+    clearTimeout(CSY.pushT); CSY.pushT = setTimeout(cshPush, 10000);
+  } finally { CSY.pushing = false; cshPaintSaved(); if (CSY.again) { CSY.again = false; cshPush(); } }
+}
+// Suit le job ouvert (toutes les 2 s, comme les signatures) : copie locale + écoute Firebase, même quand la fiche est fermée (les points de l'étape 3 restent justes)
+function cshEnsure() {
+  const key = cshKey(), path = cshPath();
+  if (CSY.data && CSY.key === key && CSY.path === path) return;
+  if (CSY.data) { try { cshWrite(CSY.key, CSY.data); if (CSY.path) cshPush(); } catch (e) { /* on repart sur le nouveau job */ } }
+  if (CSY.unsub) { try { CSY.unsub(); } catch (e) { /* déjà arrêté */ } CSY.unsub = null; }
+  CSY.key = key; CSY.path = path; CSY.data = cshRead(key); CSY.sync = path ? 'loading' : 'local'; CSY.err = ''; CSY.pushing = false;
+  if (csh) { csh.data = CSY.data; csh.hist = {}; cshPaint(); }
+  if (path) {
+    CSY.unsub = onValue(ref(db, path), snap => {
+      if (CSY.path !== path) return;
+      cshApplyRemote(snap.val() || {});
+    }, err => {
+      console.warn('Corridor sheet listener:', err, '| path:', path);
+      if (CSY.path !== path) return;
+      CSY.sync = 'err'; CSY.err = String((err && (err.message || err.code)) || err); cshPaintSaved();
+      if (CSY.unsub) { try { CSY.unsub(); } catch (e) { /* déjà arrêté */ } CSY.unsub = null; }
+      setTimeout(() => { if (CSY.path === path) CSY.path = ''; }, 30000);   // nouvel essai au tick suivant
+    });
   }
-  craEl('cs-head').textContent = 'Project ' + (craCs.key === '_' ? '(no WO number yet)' : craCs.key) + (craCs.sq ? ' · ' + craCs.sq : '');
-  craEl('cs-status').textContent = '';
-  craCsPaint();
-  openModal('modal-cra-cs');
+  cshRefreshDots();
+}
+setInterval(() => { try { cshEnsure(); } catch (e) { console.warn('Corridor sheet tick:', e); } }, 2000);
+
+function cshSaveNow() {
+  clearTimeout(cshSaveT);
+  if (!CSY.data) return;
+  cshWrite(CSY.key, CSY.data); CSY.saved = Date.now();
+  cshRefreshDots(); cshPush(); cshPaintSaved();
+}
+function cshSaveSoon() { clearTimeout(cshSaveT); cshSaveT = setTimeout(cshSaveNow, 250); }
+// Écrit une résolution depuis l'extérieur (assistant Resolution)
+G.cshStoreRes = function (id, text, ask) {
+  cshEnsure();
+  const r = cshRecOf(CSY.data, id);
+  if (ask && r.res.trim() && r.res.trim() !== String(text).trim() && !window.confirm('Replace the resolution already in the Corridor sheet for this squawk?')) return false;
+  r.res = String(text); r.ok = false;
+  cshSaveNow();
+  return true;
 };
-function craCsPaint() { craCsPaintFrom(); craCsPaintProject(); craCsPaintSteps(); }
-function craCsPaintFrom() {
-  const box = craEl('cs-from'), c = craCs.cand;
-  if (!c) { box.style.display = 'none'; box.innerHTML = ''; return; }
-  box.style.display = '';
-  let h = '<div class="cs-sec">From the past squawks you ticked</div><div class="cs-note">Correct what is wrong (number, title, text), tick what this job needs, then add it to the project list below.</div><div class="cs-sub">CMP cards</div>';
-  if (!c.cards.length) h += '<div class="cs-note">No CMP card is linked to these squawks in the archive. Add one by hand in the project list below.</div>';
-  c.cards.forEach(x => {
-    h += '<div class="cs-row"><input type="checkbox" data-act="cs-c-on" data-id="' + escAttr(x.id) + '"' + (x.on ? ' checked' : '') + '/>' +
-      '<input type="text" class="cs-no" data-act="cs-c-no" data-id="' + escAttr(x.id) + '" value="' + escAttr(x.no) + '" placeholder="280005.004" autocomplete="off"/>' +
-      '<input type="text" class="cs-ti" data-act="cs-c-ti" data-id="' + escAttr(x.id) + '" value="' + escAttr(x.title) + '" placeholder="Card title" autocomplete="off"/>' +
-      '<small>' + (x.was ? 'was ' + escHtml(x.was) : '') + (x.deduced ? ' · deduced' : '') + '</small></div>';
-  });
-  h += '<div class="cs-sub">Steps</div>';
-  if (!c.steps.length) h += '<div class="cs-note">No step is recorded for these squawks in the archive. Steps (2.1.1, 2.1.2…) appear here once the archive has been published with them.</div>';
-  c.steps.forEach(x => {
-    h += '<div class="cs-step"><div class="cs-step-h"><input type="checkbox" data-act="cs-s-on" data-id="' + escAttr(x.id) + '"' + (x.on ? ' checked' : '') + '/>' +
-      '<span>' + (x.no ? 'Step ' + escHtml(x.no) : 'Step') + '</span></div>' +
-      '<textarea rows="2" data-act="cs-s-tx" data-id="' + escAttr(x.id) + '" spellcheck="false">' + escHtml(x.text) + '</textarea></div>';
-  });
-  h += '<div class="cs-btns"><button type="button" class="btn primary" data-act="cs-add-from">➕ Add the ticked ones to the project list</button></div>';
-  box.innerHTML = h;
+G.cshStateOf = id => { try { cshEnsure(); return cshState(CSY.data && CSY.data.sq['i' + id]); } catch (e) { return 'empty'; } };   // pour ui3.js : « empty | draft | ready »
+const cshState = r => { const t = r && String(r.res || '').trim(); return !t ? 'empty' : (r.ok ? 'ready' : 'draft'); };
+const cshBlanks = t => craMarks(String(t || ''), CRA_PH_O, CRA_PH_C).length;
+function cshRefreshDots() {
+  clearTimeout(cshDotT);
+  cshDotT = setTimeout(() => {
+    try {
+      const d = CSY.data || cshRead(cshKey());
+      document.querySelectorAll('#items-container .item-row').forEach(row => {
+        const dot = row.querySelector('.csh-dot');
+        if (dot) dot.className = 'csh-dot ' + cshState(d.sq['i' + row.dataset.itemId]);
+      });
+    } catch (e) { /* le point de couleur n'est qu'un repère */ }
+  }, 200);
 }
-function craCsPaintProject() {
-  const d = craCs.data, withNo = d.cards.filter(c => craCmpFmt(c.no)).length;
-  let h = '<div class="cs-sec">CMP cards of the whole project<span class="cs-count">' + d.cards.length + (d.cards.length ? ' card(s) · ' + withNo + ' with a number' : '') + '</span></div>';
-  if (!d.cards.length) h += '<div class="cs-note">Nothing yet. Add the cards of a squawk with the button above (open this window from “4 · CMP cards” in the Resolution text), or add one by hand.</div>';
-  d.cards.forEach(c => {
-    h += '<div class="cs-row"><input type="text" class="cs-no" data-act="cs-no" data-id="' + escAttr(c.id) + '" value="' + escAttr(c.no) + '" placeholder="280005.004" autocomplete="off"/>' +
-      '<input type="text" class="cs-ti" data-act="cs-ti" data-id="' + escAttr(c.id) + '" value="' + escAttr(c.title) + '" placeholder="Card title" autocomplete="off"/>' +
-      '<small title="' + escAttr((c.sq || []).join(' · ')) + '">' + escHtml(smartDiagShort((c.sq || []).join(' · '), 28)) + '</small>' +
-      '<button type="button" class="cs-x" data-act="cs-del-card" data-id="' + escAttr(c.id) + '" title="Remove this card">×</button></div>';
-  });
-  h += '<div class="cs-btns"><button type="button" class="btn" data-act="cs-add-card">＋ Add a card</button>' +
-    '<button type="button" class="btn" data-act="cs-copy-nums">📋 Copy the numbers</button>' +
-    '<button type="button" class="btn" data-act="cs-copy-all">📋 Copy numbers + titles</button>' +
-    '<button type="button" class="btn" data-act="cs-dl-txt">⬇ .txt</button>' +
-    '<button type="button" class="btn" data-act="cs-dl-csv">⬇ .csv (Excel)</button></div>';
-  craEl('cs-project').innerHTML = h;
+
+// ── Cartes CMP : n° et texte au format Corridor ──
+const cshPre = () => (csh.data.pre || gv('f_model') || '').trim();
+const cshDisc = c => ['CMP', cshPre(), craCmpFmt(c.no), String(c.title || '').trim()].filter(Boolean).join(' ');
+function cshCards() {   // dans l'ordre de Corridor : 4.1, 4.2… (par squawk, puis dans l'ordre d'ajout)
+  const out = []; let k = 0;
+  cshItems().forEach(it => { const r = csh.data.sq['i' + it.id]; if (r && Array.isArray(r.cards)) r.cards.forEach(c => out.push({ c, it, k: ++k })); });
+  return out;
 }
-function craCsPaintSteps() {
-  const d = craCs.data;
-  let h = '<div class="cs-sec">Steps of the whole project<span class="cs-count">' + d.steps.length + '</span></div>';
-  if (!d.steps.length) h += '<div class="cs-note">No step saved yet.</div>';
-  d.steps.forEach(x => {
-    h += '<div class="cs-step"><div class="cs-step-h"><span>' + escHtml(x.sq || 'Squawk') + (x.no ? ' · step ' + escHtml(x.no) : '') + '</span>' +
-      '<button type="button" class="cs-x" data-act="cs-del-step" data-id="' + escAttr(x.id) + '" title="Remove this step">×</button></div>' +
-      '<textarea rows="2" data-act="cs-st-tx" data-id="' + escAttr(x.id) + '" spellcheck="false">' + escHtml(x.text) + '</textarea></div>';
-  });
-  h += '<div class="cs-btns"><button type="button" class="btn" data-act="cs-add-step">＋ Add a step</button><button type="button" class="btn" data-act="cs-copy-steps">📋 Copy all steps</button></div>';
-  craEl('cs-steps').innerHTML = h;
+function cshAmm() {
+  const p = craAmmPref(gv('f_model')) || {};
+  let d = String(p.date || '');
+  const a = /^(\d{4})-(\d{2})/.exec(d), b = /^(\d{1,2})\/(\d{2,4})$/.exec(d);
+  if (a) d = a[2] + '/' + a[1].slice(2); else if (b) d = ('0' + b[1]).slice(-2) + '/' + b[2].slice(-2);
+  return { rev: p.rev ? String(p.rev) : '', date: d };
 }
-// numéros uniques, au format Corridor, dans l'ordre croissant
-function craCsNumbers() {
+function cshTpl(c, it) {   // texte standard d'une carte CMP, comme les tâches 4.x d'un WOD ; ⟦ ⟧ = blanc à remplir
+  const pre = cshPre(), a = cshAmm(), ph = s => CRA_PH_O + s + CRA_PH_C;
+  return 'COMPLIED WITH ' + cshDisc(Object.assign({}, c, { no: craCmpFmt(c.no) || ph('CMP no.') })) + ' IAW ' + (pre ? pre + ' ' : '') + 'AMM ' + ph('AMM task') +
+    ' Rev ' + (a.rev || ph('rev')) + ' ' + (a.date || ph('mm/yy')) + '.\n\nX-Ref to SQ 2.' + it.num + ' for Customer Task.\nX-Ref to SQ 1.1 for RTS statement.';
+}
+function cshNumbers() {
   const seen = {}, out = [];
-  craCs.data.cards.forEach(c => { const n = craCmpFmt(c.no); if (/^\d{5,7}(\.\d{3})?$/.test(n) && !seen[n]) { seen[n] = 1; out.push(n); } });
+  cshCards().forEach(x => { const n = craCmpFmt(x.c.no); if (CSH_NO_RE.test(n) && !seen[n]) { seen[n] = 1; out.push(n); } });
   return out.sort();
 }
-function craCsStatus(msg) { const el = craEl('cs-status'); if (el) el.textContent = msg; }
-function craCsMissing() { return craCs.data.cards.filter(c => !/^\d{5,7}(\.\d{3})?$/.test(craCmpFmt(c.no))).length; }
-function craCsDownload(name, text, mime) {
-  const blob = new Blob([text], { type: mime + ';charset=utf-8' }), url = URL.createObjectURL(blob), a = document.createElement('a');
-  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+// ── Dessin ──
+const cshTa = (f, id, sub, val, rows, ph) => '<textarea data-f="' + f + '" data-id="' + id + '"' + (sub ? ' data-sub="' + sub + '"' : '') + ' rows="' + rows + '" spellcheck="false" placeholder="' + escAttr(ph || '') + '">' + escHtml(val || '') + '</textarea>';
+const cshCp = (what, id, sub) => '<button type="button" class="csh-cp" data-act="copy" data-what="' + what + '"' + (id != null ? ' data-id="' + id + '"' : '') + (sub ? ' data-sub="' + sub + '"' : '') + ' title="Copy this field">📋 Copy</button>';
+const cshPill = (cls, t) => '<span class="csh-pill ' + cls + '">' + t + '</span>';
+const cshNote = (t, cls) => '<div class="csh-note ' + (cls || '') + '">' + t + '</div>';
+function cshPills(r) {
+  const st = cshState(r), b = cshBlanks(r && r.res);
+  return (st === 'ready' ? cshPill('ok', '✔ Ready') : st === 'draft' ? cshPill('am', '✎ Draft') : cshPill('', 'No resolution yet')) +
+    (b ? cshPill('am', b + ' blank' + (b > 1 ? 's' : '')) : '') +
+    (r && r.steps.length ? cshPill('', r.steps.length + ' step' + (r.steps.length > 1 ? 's' : '')) : '') +
+    (r && r.cards.length ? cshPill('bl', r.cards.length + ' CMP') : '');
 }
-function craCsCsv() {
-  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
-  const rows = [['CMP number', 'Title', 'Squawk(s)'].map(q).join(',')];
-  craCs.data.cards.slice().sort((a, b) => craCmpFmt(a.no).localeCompare(craCmpFmt(b.no))).forEach(c => rows.push([craCmpFmt(c.no), c.title, (c.sq || []).join(' | ')].map(q).join(',')));
-  return '\ufeff' + rows.join('\r\n');
+function cshPaint() {
+  if (!csh) return;
+  const items = cshItems(), sc = cshEl('csh-scroll'), top = sc.scrollTop, ready = items.filter(it => cshState(csh.data.sq['i' + it.id]) === 'ready').length, ncards = cshCards().length;
+  cshEl('csh-ctx').textContent = [gv('f_wo').trim().toUpperCase(), gv('f_model'), gv('f_reg')].filter(Boolean).join(' · ') || 'No job data yet (Step 2)';
+  cshEl('csh-tabs').innerHTML =
+    '<button type="button" class="csh-tab' + (csh.view === 'sq' ? ' on' : '') + '" data-act="tab" data-v="sq">Squawks · ' + ready + '/' + items.length + ' ready</button>' +
+    '<button type="button" class="csh-tab' + (csh.view === 'cmp' ? ' on' : '') + '" data-act="tab" data-v="cmp">CMP cards · ' + ncards + '</button>' +
+    '<span class="csh-saved" id="csh-saved"></span>';
+  cshEl('csh-body').innerHTML = (csh.note ? cshNote(csh.note, 'ok') : '') + (csh.view === 'cmp' ? cshViewCmp() : cshViewSq(items));
+  sc.scrollTop = top;
+  cshEl('csh-body').querySelectorAll('textarea').forEach(cshGrow);
+  cshPaintSaved();
 }
-async function craCsOnClick(ev) {
+function cshPaintSaved() {
+  const el = cshEl('csh-saved');
+  if (!el) return;
+  const t = CSY.saved ? ' · ' + new Date(CSY.saved).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
+  el.textContent = CSY.sync === 'ok' ? '☁️ Shared with the team' + t : CSY.sync === 'saving' ? '⏳ Saving…' : CSY.sync === 'loading' ? '☁️ Connecting…'
+    : CSY.sync === 'err' ? '⚠️ Not shared yet — kept on this device, will retry' : '💾 This device only — save the job to share it';
+  el.title = CSY.sync === 'err' ? CSY.err : CSY.sync === 'local' ? 'The sheet is shared with the engineers of the job (owner, Lead, Assist) once the job is saved.' : 'Every change is sent to the job; the other engineers see it live.';
+}
+function cshGrow(t) {   // la zone suit la taille du texte (au moins le nombre de lignes prévu)
+  if (!t || t.tagName !== 'TEXTAREA') return;
+  t.style.height = 'auto';
+  t.style.height = Math.min(Math.max(t.scrollHeight + 2, (parseInt(t.getAttribute('rows'), 10) || 2) * 19 + 16), 520) + 'px';
+}
+function cshMeta(r) {   // « 470 characters · ✍️ Jérôme 14:32 »
+  return (r.res.length ? r.res.length + ' characters' : '') + (r.rn && r.ra && r.res.length ? ' · ✍️ ' + r.rn + ' ' + new Date(r.ra).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '');
+}
+function cshPaintHead(id) {   // met à jour les repères d'un squawk sans redessiner (le curseur reste dans le texte)
+  const r = csh.data.sq['i' + id], h = cshEl('csh-h-' + id), m = cshEl('csh-m-' + id);
+  if (h) h.innerHTML = cshPills(r);
+  if (m) m.textContent = cshMeta(r);
+  const tabs = cshEl('csh-tabs'), items = cshItems();
+  if (tabs && tabs.firstChild) tabs.firstChild.textContent = 'Squawks · ' + items.filter(it => cshState(csh.data.sq['i' + it.id]) === 'ready').length + '/' + items.length + ' ready';
+}
+function cshViewSq(items) {
+  let h = '<div class="csh-itemh">Item 2 · Customer supplied tasks<span class="csh-cnt">' + items.length + ' squawk' + (items.length === 1 ? '' : 's') + ' — tap one to write its resolution</span></div>';
+  if (!items.length) return h + cshNote('No squawk yet. Add the customer squawks in Step 3 (Condition — work items), then come back here.');
+  const nums = {}; cshCards().forEach(x => { nums[x.c.id] = x.k; });
+  items.forEach(it => {
+    const r = cshRecOf(csh.data, it.id), open = csh.open === it.id;
+    h += '<div class="csh-sq' + (open ? ' open' : '') + '" id="csh-sq-' + it.id + '"><button type="button" class="csh-sq-h" data-act="toggle" data-id="' + it.id + '">' +
+      '<span class="csh-no">2.' + it.num + '</span><span class="csh-disc" id="csh-d-' + it.id + '">' + (it.label.trim() ? escHtml(smartDiagShort(it.label, 140)) : '<i>(no description yet)</i>') + '</span>' +
+      '<span class="csh-pills" id="csh-h-' + it.id + '">' + cshPills(r) + '</span><span class="csh-chev">' + (open ? '▴' : '▾') + '</span></button>';
+    if (open) h += '<div class="csh-sq-b">' + cshSqBody(it, r, nums) + '</div>';
+    h += '</div>';
+  });
+  return h;
+}
+const cshPreHtml = () => '<div class="csh-pre"><label>Model in CMP titles</label><input type="text" data-f="pre" value="' + escAttr(csh.data.pre) + '" placeholder="' + escAttr(gv('f_model') || 'GVIII-G700') + '" autocomplete="off"/></div>';
+function cshSqBody(it, r, nums) {
+  const no = '2.' + it.num, f = csh.find && csh.find.id === it.id ? csh.find : null;
+  let h = '<div class="csh-fld"><div class="csh-lbl"><i>Discrepancy</i>' + cshCp('disc', it.id) + '</div>' + cshTa('disc', it.id, '', it.label, 2, 'Customer squawk') + '</div>' +
+    '<div class="csh-fld"><div class="csh-lbl"><i>Resolution</i><span class="csh-meta" id="csh-m-' + it.id + '">' + escHtml(cshMeta(r)) + '</span>' + cshCp('res', it.id) + '</div>' +
+    cshTa('res', it.id, '', r.res, 7, 'Write the resolution here, or look for a similar squawk first (🔎). Blanks ⟦like this⟧ are for you to fill in.') +
+    '<div class="csh-bar"><label class="csh-ok"><input type="checkbox" data-f="ok" data-id="' + it.id + '"' + (r.ok ? ' checked' : '') + '/> Ready to paste in Corridor</label>' +
+    '<button type="button" class="btn" data-act="find" data-id="' + it.id + '">🔎 Similar squawks</button>' +
+    '<button type="button" class="btn" data-act="assist" data-id="' + it.id + '" title="Tick up to 4 past squawks: the text is built from them, with the old S/N, dates and AMM revision turned into blanks">✍️ Build with the assistant</button></div></div>';
+  if (f) h += cshFindHtml(it, f);
+  h += '<div class="csh-sec">Steps ' + no + '.x <span class="csh-cnt">' + r.steps.length + '</span></div>';
+  if (!r.steps.length) h += cshNote('No step. Add the steps you create in Corridor under this squawk (Description + Comments / notes).');
+  r.steps.forEach((s, k) => {
+    h += '<div class="csh-card"><div class="csh-card-h"><b>Step ' + no + '.' + (k + 1) + '</b><button type="button" class="csh-x" data-act="delstep" data-id="' + it.id + '" data-sub="' + s.id + '" title="Remove this step">×</button></div>' +
+      '<div class="csh-lbl"><i>Description</i>' + cshCp('stepd', it.id, s.id) + '</div>' + cshTa('stepd', it.id, s.id, s.desc, 2, 'What the step says') +
+      '<div class="csh-lbl"><i>Comments / notes</i>' + cshCp('stepn', it.id, s.id) + '</div>' + cshTa('stepn', it.id, s.id, s.note, 2, 'What was done') + '</div>';
+  });
+  h += '<div class="csh-btns"><button type="button" class="btn" data-act="addstep" data-id="' + it.id + '">＋ Add a step</button></div>';
+  h += '<div class="csh-sec">CMP cards attached to ' + no + ' <span class="csh-cnt">' + r.cards.length + ' — they become tasks 4.x in Corridor</span></div>' + cshPreHtml();
+  if (!r.cards.length) h += cshNote('No CMP card. Add one by hand, or tap a card under a similar squawk (🔎).');
+  r.cards.forEach(c => { h += cshCardHtml(it, c, nums[c.id] || '?'); });
+  return h + '<div class="csh-btns"><button type="button" class="btn" data-act="addcard" data-id="' + it.id + '">＋ Add a CMP card</button></div>';
+}
+function cshCardHtml(it, c, k) {
+  const hist = csh.hist[c.id], n0 = craCmpFmt(c.no), dup = n0 && cshCards().filter(x => craCmpFmt(x.c.no) === n0).length > 1;
+  let h = '<div class="csh-card"><div class="csh-card-h"><b>Task 4.' + k + '</b>' + cshPill('bl', 'for 2.' + it.num) + (dup ? cshPill('am', 'same number twice') : '') + '<button type="button" class="csh-x" data-act="delcard" data-id="' + it.id + '" data-sub="' + c.id + '" title="Remove this card">×</button></div>' +
+    '<div class="csh-row"><input type="text" class="csh-cno" data-f="cno" data-id="' + it.id + '" data-sub="' + c.id + '" value="' + escAttr(c.no) + '" placeholder="280005.004" autocomplete="off" inputmode="decimal"/>' +
+    '<input type="text" data-f="cti" data-id="' + it.id + '" data-sub="' + c.id + '" value="' + escAttr(c.title) + '" placeholder="Card title, e.g. Airframe Fuel Sumping" autocomplete="off"/></div>' +
+    '<div class="csh-lbl"><i>Discrepancy</i>' + cshCp('cdisc', it.id, c.id) + '</div><div class="csh-ro" id="csh-cd-' + c.id + '">' + escHtml(cshDisc(c)) + '</div>' +
+    '<div class="csh-lbl"><i>Resolution</i>' + cshCp('cres', it.id, c.id) + '</div>' + cshTa('cres', it.id, c.id, c.res, 5, 'Resolution of this card — write it, use the standard text, or take an old one') +
+    '<div class="csh-bar"><button type="button" class="btn" data-act="tpl" data-id="' + it.id + '" data-sub="' + c.id + '">📄 Standard text</button>' +
+    '<button type="button" class="btn" data-act="hist" data-id="' + it.id + '" data-sub="' + c.id + '">🗄️ Past resolutions of this card</button></div>';
+  if (hist === 'loading') h += cshNote('📚 Searching the archive…');
+  else if (hist) {
+    if (hist.real.length) h += '<div class="csh-sec2">Resolutions written on this card in earlier Work Orders</div>';
+    else h += cshNote(hist.msg ? escHtml(hist.msg) : 'No earlier resolution of this card is published yet (they come with the latest 5_publier_appli.py).');
+    hist.real.forEach((v, j) => {
+      h += '<div class="csh-case"><div class="csh-case-t"><span>✈️ ' + escHtml(v.t || '—') + ' · WO ' + escHtml(v.w || '—') + '</span><span>' + escHtml(sqaDateLabel({ g: v.g })) + '</span></div>' +
+        '<div class="csh-ln csh-full">' + escHtml(v.x) + '</div><div class="csh-btns"><button type="button" class="btn primary" data-act="useold" data-id="' + it.id + '" data-sub="' + c.id + '" data-i="' + j + '" title="S/N and lot numbers become blanks, the X-Ref points to 2.' + it.num + '">⬇ Use this text</button></div></div>';
+    });
+    if (hist.sq.length) h += '<div class="csh-sec2">Customer squawks that used this card</div>';
+    hist.sq.forEach((o, j) => {
+      const e = o.e;
+      h += '<div class="csh-case"><div class="csh-case-t"><span>✈️ ' + escHtml(e.t || '—') + ' · WO ' + escHtml(e.w || '—') + ' · SQ ' + escHtml(e.n || '') + '</span><span>' + escHtml(sqaDateLabel(e)) + '</span></div>' +
+        '<div>' + (o.own ? cshPill('ok', 'This card was the task') : cshPill('', 'Card attached to the squawk')) + '</div>' +
+        '<div class="csh-ln"><b>Squawk:</b> ' + escHtml(smartDiagShort(e.d, 150)) + '</div><div class="csh-ln"><b>Resolution:</b> ' + escHtml(smartDiagShort(e.x, 300)) + '</div>' +
+        '<div class="csh-btns"><button type="button" class="btn" data-act="usehist" data-id="' + it.id + '" data-sub="' + c.id + '" data-i="' + j + '">⬇ Use this text</button></div></div>';
+    });
+  }
+  return h + '</div>';
+}
+function cshFindHtml(it, f) {
+  let h = '<div class="csh-find"><div class="csh-row"><input type="text" id="csh-q" data-f="q" value="' + escAttr(f.q) + '" placeholder="Fault or task — or a WO number, e.g. FA33369" autocomplete="off"/>' +
+    '<button type="button" class="btn primary" data-act="search" data-id="' + it.id + '">🔎 Search</button><button type="button" class="btn" data-act="hidefind">Hide</button></div>';
+  if (f.loading) h += cshNote('📚 ' + (sqaIsReady() ? 'Preparing the search…' : 'Loading the WP archive…') + ' (a few seconds the first time on this device)');
+  else if (f.msg) h += cshNote(escHtml(f.msg));
+  if (f.rows.length) h += cshNote('⚠️ <b>Use as is</b> copies the old text with its old S/N, lot numbers and dates: replace them. <b>Adapt</b> opens the assistant, which turns them into blanks for you to fill in.', 'am');
+  f.rows.forEach((c, i) => {
+    const e = c.e, full = f.full && f.full[i], insp = sqaInspections(e), cmps = sqaCmpLinks(e);
+    const pills = [
+      c.level === 'close' ? cshPill('ok', 'Close match') : c.level === 'possible' ? cshPill('am', 'Possible match') : c.level === 'weak' ? cshPill('', 'Weak match') : c.level === 'wo' ? cshPill('bl', 'Same WO') : '',
+      c.sameFamily === true ? cshPill('bl', 'Same model') : (c.sameFamily === false ? cshPill('', 'Other model') : ''),
+      c.sameReg ? cshPill('ok', 'Same aircraft') : '', insp ? cshPill('bl', '🔍 ' + escHtml(insp)) : '', c.dup ? cshPill('', '×' + (c.dup + 1) + ' jobs') : ''
+    ].filter(Boolean).join(' ');
+    h += '<div class="csh-case"><div class="csh-case-t"><span>✈️ ' + escHtml(e.t || '—') + ' · WO ' + escHtml(e.w || '—') + ' · SQ ' + escHtml(e.n || '') + (craRegKnown(e.r) ? ' · ' + escHtml(craRegKnown(e.r)) : '') + '</span><span>' + escHtml(sqaDateLabel(e)) + '</span></div>' +
+      '<div>' + pills + '</div><div class="csh-ln"><b>Squawk:</b> ' + escHtml(full ? String(e.d || '') : smartDiagShort(e.d, 150)) + '</div>' +
+      '<div class="csh-ln' + (full ? ' csh-full' : '') + '"><b>Resolution:</b> ' + escHtml(full ? String(e.x || '') : smartDiagShort(e.x, 260)) + '</div>' +
+      (full || String(e.x || '').length > 260 || String(e.d || '').length > 150 ? '<button type="button" class="csh-lnk" data-act="full" data-i="' + i + '">' + (full ? '− Collapse' : '＋ Read the full text') + '</button>' : '') +
+      '<div class="csh-btns"><button type="button" class="btn primary" data-act="use" data-id="' + it.id + '" data-i="' + i + '">⬇ Use as is</button>' +
+      '<button type="button" class="btn" data-act="adapt" data-id="' + it.id + '" data-i="' + i + '" title="Open the assistant on this case: the old S/N, dates and AMM revision become blanks">✍️ Adapt (blanks for S/N, dates…)</button></div>' +
+      (cmps.length ? '<div class="csh-chips"><span>CMP cards:</span>' + cmps.map((l, j) => { const has = cshR(it.id).cards.some(x => craCmpFmt(x.no) === craCmpFmt(l[0])); return '<button type="button" class="csh-chip' + (has ? ' on' : '') + '" data-act="addfrom" data-id="' + it.id + '" data-i="' + i + '" data-j="' + j + '" title="' + (has ? 'Already attached to 2.' + it.num : 'Add this card to 2.' + it.num) + '">' + (has ? '✓ ' : '＋ ') + escHtml(craCmpFmt(l[0])) + ' ' + escHtml(smartDiagShort(l[1], 42)) + '</button>'; }).join('') + '</div>' : '') + '</div>';
+  });
+  return h + '</div>';
+}
+function cshViewCmp() {
+  const cards = cshCards(), nums = cshNumbers(), miss = cards.filter(x => !CSH_NO_RE.test(craCmpFmt(x.c.no))).length;
+  let h = '<div class="csh-itemh">Item 4 · Associated task cards<span class="csh-cnt">' + cards.length + ' task' + (cards.length === 1 ? '' : 's') + ', numbered as in Corridor</span></div>' + cshPreHtml();
+  if (!cards.length) h += cshNote('No CMP card yet. Add them under each squawk (Squawks tab): they appear here as tasks 4.1, 4.2…');
+  cards.forEach(x => {
+    const c = x.c, t = String(c.res || '').trim();
+    h += '<div class="csh-card"><div class="csh-card-h"><b>Task 4.' + x.k + '</b>' + cshPill('bl', 'for 2.' + x.it.num) + (t ? (cshBlanks(t) ? cshPill('am', cshBlanks(t) + ' blank(s)') : cshPill('ok', 'Resolution written')) : cshPill('', 'No resolution yet')) +
+      '<button type="button" class="csh-cp" data-act="goto" data-id="' + x.it.id + '" data-sub="' + c.id + '">✎ Edit</button></div>' +
+      '<div class="csh-lbl"><i>Discrepancy</i>' + cshCp('cdisc', x.it.id, c.id) + '</div><div class="csh-ro">' + escHtml(cshDisc(c)) + '</div>' +
+      '<div class="csh-lbl"><i>Resolution</i>' + cshCp('cres', x.it.id, c.id) + '</div><div class="csh-ro">' + (t ? escHtml(smartDiagShort(t, 220)) : '<i>—</i>') + '</div></div>';
+  });
+  h += '<div class="csh-itemh">All CMP cards of the job<span class="csh-cnt">' + nums.length + ' number' + (nums.length === 1 ? '' : 's') + ' — to fetch them in one go on the CMP site</span></div>';
+  if (!nums.length) return h + cshNote('No card number yet.');
+  h += '<textarea class="csh-nums" readonly rows="' + Math.min(Math.max(nums.length, 2), 14) + '" spellcheck="false">' + escHtml(nums.join('\n')) + '</textarea>' +
+    '<div class="csh-btns"><button type="button" class="btn primary" data-act="copy" data-what="nums">📋 Copy the numbers</button><button type="button" class="btn" data-act="copy" data-what="numsT">📋 Copy numbers + titles</button></div>';
+  return h + (miss ? cshNote('⚠️ ' + miss + ' card' + (miss > 1 ? 's have' : ' has') + ' no valid number yet — not in this list.') : '');
+}
+
+// ── Recherche des squawks semblables (même moteur que l'assistant Resolution) ──
+async function cshSearch(id, q) {
+  q = String(q || '').replace(/\b(HF|VHF|UHF)\s+(\d)\b/gi, '$1$2');   // « HF 1 Fail » → « HF1 Fail » : le moteur ignore « HF » tout seul (2 lettres) mais trouve « HF1 »
+  const f = csh.find = { id, q, rows: [], msg: '', loading: true, full: {} };
+  cshPaint();
+  let rows = [];
+  try {
+    if (!(await sqaReady()) || !sqaIsReady()) throw new Error('The WP archive is not available right now' + (sqa.error ? ' — ' + sqa.error : '') + '.');
+    if (!sqfIsReady() && !(sqf.failed && sqf.buildFor === sqa.entries)) await sqfReady();
+    const fam = smartDiagFamily(gv('f_model')), famOf = e => (fam && e.t && sqfFam(e.t) ? sqfFam(e.t) === fam : null);
+    const woRe = /\b(FA\d{4,6}|T\d-\d{3})\b/i, m = woRe.exec(q), rest = q.replace(woRe, ' ');
+    if (m && !sqfSpecific(rest)) {   // « FA33369 » : les squawks de ce WO
+      const W = m[1].toUpperCase();
+      rows = sqa.entries.filter(e => String(e.w || '').toUpperCase() === W && String(e.x || '').trim().length >= 8)
+        .sort((a, b) => String(a.n).localeCompare(String(b.n), 'en', { numeric: true })).slice(0, 30).map(e => ({ e, level: 'wo', sameFamily: famOf(e), sameReg: false }));
+      if (!rows.length) f.msg = 'No squawk with a resolution found for WO ' + W + ' in the archive.';
+    } else if (!q) f.msg = 'Type the fault or the task, then press Search.';
+    else if (!sqfSpecific(rest)) f.msg = 'Only generic words in this description — add a specific word (system, component, CMP number…) or a WO number such as FA33369.';
+    else {
+      const all = sqfFind(rest, { targetFamily: fam, reg: gv('f_reg'), currentWo: gv('f_wo').trim().toUpperCase(), relaxed: true }).filter(r => String(r.e.x || '').trim().length >= 8);
+      const strong = all.filter(r => r.level !== 'weak').slice(0, CRA_MAX_CAND);
+      rows = strong.concat(all.filter(r => r.level === 'weak').slice(0, Math.max(0, CRA_MIN_FILL - strong.length)));
+      if (!rows.length) f.msg = 'No similar past squawk found. Try other words (system, component, CMP number) or a WO number such as FA33369.';
+    }
+  } catch (err) { f.msg = String((err && err.message) || err); }
+  if (csh && csh.find === f) { f.rows = rows; f.loading = false; cshPaint(); }
+}
+async function cshCmpOld(no) {   // résolutions de cette carte écrites dans les anciens WO, publiées par 5_publier_appli.py (sqArchive/cmp/<n°>) ; null = rien de publié
+  const n = craCmpFmt(no);
+  if (!CSH_NO_RE.test(n)) return null;
+  if (csh && csh.cmpOld[n] !== undefined) return csh.cmpOld[n];
+  let out = null;
+  try {
+    const snap = await sqaTimeout(get(ref(db, SQA_NODE + '/cmp/' + n.replace(/[.$#\[\]\/\s]/g, '_'))), 15000, 'Reading the card resolutions');
+    out = snap.exists() ? snap.val() : null;
+  } catch (err) {
+    const raw = String((err && (err.message || err.code)) || err);
+    out = { err: /permission[_ ]denied/i.test(raw) ? 'Firebase refuses access to “sqArchive/cmp” — check the read rule of “sqArchive” in Realtime Database › Rules.' : raw };
+  }
+  if (csh) csh.cmpOld[n] = out;
+  return out;
+}
+function cshFromOld(text, it) {   // ancien texte de carte → pour ce squawk : renvoi vers son n°, S/N et lots de l'autre avion en blancs ⟦ ⟧ (le P/N reste)
+  const ph = s => CRA_PH_O + s + CRA_PH_C;
+  return String(text || '')
+    // « X-Ref to SQ 2.1 for Customer Task », « Ref to squawk 2.1 for customer provided task », « Refer to squawk 2.3 for customer task » → n° de ce squawk (les 1.1 / 4.x ne bougent pas)
+    .replace(/\b((?:X-?Ref(?:er)?|Ref(?:er)?)\b[^\n]*?\b(?:SQ|squawk)s?\s+)2\.\d+/gi, (m, a) => a + '2.' + it.num)
+    // « S/N Off: », « S/N On: », « Serial number off: », « SN: », « Lot No: », « Lot #: »
+    .replace(/\b(S\/N(?:\s*(?:OFF\/ON|OFF|ON))?|SN(?:\s*(?:OFF\/ON|OFF|ON))?|Serial\s*(?:No\.?|Number|#)?(?:\s*(?:OFF\/ON|OFF|ON))?|Lot\s*(?:#|No\.?|Number)?)\s*[:#][^\n]*/gi, (m, k) => k + ': ' + ph(/lot/i.test(k) ? 'lot' : 'S/N'));
+}
+async function cshTitleFor(c) {   // n° tapé sans titre : on le retrouve dans l'archive
+  const o = await cshCmpOld(c.no);
+  if (o && o.t && csh && !String(c.title).trim()) { c.title = o.t; cshSaveNow(); cshPaint(); }
+}
+async function cshHistory(id, cid) {   // anciennes résolutions d'une carte CMP : celles des cartes (archive publiée), puis les squawks de l'archive qui la citent
+  csh.hist[cid] = 'loading'; cshPaint();
+  const out = { real: [], sq: [], msg: '' };
+  try {
+    const c0 = cshR(id).cards.find(x => x.id === cid), n0 = c0 ? craCmpFmt(c0.no) : '';
+    if (CSH_NO_RE.test(n0)) {
+      const old = await cshCmpOld(n0);
+      if (old && old.err) out.msg = old.err;
+      else if (old && old.v) out.real = (Array.isArray(old.v) ? old.v : Object.values(old.v)).filter(v => v && v.x);
+    }
+  } catch (err) { console.warn('Corridor sheet — card resolutions:', err); }
+  try {
+    if ((await sqaReady()) && sqaIsReady()) {
+      const c = cshR(id).cards.find(x => x.id === cid), n = c ? craCmpFmt(c.no) : '';
+      const list = [];
+      if (CSH_NO_RE.test(n)) {
+        const base = n.split('.')[0];
+        for (const e of sqa.entries) {
+          if (String(e.x || '').trim().length < 8) continue;
+          const d = String(e.d || ''), own = d.indexOf(n) >= 0 || (d.indexOf(base) >= 0 && /\bCMP\b/i.test(d));
+          if (own || sqaCmpLinks(e).some(l => String(l[0]).indexOf(base) === 0)) list.push({ e, own });
+        }
+        list.sort((a, b) => (b.own - a.own) || (sqaDateMs(b.e) - sqaDateMs(a.e)));
+        out.sq = list.slice(0, 6);
+      }
+    }
+  } catch (err) { console.warn('Corridor sheet — past resolutions:', err); }
+  if (csh) { csh.hist[cid] = out; cshPaint(); }
+}
+function cshAssist(id, pin) {   // l'assistant Resolution, avec retour du texte dans la fiche
+  const it = cshItems().find(x => x.id === id);
+  if (!it) return;
+  const label = it.label.trim();
+  craOpen({
+    query: label, heading: 'Squawk 2.' + it.num + (label ? ' — ' + label : ''), cmpCur: craCmpFromText(label), cycleCur: craCycleFromText(label), pin: pin || null,
+    itemId: id, draftKey: craDraftKey(it.num, label), useLabel: '⬇ Put in the sheet (2.' + it.num + ')', onUse: text => cshStoreRes(id, text, true) && (setTimeout(() => cshOpen(id), 0), true)
+  });
+}
+// Cartes cochées + steps de la 1re source, repris de l'assistant (bouton « Edit cards & steps »)
+function cshFromAssistant(id) {
+  cshEnsure();
+  const s = cra, d = CSY.data, r = cshRecOf(d, id);
+  if (!s || !s.model) return { nc: 0, ns: 0 };
+  const m = s.model, ctx = craCtx(m, s.S);
+  let nc = 0, ns = 0;
+  m.cmp.filter(c => s.S.cmp[c.key] && s.S.cmp[c.key].on).forEach(c => {
+    const no = CSH_NO_RE.test(String(c.oldNo)) ? craCmpFmt(c.oldNo) : '';
+    if (r.cards.some(x => (no && craCmpFmt(x.no) === no) || (!no && x.title && x.title === c.title))) return;
+    r.cards.push({ id: cshUid(), no, title: c.title || '', res: '' }); nc++;
+  });
+  m.rows.filter(x => x.kind === 'step' && x.src === 0).forEach(x => {
+    const desc = craPlain(craRenderLine(x.text, ctx, 'text')).trim();
+    if (!desc || r.steps.some(y => y.desc === desc)) return;
+    r.steps.push({ id: cshUid(), desc, note: '' }); ns++;
+  });
+  cshSaveNow();
+  return { nc, ns };
+}
+// Reprise des anciennes données (brouillons « 💾 Save », cartes et steps de l'ancienne fenêtre), une seule fois par job
+function cshMigrate() {
+  const d = csh.data, items = cshItems();
+  if (d.mig || !items.length) return;
+  const byNum = n => items.find(x => x.num === n), noOf = s => { const m = /\b2\.(\d+)/.exec(String(s || '')); return m ? +m[1] : 0; };
+  let n = 0;
+  try {
+    const old = (craLsGet('fast.cra.cs', {}) || {})[cshWoKey()];
+    if (old) {
+      (old.cards || []).forEach(c => {
+        const it = byNum(noOf((c.sq || [])[0])) || items[0], r = cshR(it.id), no = craCmpFmt(c.no);
+        if (!r.cards.some(x => craCmpFmt(x.no) === no && x.title === c.title)) { r.cards.push({ id: cshUid(), no, title: c.title || '', res: '' }); n++; }
+      });
+      (old.steps || []).forEach(s => { if (String(s.text || '').trim()) { cshR((byNum(noOf(s.sq)) || items[0]).id).steps.push({ id: cshUid(), desc: String(s.text), note: '' }); n++; } });
+    }
+    const dr = craLsGet('fast.cra.drafts', {}) || {};
+    Object.keys(dr).forEach(k => {
+      const p = k.split('|'), it = byNum(+p[1]);
+      if (!it || !dr[k] || !dr[k].text || String(p[0]).replace(/[^A-Z0-9_-]/g, '_').slice(0, 40) !== cshWoKey()) return;
+      const r = cshR(it.id);
+      if (!r.res.trim()) { r.res = String(dr[k].text); n++; }
+    });
+  } catch (err) { console.warn('Corridor sheet — old data:', err); }
+  d.mig = true;
+  if (n) csh.note = '✓ ' + n + ' item' + (n > 1 ? 's' : '') + ' taken over from your earlier drafts, cards and steps of this job.';
+  cshSaveNow();
+}
+function cshSetLabel(id, v) {   // la Discrepancy est la description du work item du Step 3 : on la met à jour là-bas
+  const row = document.getElementById('item-' + id), inp = row && row.querySelector('input');
+  if (!inp) return;
+  inp.value = v; inp.dispatchEvent(new Event('input', { bubbles: true }));
+  const d = cshEl('csh-d-' + id); if (d) d.textContent = v.trim() ? smartDiagShort(v, 140) : '(no description yet)';
+}
+async function cshCopy(btn) {
+  const d = btn.dataset, id = +d.id, what = d.what, it = id ? cshItems().find(x => x.id === id) : null, r = id && csh.data.sq['i' + id];
+  const c = r && d.sub ? (r.cards.find(x => x.id === d.sub) || null) : null, s = r && d.sub ? (r.steps.find(x => x.id === d.sub) || null) : null;
+  let text = '';
+  if (what === 'disc') text = it ? it.label : '';
+  else if (what === 'res') text = r ? r.res : '';
+  else if (what === 'stepd') text = s ? s.desc : '';
+  else if (what === 'stepn') text = s ? s.note : '';
+  else if (what === 'cdisc') text = c ? cshDisc(c) : '';
+  else if (what === 'cres') text = c ? c.res : '';
+  else if (what === 'nums') text = cshNumbers().join('\n');
+  else if (what === 'numsT') { const by = {}; cshCards().forEach(x => { const n = craCmpFmt(x.c.no); if (n && !by[n]) by[n] = x.c.title; }); text = cshNumbers().map(n => n + (by[n] ? ' — ' + by[n] : '')).join('\n'); }
+  text = craPlain(String(text || '')).replace(/\s+$/, '');
+  if (!text) { cshFlash(btn, '— empty'); return; }
+  const blanks = craMarks(text, CRA_PH_O, CRA_PH_C);
+  if (blanks.length && !window.confirm('There ' + (blanks.length > 1 ? 'are still ' + blanks.length + ' blanks' : 'is still 1 blank') + ' to fill in (' + blanks.filter((x, i) => blanks.indexOf(x) === i).join(', ') + ').\nCopy anyway?')) return;
+  cshFlash(btn, (await craClip(text)) ? '✓ Copied' : '❌ Refused — select and copy by hand');
+}
+function cshFlash(btn, msg) {
+  const old = btn.dataset.lbl || (btn.dataset.lbl = btn.textContent);
+  btn.textContent = msg; btn.classList.add('done');
+  clearTimeout(btn._t); btn._t = setTimeout(() => { btn.textContent = old; btn.classList.remove('done'); }, 1600);
+}
+
+// ── Clics et saisies ──
+function cshOnClick(ev) {
   const t = ev.target && ev.target.closest ? ev.target.closest('[data-act]') : null;
-  if (!t || !craCs || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
-  const a = t.dataset.act, id = t.dataset.id, d = craCs.data, key = craCs.key === '_' ? 'project' : craCs.key;
-  if (a === 'cs-close') { closeModal('modal-cra-cs'); craCs = null; return; }
-  if (a === 'cs-add-from') {
-    const c = craCs.cand;
-    if (!c) return;
-    let nc = 0, ns = 0;
-    c.cards.filter(x => x.on).forEach(x => {
-      const no = craCmpFmt(x.no), same = d.cards.find(y => (no && craCmpFmt(y.no) === no) || (!no && y.title && y.title === x.title));
-      if (same) { if (craCs.sq && (same.sq || []).indexOf(craCs.sq) < 0) (same.sq = same.sq || []).push(craCs.sq); if (!same.title && x.title) same.title = x.title; return; }
-      d.cards.push({ id: craCsUid(), no, title: x.title, sq: craCs.sq ? [craCs.sq] : [] }); nc++;
-    });
-    c.steps.filter(x => x.on && String(x.text).trim()).forEach(x => {
-      if (d.steps.some(y => y.sq === craCs.sq && y.no === x.no && y.text === x.text)) return;
-      d.steps.push({ id: craCsUid(), sq: craCs.sq, no: x.no, text: x.text }); ns++;
-    });
-    craCsPut(); craCsPaint();
-    craCsStatus('✓ ' + nc + ' card(s) and ' + ns + ' step(s) added to the project list.');
+  if (!t || !csh || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+  const a = t.dataset.act, id = +t.dataset.id, sub = t.dataset.sub, i = +t.dataset.i;
+  const r = id ? cshR(id) : null, it = id ? cshItems().find(x => x.id === id) : null, f = csh.find;
+  csh.note = ''; CSY.input = Date.now();
+  if (a === 'close') { cshClose(); return; }
+  if (a === 'copy') { cshCopy(t); return; }
+  if (a === 'tab') { csh.view = t.dataset.v; cshPaint(); cshEl('csh-scroll').scrollTop = 0; return; }
+  if (a === 'toggle') { csh.open = csh.open === id ? null : id; cshPaint(); return; }
+  if (a === 'goto') { csh.view = 'sq'; csh.open = id; cshPaint(); const e = cshEl('csh-sq-' + id); if (e) e.scrollIntoView({ block: 'start' }); return; }
+  if (a === 'hidefind') { csh.find = null; cshPaint(); return; }
+  if (a === 'full') { if (f) { f.full[i] = !f.full[i]; cshPaint(); } return; }
+  if (!r || !it) return;
+  if (a === 'find') { cshSearch(id, it.label.trim()); return; }
+  if (a === 'search') { cshSearch(id, (cshEl('csh-q') || {}).value ? cshEl('csh-q').value.trim() : ''); return; }
+  if (a === 'assist') { cshAssist(id); return; }
+  if (a === 'adapt' && f && f.rows[i]) { const e = f.rows[i].e; cshAssist(id, { w: e.w, n: e.n }); return; }
+  if (a === 'use' && f && f.rows[i]) {
+    if (r.res.trim() && !window.confirm('Replace the resolution you already wrote for 2.' + it.num + '?')) return;
+    r.res = String(f.rows[i].e.x || ''); r.ok = false; cshSaveNow(); cshPaint(); return;
   }
-  else if (a === 'cs-add-card') { d.cards.push({ id: craCsUid(), no: '', title: '', sq: [] }); craCsPut(); craCsPaintProject(); const el = craEl('cs-project').querySelectorAll('.cs-no'); if (el.length && el[el.length - 1].focus) el[el.length - 1].focus(); }
-  else if (a === 'cs-add-step') { d.steps.push({ id: craCsUid(), sq: craCs.sq, no: '', text: '' }); craCsPut(); craCsPaintSteps(); }
-  else if (a === 'cs-del-card') { d.cards = d.cards.filter(x => x.id !== id); craCsPut(); craCsPaintProject(); }
-  else if (a === 'cs-del-step') { d.steps = d.steps.filter(x => x.id !== id); craCsPut(); craCsPaintSteps(); }
-  else if (a === 'cs-copy-nums' || a === 'cs-copy-all') {
-    const nums = craCsNumbers();
-    if (!nums.length) { craCsStatus('No card has a CMP number yet.'); return; }
-    const byNo = {}; d.cards.forEach(c => { const n = craCmpFmt(c.no); if (n && !byNo[n]) byNo[n] = c.title; });
-    const txt = nums.map(n => a === 'cs-copy-all' ? n + (byNo[n] ? ' — ' + byNo[n] : '') : n).join('\n');
-    const ok = await craClip(txt), miss = craCsMissing();
-    craCsStatus(ok ? '✓ ' + nums.length + ' number(s) copied.' + (miss ? ' ' + miss + ' card(s) without a number are not in the list.' : '') : '❌ The browser refused the copy.');
+  if (a === 'addfrom' && f && f.rows[i]) {
+    const l = sqaCmpLinks(f.rows[i].e)[+t.dataset.j], no = l ? craCmpFmt(l[0]) : '';
+    if (!l) return;
+    if (r.cards.some(x => craCmpFmt(x.no) === no && no)) { csh.note = 'Card ' + no + ' is already attached to 2.' + it.num + '.'; cshPaint(); return; }
+    r.cards.push({ id: cshUid(), no, title: l[1] || '', res: '' }); cshSaveNow(); csh.note = '✓ Card ' + no + ' added to 2.' + it.num + ' — see “CMP cards attached” below.'; cshPaint(); return;
   }
-  else if (a === 'cs-dl-txt') {
-    const nums = craCsNumbers();
-    if (!nums.length) { craCsStatus('No card has a CMP number yet.'); return; }
-    craCsDownload('CMP_' + key + '.txt', nums.join('\r\n') + '\r\n', 'text/plain');
-    craCsStatus('✓ CMP_' + key + '.txt downloaded (' + nums.length + ' numbers).');
+  if (a === 'addstep') { r.steps.push({ id: cshUid(), desc: '', note: '' }); cshSaveNow(); cshPaint(); return; }
+  if (a === 'delstep') { r.steps = r.steps.filter(x => x.id !== sub); cshSaveNow(); cshPaint(); return; }
+  if (a === 'addcard') { r.cards.push({ id: cshUid(), no: '', title: '', res: '' }); cshSaveNow(); cshPaint(); return; }
+  if (a === 'delcard') { if (window.confirm('Remove this CMP card from 2.' + it.num + '?')) { r.cards = r.cards.filter(x => x.id !== sub); cshSaveNow(); cshPaint(); } return; }
+  const c = r.cards.find(x => x.id === sub);
+  if (a === 'tpl' && c) {
+    if (c.res.trim() && !window.confirm('Replace the text of this card with the standard text?')) return;
+    c.res = cshTpl(c, it); cshSaveNow(); cshPaint(); return;
   }
-  else if (a === 'cs-dl-csv') {
-    if (!d.cards.length) { craCsStatus('No card yet.'); return; }
-    craCsDownload('CMP_' + key + '.csv', craCsCsv(), 'text/csv');
-    craCsStatus('✓ CMP_' + key + '.csv downloaded.');
-  }
-  else if (a === 'cs-copy-steps') {
-    if (!d.steps.length) { craCsStatus('No step saved yet.'); return; }
-    const ok = await craClip(d.steps.map(x => (x.sq ? x.sq + (x.no ? ' · ' + x.no : '') + '\n' : '') + x.text).join('\n\n'));
-    craCsStatus(ok ? '✓ ' + d.steps.length + ' step(s) copied.' : '❌ The browser refused the copy.');
+  if (a === 'hist' && c) { if (csh.hist[c.id] && csh.hist[c.id] !== 'loading') { delete csh.hist[c.id]; cshPaint(); } else cshHistory(id, c.id); return; }
+  const H = c && csh.hist[c.id] && csh.hist[c.id] !== 'loading' ? csh.hist[c.id] : null;
+  if (a === 'useold' && H && H.real[i]) {
+    if (c.res.trim() && !window.confirm('Replace the text of this card?')) return;
+    c.res = cshFromOld(H.real[i].x, it); cshSaveNow(); csh.note = '✓ Old text inserted for 2.' + it.num + ': S/N and lot numbers are now blanks ⟦ ⟧ and the X-Ref points to this squawk. Check the AMM revision and date.'; cshPaint();
+  } else if (a === 'usehist' && H && H.sq[i]) {
+    if (c.res.trim() && !window.confirm('Replace the text of this card?')) return;
+    c.res = cshFromOld(String(H.sq[i].e.x || ''), it); cshSaveNow(); cshPaint();
   }
 }
-function craCsOnInput(ev) {
-  const t = ev.target;
-  if (!t || !t.dataset || !craCs) return;
-  const a = t.dataset.act, id = t.dataset.id, d = craCs.data, c = craCs.cand, isChange = ev.type === 'change';
-  const cand = c && id ? (c.cards.find(x => x.id === id) || c.steps.find(x => x.id === id)) : null;
-  if (a === 'cs-c-on' || a === 'cs-s-on') { if (cand) cand.on = !!t.checked; return; }
-  if (a === 'cs-c-no') { if (cand) { if (isChange) { cand.no = craCmpFmt(t.value); t.value = cand.no; } else cand.no = t.value; } return; }
-  if (a === 'cs-c-ti') { if (cand) cand.title = t.value; return; }
-  if (a === 'cs-s-tx') { if (cand) cand.text = t.value; return; }
-  if (a === 'cs-no' || a === 'cs-ti') {
-    const x = d.cards.find(y => y.id === id);
-    if (!x) return;
-    if (a === 'cs-ti') x.title = t.value;
-    else if (isChange) { x.no = craCmpFmt(t.value); t.value = x.no; } else x.no = t.value;
-    craCsPut();
-    return;
+function cshOnInput(ev) {
+  const t = ev.target, f = t && t.dataset && t.dataset.f;
+  if (!f || !csh || f === 'q') return;
+  CSY.input = Date.now();
+  const id = +t.dataset.id, sub = t.dataset.sub, ch = ev.type === 'change';
+  if (f === 'pre') { csh.data.pre = t.value; cshSaveSoon(); cshPaintCardTitles(); return; }
+  const r = cshR(id);
+  if (f === 'disc') { clearTimeout(csh.lblT); csh.lblT = setTimeout(() => cshSetLabel(id, t.value), 450); cshGrow(t); return; }
+  if (f === 'res') { r.res = t.value; r.ok = r.ok && !!t.value.trim(); cshGrow(t); }
+  else if (f === 'ok') { r.ok = !!t.checked; if (r.ok && !r.res.trim()) { r.ok = false; t.checked = false; } }
+  else if (f === 'stepd' || f === 'stepn') { const s = r.steps.find(x => x.id === sub); if (!s) return; if (f === 'stepd') s.desc = t.value; else s.note = t.value; cshGrow(t); }
+  else {
+    const c = r.cards.find(x => x.id === sub); if (!c) return;
+    if (f === 'cres') { c.res = t.value; cshGrow(t); }
+    else { if (f === 'cno') { c.no = ch ? craCmpFmt(t.value) : t.value; if (ch) { t.value = c.no; if (!String(c.title).trim()) cshTitleFor(c); } } else c.title = t.value; const el = cshEl('csh-cd-' + c.id); if (el) el.textContent = cshDisc(c); }
   }
-  if (a === 'cs-st-tx') { const x = d.steps.find(y => y.id === id); if (x) { x.text = t.value; craCsPut(); } }
+  cshSaveSoon(); cshPaintHead(id);
 }
+function cshPaintCardTitles() {
+  cshItems().forEach(it => { const r = csh.data.sq['i' + it.id]; if (r) r.cards.forEach(c => { const el = cshEl('csh-cd-' + c.id); if (el) el.textContent = cshDisc(c); }); });
+}
+function cshEnsureDom() {
+  if (cshEl('modal-csh')) return;
+  if (!cshEl('csh-style')) { const st = document.createElement('style'); st.id = 'csh-style'; st.textContent = cshCss; document.head.appendChild(st); }
+  document.body.insertAdjacentHTML('beforeend', CSH_HTML);
+  const root = cshEl('modal-csh');
+  root.addEventListener('click', cshOnClick);
+  root.addEventListener('input', cshOnInput);
+  root.addEventListener('change', cshOnInput);
+  root.addEventListener('keydown', ev => { if (ev.key === 'Enter' && ev.target && ev.target.id === 'csh-q') { ev.preventDefault(); if (csh && csh.find) cshSearch(csh.find.id, ev.target.value.trim()); } });
+}
+try { if (!document.getElementById('csh-style')) { const st = document.createElement('style'); st.id = 'csh-style'; st.textContent = cshCss; document.head.appendChild(st); } } catch (e) { /* refait à l'ouverture */ }
+// id : squawk à ouvrir (n° interne du work item) ; sans id : le premier
+G.cshOpen = function (id) {
+  cshEnsureDom();
+  const items = cshItems(), want = id != null && items.some(x => x.id === Number(id)) ? Number(id) : null, modal = cshEl('modal-csh');
+  cshEnsure();
+  if (!csh || !modal.classList.contains('open')) {
+    csh = { data: CSY.data, view: 'sq', open: null, find: null, hist: {}, cmpOld: {}, note: '', lblT: 0 };
+    cshMigrate();
+  } else csh.data = CSY.data;
+  csh.view = 'sq'; csh.find = null;
+  csh.open = want != null ? want : (csh.open != null && items.some(x => x.id === csh.open) ? csh.open : (items[0] ? items[0].id : null));
+  cshPaint();
+  openModal('modal-csh');
+  cshEl('csh-body').querySelectorAll('textarea').forEach(cshGrow);   // mesurées une fois la fenêtre visible
+  if (want != null) { const e = cshEl('csh-sq-' + want); if (e) e.scrollIntoView({ block: 'start' }); }
+};
+function cshClose() {
+  if (csh) { clearTimeout(csh.lblT); cshSaveNow(); }
+  closeModal('modal-csh'); csh = null; cshRefreshDots();
+}
+// Ancien point d'entrée (bouton « CMP list » du Step 3, bouton « Edit cards & steps » de l'assistant) : il ouvre la fiche
+G.craCsOpen = function (fromResolution) {
+  if (!fromResolution) { cshOpen(); return; }
+  const id = cra && cra.ctx && cra.ctx.itemId;
+  if (!id) { alert('Open the assistant from a squawk of Step 3 (the 📑 button, or ✍️ under an archive case) to attach its CMP cards and steps to the Corridor sheet.'); return; }
+  const n = cshFromAssistant(id);
+  cshOpen(id);
+  csh.note = n.nc || n.ns ? '✓ ' + n.nc + ' CMP card(s) and ' + n.ns + ' step(s) taken from the assistant — check and correct them below.' : 'Nothing new to add: the cards ticked in the assistant are already in this squawk.';
+  cshPaint();
+};
 
 // Lien affiché sous chaque cas de l'archive dans la pastille Smart Diagnosis (appelé par sqaCaseHtml)
 function craCaseLink(e, itemId) {
@@ -11144,7 +11703,8 @@ function craOnClick(ev) {
     if (!s.model) { alert('Tick at least one past squawk first.'); return; }
     if (!s.ctx.draftKey) return;
     craDraftSet(s.ctx.draftKey, craEl('cra-text').value);
-    s.copied = '✓ Saved on this device — it will be offered again when you reopen this squawk.';
+    if (s.ctx.itemId) cshStoreRes(s.ctx.itemId, craPlain(craEl('cra-text').value), false);
+    s.copied = s.ctx.itemId ? '✓ Saved in the Corridor sheet — open it with the 📑 button of this squawk in Step 3.' : '✓ Saved on this device — it will be offered again when you reopen this squawk.';
     craPaintStatus();
   }
   else if (a === 'draft-load') {
@@ -15917,7 +16477,7 @@ if ('serviceWorker' in navigator) {
 //  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
 //  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v38';
+const CURRENT_VERSION = 'v39';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
