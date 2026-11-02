@@ -3584,6 +3584,24 @@ async function koPushSyncTz() {
     if (r.ok) _koPushTzSynced = tz;
   } catch (e) {}
 }
+// Fuseau → TOUS les appareils abonnés de l'ingénieur (le PC aussi, même sans notifications sur cet appareil) :
+// le rappel de 9h suit l'endroit où il se connecte, quel que soit l'appareil utilisé (le dernier connecté l'emporte).
+// Appelée par koPushTick (plus bas) : une seule requête par connexion ou changement de fuseau, rien le reste du temps.
+let _koPushTzAllKey = '', _koPushTzAllBusy = false, _koPushTzAllNext = 0;
+async function koPushSyncTzAll() {
+  if (_koPushTzAllBusy || !curProfile || !_koSessionToken || Date.now() < _koPushTzAllNext) return;
+  let tz = '';
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+  const key = curProfile.id + '|' + _koSessionToken + '|' + tz;   // change à chaque nouvelle connexion (nouveau jeton) et à chaque changement de fuseau
+  if (!tz || key === _koPushTzAllKey) return;
+  _koPushTzAllBusy = true;
+  try {
+    const r = await koWorkerFetch('/push/tz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tz }) });
+    if (r.ok) _koPushTzAllKey = key;
+    else _koPushTzAllNext = Date.now() + 60000;   // refus (session expirée, Worker pas encore à jour…) : on retente dans 1 min, pas toutes les 1,5 s
+  } catch (e) { _koPushTzAllNext = Date.now() + 60000; }
+  _koPushTzAllBusy = false;
+}
 function koPushPostSubscription(sub) {
   return koWorkerFetch('/push/subscribe', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -3730,6 +3748,7 @@ if ('serviceWorker' in navigator) {
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { koPushReadStored(); koPushSyncTz(); } });
 
 function koPushTick() {
+  koPushSyncTzAll();   // fuseau → tous les appareils abonnés (1 requête par connexion ; sans effet le reste du temps)
   if (!curProfile || !_koSessionToken) _koPushProfileId = null;   // déconnecté (même sans rechargement de page) : la prochaine connexion renverra le fuseau
   if (!curProfile || !_koSessionToken) return;
   if (_koPushProfileId !== curProfile.id) {
@@ -6153,14 +6172,14 @@ G.logout = async function() {
   if (_koSessionToken) {
     fetch(KO_WORKER + '/revoke-session', { method: 'POST', headers: { 'Authorization': 'Bearer ' + _koSessionToken } }).catch(() => {});
   }
-  curProfile = null; curProj = null; curProjSubjectTemplate = null; pendingUserToLogin = null; isAdmin = false;
+  try { cshSaveNow(); } catch (_) {} curProfile = null; curProj = null; curProjSubjectTemplate = null; pendingUserToLogin = null; isAdmin = false;
   _sharedOwners = {}; _sharedOwnerNames = {}; _pendingLeadId = null; _projBaseRev = 0; _accessGranted.clear(); _conflictResolve = null;
   _koSessionToken = null;
   document.getElementById('poc-colleagues-container').innerHTML = ''; colleagueSlotCount = 0;
   document.getElementById('sync-badge').style.display = 'none';
   document.getElementById('btn-logout').style.display = 'none';
   document.getElementById('hdr-profile-name').textContent = '';
-  try { liveEnsure(); sgEnsure(); } catch (_) {}   // détache les listeners AVANT de couper l'auth
+  try { liveEnsure(); sgEnsure(); cshEnsure(); } catch (_) {}   // détache les listeners AVANT de couper l'auth
   if (auth.currentUser) await signOut(auth);
   document.getElementById('app-screen').style.display = 'none';
   document.getElementById('kickoff-panel').style.display = 'none';
@@ -10470,6 +10489,14 @@ const CRA_CSS = `
 #modal-cra .cra-chk{display:flex;gap:8px;align-items:flex-start;flex:1;min-width:0;font-weight:400;color:var(--g800);font-size:12px;cursor:pointer;word-break:break-word}
 #modal-cra .cra-chk small{color:var(--g600)}
 #modal-cra .cra-cmpno{width:76px;flex:none;text-align:center}
+#modal-cra .cra-part{border:1px solid var(--g200);border-radius:var(--rlg);background:#fff;padding:9px 12px 2px;margin-top:10px}
+#modal-cra .cra-part:first-child{margin-top:0}
+#modal-cra .cra-part-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 9px;padding-bottom:7px;border-bottom:1px dashed var(--g200)}
+#modal-cra .cra-part-n{font-size:11px;font-weight:700;color:#fff;background:var(--gd);border-radius:6px;padding:2px 8px;white-space:nowrap}
+#modal-cra .cra-part.other .cra-part-n{background:var(--g600)}
+#modal-cra .cra-part-t{font-size:13px;font-weight:700;color:var(--g800);min-width:0;overflow-wrap:anywhere}
+#modal-cra .cra-part-s{font-size:11px;color:var(--g600)}
+#modal-cra .cra-pvtag{margin:2px 0 0}
 #modal-cra .cra-ico{background:none;border:none;cursor:pointer;font-size:14px;padding:0 3px;color:var(--g600)}
 #modal-cra .cra-bad{color:#a61e1e;font-weight:600}
 #modal-cra .cra-ok{color:var(--gd);font-weight:600}
@@ -10555,7 +10582,7 @@ function craDraftSet(key, text) {
 function craOpen(opts) {
   craEnsureDom();
   cra = {
-    ctx: { heading: opts.heading || '', model: gv('f_model'), reg: gv('f_reg'), wo: gv('f_wo').trim().toUpperCase(), cmpCur: opts.cmpCur || '', cycleCur: opts.cycleCur || '', onUse: opts.onUse || null, draftKey: opts.draftKey || '', itemId: opts.itemId || 0 },
+    ctx: { heading: opts.heading || '', model: gv('f_model'), reg: gv('f_reg'), wo: gv('f_wo').trim().toUpperCase(), cmpCur: opts.cmpCur || '', cycleCur: opts.cycleCur || '', onUse: opts.onUse || null, draftKey: opts.draftKey || '', itemId: opts.itemId || 0, card: opts.card || null },
     query: opts.query || '', cands: [], sel: [], model: null, S: null, loading: false, msg: '', showAll: true, toolForm: null, copied: ''
   };
   craEl('cra-q').value = cra.query;
@@ -10567,7 +10594,11 @@ function craOpen(opts) {
   craEl('cra-text').value = '';
   craEl('cra-save').style.display = cra.ctx.draftKey ? '' : 'none';
   openModal('modal-cra');
-  craSearchNow(opts.pin || null);
+  if (opts.fixed) {   // one known text (old CMP card resolution): no search, it is the only source
+    cra.cands = [{ e: opts.fixed, level: 'pin', matched: [], sameFamily: null, sameReg: false }];
+    cra.sel = [0]; cra.fullTxt = {}; cra.showAll = true;
+    craAfterSel();
+  } else craSearchNow(opts.pin || null);
   craToolsSync(false);   // la mallette d'outils est rafraichie depuis le compte en arriere-plan (la liste de cet appareil s'affiche tout de suite)
 }
 G.craOpenItem = function(id) {
@@ -10739,7 +10770,7 @@ function cshWoKey() {
   return /^[A-Z0-9_-]{1,40}$/.test(raw) ? raw : '_';
 }
 const cshKey = () => curProj ? 'P_' + String(curProj).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 60) : cshWoKey();
-const cshPath = () => (curProfile && curProj) ? projPath(curProj) + '/csh' : '';
+const cshPath = () => (curProfile && curProj && auth.currentUser) ? projPath(curProj) + '/csh' : '';
 function cshRead(key) {
   const all = craLsGet(CSH_LS, {}) || {}, mine = all[key], d = mine || (key.slice(0, 2) === 'P_' && cshWoKey() !== '_' ? all[cshWoKey()] : null) || {};   // 1re ouverture du job enregistré : reprend la fiche gardée sous le n° de WO
   return { sq: d.sq && typeof d.sq === 'object' ? d.sq : {}, pre: String(d.pre || ''), mig: !!d.mig, base: mine && mine.base && typeof mine.base === 'object' ? mine.base : undefined };
@@ -10756,6 +10787,7 @@ function cshRecOf(d, id) {
   r.ok = !!r.ok;
   if (!Array.isArray(r.steps)) r.steps = [];
   if (!Array.isArray(r.cards)) r.cards = [];
+  if (!r.pv || typeof r.pv !== 'object') r.pv = {};
   return r;
 }
 const cshR = id => cshRecOf(csh.data, id);
@@ -10775,6 +10807,7 @@ function cshToMap(d) {
     if (r.steps && r.steps.length) { o.steps = {}; r.steps.forEach((s, i) => { o.steps[s.id] = { o: i, d: s.desc || '', n: s.note || '' }; }); }
     if (r.cards && r.cards.length) { o.cards = {}; r.cards.forEach((c, i) => { o.cards[c.id] = { o: i, no: c.no || '', t: c.title || '', r: c.res || '' }; }); }
     if (r.by) { o.by = r.by; o.bn = r.bn || ''; o.at = r.at || 0; }          // dernier à avoir modifié ce squawk (pour « X a mis à jour la fiche »)
+    if (r.pv && Object.keys(r.pv).length) o.pv = Object.assign({}, r.pv);   // part values (P/N, S/N, lots) shared by the resolution and its CMP cards
     if (r.rb) { o.rb = r.rb; o.rn = r.rn || ''; o.ra = r.ra || 0; }          // auteur de la résolution (affiché à côté du texte)
     if (Object.keys(o).length) m[k] = o;
   });
@@ -10789,7 +10822,8 @@ function cshFromMap(m) {
     const o = m[k] || {};
     d.sq[k] = { res: String(o.res || ''), ok: !!o.ok, by: o.by || '', bn: o.bn || '', at: o.at || 0, rb: o.rb || '', rn: o.rn || '', ra: o.ra || 0,
       steps: ord(o.steps).map(s => ({ id: s.id, desc: String(s.d || ''), note: String(s.n || '') })),
-      cards: ord(o.cards).map(c => ({ id: c.id, no: String(c.no || ''), title: String(c.t || ''), res: String(c.r || '') })) };
+      cards: ord(o.cards).map(c => ({ id: c.id, no: String(c.no || ''), title: String(c.t || ''), res: String(c.r || '') })),
+      pv: o.pv && typeof o.pv === 'object' ? Object.assign({}, o.pv) : {} };
   });
   return d;
 }
@@ -10867,7 +10901,7 @@ async function cshPush() {
   } catch (err) {
     CSY.sync = 'err'; CSY.err = String((err && (err.message || err.code)) || err);
     console.warn('Corridor sheet — sharing:', err);
-    clearTimeout(CSY.pushT); CSY.pushT = setTimeout(cshPush, 10000);
+    clearTimeout(CSY.pushT); CSY.pushT = setTimeout(cshPush, /permission[_ ]denied/i.test(CSY.err) ? 120000 : 10000);
   } finally { CSY.pushing = false; cshPaintSaved(); if (CSY.again) { CSY.again = false; cshPush(); } }
 }
 // Suit le job ouvert (toutes les 2 s, comme les signatures) : copie locale + écoute Firebase, même quand la fiche est fermée (les points de l'étape 3 restent justes)
@@ -10883,11 +10917,11 @@ function cshEnsure() {
       if (CSY.path !== path) return;
       cshApplyRemote(snap.val() || {});
     }, err => {
-      console.warn('Corridor sheet listener:', err, '| path:', path);
+      console.warn('Corridor sheet listener:', err, '| path:', path, '| uid:', auth.currentUser?.uid || null);
       if (CSY.path !== path) return;
       CSY.sync = 'err'; CSY.err = String((err && (err.message || err.code)) || err); cshPaintSaved();
       if (CSY.unsub) { try { CSY.unsub(); } catch (e) { /* déjà arrêté */ } CSY.unsub = null; }
-      setTimeout(() => { if (CSY.path === path) CSY.path = ''; }, 30000);   // nouvel essai au tick suivant
+      setTimeout(() => { if (CSY.path === path) CSY.path = ''; }, /permission[_ ]denied/i.test(CSY.err) ? 300000 : 30000);
     });
   }
   cshRefreshDots();
@@ -10911,6 +10945,18 @@ G.cshStoreRes = function (id, text, ask) {
   return true;
 };
 G.cshStateOf = id => { try { cshEnsure(); return cshState(CSY.data && CSY.data.sq['i' + id]); } catch (e) { return 'empty'; } };   // pour ui3.js : « empty | draft | ready »
+// Values of the parts of a squawk (P/N, S/N, lots…), shared by its resolution and its CMP cards : { 'g1_SN_ON_1': 'NOV25-0123', … }
+function cshPvGet(id) {
+  try { cshEnsure(); const r = CSY.data && CSY.data.sq['i' + id]; return r && r.pv && Object.keys(r.pv).length ? r.pv : null; } catch (e) { return null; }
+}
+function cshPvSet(id, slot, val) {
+  cshEnsure();
+  if (!CSY.data) return;
+  const r = cshRecOf(CSY.data, id);
+  if (val) { if (r.pv[slot] === val) return; r.pv[slot] = val; }
+  else { if (!(slot in r.pv)) return; delete r.pv[slot]; }
+  cshSaveSoon();
+}
 const cshState = r => { const t = r && String(r.res || '').trim(); return !t ? 'empty' : (r.ok ? 'ready' : 'draft'); };
 const cshBlanks = t => craMarks(String(t || ''), CRA_PH_O, CRA_PH_C).length;
 function cshRefreshDots() {
@@ -10982,7 +11028,7 @@ function cshPaintSaved() {
   if (!el) return;
   const t = CSY.saved ? ' · ' + new Date(CSY.saved).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
   el.textContent = CSY.sync === 'ok' ? '☁️ Shared with the team' + t : CSY.sync === 'saving' ? '⏳ Saving…' : CSY.sync === 'loading' ? '☁️ Connecting…'
-    : CSY.sync === 'err' ? '⚠️ Not shared yet — kept on this device, will retry' : '💾 This device only — save the job to share it';
+    : CSY.sync === 'err' ? (/permission[_ ]denied/i.test(CSY.err) ? '⚠️ Not shared — Firebase refused access (session expired, or you are not on this job) · kept on this device' : '⚠️ Not shared yet — kept on this device, will retry') : '💾 This device only — save the job to share it';
   el.title = CSY.sync === 'err' ? CSY.err : CSY.sync === 'local' ? 'The sheet is shared with the engineers of the job (owner, Lead, Assist) once the job is saved.' : 'Every change is sent to the job; the other engineers see it live.';
 }
 function cshGrow(t) {   // la zone suit la taille du texte (au moins le nombre de lignes prévu)
@@ -11052,7 +11098,7 @@ function cshCardHtml(it, c, k) {
     else h += cshNote(hist.msg ? escHtml(hist.msg) : 'No earlier resolution of this card is published yet (they come with the latest 5_publier_appli.py).');
     hist.real.forEach((v, j) => {
       h += '<div class="csh-case"><div class="csh-case-t"><span>✈️ ' + escHtml(v.t || '—') + ' · WO ' + escHtml(v.w || '—') + '</span><span>' + escHtml(sqaDateLabel({ g: v.g })) + '</span></div>' +
-        '<div class="csh-ln csh-full">' + escHtml(v.x) + '</div><div class="csh-btns"><button type="button" class="btn primary" data-act="useold" data-id="' + it.id + '" data-sub="' + c.id + '" data-i="' + j + '" title="S/N and lot numbers become blanks, the X-Ref points to 2.' + it.num + '">⬇ Use this text</button></div></div>';
+        '<div class="csh-ln csh-full">' + escHtml(v.x) + '</div><div class="csh-btns"><button type="button" class="btn primary" data-act="adaptold" data-id="' + it.id + '" data-sub="' + c.id + '" data-i="' + j + '" title="Same fill-in as for the squawk resolution: boxes for P/N, S/N and lot (LT / COP), AMM revision and date">✍️ Fill in (P/N, S/N, lot…)</button><button type="button" class="btn" data-act="useold" data-id="' + it.id + '" data-sub="' + c.id + '" data-i="' + j + '" title="S/N and lot numbers become blanks, the X-Ref points to 2.' + it.num + '">⬇ Use this text</button></div></div>';
     });
     if (hist.sq.length) h += '<div class="csh-sec2">Customer squawks that used this card</div>';
     hist.sq.forEach((o, j) => {
@@ -11060,7 +11106,7 @@ function cshCardHtml(it, c, k) {
       h += '<div class="csh-case"><div class="csh-case-t"><span>✈️ ' + escHtml(e.t || '—') + ' · WO ' + escHtml(e.w || '—') + ' · SQ ' + escHtml(e.n || '') + '</span><span>' + escHtml(sqaDateLabel(e)) + '</span></div>' +
         '<div>' + (o.own ? cshPill('ok', 'This card was the task') : cshPill('', 'Card attached to the squawk')) + '</div>' +
         '<div class="csh-ln"><b>Squawk:</b> ' + escHtml(smartDiagShort(e.d, 150)) + '</div><div class="csh-ln"><b>Resolution:</b> ' + escHtml(smartDiagShort(e.x, 300)) + '</div>' +
-        '<div class="csh-btns"><button type="button" class="btn" data-act="usehist" data-id="' + it.id + '" data-sub="' + c.id + '" data-i="' + j + '">⬇ Use this text</button></div></div>';
+        '<div class="csh-btns"><button type="button" class="btn primary" data-act="adapthist" data-id="' + it.id + '" data-sub="' + c.id + '" data-i="' + j + '" title="Same fill-in as for the squawk resolution: boxes for P/N, S/N and lot (LT / COP), AMM revision and date">✍️ Fill in (P/N, S/N, lot…)</button><button type="button" class="btn" data-act="usehist" data-id="' + it.id + '" data-sub="' + c.id + '" data-i="' + j + '">⬇ Use this text</button></div></div>';
     });
   }
   return h + '</div>';
@@ -11198,6 +11244,30 @@ function cshAssist(id, pin) {   // l'assistant Resolution, avec retour du texte 
     itemId: id, draftKey: craDraftKey(it.num, label), useLabel: '⬇ Put in the sheet (2.' + it.num + ')', onUse: text => cshStoreRes(id, text, true) && (setTimeout(() => cshOpen(id), 0), true)
   });
 }
+// CMP card text: after the fill-in assistant, point to the customer squawk (2.n), then the release statement
+function craCardText(text, num) {
+  const ref = 'X-Ref to SQ 2.' + num + ' for Customer Task.';
+  let t = String(text || '').replace(/^X-Ref to SQ [^\n]*for CMP cards\.[ \t]*$/gim, '').replace(/\n{2,}/g, '\n').replace(/^\n+|\n+$/g, '');   // a card does not list other cards
+  const re = /(^|\n)(X-Ref to SQ 1\.1 for (?:CRS|RTS) statement\.)$/;
+  return re.test(t) ? t.replace(re, (m, a, b) => a + ref + '\n' + b) : (t ? t + '\n' : '') + ref;
+}
+// Old text of a CMP card → the same fill-in assistant as for a squawk resolution (P/N, S/N, lot LT/COP boxes, AMM revision and date)
+function cshAssistCard(id, cid, e) {
+  const it = cshItems().find(x => x.id === id), c = it && cshR(id).cards.find(x => x.id === cid);
+  if (!it || !c) return;
+  const no = craCmpFmt(c.no);
+  craOpen({
+    heading: 'CMP ' + (no || 'card') + ' · squawk 2.' + it.num, query: '', itemId: id, card: { num: it.num }, cmpCur: '', cycleCur: '',
+    fixed: { w: String(e.w || ''), n: no || 'card', t: String(e.t || ''), g: String(e.g || ''), r: String(e.r || ''), d: cshDisc(c), x: String(e.x || '') },
+    useLabel: '⬇ Put in the card (task 4.x)',
+    onUse: text => {
+      if (c.res.trim() && c.res.trim() !== String(text).trim() && !window.confirm('Replace the text of this card?')) return false;
+      c.res = String(text); cshSaveNow();
+      setTimeout(() => cshOpen(id), 0);
+      return true;
+    }
+  });
+}
 // Cartes cochées + steps de la 1re source, repris de l'assistant (bouton « Edit cards & steps »)
 function cshFromAssistant(id) {
   cshEnsure();
@@ -11315,6 +11385,11 @@ function cshOnClick(ev) {
   }
   if (a === 'hist' && c) { if (csh.hist[c.id] && csh.hist[c.id] !== 'loading') { delete csh.hist[c.id]; cshPaint(); } else cshHistory(id, c.id); return; }
   const H = c && csh.hist[c.id] && csh.hist[c.id] !== 'loading' ? csh.hist[c.id] : null;
+  if ((a === 'adaptold' || a === 'adapthist') && H && c) {   // same fill-in assistant as for the squawk resolution, on this old text
+    const e = a === 'adaptold' ? H.real[i] : (H.sq[i] && H.sq[i].e);
+    if (e) cshAssistCard(id, c.id, e);
+    return;
+  }
   if (a === 'useold' && H && H.real[i]) {
     if (c.res.trim() && !window.confirm('Replace the text of this card?')) return;
     c.res = cshFromOld(H.real[i].x, it); cshSaveNow(); csh.note = '✓ Old text inserted for 2.' + it.num + ': S/N and lot numbers are now blanks ⟦ ⟧ and the X-Ref points to this squawk. Check the AMM revision and date.'; cshPaint();
@@ -11554,7 +11629,45 @@ function craRowHtml(r, ctx) {
   return '<label class="cra-row' + (on ? '' : ' off') + (r.dup ? ' dup' : '') + '"><input type="checkbox" data-act="row" data-id="' + escAttr(r.id) + '"' + (on ? ' checked' : '') + '/>' +
     '<span>' + craRenderLine(r.text, ctx, 'html') + tag + '</span></label>';
 }
+// ── Values shared by the texts of a squawk (its resolution + its CMP cards) ──
+// What you type for a part (P/N, S/N, lot…) is remembered in the Corridor sheet under the slot of that box (« g1_SN_ON_1 ») and is
+// offered again, already filled in, when another text of the same squawk is built. A box is only filled when it is empty, once per session.
+function craPvPrefill() {
+  try {
+    const s = cra, id = s && s.ctx && s.ctx.itemId;
+    if (!s || !s.model || !id) return;
+    const pv = cshPvGet(id) || {};
+    s.pvDone = s.pvDone || {}; s.pvFrom = s.pvFrom || {};
+    const slots = craFieldSlots(s.model, s.S);
+    Object.keys(slots).forEach(key => {
+      if (s.pvDone[key]) return;
+      s.pvDone[key] = 1;                                   // each box is looked at once: what you empty or retype stays as you left it
+      const f = s.model.fields[key], v = pv[slots[key]];
+      if (!f || !v || String(s.S.val[key] || '').trim()) return;
+      s.S.val[key] = v;
+      const k = pv[slots[key] + '_kind'];
+      if (f.lot && (k === 'LT' || k === 'COP')) s.S.lot[key] = k;
+      s.pvFrom[key] = 1;
+    });
+  } catch (e) { console.warn('Fill-in memory:', e); }
+}
+function craPvSave(key, inp) {
+  try {
+    const s = cra, id = s && s.ctx && s.ctx.itemId, f = s && s.model && s.model.fields[key];
+    if (!id || !f) return;
+    const slot = craFieldSlots(s.model, s.S)[key];
+    if (!slot) return;
+    cshPvSet(id, slot, String(s.S.val[key] || '').trim());
+    cshPvSet(id, slot + '_kind', f.lot ? (s.S.lot[key] || '') : '');
+    if (s.pvFrom && s.pvFrom[key]) {
+      delete s.pvFrom[key];
+      const tag = inp && inp.parentNode && inp.parentNode.querySelector ? inp.parentNode.querySelector('.cra-pvtag') : null;
+      if (tag) tag.remove();
+    }
+  } catch (e) { console.warn('Fill-in memory:', e); }
+}
 function craPaintRows() {
+  craPvPrefill();
   const s = cra, m = s.model, ctx = craCtx(m, s.S);
   let h = '';
   m.srcs.forEach((info, k) => {
@@ -11573,7 +11686,92 @@ function craPaintRows() {
   });
   craEl('cra-rows').innerHTML = h;
 }
+// ── Fill-in boxes grouped by part ──
+// One card per part (wheel, tire, probe…) instead of one long list of boxes. A part starts at its P/N blank; the P/N of the
+// other side (off ↔ on) of the same part joins it. What is not about a part (USB key, cycle, dates…) goes in a last card.
+const CRA_PART_RE = /^(?:PN|SN|LOT|TRACK|TSN|CSN|TSO|CSO|TSR|CSR|TSI|CSI|QTY)(?:_(?:ON|OFF|BOTH))?$/;
+const CRA_IDTAIL_RE = /(?:^|[\s(,:;])(?:cop\s*)?(?:p\s*\/\s*n|p\.\s?n\.?|pn|part\s*(?:no\.?|n°|number|nr\.?|#)|s\s*\/\s*n|s\.\s?n\.?|sn|serial(?:\s*(?:no\.?|n°|number|nr\.?|#))?|lot|batch|b\s*\/\s*n|bn|l\s*\/\s*n|ln)(?:\s*(?:no\.?|n°|number|nr\.?|#))?(?:\s*[(\/]?\s*(?:off\s*(?:and|[\/&-])\s*on|on\s*(?:and|[\/&-])\s*off|off|on|in|out|removed|installed|fitted|new|old)\s*\)?)?[\s:=\-–#.]*$/i;
+function craFieldLead(model, S, key) {   // what the old text said just before this blank: « #2 wheel assy P/N on ⟦…⟧ » → « #2 wheel assy »
+  const tok = CRA_PH_O + key + CRA_PH_C;
+  const lines = model.rows.filter(r => S.on[r.id] && r.kind !== 'sep').map(r => r.text).concat(model.extras.filter(x => S.on[x.id]).map(x => x.text));
+  for (let k = 0; k < lines.length; k++) {
+    const i = lines[k].indexOf(tok);
+    if (i < 0) continue;
+    let p = lines[k].slice(0, i)
+      .replace(new RegExp(CRA_PH_O + '[^' + CRA_PH_C + ']*' + CRA_PH_C, 'g'), ' ')
+      .replace(new RegExp(CRA_AM_O + '[RDM]\\d+' + CRA_AM_C, 'g'), ' ')
+      .replace(new RegExp('[' + CRA_CK_O + CRA_CK_C + ']', 'g'), '');
+    p = p.split(/[.;]\s+/).pop();
+    for (let n = 0; n < 3; n++) { const q = p.replace(CRA_IDTAIL_RE, ''); if (q === p) break; p = q; }
+    p = p.replace(/^[\s,;:\-–•*]+|[\s,;:\-–(]+$/g, '').replace(/\s+/g, ' ');
+    if (!/[A-Za-z]{3}/.test(p) || /^(?:and|or|on|off|in|out|removed|installed)$/i.test(p)) p = '';
+    if (!p && k > 0 && new RegExp('^[^' + CRA_PH_O + ']{3,40}:\\s*$').test(lines[k - 1])) p = lines[k - 1].replace(/:\s*$/, '').trim();   // « Wheel assy: » on the line above
+    return p.length > 42 ? '…' + p.slice(-40).replace(/^\S*\s/, '') : p;
+  }
+  return '';
+}
+function craFieldGroups(model, S) {   // → { groups: [{ n, lead, src, fields }], other: [fields] }
+  const side = t => (/_ON$/.test(t) ? 'ON' : /_OFF$/.test(t) ? 'OFF' : /_BOTH$/.test(t) ? 'BOTH' : '');
+  const groups = [], other = [];
+  let cur = null;
+  craActiveFields(model, S).forEach(f => {
+    if (!CRA_PART_RE.test(f.type)) { other.push(f); return; }
+    const isPn = /^PN(?:_|$)/.test(f.type), lead = craFieldLead(model, S, f.key);
+    if (cur && cur.src !== f.src) cur = null;                                       // each source squawk has its own parts
+    if (isPn && cur && cur.pn.length) {
+      const sd = side(f.type), opp = sd === 'ON' ? 'OFF' : sd === 'OFF' ? 'ON' : '';
+      const sameLead = !lead || !cur.lead || lead.toLowerCase() === cur.lead.toLowerCase();
+      if (!(opp && sameLead && cur.pn.every(x => x === opp))) cur = null;           // the other side (off ↔ on) of the same part stays in the same card
+    }
+    if (!cur) { cur = { n: groups.length + 1, fields: [], pn: [], lead: '', src: f.src }; groups.push(cur); }
+    cur.fields.push(f);
+    if (isPn) cur.pn.push(side(f.type));
+    if (lead && !cur.lead) cur.lead = lead;
+  });
+  return { groups, other };
+}
+function craFieldSlots(model, S) {   // field key → slot id : « g1_SN_ON_1 » = 1st part, 1st « S/N on ». The same ids are used in every text of a squawk.
+  const out = {};
+  craFieldGroups(model, S).groups.forEach(g => {
+    const c = {};
+    g.fields.forEach(f => { c[f.type] = (c[f.type] || 0) + 1; out[f.key] = 'g' + g.n + '_' + f.type + '_' + c[f.type]; });
+  });
+  return out;
+}
+function craGroupFields() {   // moves the boxes painted by craPaintFieldsFlat into one card per part (the boxes themselves are not rebuilt)
+  const s = cra, box = craEl('cra-fields'), grid = box && box.querySelector('.grid');
+  if (!s || !s.model || !grid) return;
+  const byKey = {};
+  Array.prototype.forEach.call(grid.children, el => { const i = el.querySelector('[data-key]'); if (i) byKey[i.getAttribute('data-key')] = el; });
+  const G = craFieldGroups(s.model, s.S), cards = [];
+  const addCard = (cls, badge, title, sub, fields) => {
+    const els = fields.map(f => byKey[f.key]).filter(Boolean);
+    if (!els.length) return;
+    const el = document.createElement('div');
+    el.className = 'cra-part' + (cls ? ' ' + cls : '');
+    el.innerHTML = '<div class="cra-part-h"><span class="cra-part-n">' + escHtml(badge) + '</span>' + (title ? '<span class="cra-part-t">' + escHtml(title) + '</span>' : '') +
+      (sub ? '<span class="cra-part-s">' + escHtml(sub) + '</span>' : '') + '</div><div class="grid g2"></div>';
+    fields.forEach(f => {
+      const x = byKey[f.key];
+      if (!x) return;
+      if (s.pvFrom && s.pvFrom[f.key]) x.insertAdjacentHTML('beforeend', '<div class="cra-note small cra-pvtag">↺ Taken from the other texts of this squawk (main text, CMP cards) — type to change it.</div>');
+      el.lastChild.appendChild(x);
+      delete byKey[f.key];
+    });
+    cards.push(el);
+  };
+  G.groups.forEach(g => addCard('', G.groups.length > 1 ? 'Part ' + g.n : 'Part', g.lead, g.src > 0 ? 'source ' + (g.src + 1) : '', g.fields));
+  addCard('other', G.groups.length ? 'Other' : 'To fill in', '', '', G.other);
+  addCard('other', 'Other', '', '', Object.keys(byKey).map(k => ({ key: k })));   // safety net: a box that belongs to no card is never lost
+  if (!cards.length) return;
+  box.innerHTML = '';
+  cards.forEach(el => box.appendChild(el));
+}
 function craPaintFields() {
+  craPaintFieldsFlat();
+  try { craGroupFields(); } catch (e) { console.warn('Fill-in grouping:', e); }   // if anything goes wrong, the flat list stays
+}
+function craPaintFieldsFlat() {
   const s = cra, af = craActiveFields(s.model, s.S);
   if (!af.length) { craEl('cra-fields').innerHTML = '<div class="cra-note">Nothing to fill in for the selected lines.</div>'; return; }
   craEl('cra-fields').innerHTML = '<div class="grid g2">' + af.map(f => {
@@ -11650,6 +11848,7 @@ function craPaintOut() {
   if (!s || !s.model) return;
   const ta = craEl('cra-text');
   s.res = craCompose(s.model, s.S, craTools().map(t => (craToolStatus(t, craToday()) === 'expired' ? Object.assign({}, t, { id: '\u0000' + t.id }) : t)));
+  if (s.ctx.card) s.res.text = craCardText(s.res.text, s.ctx.card.num);
   if (!s.S.edited) ta.value = s.res.text;
   craPaintStatus();
 }
@@ -11745,11 +11944,13 @@ function craOnClick(ev) {
     if (f && f.lot && (k === 'LT' || k === 'COP')) {
       if (String(s.S.val[key] || '').trim() && craLotKind(f, '', s.S.val[key]) !== k) s.S.val[key] = '';   // « LT24-… » n'est pas un COP B/N (et inversement)
       s.S.lot[key] = k;
+      craPvSave(key);
       craPaintFields(); craPaintRows(); craPaintOut();
     }
   } else if (a === 'hint') {
     const key = t.dataset.key;
     s.S.val[key] = t.dataset.v;
+    craPvSave(key);
     craPaintFields(); craPaintRows(); craPaintOut();
   } else if (a === 'rebuild') {
     s.S.edited = false;
@@ -11818,6 +12019,7 @@ function craOnInput(ev) {
   const a = t.dataset.act;
   if (a === 'val') {
     s.S.val[t.dataset.key] = t.value;
+    craPvSave(t.dataset.key, t);
     const lf = s.model.fields[t.dataset.key];
     if (lf && lf.type === 'GUL') craUsbSave(t.value);
     if (lf && lf.lot && lf.lot.lab) {
@@ -16477,7 +16679,7 @@ if ('serviceWorker' in navigator) {
 //  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
 //  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v39';
+const CURRENT_VERSION = 'v40';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
