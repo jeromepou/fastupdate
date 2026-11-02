@@ -10659,15 +10659,6 @@ let cshDotT = 0, cshSaveT = 0;
 const cshEl = id => document.getElementById(id);
 const cshUid = () => 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const cshCss = `
-.csh-part{border:1px dashed var(--g300,#cfd4dc);border-radius:10px;padding:10px;margin:4px 0 10px}
-.csh-pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
-.csh-pf label{display:block;font-size:11px;color:var(--g600,#667);margin-bottom:2px}
-.csh-pf input{width:100%;box-sizing:border-box;padding:8px 9px;border:1px solid var(--g300,#cfd4dc);border-radius:8px;font:inherit;font-size:13px}
-.csh-sg{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
-.csh-sgn{font-size:11px;color:var(--g600,#667)}
-.csh-stp{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}
-.csh-q{width:58px;padding:3px 6px;border:1px solid var(--g300,#cfd4dc);border-radius:6px;font:inherit;font-weight:700}
-
 .csh-open{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border:1px solid var(--g200);border-radius:var(--r);background:#fff;color:var(--g800);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex:none}
 .csh-open:hover{background:var(--gl);border-color:var(--gb)}
 .csh-dot{width:8px;height:8px;border-radius:50%;background:var(--g400);display:inline-block;flex:none}
@@ -10765,7 +10756,7 @@ const CSH_HTML = `
       <div class="csh-tabs" id="csh-tabs"></div>
     </div>
     <div class="csh-scroll" id="csh-scroll"><div id="csh-body"></div></div>
-    <div class="csh-foot"><span style="font-size:12px;color:#2d7a3e;margin-right:auto">✓ Everything you type is saved automatically</span><button type="button" class="btn primary" data-act="close">Close</button></div>
+    <div class="csh-foot"><button type="button" class="btn primary" data-act="close">Close</button></div>
   </div>
 </div>`;
 
@@ -10813,8 +10804,8 @@ function cshToMap(d) {
     if (!r || !/^i\d+$/.test(k)) return;
     if (r.res) o.res = r.res;
     if (r.ok) o.ok = true;
-    if (r.steps && r.steps.length) { o.steps = {}; r.steps.forEach((s, i) => { o.steps[s.id] = { o: i, d: s.desc || '', n: s.note || '', ty: s.ty || undefined }; }); }
-    if (r.cards && r.cards.length) { o.cards = {}; r.cards.forEach((c, i) => { o.cards[c.id] = { o: i, no: c.no || '', t: c.title || '', r: c.res || '', q: c.q || undefined, p: c.p && Object.keys(c.p).some(k => c.p[k]) ? Object.assign({}, c.p) : undefined }; }); }
+    if (r.steps && r.steps.length) { o.steps = {}; r.steps.forEach((s, i) => { o.steps[s.id] = { o: i, d: s.desc || '', n: s.note || '' }; }); }
+    if (r.cards && r.cards.length) { o.cards = {}; r.cards.forEach((c, i) => { o.cards[c.id] = { o: i, no: c.no || '', t: c.title || '', r: c.res || '' }; }); }
     if (r.by) { o.by = r.by; o.bn = r.bn || ''; o.at = r.at || 0; }          // dernier à avoir modifié ce squawk (pour « X a mis à jour la fiche »)
     if (r.pv && Object.keys(r.pv).length) o.pv = Object.assign({}, r.pv);   // part values (P/N, S/N, lots) shared by the resolution and its CMP cards
     if (r.rb) { o.rb = r.rb; o.rn = r.rn || ''; o.ra = r.ra || 0; }          // auteur de la résolution (affiché à côté du texte)
@@ -10830,8 +10821,8 @@ function cshFromMap(m) {
     if (!/^i\d+$/.test(k)) return;
     const o = m[k] || {};
     d.sq[k] = { res: String(o.res || ''), ok: !!o.ok, by: o.by || '', bn: o.bn || '', at: o.at || 0, rb: o.rb || '', rn: o.rn || '', ra: o.ra || 0,
-      steps: ord(o.steps).map(s => ({ id: s.id, desc: String(s.d || ''), note: String(s.n || ''), ty: String(s.ty || '') })),
-      cards: ord(o.cards).map(c => ({ id: c.id, no: String(c.no || ''), title: String(c.t || ''), res: String(c.r || ''), q: +c.q || 0, p: c.p && typeof c.p === 'object' ? Object.assign({}, c.p) : {} })),
+      steps: ord(o.steps).map(s => ({ id: s.id, desc: String(s.d || ''), note: String(s.n || '') })),
+      cards: ord(o.cards).map(c => ({ id: c.id, no: String(c.no || ''), title: String(c.t || ''), res: String(c.r || '') })),
       pv: o.pv && typeof o.pv === 'object' ? Object.assign({}, o.pv) : {} };
   });
   return d;
@@ -10984,13 +10975,11 @@ function cshRefreshDots() {
 // ── Cartes CMP : n° et texte au format Corridor ──
 const cshPre = () => (csh.data.pre || gv('f_model') || '').trim();
 const cshDisc = c => ['CMP', cshPre(), craCmpFmt(c.no), String(c.title || '').trim()].filter(Boolean).join(' ');
-function cshCards() {   // numbered like Corridor: every card keeps its own 4.n (never renumbered); a card without a number takes the next free one
-  const out = []; let mx = 0;
-  cshItems().forEach(it => { const r = csh.data.sq['i' + it.id]; if (r && Array.isArray(r.cards)) r.cards.forEach(c => { out.push({ c, it, k: 0 }); if (c.q > mx) mx = c.q; }); });
-  out.forEach(x => { if (!(x.c.q > 0)) x.c.q = ++mx; x.k = x.c.q; });
-  return out.sort((a, b) => a.k - b.k);
+function cshCards() {   // dans l'ordre de Corridor : 4.1, 4.2… (par squawk, puis dans l'ordre d'ajout)
+  const out = []; let k = 0;
+  cshItems().forEach(it => { const r = csh.data.sq['i' + it.id]; if (r && Array.isArray(r.cards)) r.cards.forEach(c => out.push({ c, it, k: ++k })); });
+  return out;
 }
-const cshNextQ = () => cshCards().reduce((m, x) => Math.max(m, x.k), 0) + 1;
 function cshAmm() {
   const p = craAmmPref(gv('f_model')) || {};
   let d = String(p.date || '');
@@ -11001,7 +10990,7 @@ function cshAmm() {
 function cshTpl(c, it) {   // texte standard d'une carte CMP, comme les tâches 4.x d'un WOD ; ⟦ ⟧ = blanc à remplir
   const pre = cshPre(), a = cshAmm(), ph = s => CRA_PH_O + s + CRA_PH_C;
   return 'COMPLIED WITH ' + cshDisc(Object.assign({}, c, { no: craCmpFmt(c.no) || ph('CMP no.') })) + ' IAW ' + (pre ? pre + ' ' : '') + 'AMM ' + ph('AMM task') +
-    ' Rev ' + (a.rev || ph('rev')) + ' ' + (a.date || ph('mm/yy')) + '.' + cshPartText(c) + '\n\nX-Ref to SQ 2.' + it.num + ' for Customer Task.\nX-Ref to SQ 1.1 for RTS statement.';
+    ' Rev ' + (a.rev || ph('rev')) + ' ' + (a.date || ph('mm/yy')) + '.\n\nX-Ref to SQ 2.' + it.num + ' for Customer Task.\nX-Ref to SQ 1.1 for RTS statement.';
 }
 function cshNumbers() {
   const seen = {}, out = [];
@@ -11010,66 +10999,6 @@ function cshNumbers() {
 }
 
 // ── Dessin ──
-// ── Part detail + S/N suggestions + step templates ──
-let CSH_GA = { key: '', list: [] };
-function cshGaLoad() {   // GA3671 tags saved for this job: read once, only to suggest S/N
-  try {
-    if (!curProj || !auth.currentUser || CSH_GA.key === curProj) return;
-    CSH_GA.key = curProj;
-    get(rtagTagRef()).then(sn => { CSH_GA.list = sn.exists() ? Object.values(sn.val() || {}) : []; }).catch(() => {});
-  } catch (e) { /* the Parts table alone is enough */ }
-}
-function cshPartSrc() {   // what the app already knows: « Parts replaced » table (PN/SN off and on) + GA3671 tags
-  const out = [];
-  document.querySelectorAll('#parts-container .part-row').forEach(row => {
-    const g = k => ((row.querySelector('.p-' + k) || {}).value || '').trim();
-    if (g('pnoff') || g('pnon')) out.push({ nm: g('nom'), pn: g('pnoff'), pn2: g('pnon'), so: g('snoff'), sn: g('snon'), src: 'Parts table' });
-  });
-  let ga = []; try { ga = Object.values(_rtagSaved || {}); } catch (e) { /* not loaded */ }
-  CSH_GA.list.concat(ga).forEach(rec => { const f = rec && rec.f; if (f && f.rtag_pn) out.push({ nm: f.rtag_partname || '', pn: f.rtag_pn, pn2: '', so: f.rtag_partsn || '', sn: '', src: 'GA3671' }); });
-  return out;
-}
-function cshPartHits(c) {
-  const up = v => String(v || '').trim().toUpperCase(), pn = up(c.p && c.p.pn), seen = {};
-  if (!pn) return [];
-  return cshPartSrc().filter(x => up(x.pn) === pn || up(x.pn2) === pn).filter(x => { const k = [x.so, x.sn, x.nm].join('|'); return !seen[k] && (seen[k] = 1); }).slice(0, 4);
-}
-function cshSuggHtml(it, c) {
-  if (!String((c.p && c.p.pn) || '').trim()) return '<div class="csh-sgn">Type the P/N: the S/N Off and S/N On already in the app (Parts table, GA3671) are offered here.</div>';
-  const hits = cshPartHits(c);
-  if (!hits.length) return '<div class="csh-sgn">No S/N known for this P/N yet. Fill them in: they will be offered next time.</div>';
-  return hits.map((x, i) => '<button type="button" class="csh-chip" data-act="usepart" data-id="' + it.id + '" data-sub="' + c.id + '" data-i="' + i + '">↳ ' + escHtml(x.src) + ': ' + (x.nm ? escHtml(x.nm) + ' · ' : '') + 'S/N Off ' + escHtml(x.so || '—') + ' · S/N On ' + escHtml(x.sn || '—') + ' — use</button>').join('');
-}
-function cshPnList() {
-  const up = v => String(v || '').trim().toUpperCase(), seen = {};
-  cshPartSrc().forEach(x => { [x.pn, x.pn2].forEach(v => { if (up(v)) seen[up(v)] = 1; }); });
-  return '<datalist id="csh-pn-list">' + Object.keys(seen).map(v => '<option value="' + escAttr(v) + '"></option>').join('') + '</datalist>';
-}
-function cshPartHtml(it, c) {
-  const p = c.p || (c.p = {}), f = (k, lb, ph) => '<div class="csh-pf"><label>' + lb + '</label><input type="text" data-f="cp_' + k + '" data-id="' + it.id + '" data-sub="' + c.id + '" value="' + escAttr(p[k] || '') + '" placeholder="' + ph + '" autocomplete="off"' + (k === 'pn' ? ' list="csh-pn-list"' : '') + '/></div>';
-  return '<div class="csh-lbl"><i>Part detail</i><span class="csh-meta">removal / installation cards only</span></div><div class="csh-part"><div class="csh-pgrid">' +
-    f('nm', 'Part', 'e.g. LH TAT Probe') + f('pn', 'P/N Off/On', 'type the P/N first') + f('so', 'S/N Off', '') + f('sn', 'S/N On', '') + f('pn2', 'P/N On (if different)', '') + f('lot', 'Lot # (if any)', '') +
-    '</div><div class="csh-sg" id="csh-sg-' + c.id + '">' + cshSuggHtml(it, c) + '</div></div>';
-}
-function cshPartText(c) {   // « Part detail » block of a card, as written in the WODs
-  const p = c.p || {}, v = k => String(p[k] || '').trim(), ph = x => CRA_PH_O + x + CRA_PH_C;
-  if (!v('pn') && !v('so') && !v('sn') && !v('nm') && !v('lot')) return '';
-  const two = v('pn2') && v('pn2').toUpperCase() !== v('pn').toUpperCase();
-  return '\n\nPart detail:\n\n' + (v('nm') ? v('nm') + ':\n\n' : '') +
-    (two ? 'P/N Off: ' + (v('pn') || ph('P/N')) + '\nP/N On: ' + v('pn2') : 'P/N Off/On: ' + (v('pn') || ph('P/N'))) +
-    '\nS/N Off: ' + (v('so') || ph('S/N off')) + '\nS/N On: ' + (v('sn') || ph('S/N on')) + (v('lot') ? '\nLot #: ' + v('lot') : '');
-}
-function cshNewStep(it, r, ty) {   // pre-filled step: you only fill the ⟦blanks⟧
-  const pre = cshPre(), a = cshAmm(), ph = x => CRA_PH_O + x + CRA_PH_C, rts = 'X-Ref to SQ 1.1 for RTS statement.';
-  const ref = (pre ? pre + ' ' : '') + 'AMM ' + ph('AMM task') + ' rev ' + (a.rev || ph('rev')) + ' ' + (a.date || ph('mm/yy')) + '.';
-  if (ty === 'cti') return { id: cshUid(), ty, desc: '***Critical Task Inspection*** To Be Carried Out ' + ph('what') + ' IAW ' + ref, note: 'Critical Task Inspection carried Out ' + ph('what') + ' IAW ' + ref + '\nResult: Satisfactory\n\n' + rts };
-  if (ty === 'ts') return { id: cshUid(), ty, desc: 'T/S ' + (r.steps.some(x => x.ty === 'ts') ? 'continued' : 'started') + ' IAW ' + ph('WD / AMM ref') + '.', note: ph('what was checked, values found') + '\n\n' + rts };
-  return { id: cshUid(), ty: 'ot', desc: '', note: rts };
-}
-function cshFocus(sub) {
-  setTimeout(() => { const e = cshEl('csh-body').querySelector('input[data-f="cno"][data-sub="' + sub + '"], textarea[data-sub="' + sub + '"]'); if (e) { e.scrollIntoView({ block: 'center' }); e.focus(); } }, 40);
-}
-
 const cshTa = (f, id, sub, val, rows, ph) => '<textarea data-f="' + f + '" data-id="' + id + '"' + (sub ? ' data-sub="' + sub + '"' : '') + ' rows="' + rows + '" spellcheck="false" placeholder="' + escAttr(ph || '') + '">' + escHtml(val || '') + '</textarea>';
 const cshCp = (what, id, sub) => '<button type="button" class="csh-cp" data-act="copy" data-what="' + what + '"' + (id != null ? ' data-id="' + id + '"' : '') + (sub ? ' data-sub="' + sub + '"' : '') + ' title="Copy this field">📋 Copy</button>';
 const cshPill = (cls, t) => '<span class="csh-pill ' + cls + '">' + t + '</span>';
@@ -11089,7 +11018,7 @@ function cshPaint() {
     '<button type="button" class="csh-tab' + (csh.view === 'sq' ? ' on' : '') + '" data-act="tab" data-v="sq">Squawks · ' + ready + '/' + items.length + ' ready</button>' +
     '<button type="button" class="csh-tab' + (csh.view === 'cmp' ? ' on' : '') + '" data-act="tab" data-v="cmp">CMP cards · ' + ncards + '</button>' +
     '<span class="csh-saved" id="csh-saved"></span>';
-  cshEl('csh-body').innerHTML = (csh.note ? cshNote(csh.note, 'ok') : '') + (csh.view === 'cmp' ? cshViewCmp() : cshViewSq(items)) + cshPnList();
+  cshEl('csh-body').innerHTML = (csh.note ? cshNote(csh.note, 'ok') : '') + (csh.view === 'cmp' ? cshViewCmp() : cshViewSq(items));
   sc.scrollTop = top;
   cshEl('csh-body').querySelectorAll('textarea').forEach(cshGrow);
   cshPaintSaved();
@@ -11098,8 +11027,8 @@ function cshPaintSaved() {
   const el = cshEl('csh-saved');
   if (!el) return;
   const t = CSY.saved ? ' · ' + new Date(CSY.saved).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
-  el.textContent = CSY.sync === 'ok' ? '✓ Saved automatically · shared with the team' + t : CSY.sync === 'saving' ? '⏳ Saving…' : CSY.sync === 'loading' ? '☁️ Connecting…'
-    : CSY.sync === 'err' ? (/permission[_ ]denied/i.test(CSY.err) ? '⚠️ Not shared — Firebase refused access (session expired, or you are not on this job) · kept on this device' : '⚠️ Not shared yet — kept on this device, will retry') : '✓ Saved on this device — save the job to share it';
+  el.textContent = CSY.sync === 'ok' ? '☁️ Shared with the team' + t : CSY.sync === 'saving' ? '⏳ Saving…' : CSY.sync === 'loading' ? '☁️ Connecting…'
+    : CSY.sync === 'err' ? (/permission[_ ]denied/i.test(CSY.err) ? '⚠️ Not shared — Firebase refused access (session expired, or you are not on this job) · kept on this device' : '⚠️ Not shared yet — kept on this device, will retry') : '💾 This device only — save the job to share it';
   el.title = CSY.sync === 'err' ? CSY.err : CSY.sync === 'local' ? 'The sheet is shared with the engineers of the job (owner, Lead, Assist) once the job is saved.' : 'Every change is sent to the job; the other engineers see it live.';
 }
 function cshGrow(t) {   // la zone suit la taille du texte (au moins le nombre de lignes prévu)
@@ -11136,37 +11065,33 @@ function cshSqBody(it, r, nums) {
   const no = '2.' + it.num, f = csh.find && csh.find.id === it.id ? csh.find : null;
   let h = '<div class="csh-fld"><div class="csh-lbl"><i>Discrepancy</i>' + cshCp('disc', it.id) + '</div>' + cshTa('disc', it.id, '', it.label, 2, 'Customer squawk') + '</div>' +
     '<div class="csh-fld"><div class="csh-lbl"><i>Resolution</i><span class="csh-meta" id="csh-m-' + it.id + '">' + escHtml(cshMeta(r)) + '</span>' + cshCp('res', it.id) + '</div>' +
-    cshTa('res', it.id, '', r.res, 7, 'Press “✍️ Write the resolution” below, or type / paste the text here. Blanks ⟦like this⟧ are for you to fill in.') +
+    cshTa('res', it.id, '', r.res, 7, 'Write the resolution here, or look for a similar squawk first (🔎). Blanks ⟦like this⟧ are for you to fill in.') +
     '<div class="csh-bar"><label class="csh-ok"><input type="checkbox" data-f="ok" data-id="' + it.id + '"' + (r.ok ? ' checked' : '') + '/> Ready to paste in Corridor</label>' +
-
-    '<button type="button" class="btn primary" data-act="assist" data-id="' + it.id + '" title="Looks for similar past squawks, you tick up to 4, the text is written with blanks for S/N, dates and AMM revision">✍️ Write the resolution</button></div>' +
-    (r.res.trim() ? '' : cshNote('Press <b>✍️ Write the resolution</b>: the app finds similar past squawks, you tick up to 4, and it writes the text with ⟦blanks⟧ to fill in (S/N, dates, AMM revision). Then tick <b>Ready to paste</b>.')) + '</div>';
+    '<button type="button" class="btn" data-act="find" data-id="' + it.id + '">🔎 Similar squawks</button>' +
+    '<button type="button" class="btn" data-act="assist" data-id="' + it.id + '" title="Tick up to 4 past squawks: the text is built from them, with the old S/N, dates and AMM revision turned into blanks">✍️ Build with the assistant</button></div></div>';
   if (f) h += cshFindHtml(it, f);
   h += '<div class="csh-sec">Steps ' + no + '.x <span class="csh-cnt">' + r.steps.length + '</span></div>';
-  if (!r.steps.length) h += cshNote('No step yet. Pick the kind of step you create in Corridor below: the text is pre-filled, you only fill the ⟦blanks⟧.');
+  if (!r.steps.length) h += cshNote('No step. Add the steps you create in Corridor under this squawk (Description + Comments / notes).');
   r.steps.forEach((s, k) => {
-    h += '<div class="csh-card"><div class="csh-card-h"><b>Step ' + no + '.' + (k + 1) + '</b>' + (s.ty ? cshPill(s.ty === 'cti' ? 'am' : 'bl', { ts: 'Troubleshooting', cti: 'CTI · double inspection', ot: 'Test / other' }[s.ty] || '') : '') + '<button type="button" class="csh-x" data-act="delstep" data-id="' + it.id + '" data-sub="' + s.id + '" title="Remove this step">×</button></div>' +
+    h += '<div class="csh-card"><div class="csh-card-h"><b>Step ' + no + '.' + (k + 1) + '</b><button type="button" class="csh-x" data-act="delstep" data-id="' + it.id + '" data-sub="' + s.id + '" title="Remove this step">×</button></div>' +
       '<div class="csh-lbl"><i>Description</i>' + cshCp('stepd', it.id, s.id) + '</div>' + cshTa('stepd', it.id, s.id, s.desc, 2, 'What the step says') +
       '<div class="csh-lbl"><i>Comments / notes</i>' + cshCp('stepn', it.id, s.id) + '</div>' + cshTa('stepn', it.id, s.id, s.note, 2, 'What was done') + '</div>';
   });
-  h += '<div class="csh-stp"><span class="csh-cnt">Add a step:</span>' +
-    '<button type="button" class="btn" data-act="addstep" data-id="' + it.id + '" data-ty="ts">＋ Troubleshooting</button>' +
-    '<button type="button" class="btn" data-act="addstep" data-id="' + it.id + '" data-ty="cti">＋ CTI (critical task inspection)</button>' +
-    '<button type="button" class="btn" data-act="addstep" data-id="' + it.id + '" data-ty="ot">＋ Test / other</button></div>';
+  h += '<div class="csh-btns"><button type="button" class="btn" data-act="addstep" data-id="' + it.id + '">＋ Add a step</button></div>';
   h += '<div class="csh-sec">CMP cards attached to ' + no + ' <span class="csh-cnt">' + r.cards.length + ' — they become tasks 4.x in Corridor</span></div>' + cshPreHtml();
-  if (!r.cards.length) h += cshNote('No CMP card yet. Press “＋ Add a CMP card”: it takes the next task number (4.n) by itself.');
+  if (!r.cards.length) h += cshNote('No CMP card. Add one by hand, or tap a card under a similar squawk (🔎).');
   r.cards.forEach(c => { h += cshCardHtml(it, c, nums[c.id] || '?'); });
   return h + '<div class="csh-btns"><button type="button" class="btn" data-act="addcard" data-id="' + it.id + '">＋ Add a CMP card</button></div>';
 }
 function cshCardHtml(it, c, k) {
   const hist = csh.hist[c.id], n0 = craCmpFmt(c.no), dup = n0 && cshCards().filter(x => craCmpFmt(x.c.no) === n0).length > 1;
-  let h = '<div class="csh-card"><div class="csh-card-h"><b>Task 4.</b><input type="number" min="1" class="csh-q" data-f="cq" data-id="' + it.id + '" data-sub="' + c.id + '" value="' + escAttr(c.q || k) + '" title="Next free number, filled in for you. Change it only if you already created tasks in Corridor."/>' + cshPill('bl', 'for 2.' + it.num) + (dup ? cshPill('am', 'same number twice') : '') + '<button type="button" class="csh-x" data-act="delcard" data-id="' + it.id + '" data-sub="' + c.id + '" title="Remove this card">×</button></div>' +
+  let h = '<div class="csh-card"><div class="csh-card-h"><b>Task 4.' + k + '</b>' + cshPill('bl', 'for 2.' + it.num) + (dup ? cshPill('am', 'same number twice') : '') + '<button type="button" class="csh-x" data-act="delcard" data-id="' + it.id + '" data-sub="' + c.id + '" title="Remove this card">×</button></div>' +
     '<div class="csh-row"><input type="text" class="csh-cno" data-f="cno" data-id="' + it.id + '" data-sub="' + c.id + '" value="' + escAttr(c.no) + '" placeholder="280005.004" autocomplete="off" inputmode="decimal"/>' +
     '<input type="text" data-f="cti" data-id="' + it.id + '" data-sub="' + c.id + '" value="' + escAttr(c.title) + '" placeholder="Card title, e.g. Airframe Fuel Sumping" autocomplete="off"/></div>' +
-    cshPartHtml(it, c) + '<div class="csh-lbl"><i>Discrepancy</i>' + cshCp('cdisc', it.id, c.id) + '</div><div class="csh-ro" id="csh-cd-' + c.id + '">' + escHtml(cshDisc(c)) + '</div>' +
-    '<div class="csh-lbl"><i>Resolution</i>' + cshCp('cres', it.id, c.id) + '</div>' + cshTa('cres', it.id, c.id, c.res, 5, 'Press “📄 Build the resolution” below, or type / paste the text here') +
-    '<div class="csh-bar"><button type="button" class="btn primary" data-act="tpl" data-id="' + it.id + '" data-sub="' + c.id + '">📄 Build the resolution from the fields above</button>' +
-    '<button type="button" class="btn" data-act="hist" data-id="' + it.id + '" data-sub="' + c.id + '">🗄️ Reuse an old text of this card</button></div>';
+    '<div class="csh-lbl"><i>Discrepancy</i>' + cshCp('cdisc', it.id, c.id) + '</div><div class="csh-ro" id="csh-cd-' + c.id + '">' + escHtml(cshDisc(c)) + '</div>' +
+    '<div class="csh-lbl"><i>Resolution</i>' + cshCp('cres', it.id, c.id) + '</div>' + cshTa('cres', it.id, c.id, c.res, 5, 'Resolution of this card — write it, use the standard text, or take an old one') +
+    '<div class="csh-bar"><button type="button" class="btn" data-act="tpl" data-id="' + it.id + '" data-sub="' + c.id + '">📄 Standard text</button>' +
+    '<button type="button" class="btn" data-act="hist" data-id="' + it.id + '" data-sub="' + c.id + '">🗄️ Past resolutions of this card</button></div>';
   if (hist === 'loading') h += cshNote('📚 Searching the archive…');
   else if (hist) {
     if (hist.real.length) h += '<div class="csh-sec2">Resolutions written on this card in earlier Work Orders</div>';
@@ -11449,16 +11374,11 @@ function cshOnClick(ev) {
     if (r.cards.some(x => craCmpFmt(x.no) === no && no)) { csh.note = 'Card ' + no + ' is already attached to 2.' + it.num + '.'; cshPaint(); return; }
     r.cards.push({ id: cshUid(), no, title: l[1] || '', res: '' }); cshSaveNow(); csh.note = '✓ Card ' + no + ' added to 2.' + it.num + ' — see “CMP cards attached” below.'; cshPaint(); return;
   }
-  if (a === 'addstep') { const ns = cshNewStep(it, r, t.dataset.ty || ''); r.steps.push(ns); cshSaveNow(); cshPaint(); cshFocus(ns.id); return; }
+  if (a === 'addstep') { r.steps.push({ id: cshUid(), desc: '', note: '' }); cshSaveNow(); cshPaint(); return; }
   if (a === 'delstep') { r.steps = r.steps.filter(x => x.id !== sub); cshSaveNow(); cshPaint(); return; }
-  if (a === 'addcard') { const nc = { id: cshUid(), no: '', title: '', res: '', q: cshNextQ(), p: {} }; r.cards.push(nc); cshSaveNow(); cshPaint(); cshFocus(nc.id); return; }
+  if (a === 'addcard') { r.cards.push({ id: cshUid(), no: '', title: '', res: '' }); cshSaveNow(); cshPaint(); return; }
   if (a === 'delcard') { if (window.confirm('Remove this CMP card from 2.' + it.num + '?')) { r.cards = r.cards.filter(x => x.id !== sub); cshSaveNow(); cshPaint(); } return; }
   const c = r.cards.find(x => x.id === sub);
-  if (a === 'usepart' && c) {   // S/N proposed from the Parts table / GA3671: one tap fills the fields
-    const x = cshPartHits(c)[i], p = c.p || (c.p = {});
-    if (x) { if (x.nm && !p.nm) p.nm = x.nm; p.so = x.so || p.so || ''; p.sn = x.sn || p.sn || ''; if (x.pn2 && x.pn2.toUpperCase() !== String(p.pn).toUpperCase()) p.pn2 = x.pn2; cshSaveNow(); csh.note = '✓ S/N filled from ' + x.src + ' — check them against the part.'; cshPaint(); }
-    return;
-  }
   if (a === 'tpl' && c) {
     if (c.res.trim() && !window.confirm('Replace the text of this card with the standard text?')) return;
     c.res = cshTpl(c, it); cshSaveNow(); cshPaint(); return;
@@ -11485,13 +11405,6 @@ function cshOnInput(ev) {
   const id = +t.dataset.id, sub = t.dataset.sub, ch = ev.type === 'change';
   if (f === 'pre') { csh.data.pre = t.value; cshSaveSoon(); cshPaintCardTitles(); return; }
   const r = cshR(id);
-  if (/^cp_|^cq$/.test(f)) {   // part detail fields and task number of a CMP card
-    const c = r.cards.find(x => x.id === sub); if (!c) return;
-    if (f === 'cq') { if (ch) { c.q = Math.max(1, parseInt(t.value, 10) || c.q || 1); cshSaveSoon(); cshPaint(); } return; }
-    (c.p || (c.p = {}))[f.slice(3)] = t.value.trim();
-    if (f === 'cp_pn') { const g = cshEl('csh-sg-' + c.id), it2 = cshItems().find(x => x.id === id); if (g && it2) g.innerHTML = cshSuggHtml(it2, c); }
-    cshSaveSoon(); return;
-  }
   if (f === 'disc') { clearTimeout(csh.lblT); csh.lblT = setTimeout(() => cshSetLabel(id, t.value), 450); cshGrow(t); return; }
   if (f === 'res') { r.res = t.value; r.ok = r.ok && !!t.value.trim(); cshGrow(t); }
   else if (f === 'ok') { r.ok = !!t.checked; if (r.ok && !r.res.trim()) { r.ok = false; t.checked = false; } }
@@ -11519,7 +11432,6 @@ function cshEnsureDom() {
 try { if (!document.getElementById('csh-style')) { const st = document.createElement('style'); st.id = 'csh-style'; st.textContent = cshCss; document.head.appendChild(st); } } catch (e) { /* refait à l'ouverture */ }
 // id : squawk à ouvrir (n° interne du work item) ; sans id : le premier
 G.cshOpen = function (id) {
-  cshGaLoad();
   cshEnsureDom();
   const items = cshItems(), want = id != null && items.some(x => x.id === Number(id)) ? Number(id) : null, modal = cshEl('modal-csh');
   cshEnsure();
