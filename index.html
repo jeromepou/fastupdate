@@ -3153,7 +3153,7 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
         <li>Anyone can add a tool (“+ Add a tool”) or correct its data (✏️ Edit). Every change is kept in the tool's history.</li>
       </ul>
     </details>
-    <div class="ptl-list u2-live" id="ptl-list"></div>
+    <div class="ptl-list" id="ptl-list"></div>
     <div class="ptl-hint">Tick the tool(s) you take out, then “Issue sheet”. A tool that is out of calibration, unserviceable, on hold or already signed out cannot be ticked.</div>
     <div class="modal-btns ptl-btns">
       <button type="button" class="btn" onclick="ptlEdit('')">+ Add a tool</button>
@@ -3192,7 +3192,7 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
       <div class="ko-section-lbl" style="margin-top:6px">Status</div>
       <div id="ptl-e-state"></div>
       <div class="ko-section-lbl">History</div>
-      <div class="ptl-hist u2-live" id="ptl-e-hist"></div>
+      <div class="ptl-hist" id="ptl-e-hist"></div>
     </div>
     <div class="err-msg" id="ptl-e-err"></div>
     <div class="modal-btns">
@@ -3244,7 +3244,7 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
       <div class="fg"><label>Task (squawk) — same for all tools</label><input type="text" id="ptl-i-task" list="ptl-tasks" placeholder="e.g. 2.3" oninput="ptlTaskAll(this.value)" autocomplete="off"/><datalist id="ptl-tasks"></datalist></div>
     </div>
     <div class="ko-section-lbl" style="margin-top:12px">Tools <span class="ptl-sub" style="text-transform:none;letter-spacing:0;font-weight:400">— change the task of one tool if needed</span></div>
-    <div class="ptl-itools u2-live" id="ptl-i-tools"></div>
+    <div class="ptl-itools" id="ptl-i-tools"></div>
     <label class="ptl-check"><input type="checkbox" id="ptl-i-stampi" onchange="ptlStampPref()"/> Stamp on issue (my stamp)</label>
     <label class="ptl-check"><input type="checkbox" id="ptl-i-stampr" onchange="ptlStampPref()"/> Stamp on return — only if the tool(s) are already back</label>
     <div class="ptl-sub" id="ptl-i-stamphint" style="margin-bottom:6px"></div>
@@ -23284,7 +23284,7 @@ async function koRenderAdminRecips() {
           <input type="text" id="ko-admin-inp-${type}" placeholder="Add email…"
             style="flex:1;font-size:12px;padding:5px 8px;border:1px solid var(--g200);border-radius:var(--r)"
             onkeydown="if(event.key==='Enter'){event.preventDefault();koAdminAddRecip('${type}')}"/>
-          <select id="ko-admin-side-${type}" style="font-size:12px;padding:5px 6px;border:1px solid var(--g200);border-radius:var(--r)">
+          <select id="ko-admin-side-${type}" style="flex:none!important;width:auto!important;font-size:12px;padding:5px 6px;border:1px solid var(--g200);border-radius:var(--r)">
             <option value="cc">in Cc</option><option value="to">in To</option>
           </select>
           <button class="btn" onclick="koAdminAddRecip('${type}')" style="padding:5px 9px;font-size:11px">+ Add</button>
@@ -28638,7 +28638,7 @@ function ptlRender() {
   const q = (ptlEl('ptl-q').value || '').toLowerCase().split(/\s+/).filter(Boolean);
   const rows = all.filter(t => ptlInFilter(t, PTL.filter, me) && (!q.length || q.every(w => ptlHay(t).includes(w))));
   if (!all.length) {
-    box.innerHTML = '<div class="ptl-empty">The list is empty.<br><br><button type="button" class="btn primary" onclick="ptlSeed()">📥 Load the initial list (' + PTL_SEED.length + ' tools — Gulfstream Tool Tracking, Le Bourget, 09/04/2026)</button><br><br><span style="font-size:11px">…or add tools one by one with “+ Add a tool”.</span></div>';
+    box.innerHTML = '<div class="ptl-empty">The list is empty.<br><br><button type="button" class="btn primary" onclick="ptlSeed()">📥 Load the initial list (' + PTL_SEED.length + ' tools)</button><br><br><span style="font-size:11px">From the Gulfstream Tool Tracking of Le Bourget (09/04/2026).<br>…or add tools one by one with “+ Add a tool”.</span></div>';
   } else if (!rows.length) {
     box.innerHTML = '<div class="ptl-empty">No tool matches.</div>';
   } else {
