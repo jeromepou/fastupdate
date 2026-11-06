@@ -16599,6 +16599,7 @@ DOCUMENT TYPE 1 — "RFS" (Request For Service / quote-style document with field
 Extract all standard fields normally, including country and far_certification as usually presented in this document type.
   - far_certification: the value written next to the label "Certification" (section "Additional Visit Aircraft Details"). Customers often leave it EMPTY: when nothing is written for it before the next label (e.g. "Country of Registry"), return "". NEVER copy the Country of Registry value (or any other field) into far_certification, and never deduce it from the registration or the country.
   - customer_code: from the "Account ID" field (e.g. "GX040").
+  - rfs_id: the identifier of the Request For Service itself, written next to the label "RFS ID" or "RFS #" (e.g. "RFS-123456"). Return "" if it does not appear.  
   - customer_company: from the "Account" field — the operator/company name (e.g. "Alba Servizi Aerotrasporti Spa"). Keep original casing, do not uppercase.
   - customer_name: from the "Contact" field — the individual person's name (e.g. "Livio Cuneo"). This is NOT the Account/company name.
   - enrolled_in_cmp: the value written next to the label "Enrolled in CMP" (section "Aircraft Details"; the label may be written "Enrolled in CMP ?" or "Enrolled in CMP?"). Return exactly "Yes" or "No". If this label does not appear in the document, or has no value, return "Unknown". Never guess.
@@ -16635,7 +16636,7 @@ UNIVERSAL RULE FOR ALL TYPES:
 - Never invent or infer a value that is not explicitly written in the document. If unsure, use "".
 
 Reply ONLY with valid JSON, no markdown, in this exact shape:
-{"doc_type":"RFS or WORK_ORDER_DETAIL or WCR","work_order":"","model":"e.g. GVIII-G700","serial_number":"","registration":"","location":"ICAO","rts_assist":"RTS or Assist","far_certification":"","country":"","fbo":"","po_number":"","customer_name":"UPPERCASE","customer_company":"","customer_code":"","customer_phone":"","customer_email":"","enrolled_in_cmp":"Yes or No or Unknown","payment_terms":"e.g. ZN30, or Unknown","estimated_rts":"","next_flight":"UNKWN if unknown","constraints":"","work_items":[{"label":"UPPERCASE"}],"aborted_items":[]}`;
+{"doc_type":"RFS or WORK_ORDER_DETAIL or WCR","work_order":"","rfs_id":"","model":"e.g. GVIII-G700","serial_number":"","registration":"","location":"ICAO","rts_assist":"RTS or Assist","far_certification":"","country":"","fbo":"","po_number":"","customer_name":"UPPERCASE","customer_company":"","customer_code":"","customer_phone":"","customer_email":"","enrolled_in_cmp":"Yes or No or Unknown","payment_terms":"e.g. ZN30, or Unknown","estimated_rts":"","next_flight":"UNKWN if unknown","constraints":"","work_items":[{"label":"UPPERCASE"}],"aborted_items":[]}`;
   try {
     // Étape 1 : lecture locale du PDF (gratuite) ; OCR seulement si le PDF est un scan, un modèle inconnu, ou si pdfjs/ est absent
     let extractedText = await pdfLocalText(pdfB64);
