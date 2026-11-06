@@ -1,14 +1,8 @@
-/* ops-launcher.js
- * Opens the Ops board (ops-board.html) from your app WITHOUT adding anything to index.html.
- *
- * 1) Put ops-board.html and this file next to index.html (same origin).
- * 2) Load it after your main script:  <script src="ops-launcher.js"></script>
- * 3) In the Ops tab, add one button that calls openOpsBoard({...}) (example at the bottom).
- *
- * Ops only use the Start Job module of the Engineer app (no Daily Update, AMM reader, GA3671...).
- * The board calls your existing Start Job screen through the startJob hook below.
- * Field ids (ko_*) come from your koStartFromProject(): adjust them here if one differs.
- */
+/* ops-launcher.js — ouvre l'Ops board (ops-board.html) depuis l'app, sans rien ajouter d'autre à index.html.
+ * À charger dans index.html :  <script src="ops-launcher.js"></script>
+ * Appelé par openOps() (Bloc 6) avec { getState, saveState, roster, verdict, scanRfs }.
+ * Le board (iframe de même origine) lit window.OPS_HOOKS. Barre du haut : ← Menu / Back Office / ✕ (comme dans le Back Office).
+ * Bouton « Start » d'un job : ouvre ton écran Start Job prérempli, « préparé pour un collègue » coché et verrouillé. */
 (function () {
   const setv = (id, v) => {
     const e = document.getElementById(id);
@@ -70,35 +64,16 @@
 
     closeBoard();
     overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#fff';
-    overlay.innerHTML =
-      '<iframe src="ops-board.html" style="border:0;width:100%;height:100%"></iframe>' +
-      '<button style="position:absolute;left:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:2;padding:6px 12px;border-radius:10px;border:1px solid #bbb;background:#fff;font:inherit">✕ Close board</button>';
-    overlay.querySelector('button').onclick = closeBoard;
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#fff;display:flex;flex-direction:column';
+    const B = 'border:0;border-radius:10px;padding:8px 13px;font:600 13px system-ui,-apple-system,sans-serif;color:#fff;background:rgba(255,255,255,.16);cursor:pointer;white-space:nowrap';
+    overlay.innerHTML =                                  // barre du haut, comme dans le Back Office : on peut toujours revenir au menu principal
+      '<div style="flex:none;display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top,0px)) 12px 8px;background:linear-gradient(120deg,#1e1b4b,#312e81 60%,#4338ca);color:#fff;font-family:system-ui,-apple-system,sans-serif">' +
+        '<button type="button" data-x="close" style="' + B + '">← Menu</button>' +
+        '<b style="flex:1;font-size:15px;white-space:nowrap">Ops board</b>' +
+        '<button type="button" data-x="bo" style="' + B + '">🗂 Back Office</button>' +
+        '<button type="button" data-x="close" aria-label="Close the Ops board" style="' + B + '">✕</button></div>' +
+      '<iframe src="ops-board.html" style="border:0;width:100%;flex:1;min-height:0"></iframe>';
+    overlay.addEventListener('click', e => { const t = e.target.closest('[data-x]'); if (!t) return; closeBoard(); if (t.dataset.x === 'bo' && typeof window.openBackOffice === 'function') window.openBackOffice(); });
     document.body.appendChild(overlay);
   };
 })();
-
-/* ---------------------------------------------------------------------------------------------
- * Example, to put in your module where db / ref / get / set are in scope, called by the Ops tab button:
- *
- *   async function openOps() {
- *     openOpsBoard({
- *       getState:  async () => { const s = await get(ref(db, 'opsBoard/state')); return s.exists() ? JSON.parse(s.val().json) : null; },
- *       saveState: st => set(ref(db, 'opsBoard/state'), { json: JSON.stringify(st), at: Date.now() }),
- *       roster:    { KW: 'Kevin Wieland · Zurich' },   // build it from teamPublic (role === 'engineer'): initials -> "Name · homeBase"
- *       verdict:   koApprovalVerdict                    // pass your own function
- *     });
- *   }
- *
- * Database rules to add (ops and admins only). The state is stored as a JSON string because
- * keys such as "FA33681#5" are not allowed in the Realtime Database:
- *
- *   "opsBoard": {
- *     ".read":  "auth != null && (root.child('admins').child(auth.uid).exists() || root.child('team').child(auth.uid).child('role').val() === 'ops')",
- *     ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || root.child('team').child(auth.uid).child('role').val() === 'ops')"
- *   }
- *
- * RFS scan: G.extractPDF() reads the file chosen in the Engineer screen and fills its form. To reuse it for Ops,
- * move the part that produces `parsed` into a function scanRfsFile(file) -> parsed and pass it as `scanRfs`.
- * --------------------------------------------------------------------------------------------- */
