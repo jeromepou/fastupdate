@@ -28878,7 +28878,10 @@ function ptlRender() {
     box.innerHTML = '<div class="ptl-empty">No tool matches.</div>';
   } else if (PTL.sort === 'cat') {                                         // groupé par catégorie (un outil de 2 catégories apparaît dans les 2)
     const groups = [];
-    cl.forEach(c => { const g = rows.filter(t => ptlCatIds(t).includes(c.id)).sort(ptlNameCmp); if (g.length) groups.push([c.name, g]); });
+    cl.forEach(c => {
+      if (PTL.catFilter && PTL.catFilter !== '_none' && c.id !== PTL.catFilter) return;   // filtre actif : on ne garde que la catégorie choisie
+      const g = rows.filter(t => ptlCatIds(t).includes(c.id)).sort(ptlNameCmp); if (g.length) groups.push([c.name, g]);
+    });
     const none = rows.filter(t => !ptlCatIds(t).length).sort(ptlNameCmp); if (none.length) groups.push(['Uncategorised', none]);
     box.innerHTML = groups.map(g => '<div class="ptl-grp">' + escHtml(g[0]) + ' <span>' + g[1].length + '</span></div>' + g[1].map(ptlRowHtml).join('')).join('');
   } else {
