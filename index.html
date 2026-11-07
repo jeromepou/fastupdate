@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://www.gstatic.com https://*.googleapis.com https://*.firebasedatabase.app https://orange-snow-95f7.jeromepoupinel.workers.dev https://ipapi.co; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://accounts.google.com https://apis.google.com https://*.firebasedatabase.app; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://www.gstatic.com https://*.googleapis.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://orange-snow-95f7.jeromepoupinel.workers.dev https://ipapi.co https://oauth2.googleapis.com https://gmail.googleapis.com https://api.mistral.ai; frame-src 'self' https://accounts.google.com https://*.firebasedatabase.app; object-src 'none'; base-uri 'self';"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://www.gstatic.com https://*.googleapis.com https://*.firebasedatabase.app https://orange-snow-95f7.jeromepoupinel.workers.dev https://ipapi.co; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://accounts.google.com https://apis.google.com https://*.firebasedatabase.app; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://www.gstatic.com https://*.googleapis.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://orange-snow-95f7.jeromepoupinel.workers.dev https://ipapi.co https://oauth2.googleapis.com https://gmail.googleapis.com https://api.mistral.ai; frame-src 'self' https://accounts.google.com https://*.firebasedatabase.app; object-src 'none'; base-uri 'self';"/>
 <title>FAST Update Generator</title>
 <meta name="theme-color" content="#0E2238"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -3098,6 +3098,28 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
 .ptl-badge.mute{background:#f1f3f5;color:#6c757d;border-color:#e9ecef}
 .ptl-act{display:flex;flex-direction:column;gap:5px;flex:none}
 .ptl-empty{padding:24px 14px;text-align:center;color:var(--g600);font-size:13px}
+.ptl-sel2{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ptl-sel2 label{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--g600);text-transform:uppercase;letter-spacing:.04em}
+.ptl-sel2 select{width:auto;max-width:210px;padding:5px 8px;font-size:12px}
+.ptl-banner{background:var(--al);border:1px solid #f0dc9a;color:var(--amb);border-radius:var(--r);padding:7px 12px;font-size:12px;margin-bottom:8px}
+.ptl-banner .btn{margin-left:6px;padding:3px 10px;font-size:11px}
+.ptl-grp{position:sticky;top:0;z-index:1;background:var(--g100);border-top:1px solid var(--g200);border-bottom:1px solid var(--g200);padding:5px 12px;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--g800)}
+.ptl-grp span{font-weight:600;color:var(--g600);margin-left:4px}
+.ptl-list .ptl-grp:first-child{border-top:0}
+.ptl-catchips{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 8px}
+.ptl-catchip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border:1px solid var(--g200);border-radius:20px;background:var(--g50);font-size:12px;font-weight:600;color:var(--g800);text-transform:none;letter-spacing:0;cursor:pointer}
+.ptl-catchip input{width:auto;margin:0}
+.ptl-crow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 10px;border-top:1px solid var(--g200);cursor:pointer}
+.ptl-crow:first-child{border-top:0}
+.ptl-crow.on{background:var(--bl)}
+.ptl-cname{font-size:13px;font-weight:700;color:var(--g900);flex:1;min-width:150px}
+.ptl-cbtn{display:flex;gap:6px;flex-wrap:wrap}
+.ptl-cbtn .btn{padding:3px 9px;font-size:11px}
+.ptl-clist{border:1px solid var(--g200);border-radius:var(--r);max-height:30vh;overflow-y:auto;background:#fff;margin-bottom:10px}
+.ptl-mlist{border:1px solid var(--g200);border-radius:var(--r);max-height:34vh;overflow-y:auto;background:#fff}
+.ptl-mrow{display:flex;align-items:center;gap:8px;padding:6px 10px;border-top:1px solid var(--g200);font-size:12.5px;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:500;color:var(--g800)}
+.ptl-mrow:first-child{border-top:0}
+.ptl-mrow input{width:auto;margin:0;flex:none}
 .ptl-hint,.ptl-sub{font-size:11px;color:var(--g600);line-height:1.45}
 .ptl-hint{margin-top:8px}
 .ptl-btns{flex-wrap:wrap;align-items:center}
@@ -3122,6 +3144,17 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
 .ptl-irow{display:flex;align-items:center;gap:10px;padding:7px 10px;border-top:1px solid var(--g200)}
 .ptl-irow:first-child{border-top:0}
 .ptl-irow .ptl-t1{flex:1;min-width:0}
+/* ── Photos des outils ── */
+.ptl-ph-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 6px}
+.ptl-ph{position:relative;aspect-ratio:1/1;border:1px solid var(--g200);border-radius:var(--r);overflow:hidden;background:var(--g100)}
+.ptl-ph img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
+.ptl-ph-x{position:absolute;top:4px;right:4px;width:26px;height:26px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:14px;line-height:26px;cursor:pointer}
+.ptl-ph-add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;aspect-ratio:1/1;border:2px dashed var(--g400);border-radius:var(--r);background:var(--g50);color:var(--g600);font-size:11px;font-weight:700;text-align:center;cursor:pointer}
+.ptl-ph-add b{font-size:22px;line-height:1}
+.ptl-ph-add.busy{opacity:.55;pointer-events:none}
+.ptl-ph-lb{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px;cursor:zoom-out}
+.ptl-ph-lb img{max-width:96vw;max-height:84vh;border-radius:6px;object-fit:contain}
+.ptl-ph-lb span{color:#fff;font-size:13px;text-align:center}
 .ptl-irow .ptl-task{width:150px;flex:none}
 .ptl-lblrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .ptl-lblrow .btn{padding:2px 9px;font-size:11px}
@@ -3137,9 +3170,15 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
     </div>
     <div class="ptl-sum" id="ptl-sum"></div>
     <div class="ptl-bar">
-      <input type="text" id="ptl-q" placeholder="Search: GUL no, tool name, part no, serial no…" oninput="ptlRender()" autocomplete="off"/>
+      <input type="text" id="ptl-q" placeholder="Search: GUL no, tool name, category, part no, serial no…" oninput="ptlRender()" autocomplete="off"/>
+      <div class="ptl-sel2">
+        <label>Sort <select id="ptl-sort" onchange="ptlSetSort(this.value)"><option value="cat">By category</option><option value="gul">By GUL number</option><option value="name">By name A–Z</option></select></label>
+        <label>Category <select id="ptl-catf" onchange="ptlSetCatFilter(this.value)"><option value="">All categories</option></select></label>
+        <button type="button" class="btn" onclick="ptlCats()" title="Create, rename or delete categories and choose their tools">🏷 Categories</button>
+      </div>
       <div class="ptl-chips" id="ptl-chips"></div>
     </div>
+    <div class="ptl-banner" id="ptl-catbanner" style="display:none"></div>
     <details class="ptl-help">
       <summary>ℹ️ How does it work? What do the statuses mean?</summary>
       <ul>
@@ -3150,6 +3189,7 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
         <li><b>Unserviceable</b> — broken or unsafe, do not use it (the reason is shown). Once repaired: ✏️ Edit → “Back in service”.</li>
         <li><b>On hold</b> — not to be used for now, for example while waiting for a certificate or during a check (the reason is shown).</li>
         <li><b>Calibration colours</b> — green: valid · amber: due within 30 days (still usable) · red <b>OVERDUE</b>: cannot be taken until the calibration is updated · grey: no calibration needed.</li>
+        <li><b>Sort and categories</b> — sort by category, GUL number or name. A tool can be in several categories (e.g. a tyre inflator: wheels <i>and</i> nitrogen). “🏷 Categories” lets you create, rename or delete categories and choose which tools are in each one; you can also tick categories in a tool's ✏️ Edit card.</li>
         <li>Anyone can add a tool (“+ Add a tool”) or correct its data (✏️ Edit). Every change is kept in the tool's history.</li>
       </ul>
     </details>
@@ -3178,6 +3218,10 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
       <div class="fg"><label>Serial number</label><input type="text" id="ptl-e-sn" placeholder="e.g. 7229151102" autocomplete="off"/></div>
       <div class="fg"><label>Bin / location</label><input type="text" id="ptl-e-bin" list="ptl-bins" placeholder="e.g. UNIVERSAL HNGR" autocomplete="off"/><datalist id="ptl-bins"></datalist></div>
     </div>
+    <div class="fg"><label>Categories <span class="ptl-sub" style="text-transform:none;letter-spacing:0;font-weight:400">— tick one or several</span></label>
+      <div class="ptl-catchips" id="ptl-e-cats"></div>
+      <input type="text" id="ptl-e-newcat" placeholder="+ New category: type a name to create it" autocomplete="off"/>
+    </div>
     <label class="ptl-check"><input type="checkbox" id="ptl-e-calreq" onchange="ptlEditCal()"/> This tool has a calibration</label>
     <div class="ptl-sub" style="margin:-2px 0 8px 26px">Tick it only for tools that come with a calibration certificate and a due date (torque wrench, jack, gauge…). A fuel sump tool or a ladder has none: leave it unticked, it never expires.</div>
     <div class="ptl-calbox" id="ptl-e-calbox" style="display:none">
@@ -3189,6 +3233,11 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
     </div>
     <div class="fg"><label>Notes</label><textarea id="ptl-e-notes" style="min-height:54px" placeholder="Optional — e.g. kit of 6 bits, used with GUL9267"></textarea></div>
     <div id="ptl-e-statewrap">
+      <div class="ko-section-lbl" style="margin-top:6px">Photos <span class="ptl-sub" id="ptl-ph-count"></span></div>
+      <div class="ptl-ph-grid" id="ptl-ph-grid"></div>
+      <input type="file" id="ptl-ph-file" accept="image/*" multiple style="display:none" onchange="ptlPhotoPick(this)"/>
+      <div class="ptl-sub">3 photos max per tool. They are reduced automatically and saved straight away (no need to press Save).</div>
+      <div class="err-msg" id="ptl-ph-err"></div>      
       <div class="ko-section-lbl" style="margin-top:6px">Status</div>
       <div id="ptl-e-state"></div>
       <div class="ko-section-lbl">History</div>
@@ -3200,6 +3249,26 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
       <button type="button" class="btn" onclick="closeModal('modal-ptl-edit')">Cancel</button>
       <button type="button" class="btn primary" onclick="ptlSave()">Save</button>
     </div>
+  </div>
+</div>
+
+<!-- Catégories : créer / renommer / supprimer, et choisir les outils de chacune -->
+<div class="modal-bg cbk-keep" id="modal-ptl-cats">
+  <div class="modal" style="max-width:680px">
+    <h3>🏷 Categories <small>Paris Tooling</small></h3>
+    <p class="ptl-sub" style="margin:-4px 0 10px">Create, rename or delete categories, and choose which tools are in each one. A tool can be in several categories. Deleting a category never deletes its tools.</p>
+    <div class="grid g2" style="grid-template-columns:1fr auto;margin-bottom:8px">
+      <input type="text" id="ptl-c-new" placeholder="New category name, e.g. Engine tools" autocomplete="off" onkeydown="if(event.key==='Enter')ptlCatAdd()"/>
+      <button type="button" class="btn primary" onclick="ptlCatAdd()">+ Add</button>
+    </div>
+    <div class="err-msg" id="ptl-c-err"></div>
+    <div class="ptl-clist" id="ptl-c-list"></div>
+    <div id="ptl-c-members" style="display:none">
+      <div class="ko-section-lbl" id="ptl-c-mtitle">Tools</div>
+      <input type="text" id="ptl-c-q" placeholder="Search a tool…" oninput="ptlCatsRender(true)" autocomplete="off" style="margin-bottom:8px"/>
+      <div class="ptl-mlist" id="ptl-c-mlist"></div>
+    </div>
+    <div class="modal-btns"><button type="button" class="btn primary" onclick="closeModal('modal-ptl-cats')">Done</button></div>
   </div>
 </div>
 
@@ -17930,7 +17999,7 @@ if ('serviceWorker' in navigator) {
 //  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
 //  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v41';
+const CURRENT_VERSION = 'v42';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -19491,6 +19560,127 @@ table.qt-t{width:100%;border-collapse:collapse}.qt-t th{font-size:11px;text-tran
       scanRfs: window.scanRfsFile
     });
   };
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+//  MENU PRINCIPAL DES OPS — pas de GA3671, Corridor ni AMM reader pour un profil Ops
+//  (les engineers, les admins et ton propre profil gardent tous les outils ; Paris Tooling reste visible pour tous)
+// ═══════════════════════════════════════════════════════════════════
+(function () {
+  const HIDE = ['openRepairTagModal', 'openCorridorHub', 'koOpenAmmReader'];
+  const sync = () => {
+    let opsOnly = false; try { opsOnly = !!(curProfile && curProfile.role === 'ops') && !isAdmin; } catch (e) { }
+    document.querySelectorAll('.u2-side .u2-grp .u2-i').forEach(b => { const oc = b.getAttribute('onclick') || ''; if (HIDE.some(f => oc.includes(f))) b.style.display = opsOnly ? 'none' : ''; });
+  };
+  sync(); setInterval(sync, 1000);
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+//  BACK OFFICE · onglet « Allocation » — Ops → projet de l'engineer (étape 2)
+//  Crée le projet dans team/<uid>/projects/<id>, prérempli depuis le dossier : l'engineer ne rescanne pas.
+//  Règles Firebase : c'est la clause « transferredFrom » de team/$uid/projects (création seulement, projet inexistant) — rien à changer.
+//  Assistants (rôle S, 2 max) : inscrits dans colleagues ; l'appli de l'engineer leur écrit elle-même leur pointeur sharedProjects à l'affichage de sa liste.
+//  Données : <assignment>.al = { p:{ id, n, pid, at, by, linked }, s:[{ id, n }], prev:[…] }
+// ═══════════════════════════════════════════════════════════════════
+(function () {
+  const B = window.BackOffice;
+  if (!B || !B.registerTab || !B.registerAction) return;
+  const esc = B.esc;
+  let TP = null, ST = {}, busy = false;
+
+  const myId = () => (typeof curProfile !== 'undefined' && curProfile && curProfile.id) || (typeof auth !== 'undefined' && auth && auth.currentUser && auth.currentUser.uid) || '';
+  const myName = () => (B.me ? B.me() : (typeof curProfile !== 'undefined' && curProfile && curProfile.name) || 'Ops');
+  const log = (a, t) => { if (B.logIt) return B.logIt(a, t); (a.log = a.log || []).push({ at: Date.now(), by: myName(), t }); };
+  const when = t => new Date(t).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const toast = (m, bad) => { const r = document.getElementById('bo-root'); if (!r) return; const t = document.createElement('div'); t.className = 'bo-toast' + (bad ? ' bad' : ''); t.textContent = m; r.appendChild(t); setTimeout(() => t.remove(), 3500); };
+  const nkey = s => String(s || '').toLowerCase().split(/\s+/).filter(Boolean).sort().join(' ');         // « WIELAND Kevin » = « Kevin Wieland »
+
+  const team = async () => { if (TP) return TP; try { const s = await get(ref(db, 'teamPublic')); TP = Object.values(s.exists() ? s.val() : {}).filter(p => p && p.id && p.role === 'engineer'); } catch (e) { TP = []; } return TP; };
+  const uidOf = async e => (await team()).find(p => nkey(p.name) === nkey(e.n)) || null;
+  const crew = a => { const E = a.eng || []; return { P: E.find(e => e.role === 'P') || null, S: E.filter(e => e.role === 'S').slice(0, 2), extra: E.filter(e => e.role === 'S').length - 2 }; };
+
+  // état du projet côté engineer (lecture seule : team est lisible par tout compte connecté)
+  const fetchStatus = async a => {
+    const p = a.al && a.al.p; if (!p || !p.pid) return;
+    try {
+      const s = await get(ref(db, 'team/' + p.id + '/projects/' + p.pid)), v = s.exists() ? s.val() : null;
+      ST[a.wo] = v ? { ok: true, rev: v.rev || 0, at: v.updatedAt || 0, by: v.updatedByName || '', items: (Array.isArray(v.items) ? v.items : Object.values(v.items || {})).length, upd: (Array.isArray(v.updates) ? v.updates : Object.values(v.updates || {})).length, hrs: v.ac_hours || '', cyc: v.ac_cycles || '', rts: !!v.rts, tr: !!v.transferred } : { ok: false };
+    } catch (e) { ST[a.wo] = { err: e.message }; }
+    repaint();
+  };
+
+  const view = a => {
+    const { P, S, extra } = crew(a), al = a.al || {}, p = al.p, st = ST[a.wo], woaF = (a.woa && a.woa.w) === 'F';
+    const sub = (a.sub || []).filter(s => s.d || s.no).length;
+    const row = (e, role, note) => `<div class="bo-ec"><b>${esc(e.n)}</b><span class="bo-tag">${role}</span><span style="color:var(--g600);font-size:12.5px">${note}</span></div>`;
+    const samePrimary = !!(p && P && nkey(p.n) === nkey(P.n));
+    let state;
+    if (!P) state = '<div class="bo-warn">No primary engineer yet — add one in the Engineers tab (role Primary).</div>';
+    else if (samePrimary) state = `<div class="al-ok">✓ ${p.linked ? 'Linked to the project already in' : 'Project created for'} <b>${esc(p.n)}</b>'s list · ${when(p.at)}${p.by ? ' · by ' + esc(p.by) : ''}</div>`;
+    else state = p ? `<div class="bo-warn">The project was created for <b>${esc(p.n)}</b>, but the primary is now <b>${esc(P.n)}</b>. Allocating again creates a new project for ${esc(P.n)}; ${esc(p.n)} can delete or transfer his own from the Engineer app.</div>` : '<div class="qt-mut">Not allocated yet.</div>';
+    const live = !samePrimary ? '' : !st ? '<p class="qt-mut">Reading the engineer\'s project…</p>' : st.err ? `<p class="qt-mut">Cannot read the project: ${esc(st.err)}</p>` : !st.ok ? '<p class="qt-mut">The project is no longer in the engineer\'s list (deleted or transferred).</p>'
+      : `<div class="al-live"><span>Last saved <b>${st.at ? when(st.at) : '—'}</b>${st.by ? ' by ' + esc(st.by) : ''}</span><span>${st.items} work item${st.items === 1 ? '' : 's'}</span><span>${st.upd} daily update${st.upd === 1 ? '' : 's'}</span>${st.hrs || st.cyc ? `<span>${esc(st.hrs || '—')} h / ${esc(st.cyc || '—')} cyc</span>` : ''}${st.rts ? '<span><b>RTS</b></span>' : ''}</div>`;
+    const go = P ? `<button class="bo-b p" data-a="al" data-k="go"${busy ? ' disabled' : ''}>${busy ? '⏳ Allocating…' : samePrimary ? '↻ Check / link again' : '📨 Allocate to ' + esc(P.n) + (S.length ? ' + ' + S.length + ' assistant' + (S.length > 1 ? 's' : '') : '')}</button>` : '';
+    return `<div class="bo-card"><h3>Allocation <small>creates the project in the engineer's list — no re-scan</small></h3>
+      ${P ? row(P, 'Primary', a.start ? 'on this job since ' + B.fd(a.start) : '') : ''}${S.map(e => row(e, 'Assist', 'gets access when the primary opens the app')).join('')}
+      ${extra > 0 ? `<p class="qt-mut">The Engineer app has 2 assistant slots: only the first two are sent.</p>` : ''}
+      ${state}${live}
+      ${woaF && P && !samePrimary ? '<div class="bo-warn" style="margin-top:8px">The WOA is still FBO (not sent). You can allocate now, but the engineer should not start before the authorization.</div>' : ''}
+      <p class="qt-mut" style="margin-top:10px">The engineer receives: WO, aircraft (type, S/N, registration), location, country, FAR, customer company and code, CMP, payment terms, hours and cycles when known${sub ? ', and ' + sub + ' work item' + (sub === 1 ? '' : 's') : ''}.</p>
+      <div class="qt-btns" style="margin-top:8px">${go}${samePrimary ? '<button class="bo-b" data-a="al" data-k="ref">⟳ Refresh</button>' : ''}</div></div>`;
+  };
+
+  const repaint = () => { const r = document.getElementById('al-root'), a = B.current(); if (r && a) r.innerHTML = view(a); };
+
+  const allocate = async a => {
+    const { P, S } = crew(a);
+    if (!P) throw new Error('Add a Primary engineer first (Engineers tab).');
+    const me = myId(); if (!me) throw new Error('Not signed in.');
+    const pu = await uidOf(P); if (!pu) throw new Error(P.n + ' was not found in the team list.');
+    const su = [], miss = []; for (const e of S) { const u = await uidOf(e); if (u && u.id !== pu.id) su.push(u); else miss.push(e.n); }
+    const snap = await get(ref(db, 'team/' + pu.id + '/projects')), all = snap.exists() ? snap.val() : {};
+    const wo = String(a.wo || '').trim().toUpperCase();
+    const match = Object.values(all).find(x => x && !x.transferred && !x.rts && String(x.wo || '').trim().toUpperCase() === wo);   // même règle anti-doublon que l'appli (doSave)
+    const now = Date.now(); let pid, linked = false;
+    if (match) { pid = match.id; linked = true; }
+    else {
+      pid = 'proj_' + now;
+      const apt = (a.apt && a.apt[0]) || {}, loc = String(apt.c || '').split(' - ').pop().trim() || String(apt.l || '');
+      const rec = {
+        id: pid, createdAt: now, updatedAt: now, rts: false, rev: 1, updatedBy: me, updatedByName: myName(),
+        wo: a.wo || '', model: a.type || '', sn: a.sn || '', reg: a.reg || '', loc, far: a.far || '', country: a.rc || '',
+        cmp: a.cmp || '', payterms: a.pay || '', cust_company: a.op || a.acc || '', cust_code: a.cc || '',
+        items: (a.sub || []).filter(s => s.d || s.no).map((s, i) => ({ id: i + 1, num: i + 1, label: s.d || s.no })),
+        colleagues: su.map(u => ({ id: u.id })), leadEngId: pu.id,
+        transferredFrom: me, transferredFromName: myName(), transferredAt: now,                      // ← la clause des règles Firebase
+        opsAlloc: { wo: a.wo || '', proj: a.proj || '', rfs: a.rfs || '', at: now, by: myName() }
+      };
+      if (a.hrs) rec.ac_hours = String(a.hrs); if (a.cyc) rec.ac_cycles = String(a.cyc);
+      await set(ref(db, 'team/' + pu.id + '/projects/' + pid), rec);
+    }
+    if (a.al && a.al.p && a.al.p.id !== pu.id) (a.al.prev = a.al.prev || []).push(a.al.p);
+    a.al = Object.assign(a.al || {}, { p: { id: pu.id, n: P.n, pid, at: now, by: myName(), linked }, s: su.map(u => ({ id: u.id, n: u.name })) });
+    if (a.ws === 'To allocate') a.ws = 'Stand-by';
+    log(a, linked ? 'Linked to ' + P.n + '\'s existing project ' + pid : 'Allocated to ' + P.n + (su.length ? ' (+ ' + su.map(u => u.name).join(', ') + ')' : '') + ' · project ' + pid);
+    return { linked, miss };
+  };
+
+  B.registerAction('al', t => {
+    const a = B.current(); if (!a) return;
+    if (t.dataset.k === 'ref') { fetchStatus(a); return; }
+    if (t.dataset.k !== 'go' || busy) return;
+    busy = true; repaint();
+    allocate(a).then(r => { busy = false; toast(r.linked ? 'Linked to the project already in the engineer\'s list' : 'Project created in the engineer\'s list' + (r.miss.length ? ' (not found in the team list: ' + r.miss.join(', ') + ')' : '')); (B.touch || B.save)(); setTimeout(() => fetchStatus(a), 300); },
+      e => { busy = false; toast(e.message || String(e), 1); repaint(); });
+  });
+
+  if (!document.getElementById('bo-al-css')) {
+    const s = document.createElement('style'); s.id = 'bo-al-css';
+    s.textContent = '.al-ok{margin-top:8px;background:#eef2ff;border:1px solid #c7d2fe;color:#312e81;border-radius:12px;padding:9px 13px;font-size:13px}.al-live{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font-size:12.5px;color:var(--g600)}.al-live b{color:var(--g900)}';
+    document.head.appendChild(s);
+  }
+  B.registerTab('alloc', 'Allocation', a => { if (a.al && a.al.p && !ST[a.wo]) fetchStatus(a); return '<div id="al-root">' + view(a) + '</div>'; }, 'engineers');
+  B.allocation = { crew, nkey };                            // pour les tests
 })();
 
 // ══════════════════════════════════════
@@ -28413,6 +28603,8 @@ G.setIntroMsg = function(msg) {
 //  · « Issue sheet » : on coche les outils pris, on choisit son projet (WO) et la tâche → la feuille « Tool Stores Manual Issue/Return
 //    Form » (GAL.F.TLS.005) se remplit toute seule (nom, WO, tâche, date, ton stamp) → PDF à télécharger + brouillon Gmail avec la
 //    feuille jointe, pour fastops@ et FAB Tool Crib. Gabarit : tls005-template.pdf (à la racine du site, comme pln107-template.pdf).
+//  · Tri (n° GUL / nom A–Z / catégorie) et catégories : un outil peut être dans plusieurs catégories ; on peut créer, renommer, supprimer
+//    une catégorie et choisir les outils qu'elle contient (bouton 🏷 Categories, ou la fiche de l'outil). Données : parisTooling/categories + tools/<GUL>/cats.
 //  · Règles Firebase : bloc « parisTooling » (lecture : tout ingénieur connecté).
 //  · Le texte du mail se règle dans 📝 My email wording (onglet « Paris Tooling » : salutation, phrase d'ouverture, phrase de fin) ;
 //    les adresses (To / Cc) dans Admin access (« Paris Tooling », comme les 4 mails Start Job). Voir les patchs 5 et 6.
@@ -28431,7 +28623,7 @@ const PTL_ST = {                                     // statuts d'un outil
   unserviceable: { t: 'Unserviceable' },
   hold:          { t: 'On hold' }
 };
-const PTL = { tools: {}, loaded: false, ready: false, filter: 'all', sel: new Set(), projects: null, proj: null, pdf: null, booked: false, keys: [], status: null, editKey: '' };
+const PTL = { tools: {}, cats: {}, loaded: false, ready: false, filter: 'all', sort: 'cat', catFilter: '', catSel: '', sel: new Set(), projects: null, proj: null, pdf: null, booked: false, keys: [], status: null, editKey: '' };
 
 // Liste de départ : Gulfstream Tool Tracking, salle Le Bourget, imprimé le 09/04/2026 (g = n° GUL, n = part/tool no, d = description, s = serial, b = bin,
 // c = dernière calibration, u = prochaine échéance, lo / lr = dernière sortie / dernier retour, st = statut si différent de « available », r = raison, x = note)
@@ -28517,6 +28709,23 @@ const PTL_SEED = [
   {"g":"GUL12246","n":"1746543","d":"Master level digital inclinometer","s":"ADK21L0251"},
   {"g":"GUL12247","n":"1746543","d":"Master level digital inclinometer","s":"ADK23A0066"}
 ];
+// Catégories proposées (nom, n° GUL) — appliquées au chargement de la liste de départ, ou via « Apply suggested categories »
+const PTL_CATS_SEED = [
+  ["Jacks & jack pads", [8018, 8019, 9207, 9264, 9265, 5933, 8664, 8665, 9064, 9077, 9084, 9143]],
+  ["Wheels, tyres & brakes", [9182, 9198, 9199, 9188, 8755, 8995, 9140, 12706]],
+  ["Struts & landing gear", [9266, 9195, 9070]],
+  ["Nitrogen & oxygen", [9267, 9272, 9268, 9269, 8030, 8031, 5549, 9949, 12706]],
+  ["Oil, grease & fuel", [9030, 9031, 9034, 9021, 9022, 9023, 8997, 9147, 10016, 9213]],
+  ["Torque & hand tools", [6236, 11629, 12590, 13240, 8297, 8628, 5059]],
+  ["Access: stands, ladders & platforms", [9319, 9592, 9409, 9173, 9174, 9175, 7806, 9880]],
+  ["Power & lighting", [7928, 7772, 7791, 7794, 7803, 9038]],
+  ["Measuring & test", [12246, 12247]],
+  ["Storage & transport", [7799, 7800, 9202, 9203, 9223, 9224, 9225, 9226, 9227, 9228, 9086, 9087]],
+  ["IT & software", [9181, 12017]],
+  ["Cabin disinfection", [9350, 9351]]
+];
+const PTL_SUGG = {};                                                      // n° GUL → catégories proposées
+PTL_CATS_SEED.forEach(c => c[1].forEach(n => { (PTL_SUGG['GUL' + n] = PTL_SUGG['GUL' + n] || []).push(c[0]); }));
 
 // ── Petits outils ──
 const ptlEl = id => document.getElementById(id);
@@ -28548,6 +28757,12 @@ function ptlArr() {                                                       // out
     String(a.desc || '').localeCompare(String(b.desc || ''), 'en', { sensitivity: 'base' }) ||
     String(a.gul || '').localeCompare(String(b.gul || ''), 'en', { numeric: true }));
 }
+const ptlCatSlug = n => String(n || '').toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '');   // identifiant stable d'une catégorie (le nom peut changer)
+const ptlCatIds = t => Object.keys((t && t.cats) || {}).filter(id => PTL.cats[id]);                // catégories (existantes) d'un outil
+const ptlCatName = id => (PTL.cats[id] && PTL.cats[id].name) || id;
+const ptlCatList = () => Object.keys(PTL.cats).map(id => ({ id, name: String((PTL.cats[id] && PTL.cats[id].name) || id) })).sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
+const ptlGulCmp = (a, b) => String(a.gul || a.key || '').localeCompare(String(b.gul || b.key || ''), 'en', { numeric: true });   // GUL5059 < GUL10016
+const ptlNameCmp = (a, b) => String(a.desc || '').localeCompare(String(b.desc || ''), 'en', { sensitivity: 'base', numeric: true }) || ptlGulCmp(a, b);
 function ptlCopyText(text, btn) {
   const done = () => { if (btn) { const o = btn.dataset.o || btn.textContent; btn.dataset.o = o; btn.textContent = '✅ Copied!'; setTimeout(() => { btn.textContent = o; }, 1800); } };
   const fallback = () => { const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e) {} ta.remove(); done(); };
@@ -28575,21 +28790,30 @@ function ptlWhyNot(t) {
 // ══════════════════════════════════════
 //  OUVERTURE + LISTE
 // ══════════════════════════════════════
+function ptlTick(k, on) {                                                  // coche / décoche un outil (il peut apparaître dans plusieurs catégories)
+  if (on) PTL.sel.add(k); else PTL.sel.delete(k);
+  document.querySelectorAll('#ptl-list .ptl-row').forEach(r => { if (r.dataset.k === k) { r.classList.toggle('ptl-sel', on); const c = r.querySelector('input[type=checkbox]'); if (c) c.checked = on; } });
+  ptlRenderFoot();
+}
 function ptlInit() {
   if (PTL.ready) return; PTL.ready = true;
+  try { PTL.sort = localStorage.getItem('ptl_sort') || PTL.sort; } catch (e) {}
   ptlEl('ptl-list').addEventListener('click', e => {
     const row = e.target.closest('.ptl-row'); if (!row) return;
     const k = row.dataset.k, t = PTL.tools[k], cb = row.querySelector('input[type=checkbox]'); if (!t) return;
     if (e.target.closest('[data-ret]')) { ptlStatus(k, 'return'); return; }       // ↩ Return
     if (e.target.closest('[data-edit]')) { ptlEdit(k); return; }                   // ✏️ Edit
-    if (e.target.closest('.ptl-pick')) {                                          // la case elle-même (ou son étiquette)
-      if (e.target === cb) { if (cb.checked) PTL.sel.add(k); else PTL.sel.delete(k); row.classList.toggle('ptl-sel', cb.checked); ptlRenderFoot(); }
-      return;
-    }
-    if (ptlUsable(t)) { cb.checked = !cb.checked; if (cb.checked) PTL.sel.add(k); else PTL.sel.delete(k); row.classList.toggle('ptl-sel', cb.checked); ptlRenderFoot(); }   // un clic sur la ligne coche / décoche
+    if (e.target.closest('.ptl-pick')) { if (e.target === cb) ptlTick(k, cb.checked); return; }   // la case elle-même (ou son étiquette)
+    if (ptlUsable(t)) ptlTick(k, !PTL.sel.has(k));                                // un clic sur la ligne coche / décoche
     else ptlEdit(k);                                                              // outil non utilisable : on ouvre sa fiche (statut, historique)
   });
   ptlEl('ptl-chips').addEventListener('click', e => { const c = e.target.closest('[data-f]'); if (c) { PTL.filter = c.dataset.f; ptlRender(); } });
+  ptlEl('ptl-c-list').addEventListener('click', e => {                           // fenêtre des catégories
+    const row = e.target.closest('.ptl-crow'); if (!row) return;
+    const id = row.dataset.id, b = e.target.closest('[data-a]'), a = b ? b.dataset.a : 'pick';
+    if (a === 'ren') ptlCatRename(id); else if (a === 'del') ptlCatDelete(id); else { PTL.catSel = id; ptlEl('ptl-c-q').value = ''; ptlCatsRender(true); }
+  });
+  ptlEl('ptl-c-mlist').addEventListener('change', e => { const cb = e.target.closest('input[data-k]'); if (cb) ptlCatMember(cb.dataset.k, cb.checked); });
 }
 G.ptlOpen = async function() {
   ptlInit();
@@ -28600,8 +28824,9 @@ G.ptlLoad = async function(force) {
   const box = ptlEl('ptl-list');
   if (!PTL.loaded || force) box.innerHTML = '<div class="ptl-empty"><span class="spin" style="vertical-align:middle"></span> Loading…</div>';
   try {
-    const snap = await get(ref(db, PTL_PATH + '/tools'));
+    const [snap, cs] = await Promise.all([get(ref(db, PTL_PATH + '/tools')), get(ref(db, PTL_PATH + '/categories'))]);
     PTL.tools = snap.exists() ? snap.val() : {};
+    PTL.cats = cs.exists() ? cs.val() : {};
     PTL.loaded = true;
     ptlRender();
   } catch (e) {
@@ -28634,20 +28859,37 @@ function ptlRender() {
   if (n.mine) chips.push(['mine', 'My tools', n.mine]);
   if (!chips.some(c => c[0] === PTL.filter)) PTL.filter = 'all';
   ptlEl('ptl-chips').innerHTML = chips.map(c => '<button type="button" class="ptl-chip' + (PTL.filter === c[0] ? ' on' : '') + '" data-f="' + c[0] + '">' + c[1] + ' <span>' + c[2] + '</span></button>').join('');
+  // tri + catégories
+  const cl = ptlCatList(), cnt = {};
+  all.forEach(t => ptlCatIds(t).forEach(id => { cnt[id] = (cnt[id] || 0) + 1; }));
+  if (PTL.catFilter && PTL.catFilter !== '_none' && !PTL.cats[PTL.catFilter]) PTL.catFilter = '';
+  const sortSel = ptlEl('ptl-sort'), cf = ptlEl('ptl-catf');
+  if (sortSel) sortSel.value = PTL.sort;
+  if (cf) { cf.innerHTML = '<option value="">All categories</option>' + cl.map(c => '<option value="' + escAttr(c.id) + '">' + escHtml(c.name) + ' (' + (cnt[c.id] || 0) + ')</option>').join('') + '<option value="_none">Uncategorised (' + all.filter(t => !ptlCatIds(t).length).length + ')</option>'; cf.value = PTL.catFilter; }
+  const sugg = all.filter(t => !ptlCatIds(t).length && PTL_SUGG[t.key]).length, bn = ptlEl('ptl-catbanner');
+  if (bn) { bn.style.display = sugg ? '' : 'none'; bn.innerHTML = sugg ? '🏷 <b>' + sugg + '</b> tool' + (sugg > 1 ? 's have' : ' has') + ' no category yet. <button type="button" class="btn" onclick="ptlApplyCats()">Apply suggested categories</button>' : ''; }
   // liste
   const q = (ptlEl('ptl-q').value || '').toLowerCase().split(/\s+/).filter(Boolean);
-  const rows = all.filter(t => ptlInFilter(t, PTL.filter, me) && (!q.length || q.every(w => ptlHay(t).includes(w))));
+  const rows = all.filter(t => ptlInFilter(t, PTL.filter, me) && (!q.length || q.every(w => ptlHay(t).includes(w))) &&
+    (!PTL.catFilter || (PTL.catFilter === '_none' ? !ptlCatIds(t).length : ptlCatIds(t).includes(PTL.catFilter))));
   if (!all.length) {
-    box.innerHTML = '<div class="ptl-empty">The list is empty.<br><br><button type="button" class="btn primary" onclick="ptlSeed()">📥 Load the initial list (' + PTL_SEED.length + ' tools)</button><br><br><span style="font-size:11px">From the Gulfstream Tool Tracking of Le Bourget (09/04/2026).<br>…or add tools one by one with “+ Add a tool”.</span></div>';
+    box.innerHTML = '<div class="ptl-empty">The list is empty.<br><br><button type="button" class="btn primary" onclick="ptlSeed()">📥 Load the initial list (' + PTL_SEED.length + ' tools — Gulfstream Tool Tracking, Le Bourget, 09/04/2026)</button><br><br><span style="font-size:11px">…or add tools one by one with “+ Add a tool”.</span></div>';
   } else if (!rows.length) {
     box.innerHTML = '<div class="ptl-empty">No tool matches.</div>';
+  } else if (PTL.sort === 'cat') {                                         // groupé par catégorie (un outil de 2 catégories apparaît dans les 2)
+    const groups = [];
+    cl.forEach(c => { const g = rows.filter(t => ptlCatIds(t).includes(c.id)).sort(ptlNameCmp); if (g.length) groups.push([c.name, g]); });
+    const none = rows.filter(t => !ptlCatIds(t).length).sort(ptlNameCmp); if (none.length) groups.push(['Uncategorised', none]);
+    box.innerHTML = groups.map(g => '<div class="ptl-grp">' + escHtml(g[0]) + ' <span>' + g[1].length + '</span></div>' + g[1].map(ptlRowHtml).join('')).join('');
   } else {
-    box.innerHTML = rows.map(ptlRowHtml).join('');
+    box.innerHTML = rows.slice().sort(PTL.sort === 'gul' ? ptlGulCmp : ptlNameCmp).map(ptlRowHtml).join('');
   }
   ptlRenderFoot();
 }
+G.ptlSetSort = function(v) { PTL.sort = v; try { localStorage.setItem('ptl_sort', v); } catch (e) {} ptlRender(); };
+G.ptlSetCatFilter = function(v) { PTL.catFilter = v; ptlRender(); };
 G.ptlRender = ptlRender;
-const ptlHay = t => [t.gul, t.desc, t.num, t.serial, t.bin, t.notes, t.sd && t.sd.name, t.sd && t.sd.wo, t.sd && t.sd.reason].join(' ').toLowerCase();
+const ptlHay = t => [t.gul, t.desc, t.num, t.serial, t.bin, t.notes, t.sd && t.sd.name, t.sd && t.sd.wo, t.sd && t.sd.reason, ptlCatIds(t).map(ptlCatName).join(' ')].join(' ').toLowerCase();
 function ptlInFilter(t, f, me) {
   const c = ptlCal(t);
   if (f === 'avail') return ptlUsable(t);
@@ -28668,6 +28910,7 @@ function ptlRowHtml(t) {
   badges.push('<span class="ptl-badge ' + sCls + '">' + escHtml(sTxt) + '</span>');
   if (t.status !== 'calibration') badges.push('<span class="ptl-badge ' + ({ over: 'bad', soon: 'warn', ok: 'ok', nodue: 'mute', none: 'mute' }[c.k]) + '">' + escHtml(c.t) + '</span>');
   const meta = [t.num && 'P/N ' + t.num, t.serial && 'S/N ' + t.serial, t.bin, t.notes].filter(Boolean).join(' · ');
+  if (t.nPh) badges.push('<span class="ptl-badge mute" title="Photos">📷 ' + (+t.nPh || 0) + '</span>');  
   const ret = (t.status === 'out') ? '<button type="button" class="btn" data-ret="1" title="Tool is back in the store">↩ Return</button>' : '';
   return '<div class="ptl-row' + (usable ? '' : ' ptl-off') + (usable && PTL.sel.has(t.key) ? ' ptl-sel' : '') + '" data-k="' + escAttr(t.key) + '">' +
     '<label class="ptl-pick" title="' + escAttr(usable ? 'Tick to put it on the issue sheet' : ptlWhyNot(t)) + '"><input type="checkbox"' + (PTL.sel.has(t.key) ? ' checked' : '') + (usable ? '' : ' disabled') + '/></label>' +
@@ -28689,25 +28932,40 @@ function ptlFromSeed(x, who, now) {
   if (x.st === 'hold') t.sd = { since: '2026-04-09', reason: x.r + ' (Gulfstream Tool Tracking, 09/04/2026)', by: who.id, byName: who.name };
   if (x.st === 'out') t.sd = { since: x.lo || '', uid: '', name: '', wo: x.wo || '', task: x.tk || '' };
   t.history = {}; t.history[ptlId()] = { at: now, by: who.id, byName: who.name, a: 'created', n: 'Imported from the Gulfstream Tool Tracking of Le Bourget (09/04/2026)' };
+  if (PTL_SUGG[x.g]) { t.cats = {}; PTL_SUGG[x.g].forEach(n => { t.cats[ptlCatSlug(n)] = true; }); }
   return t;
 }
 G.ptlSeed = async function() {
   if (Object.keys(PTL.tools).length) return;
-  if (!confirm('Load the initial list (' + PTL_SEED.length + ' tools from the Gulfstream Tool Tracking of Le Bourget, 09/04/2026)?\n\nCalibration dates are those of that report: tools whose date has passed will show as OVERDUE until you update them (Edit → Back from calibration).')) return;
+  if (!confirm('Load the initial list (' + PTL_SEED.length + ' tools from the Gulfstream Tool Tracking of Le Bourget, 09/04/2026), already sorted in ' + PTL_CATS_SEED.length + ' categories?\n\nCalibration dates are those of that report: tools whose date has passed will show as OVERDUE until you update them (Edit → Back from calibration).')) return;
   try {
     const who = ptlWho(), now = Date.now(), up = {};
-    PTL_SEED.forEach(x => { up[x.g] = ptlFromSeed(x, who, now); });
-    await update(ref(db, PTL_PATH + '/tools'), up);
+    PTL_SEED.forEach(x => { up['tools/' + x.g] = ptlFromSeed(x, who, now); });
+    PTL_CATS_SEED.forEach(c => { up['categories/' + ptlCatSlug(c[0])] = { name: c[0] }; });
+    await update(ref(db, PTL_PATH), up);
     await ptlLoad(true);
   } catch (e) { alert('Could not load the list: ' + (e.message || e)); }
 };
+G.ptlApplyCats = async function() {                                        // outils déjà chargés mais sans catégorie : on leur donne celles proposées (le reste ne bouge pas)
+  const up = {}, names = new Set(); let n = 0;
+  Object.keys(PTL.tools).forEach(k => {
+    const t = PTL.tools[k], cs = PTL_SUGG[k];
+    if (!cs || ptlCatIds(t).length) return;
+    n++; cs.forEach(name => { names.add(name); up['tools/' + k + '/cats/' + ptlCatSlug(name)] = true; });
+  });
+  if (!n) return;
+  if (!confirm('Give the suggested categories to ' + n + ' tool' + (n > 1 ? 's' : '') + ' that have none?\n\nYou can change any of them afterwards (✏️ Edit on a tool, or 🏷 Categories).')) return;
+  names.forEach(name => { const id = ptlCatSlug(name); if (!PTL.cats[id]) up['categories/' + id] = { name }; });
+  try { await update(ref(db, PTL_PATH), up); await ptlLoad(true); }
+  catch (e) { alert('Could not apply the categories: ' + (e.message || e)); }
+};
 G.ptlExportCsv = function() {
   const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
-  const head = ['GUL no', 'Description', 'Part / tool no', 'Serial no', 'Bin', 'Status', 'Status detail', 'Calibration', 'Last calibration', 'Next due', 'Notes'];
+  const head = ['GUL no', 'Description', 'Categories', 'Part / tool no', 'Serial no', 'Bin', 'Status', 'Status detail', 'Calibration', 'Last calibration', 'Next due', 'Notes'];
   const lines = [head.map(q).join(',')].concat(ptlArr().map(t => {
     const sd = t.sd || {}, c = ptlCal(t);
     const det = [sd.name, sd.wo, sd.task && 'task ' + sd.task, sd.reason, sd.since && 'since ' + ptlFmt(sd.since), sd.expBack && 'back ' + ptlFmt(sd.expBack)].filter(Boolean).join(' · ');
-    return [t.gul, t.desc, t.num, t.serial, t.bin, (PTL_ST[t.status] || { t: t.status }).t, det, t.calReq ? c.t : 'No calibration', ptlFmt(t.lastCal), ptlFmt(t.calDue), t.notes].map(q).join(',');
+    return [t.gul, t.desc, ptlCatIds(t).map(ptlCatName).join(' | '), t.num, t.serial, t.bin, (PTL_ST[t.status] || { t: t.status }).t, det, t.calReq ? c.t : 'No calibration', ptlFmt(t.lastCal), ptlFmt(t.calDue), t.notes].map(q).join(',');
   }));
   const url = URL.createObjectURL(new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
   const a = document.createElement('a'); a.href = url; a.download = 'ParisTooling_' + ptlToday().replace(/-/g, '') + '.csv';
@@ -28734,11 +28992,15 @@ G.ptlEdit = function(key) {
   ptlEl('ptl-e-int').value = [6, 12, 24, 36].includes(iv) ? String(iv) : '';
   ptlEl('ptl-e-notes').value = t ? t.notes || '' : '';
   ptlEl('ptl-e-err').textContent = '';
+  const mine = t ? ptlCatIds(t) : [], cl = ptlCatList();
+  ptlEl('ptl-e-cats').innerHTML = cl.length ? cl.map(c => '<label class="ptl-catchip"><input type="checkbox" value="' + escAttr(c.id) + '"' + (mine.includes(c.id) ? ' checked' : '') + '/> ' + escHtml(c.name) + '</label>').join('') : '<span class="ptl-sub">No category yet — type a name below to create the first one.</span>';
+  ptlEl('ptl-e-newcat').value = '';
   const bins = Array.from(new Set(Object.values(PTL.tools).map(x => x.bin).filter(Boolean))).sort();
   ptlEl('ptl-bins').innerHTML = bins.map(b => '<option value="' + escAttr(b) + '"></option>').join('');
   ptlEl('ptl-e-del').style.display = t ? '' : 'none';
   ptlEl('ptl-e-statewrap').style.display = t ? '' : 'none';
   ptlEditCal(); ptlRenderState();
+  ptlPhotosOpen(key);
   openModal('modal-ptl-edit');
 };
 G.ptlEditCal = function() { ptlEl('ptl-e-calbox').style.display = ptlEl('ptl-e-calreq').checked ? '' : 'none'; };
@@ -28776,17 +29038,29 @@ G.ptlSave = async function() {
   if (isNew && PTL.tools[gul]) { err.textContent = gul + ' is already in the list.'; return; }
   const who = ptlWho(), now = Date.now();
   const f = { desc, num: ptlEl('ptl-e-num').value.trim(), serial: ptlEl('ptl-e-sn').value.trim(), bin: ptlEl('ptl-e-bin').value.trim(), notes: ptlEl('ptl-e-notes').value.trim(), calReq, lastCal, calDue };
+  const chosen = Array.from(document.querySelectorAll('#ptl-e-cats input:checked')).map(i => i.value), ups = {};
+  const nc = ptlEl('ptl-e-newcat').value.trim();                              // nouvelle catégorie tapée dans la fiche
+  if (nc) {
+    const id = ptlCatSlug(nc);
+    if (!id) { err.textContent = 'The new category name needs letters or digits.'; return; }
+    if (!PTL.cats[id]) ups['categories/' + id] = { name: nc };
+    if (!chosen.includes(id)) chosen.push(id);
+  }
   try {
     if (isNew) {
       const rec = Object.assign({ gul, status: 'available', lastOut: '', lastRet: '', updatedAt: now, updatedBy: who.id }, f);
       rec.history = {}; rec.history[ptlId()] = { at: now, by: who.id, byName: who.name, a: 'created', n: 'Added to the list' };
-      await set(ref(db, PTL_PATH + '/tools/' + gul), rec);
+      if (chosen.length) { rec.cats = {}; chosen.forEach(id => { rec.cats[id] = true; }); }
+      ups['tools/' + gul] = rec;
     } else {
-      const old = PTL.tools[PTL.editKey], up = Object.assign({ updatedAt: now, updatedBy: who.id }, f);
+      const old = PTL.tools[PTL.editKey], b = 'tools/' + PTL.editKey + '/';
+      Object.keys(f).forEach(k => { ups[b + k] = f[k]; }); ups[b + 'updatedAt'] = now; ups[b + 'updatedBy'] = who.id;
       if (!!old.calReq !== calReq || (old.lastCal || '') !== lastCal || (old.calDue || '') !== calDue)
-        up['history/' + ptlId()] = { at: now, by: who.id, byName: who.name, a: 'cal', n: calReq ? 'Calibration set: last ' + (ptlFmt(lastCal) || '—') + ', next due ' + (ptlFmt(calDue) || '—') : 'Calibration removed (no calibration)' };
-      await update(ref(db, PTL_PATH + '/tools/' + PTL.editKey), up);
+        ups[b + 'history/' + ptlId()] = { at: now, by: who.id, byName: who.name, a: 'cal', n: calReq ? 'Calibration set: last ' + (ptlFmt(lastCal) || '—') + ', next due ' + (ptlFmt(calDue) || '—') : 'Calibration removed (no calibration)' };
+      ptlCatIds(old).forEach(id => { if (!chosen.includes(id)) ups[b + 'cats/' + id] = null; });      // catégories décochées
+      chosen.forEach(id => { ups[b + 'cats/' + id] = true; });
     }
+    await update(ref(db, PTL_PATH), ups);
     closeModal('modal-ptl-edit');
     await ptlLoad(true);
   } catch (e) { err.textContent = '❌ ' + (e.message || e); }
@@ -28798,10 +29072,258 @@ G.ptlDelete = async function() {
   try {
     await set(ref(db, PTL_PATH + '/deleted/' + ptlId()), { at: Date.now(), by: who.id, byName: who.name, tool: t });   // trace : on peut toujours retrouver l'outil dans Firebase
     await remove(ref(db, PTL_PATH + '/tools/' + PTL.editKey));
+  try { await update(ref(db, PTL_PATH), { ['photos/' + PTL.editKey]: null, ['thumbs/' + PTL.editKey]: null }); } catch (e) { console.warn('Tool photos not removed:', e); }    
     PTL.sel.delete(PTL.editKey);
     closeModal('modal-ptl-edit');
     await ptlLoad(true);
   } catch (e) { ptlEl('ptl-e-err').textContent = '❌ ' + (e.message || e); }
+};
+
+// ── 🏷 Categories : créer / renommer / supprimer, et choisir les outils de chaque catégorie ──
+G.ptlCats = function() {
+  if (!PTL.cats[PTL.catSel]) PTL.catSel = '';
+  ptlEl('ptl-c-err').textContent = ''; ptlEl('ptl-c-new').value = '';
+  ptlCatsRender(true);
+  openModal('modal-ptl-cats');
+};
+function ptlCatsRender(withMembers) {
+  const list = ptlCatList(), cnt = {};
+  Object.keys(PTL.tools).forEach(k => ptlCatIds(PTL.tools[k]).forEach(id => { cnt[id] = (cnt[id] || 0) + 1; }));
+  ptlEl('ptl-c-list').innerHTML = list.length ? list.map(c =>
+    '<div class="ptl-crow' + (c.id === PTL.catSel ? ' on' : '') + '" data-id="' + escAttr(c.id) + '"><span class="ptl-cname">' + escHtml(c.name) + '</span><span class="ptl-sub">' + (cnt[c.id] || 0) + ' tool' + ((cnt[c.id] || 0) === 1 ? '' : 's') + '</span>' +
+    '<span class="ptl-cbtn"><button type="button" class="btn" data-a="pick">Tools…</button><button type="button" class="btn" data-a="ren">✏️ Rename</button><button type="button" class="btn danger" data-a="del">🗑 Delete</button></span></div>').join('')
+    : '<div class="ptl-empty">No category yet. Type a name above and click “+ Add”.</div>';
+  if (!withMembers) return;
+  const box = ptlEl('ptl-c-members');
+  if (!PTL.catSel) { box.style.display = 'none'; return; }
+  box.style.display = '';
+  const q = (ptlEl('ptl-c-q').value || '').toLowerCase().split(/\s+/).filter(Boolean);
+  ptlEl('ptl-c-mtitle').textContent = 'Tools in “' + ptlCatName(PTL.catSel) + '” — tick / untick to add or remove';
+  ptlEl('ptl-c-mlist').innerHTML = ptlArr().sort(ptlGulCmp).filter(t => !q.length || q.every(w => ptlHay(t).includes(w))).map(t =>
+    '<label class="ptl-mrow"><input type="checkbox" data-k="' + escAttr(t.key) + '"' + (ptlCatIds(t).includes(PTL.catSel) ? ' checked' : '') + '/> <b>' + escHtml(t.gul || t.key) + '</b> ' + escHtml(t.desc || '') + '</label>').join('') || '<div class="ptl-empty">No tool matches.</div>';
+}
+G.ptlCatsRender = ptlCatsRender;
+G.ptlCatAdd = async function() {
+  const inp = ptlEl('ptl-c-new'), err = ptlEl('ptl-c-err'), name = inp.value.trim(), id = ptlCatSlug(name); err.textContent = '';
+  if (!name) return;
+  if (!id) { err.textContent = 'The name needs letters or digits.'; return; }
+  if (PTL.cats[id] || ptlCatList().some(c => c.name.toLowerCase() === name.toLowerCase())) { err.textContent = 'A category called “' + name + '” already exists.'; return; }
+  try {
+    await update(ref(db, PTL_PATH + '/categories/' + id), { name });
+    PTL.cats[id] = { name }; PTL.catSel = id; inp.value = '';
+    ptlCatsRender(true); ptlRender();
+  } catch (e) { err.textContent = '❌ ' + (e.message || e); }
+};
+async function ptlCatRename(id) {
+  const err = ptlEl('ptl-c-err'), old = ptlCatName(id); err.textContent = '';
+  const name = (prompt('New name for the category “' + old + '”:', old) || '').trim();
+  if (!name || name === old) return;
+  const dup = ptlCatList().find(c => c.id !== id && c.name.toLowerCase() === name.toLowerCase());
+  if (dup) { err.textContent = 'A category called “' + dup.name + '” already exists.'; return; }
+  try { await update(ref(db, PTL_PATH + '/categories/' + id), { name }); PTL.cats[id].name = name; ptlCatsRender(true); ptlRender(); }
+  catch (e) { err.textContent = '❌ ' + (e.message || e); }
+}
+async function ptlCatDelete(id) {
+  const err = ptlEl('ptl-c-err'), name = ptlCatName(id), members = Object.keys(PTL.tools).filter(k => PTL.tools[k].cats && PTL.tools[k].cats[id]); err.textContent = '';
+  if (!confirm('Delete the category “' + name + '”?\n\nThe ' + members.length + ' tool' + (members.length === 1 ? '' : 's') + ' in it will NOT be deleted: they just lose this category.')) return;
+  const up = {}; up['categories/' + id] = null; members.forEach(k => { up['tools/' + k + '/cats/' + id] = null; });
+  try {
+    await update(ref(db, PTL_PATH), up);
+    if (PTL.catSel === id) PTL.catSel = '';
+    await ptlLoad(true); ptlCatsRender(true);
+  } catch (e) { err.textContent = '❌ ' + (e.message || e); }
+}
+async function ptlCatMember(k, on) {                                      // ajoute / retire un outil de la catégorie ouverte (enregistré tout de suite)
+  const id = PTL.catSel, t = PTL.tools[k]; if (!id || !t) return;
+  t.cats = t.cats || {}; if (on) t.cats[id] = true; else delete t.cats[id];
+  try { await update(ref(db, PTL_PATH + '/tools/' + k), { ['cats/' + id]: on ? true : null }); }
+  catch (e) { ptlEl('ptl-c-err').textContent = '❌ ' + (e.message || e); await ptlLoad(true); ptlCatsRender(true); return; }
+  ptlCatsRender(false); ptlRender();
+}
+
+// ══════════════════════════════════════
+//  📷 PHOTOS DES OUTILS — 3 max par outil, stockées dans Firebase (gratuit, aucun nouveau service)
+//
+//  · La photo est réduite SUR LE TÉLÉPHONE avant l'envoi : côté le plus long 1600 px, poids ≤ 0,4 Mo (PTL_PH_KB).
+//  · Deux copies par photo :
+//      parisTooling/photos/<GUL>/<p1|p2|p3>  = la photo (chargée seulement quand on touche la vignette)
+//      parisTooling/thumbs/<GUL>/<p1|p2|p3>  = une vignette de quelques Ko (c'est elle qui s'affiche dans la fiche)
+//  · tools/<GUL>/nPh = nombre de photos → badge « 📷 2 » dans la liste, sans rien télécharger de plus.
+//  · Les règles Firebase (blocs « thumbs » et « photos ») refusent une 4e photo et tout fichier trop lourd,
+//    même si quelqu'un contourne l'appli.
+//  ⚠ Si tu changes PTL_PH_KB / PTL_TH_KB / PTL_PH_SLOTS, change aussi le nombre correspondant dans ces règles
+//    (règle « length < » = Ko × 1400).
+// ══════════════════════════════════════
+const PTL_PH_SLOTS = ['p1', 'p2', 'p3'];   // 3 photos max par outil (pour en autoriser 4 : ajouter 'p4' ici ET dans les règles)
+const PTL_PH_SIDE = 1600;                  // photo : côté le plus long, en pixels
+const PTL_PH_KB = 400;                     // photo : poids maximum après réduction, en Ko (≈ 0,4 Mo)   → règles : length < 560000
+const PTL_TH_SIDE = 360;                   // vignette : côté le plus long, en pixels
+const PTL_TH_KB = 40;                      // vignette : poids maximum, en Ko                           → règles : length < 56000
+const PTL_PH_IN_MB = 25;                   // photo d'origine refusée au-delà (Mo) : protège la mémoire du téléphone
+const PTL_PH = { key: '', th: {}, busy: false };   // état de la fiche ouverte ; th = vignettes { p1: 'data:image/jpeg;base64,…', … }
+const ptlPhOk = v => typeof v === 'string' && v.startsWith('data:image/jpeg;base64,');   // on n'affiche que des JPEG « data: », jamais un lien externe
+
+// ── ouverture de la fiche (appelée par ptlEdit) : charge les vignettes de CET outil ──
+function ptlPhotosOpen(key) {
+  if (!ptlEl('ptl-ph-grid')) return;                   // bloc HTML pas encore collé : on ne casse pas la fiche
+  PTL_PH.key = key || ''; PTL_PH.th = {}; PTL_PH.busy = false;
+  ptlEl('ptl-ph-err').textContent = '';
+  if (!key) { ptlPhRender(); return; }                 // nouvel outil : le bloc est caché (il est dans #ptl-e-statewrap)
+  ptlPhRender(true);
+  get(ref(db, PTL_PATH + '/thumbs/' + key)).then(snap => {
+    if (PTL_PH.key !== key) return;                    // une autre fiche a été ouverte entre-temps
+    PTL_PH.th = snap.exists() ? snap.val() : {};
+    ptlPhRender();
+  }).catch(e => {
+    if (PTL_PH.key !== key) return;
+    ptlPhRender();
+    ptlEl('ptl-ph-err').textContent = '❌ Could not load the photos: ' + (e.message || e);
+  });
+}
+
+// ── affichage : les vignettes + la case « Add photo » tant qu'il reste une place ──
+function ptlPhRender(loading) {
+  const grid = ptlEl('ptl-ph-grid'); if (!grid) return;
+  const used = PTL_PH_SLOTS.filter(s => ptlPhOk(PTL_PH.th[s]));
+  ptlEl('ptl-ph-count').textContent = loading ? '' : '(' + used.length + '/' + PTL_PH_SLOTS.length + ')';
+  grid.textContent = '';
+  if (loading) {
+    const d = document.createElement('div'); d.className = 'ptl-sub'; d.style.gridColumn = '1 / -1'; d.textContent = 'Loading…';
+    grid.appendChild(d); return;
+  }
+  used.forEach(s => {
+    const box = document.createElement('div'); box.className = 'ptl-ph';
+    const img = document.createElement('img'); img.src = PTL_PH.th[s]; img.alt = 'Tool photo ' + s.slice(1);
+    img.addEventListener('click', () => G.ptlPhotoView(s));                       // toucher la vignette = voir la photo en grand
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'ptl-ph-x'; x.title = 'Delete this photo'; x.textContent = '✕';
+    x.addEventListener('click', () => G.ptlPhotoDelete(s));
+    box.append(img, x); grid.appendChild(box);
+  });
+  if (used.length < PTL_PH_SLOTS.length) {
+    const add = document.createElement('label'); add.className = 'ptl-ph-add' + (PTL_PH.busy ? ' busy' : ''); add.htmlFor = 'ptl-ph-file';
+    add.innerHTML = '<b>📷</b>' + (PTL_PH.busy ? 'Processing…' : 'Add photo');
+    grid.appendChild(add);
+  }
+}
+
+// ── réduction de la photo (sur le téléphone, avant l'envoi) ──
+function ptlPhCanvas(src, w0, h0, side) {              // dessine l'image sur un canevas dont le côté le plus long = side (jamais agrandie)
+  const sc = Math.min(1, side / Math.max(w0, h0));
+  const cv = document.createElement('canvas');
+  cv.width = Math.max(1, Math.round(w0 * sc)); cv.height = Math.max(1, Math.round(h0 * sc));
+  const cx = cv.getContext('2d');
+  cx.imageSmoothingQuality = 'high';
+  cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);                  // fond blanc (au cas où l'image serait transparente)
+  cx.drawImage(src, 0, 0, cv.width, cv.height);
+  return cv;
+}
+async function ptlPhJpeg(cv, maxBytes) {               // canevas → « data URL » JPEG de moins de maxBytes octets, sinon null
+  for (const q of [0.82, 0.72, 0.62, 0.52]) {                                    // qualité JPEG : de la meilleure à la plus légère
+    const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', q));
+    if (blob && blob.size <= maxBytes) return await new Promise((ok, ko) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = () => ko(fr.error); fr.readAsDataURL(blob); });
+  }
+  return null;
+}
+async function ptlPhotoMake(file) {                    // fichier → { full, thumb } : deux « data URL » JPEG sous les limites
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image(); img.src = url;
+    try { await img.decode(); } catch (e) { throw new Error('Could not read this photo (unsupported format?).'); }
+    const w = img.naturalWidth, h = img.naturalHeight;
+    if (!w || !h) throw new Error('Could not read this photo.');
+    let full = null, cv = null, side = PTL_PH_SIDE;
+    for (let round = 0; round < 5 && !full; round++, side = Math.round(side * 0.8)) {   // encore trop lourde ? on réduit les dimensions et on recommence
+      cv = ptlPhCanvas(img, w, h, side);
+      full = await ptlPhJpeg(cv, PTL_PH_KB * 1024);
+    }
+    if (!full) throw new Error('This photo cannot be reduced enough — try another one.');
+    let thumb = null;                                                                    // la vignette est tirée de la photo déjà réduite (plus net)
+    for (const s of [PTL_TH_SIDE, 240, 160]) { thumb = await ptlPhJpeg(ptlPhCanvas(cv, cv.width, cv.height, s), PTL_TH_KB * 1024); if (thumb) break; }
+    if (!thumb) throw new Error('Could not make the thumbnail.');
+    return { full, thumb };
+  } finally { URL.revokeObjectURL(url); }
+}
+
+// ── ajout d'une photo : tout part en UNE écriture (photo + vignette + compteur + historique) : tout passe ou rien ──
+async function ptlPhotoAdd(key, file, slot) {
+  if (!/^image\//.test(file.type || '')) throw new Error('“' + file.name + '” is not a photo.');
+  if (file.size > PTL_PH_IN_MB * 1048576) throw new Error('Photo too large (' + (file.size / 1048576).toFixed(0) + ' MB, max ' + PTL_PH_IN_MB + ' MB). Take it again at a lower resolution.');
+  const { full, thumb } = await ptlPhotoMake(file);
+  if (PTL_PH.key !== key) throw new Error('The tool sheet was closed before the photo was saved — please try again.');
+  const t = PTL.tools[key], who = ptlWho(), now = Date.now(), hid = ptlId();
+  const n = PTL_PH_SLOTS.filter(s => s === slot || PTL_PH.th[s]).length;                // nombre de photos APRÈS l'ajout
+  const hist = { at: now, by: who.id, byName: who.name, a: 'photo', n: 'Photo added' };
+  const up = {};
+  up['photos/' + key + '/' + slot] = full;
+  up['thumbs/' + key + '/' + slot] = thumb;
+  up['tools/' + key + '/nPh'] = n;
+  up['tools/' + key + '/updatedAt'] = now;
+  up['tools/' + key + '/updatedBy'] = who.id;
+  up['tools/' + key + '/history/' + hid] = hist;
+  await update(ref(db, PTL_PATH), up);
+  PTL_PH.th[slot] = thumb;
+  if (t) { t.nPh = n; t.updatedAt = now; t.updatedBy = who.id; (t.history = t.history || {})[hid] = hist; }
+  ptlRender();                                                                          // badge 📷 de la liste
+  ptlRenderState();                                                                     // historique de la fiche
+  ptlPhRender();
+}
+
+// ── la case « Add photo » : le téléphone propose l'appareil photo ou la galerie ──
+G.ptlPhotoPick = async function(inp) {
+  const files = Array.from(inp.files || []); inp.value = '';                           // champ vidé : on pourra rechoisir la même photo
+  const key = PTL_PH.key, err = ptlEl('ptl-ph-err'); err.textContent = '';
+  if (!key || !files.length || PTL_PH.busy) return;
+  const free = PTL_PH_SLOTS.filter(s => !PTL_PH.th[s]);
+  if (!free.length) { err.textContent = 'Already ' + PTL_PH_SLOTS.length + ' photos — delete one first.'; return; }
+  const take = files.slice(0, free.length);
+  if (files.length > take.length) err.textContent = 'Only ' + take.length + ' photo' + (take.length > 1 ? 's' : '') + ' added: ' + PTL_PH_SLOTS.length + ' maximum per tool.';
+  PTL_PH.busy = true; ptlPhRender();
+  try {
+    for (let i = 0; i < take.length; i++) await ptlPhotoAdd(key, take[i], free[i]);
+  } catch (e) { err.textContent = '❌ ' + (e.message || e); }
+  finally { PTL_PH.busy = false; if (PTL_PH.key === key) ptlPhRender(); }
+};
+
+// ── suppression d'une photo (le trait ✕ sur la vignette) ──
+G.ptlPhotoDelete = async function(slot) {
+  const key = PTL_PH.key, err = ptlEl('ptl-ph-err'); err.textContent = '';
+  if (!key || !PTL_PH.th[slot] || PTL_PH.busy) return;
+  if (!confirm('Delete this photo?')) return;
+  const t = PTL.tools[key], who = ptlWho(), now = Date.now(), hid = ptlId();
+  const n = PTL_PH_SLOTS.filter(s => s !== slot && PTL_PH.th[s]).length;                // nombre de photos APRÈS la suppression
+  const hist = { at: now, by: who.id, byName: who.name, a: 'photo', n: 'Photo deleted' };
+  const up = {};
+  up['photos/' + key + '/' + slot] = null;
+  up['thumbs/' + key + '/' + slot] = null;
+  up['tools/' + key + '/nPh'] = n || null;
+  up['tools/' + key + '/updatedAt'] = now;
+  up['tools/' + key + '/updatedBy'] = who.id;
+  up['tools/' + key + '/history/' + hid] = hist;
+  PTL_PH.busy = true; ptlPhRender();
+  try {
+    await update(ref(db, PTL_PATH), up);
+    if (PTL_PH.key === key) delete PTL_PH.th[slot];
+    if (t) { if (n) t.nPh = n; else delete t.nPh; t.updatedAt = now; t.updatedBy = who.id; (t.history = t.history || {})[hid] = hist; }
+    ptlRender(); ptlRenderState();
+  } catch (e) { err.textContent = '❌ ' + (e.message || e); }
+  finally { PTL_PH.busy = false; if (PTL_PH.key === key) ptlPhRender(); }
+};
+
+// ── voir la photo en grand : la vignette s'affiche tout de suite, la vraie photo la remplace dès qu'elle est téléchargée ──
+G.ptlPhotoView = async function(slot) {
+  const key = PTL_PH.key, t = PTL.tools[key], title = t ? t.gul + ' — ' + (t.desc || '') : '';
+  const lb = document.createElement('div'); lb.className = 'ptl-ph-lb';
+  const img = document.createElement('img'); img.src = PTL_PH.th[slot];
+  const cap = document.createElement('span'); cap.textContent = title + ' · loading the full photo…';
+  lb.append(img, cap);
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  const close = () => { lb.remove(); document.removeEventListener('keydown', onKey); };
+  lb.addEventListener('click', close); document.addEventListener('keydown', onKey);       // un toucher n'importe où (ou Échap) referme
+  document.body.appendChild(lb);
+  try {
+    const snap = await get(ref(db, PTL_PATH + '/photos/' + key + '/' + slot)), v = snap.val();
+    if (ptlPhOk(v)) { img.src = v; cap.textContent = title; } else cap.textContent = title + ' · (full photo not found — thumbnail shown)';
+  } catch (e) { cap.textContent = '❌ ' + (e.message || e); }
 };
 
 // ── changement de statut (calibration / unserviceable / hold / retour…) ──
