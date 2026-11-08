@@ -19903,6 +19903,108 @@ table.qt-t{width:100%;border-collapse:collapse}.qt-t th{font-size:11px;text-tran
   B.field = { link, latest, state, txt, resText };                              // pour les tests
 })();
 
+//  BACK OFFICE · mise à jour automatique depuis l'engineer (étape 3B) — à coller APRÈS le bloc « Field » (3A)
+//  Tant que le Back Office est ouvert, toutes les 2 min, pour chaque job alloué et non terminé : lecture minuscule de `updatedAt` du projet de
+//  l'engineer, relecture complète seulement s'il a changé, puis (une seule fois, journalisé « Auto-sync ») :
+//   · démarrage (1er contenu dans le Daily Update) → WO « In progress » (seulement depuis Stand-by / To allocate)
+//   · heures / cycles de l'avion : la valeur de l'engineer remplace celle du dossier quand il la CHANGE (jamais un champ vide, jamais ta valeur s'il n'y touche pas)
+//   · RTS archivé (rts = true) → Resolution des sujets encore vides + WO « Finished » (date de fin = jour du RTS)
+//   · work items ajoutés par l'engineer → alerte « Engineer findings » jusqu'à ce que tu les ajoutes (onglet Field)
+//  Rien n'est écrit si rien n'a changé, ni pendant que tu tapes dans le Back Office, ni dans les 8 s qui suivent un enregistrement.
+// ═══════════════════════════════════════════════════════════════════
+(function () {
+  const B = window.BackOffice, F = B && B.field;
+  if (!B || !B.save || !B.logIt || !B.registerAlert || !F) { console.warn('Back Office · auto-sync : colle d\'abord le bloc « Field » (étape 3A), puis celui-ci juste après.'); return; }
+  const PERIOD = 120000, GUARD = 8000, WHO = 'Auto-sync';
+  let RAW = {}, off = null, busy = false, last = 0, SEEN = {};
+
+  const arr = v => Array.isArray(v) ? v.filter(x => x != null) : Object.values(v || {});
+  const ymd = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const toast = m => { const r = document.getElementById('bo-root'); if (!r) return; const t = document.createElement('div'); t.className = 'bo-toast'; t.textContent = m; r.appendChild(t); setTimeout(() => t.remove(), 6000); };
+  const started = P => arr(P.updates).some(u => arr(u.itemUpdates).some(x => x.status || F.txt(x.detail)) || F.txt(u.freeText));
+
+  // applique ce qui est nouveau chez l'engineer à UN dossier. Retour : null = on réessaiera (dossier en cours d'édition), '' = rien à signaler, texte = résumé
+  const apply = (k, P) => {
+    const raw = RAW[k]; if (!raw) return null;
+    let a0; try { a0 = JSON.parse(raw.json); } catch (e) { return ''; }
+    if (!a0 || a0.ws === 'Finished') return '';
+    if (Date.now() - (a0.upd || raw.at || 0) < GUARD) return null;
+    const a = JSON.parse(JSON.stringify(a0)), fd = a.fd = a.fd || {}, out = [];
+    const L = F.latest(P), st = F.state(P), lk = F.link(a, arr(P.items));
+    // 1) démarrage
+    if (!fd.st && started(P)) {
+      fd.st = Date.now();
+      if (a.ws === 'Stand-by' || a.ws === 'To allocate') { a.ws = 'In progress'; B.logIt(a, 'WO status → In progress (the engineer has started)', WHO); out.push('In progress'); }
+    }
+    // 2) heures / cycles de l'avion
+    [['h', 'hrs', 'ac_hours', 'hours'], ['c', 'cyc', 'ac_cycles', 'cycles']].forEach(x => {
+      const fk = x[0], ak = x[1], pk = x[2], name = x[3], v = String(P[pk] == null ? '' : P[pk]).trim(), cur = String(a[ak] == null ? '' : a[ak]).trim();
+      if (!v) return;
+      if ((fd[fk] === undefined ? !cur : v !== fd[fk]) && v !== cur) {
+        a[ak] = v; B.logIt(a, 'Aircraft ' + name + ' updated from the engineer: ' + v + (cur ? ' (was ' + cur + ')' : ''), WHO); out.push(name + ' ' + v);
+        if (a.al && a.al.sync && a.al.sync.snap && a.al.sync.snap.f) a.al.sync.snap.f[pk] = v;      // déjà chez l'engineer : pas d'« Update pending »
+      }
+      fd[fk] = v;
+    });
+    // 3) work items ajoutés par l'engineer (pour l'alerte)
+    const ex = lk.extra.map(y => +y.id); if (JSON.stringify(fd.exi || []) !== JSON.stringify(ex)) fd.exi = ex;
+    // 4) RTS archivé → Resolution (cases vides seulement) + Finished, une seule fois
+    if (P.rts === true && !fd.rts) {
+      fd.rts = Date.now(); let n = 0;
+      (a.sub || []).forEach((s, i) => { const it = lk.by[i], tx = F.resText(it && L[it.id]); if (tx && !String(s.res || '').trim()) { s.res = tx; n++; } });
+      if (n) { B.logIt(a, 'Resolution copied from the engineer\'s Daily Update (' + n + ' work item' + (n > 1 ? 's' : '') + ')', WHO); out.push(n + ' resolution' + (n > 1 ? 's' : '')); }
+      if (a.ws !== 'Finished') { a.ws = 'Finished'; if (!a.fin) a.fin = ymd(st.rtsTs || Date.now()); B.logIt(a, 'WO status → Finished (RTS from the engineer)', WHO); out.push('Finished'); }
+    }
+    if (JSON.stringify(a) === JSON.stringify(a0)) return '';
+    B.save(a, k); RAW[k] = { json: JSON.stringify(a), at: a.upd || Date.now(), by: WHO };
+    return out.length ? a.wo + ' · ' + out.join(', ') : '';
+  };
+
+  // un passage sur tous les jobs alloués et non terminés
+  const run = async force => {
+    if (busy) return 0; busy = true; const done = [];
+    try {
+      const keys = Object.keys(RAW); if (!keys.length) return 0;
+      last = Date.now();
+      for (const k of keys) {
+        let a; try { a = JSON.parse(RAW[k].json); } catch (e) { continue; }
+        const p0 = a && a.al && a.al.p; if (!p0 || !p0.pid || !p0.id || a.ws === 'Finished') continue;
+        const base = 'team/' + p0.id + '/projects/' + p0.pid;
+        try {
+          const u = await get(ref(db, base + '/updatedAt')), ua = u.exists() ? u.val() : null;
+          if (ua == null || (!force && SEEN[k] === ua + '|' + p0.pid)) continue;
+          const s = await get(ref(db, base)); if (!s.exists()) continue;
+          const P = s.val(), r = apply(k, P);
+          if (r === null) { delete SEEN[k]; continue; }
+          SEEN[k] = (P.updatedAt == null ? ua : P.updatedAt) + '|' + p0.pid; if (r) done.push(r);
+        } catch (e) { /* lecture refusée ou réseau : prochain passage */ }
+      }
+    } finally { busy = false; }
+    if (done.length) toast('Auto-sync · ' + done.join(' · '));
+    return done.length;
+  };
+
+  const tick = () => {
+    const root = document.getElementById('bo-root'); if (!root || document.hidden) return;
+    const ae = document.activeElement; if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && root.contains(ae)) return;      // on n'écrit pas pendant que tu tapes
+    if (!off) { try { off = onValue(ref(db, 'backoffice/assignments'), s => { RAW = s.exists() ? s.val() : {}; }, () => { }); } catch (e) { return; } }
+    if (Date.now() - last >= PERIOD) run();
+  };
+  setInterval(tick, 5000);
+
+  B.registerAlert(a => {
+    const fd = a.fd; if (!fd) return null;
+    if (a.ws !== 'Finished') {
+      const mapped = new Set(Object.values((a.al && a.al.map) || {}).map(Number)), n = (fd.exi || []).filter(id => !mapped.has(+id)).length;
+      if (n) return { lvl: 'amber', ico: '🔎', tag: 'Engineer findings', html: '<b>' + n + ' work item' + (n > 1 ? 's' : '') + ' added by the engineer</b> ' + (n > 1 ? 'are' : 'is') + ' not in the file. Field tab → ＋ Add (a WCR to send to the customer is created).' };
+    }
+    const t = fd.rts && a.ws === 'Finished' && a.fin ? new Date(a.fin + 'T00:00').getTime() : 0;
+    if (t && Date.now() - t < 7 * 864e5) { const m = (a.sub || []).filter(s => (s.d || s.no) && !String(s.res || '').trim()).length; if (m) return { lvl: 'amber', ico: '📝', tag: 'Resolution', html: '<b>RTS received</b> — ' + m + ' subject' + (m > 1 ? 's' : '') + ' still without Resolution.' }; }
+    return null;
+  });
+  B.autosync = { run, tick, apply, started, reset: () => { last = 0; SEEN = {}; } };       // pour les tests
+})();
+
 // ══════════════════════════════════════
 //  KICKOFF — OPEN / CLOSE
 // ══════════════════════════════════════
