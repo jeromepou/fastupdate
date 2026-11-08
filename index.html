@@ -19761,6 +19761,148 @@ table.qt-t{width:100%;border-collapse:collapse}.qt-t th{font-size:11px;text-tran
   B.allocation = { crew, nkey, diff, snapOf, pend };                            // pour les tests
 })();
 
+//  BACK OFFICE · onglet « Field » (étape 3A) — retour de l'engineer vers le Back Office
+//  Lit le projet de l'engineer (team/<uid>/projects/<id>) et sa commande de pièces (orders/WO…) : AUCUNE règle Firebase à ajouter.
+//  Rien n'est écrit sans un clic de l'Ops : « Use hours/cycles », « Copy to Resolution », « Mark WO Finished », « Add to the file » (tout est journalisé).
+//  Données lues : p.items [{id,num,label}] · p.updates [{ts,date,isRTS,itemUpdates:[{id,status,detail}]}] · p.ac_hours · p.ac_cycles · p.rts · p.updatedAt
+// ═══════════════════════════════════════════════════════════════════
+(function () {
+  const B = window.BackOffice;
+  if (!B || !B.registerTab || !B.registerAction) return;
+  const esc = B.esc;
+  let FD = {};
+
+  const arr = v => Array.isArray(v) ? v.filter(x => x != null) : Object.values(v || {});
+  const norm = s => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const lab = s => String(s.d || s.no || '').trim();                          // même libellé que l'onglet Allocation
+  const when = t => new Date(t).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const ymd = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const log = (a, t) => { if (B.logIt) return B.logIt(a, t); (a.log = a.log || []).push({ at: Date.now(), by: 'Ops', t }); };
+  const toast = (m, bad) => { const r = document.getElementById('bo-root'); if (!r) return; const t = document.createElement('div'); t.className = 'bo-toast' + (bad ? ' bad' : ''); t.textContent = m; r.appendChild(t); setTimeout(() => t.remove(), 4500); };
+  const woKey = wo => 'WO' + String(wo || '').toUpperCase().replace(/[^a-zA-Z0-9_-]/g, '_');   // même clé que orders/ dans l'app Engineer
+  const txt = h => {                                                           // note du Daily Update (HTML) → texte brut
+    const s = String(h || '').replace(/<\s*br\s*\/?>/gi, '\n').replace(/<\/(p|div|li|h[1-6]|tr)>/gi, '\n').replace(/<li[^>]*>/gi, '• ');
+    const d = new DOMParser().parseFromString(s, 'text/html');
+    return (d.body.textContent || '').replace(/\u00a0/g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n{2,}/g, '\n').trim();
+  };
+
+  // statuts du Daily Update de l'engineer → libellés identiques à son menu déroulant
+  const SL = { done: ['Carried out', 'done'], waiting_parts: ['Waiting for part(s)', 'warn'], mel: ["Item MEL'd", 'warn'], cancelled: ['Cancelled by customer', 'no'], pending: ['In progress', 'run'] };
+  const days = p => arr(p.updates).slice().sort((x, y) => (+x.ts || 0) - (+y.ts || 0));
+  const latest = p => {                                                        // dernier statut + dernière note de chaque work item
+    const L = {};
+    days(p).forEach(u => arr(u.itemUpdates).forEach(x => {
+      if (x.id == null) return; const note = txt(x.detail); if (!x.status && !note) return; const pr = L[x.id];
+      L[x.id] = { st: x.status || (pr && pr.st) || '', note, date: u.date || '', ts: +u.ts || 0 };
+    }));
+    return L;
+  };
+  const state = p => { const U = days(p), r = U.filter(u => u.isRTS).pop(); return { n: U.length, rts: !!p.rts || !!r, rtsTs: (r && +r.ts) || +p.updatedAt || 0 }; };
+  const resText = e => { if (!e) return ''; const l = SL[e.st], n = e.note.replace(/\s*\n\s*/g, ' · '); return l ? l[0] + (n ? ' — ' + n : '') : n; };
+  const link = (a, E) => {                                                     // sujet du dossier → work item de l'engineer
+    const map = (a.al && a.al.map) || {}, used = new Set(), by = [];
+    (a.sub || []).forEach((s, i) => { const id = s.k && map[s.k], it = id ? E.find(x => +x.id === +id) : null; if (it) { used.add(+it.id); by[i] = it; } });
+    (a.sub || []).forEach((s, i) => { if (by[i] || !lab(s)) return; const it = E.find(x => !used.has(+x.id) && norm(x.label) === norm(lab(s))); if (it) { used.add(+it.id); by[i] = it; } });
+    return { by, extra: E.filter(x => x && x.label && !used.has(+x.id)) };
+  };
+
+  const chip = e => { if (!e) return '<span class="fd-c none">No update yet</span>'; const l = SL[e.st]; return l ? `<span class="fd-c ${l[1]}">${esc(l[0])}</span>` : '<span class="fd-c none">Note only</span>'; };
+  const view = a => {
+    const p0 = a.al && a.al.p, S = FD[a.wo] || {}, head = '<h3>Field <small>what the engineer reports</small></h3>';
+    if (!p0 || !p0.pid) return `<div class="bo-card">${head}<p class="qt-mut">Nothing to show yet: this job has not been allocated to an engineer. Use the Allocation tab first.</p></div>`;
+    if (S.err) return `<div class="bo-card">${head}<div class="bo-warn">${esc(S.err)}</div><div class="qt-btns" style="margin-top:8px"><button class="bo-b" data-a="fd" data-k="ref">⟳ Retry</button></div></div>`;
+    if (!('p' in S)) return `<div class="bo-card">${head}<p class="qt-mut">Reading the engineer's project…</p></div>`;
+    if (!S.p) return `<div class="bo-card">${head}<p class="qt-mut">The project is no longer in ${esc(p0.n)}'s list (deleted or transferred).</p><div class="qt-btns"><button class="bo-b" data-a="fd" data-k="ref">⟳ Refresh</button></div></div>`;
+    const p = S.p, st = state(p), L = S.L || {}, E = arr(p.items), lk = link(a, E), rows = [];
+    const h = String(p.ac_hours || '').trim(), c = String(p.ac_cycles || '').trim();
+    const hdiff = (h && h !== String(a.hrs || '').trim()) || (c && c !== String(a.cyc || '').trim());
+    const top = `<div class="bo-card">${head}
+      <div class="fd-live"><span class="fd-c ${st.rts ? 'done' : st.n ? 'run' : 'none'}">${st.rts ? 'RTS' : st.n ? 'In progress · ' + st.n + ' daily update' + (st.n > 1 ? 's' : '') : 'Not started'}</span><span>Last saved <b>${p.updatedAt ? when(p.updatedAt) : '—'}</b>${p.updatedByName ? ' by ' + esc(p.updatedByName) : ''}</span><span>in <b>${esc(p0.n)}</b>'s list</span></div>
+      <div class="fd-hc"><span>Aircraft hours <b>${esc(h || '—')}</b> · cycles <b>${esc(c || '—')}</b> <small>(engineer)</small></span><span>In the file: <b>${esc(a.hrs || '—')}</b> · <b>${esc(a.cyc || '—')}</b></span>${hdiff ? '<button class="bo-b" data-a="fd" data-k="hrs">Use hours/cycles</button>' : ''}</div>
+      <div class="qt-btns" style="margin-top:8px"><button class="bo-b" data-a="fd" data-k="ref">${S.busy ? '⏳ Reading…' : '⟳ Refresh'}</button>${st.rts && a.ws !== 'Finished' ? '<button class="bo-b p" data-a="fd" data-k="fin">✓ Mark WO Finished' + (st.rtsTs ? ' (RTS ' + esc(B.fd(ymd(st.rtsTs))) + ')' : '') + '</button>' : ''}</div>
+      <p class="qt-mut" style="margin-top:8px">Read at ${S.at ? when(S.at) : '—'} (it reloads when you reopen this tab). Nothing changes in the file until you press one of the buttons.</p></div>`;
+    let todo = 0;
+    (a.sub || []).forEach((s, i) => {
+      if (!lab(s)) return;
+      const it = lk.by[i], e = it && L[it.id], tx = resText(e), same = !!tx && tx === String(s.res || ''); if (tx && !same) todo++;
+      rows.push(`<div class="fd-r"><div class="fd-l"><b>${esc(s.no ? s.no + ' · ' : '')}${esc(s.d || '')}</b><small>${it ? 'Engineer work item #' + esc(it.num || it.id) : 'not in the engineer\'s list'}</small></div><div class="fd-n">${chip(e)}${e && e.note ? '<div>' + esc(e.note) + '</div>' : ''}${e && e.date ? '<small>' + esc(e.date) + '</small>' : ''}${same ? ' <small>✓ in Resolution</small>' : ''}</div></div>`);
+    });
+    const items = `<div class="bo-card"><h3>Work items <small>last status and note from the Daily Update</small></h3>${rows.join('') || '<p class="qt-mut">No subject in the file yet.</p>'}
+      <div class="qt-btns" style="margin-top:8px"><button class="bo-b p" data-a="fd" data-k="res"${todo ? '' : ' disabled'}>↧ Copy to Resolution${todo ? ' (' + todo + ')' : ''}</button></div>
+      <p class="qt-mut" style="margin-top:8px">The Resolution column gets exactly what the engineer put: his status (Carried out, MEL, Cancelled, Waiting for part, In progress) and his note.</p></div>`;
+    const ex = lk.extra.length ? `<div class="bo-card"><h3>Added by the engineer <small>work items that are not in the file</small></h3>${lk.extra.map(x => { const e = L[x.id]; return `<div class="fd-r"><div class="fd-l"><b>${esc(x.label)}</b><small>Engineer work item #${esc(x.num || x.id)}</small></div><div class="fd-n">${chip(e)}${e && e.note ? '<div>' + esc(e.note) + '</div>' : ''}</div><button class="bo-b" data-a="fd" data-k="add" data-i="${esc(x.id)}">＋ Add</button></div>`; }).join('')}
+      ${lk.extra.length > 1 ? `<div class="qt-btns" style="margin-top:8px"><button class="bo-b p" data-a="fd" data-k="add" data-i="all">＋ Add all ${lk.extra.length}</button></div>` : ''}
+      <p class="qt-mut" style="margin-top:8px">They are added as subjects on a WCR that is still to send (origin “Engineer (inspection)”): the customer authorization remains to be sent by Ops.</p></div>` : '';
+    const O = S.o || {}, P = ['parts', 'tools', 'consumables'].flatMap(k => arr(O[k]).map(x => Object.assign({ k }, x))).filter(x => x.desc || x.pn);
+    const parts = `<div class="bo-card"><h3>Parts and tools <small>ordered for this WO</small></h3>${P.length ? P.slice(0, 40).map(x => `<div class="fd-r"><div class="fd-l"><b>${esc(x.desc || x.pn)}</b><small>${esc([x.desc && x.pn ? 'P/N ' + x.pn : '', x.sn && 'S/N ' + x.sn, x.qty && 'Qty ' + x.qty, x.cat || x.k].filter(Boolean).join(' · '))}</small></div><div class="fd-n">${esc(x.note || '')}</div></div>`).join('') + (P.length > 40 ? `<p class="qt-mut">+ ${P.length - 40} more</p>` : '') : '<p class="qt-mut">No part or tool ordered for this WO.</p>'}</div>`;
+    return top + items + ex + parts;
+  };
+  const repaint = () => { const r = document.getElementById('fd-root'), a = B.current(); if (r && a) r.innerHTML = view(a); };
+
+  // ── lecture (projet de l'engineer + commande de pièces) ──
+  const fetchProj = async a => {
+    const p = a.al && a.al.p; if (!p || !p.pid) return;
+    const S = FD[a.wo] = FD[a.wo] && FD[a.wo].pid === p.pid ? FD[a.wo] : { pid: p.pid };
+    S.busy = true; S.err = ''; repaint();
+    try {
+      const [ps, os] = await Promise.all([get(ref(db, 'team/' + p.id + '/projects/' + p.pid)), get(ref(db, 'orders/' + woKey(a.wo))).catch(() => null)]);   // la commande de pièces est facultative
+      S.p = ps.exists() ? ps.val() : null; S.o = os && os.exists() ? os.val() : null; S.L = S.p ? latest(S.p) : {};
+    } catch (e) { S.err = e.message || String(e); }
+    S.busy = false; S.at = Date.now(); repaint();
+  };
+
+  // ── actions : toutes manuelles et journalisées ──
+  B.registerAction('fd', t => {
+    const a = B.current(); if (!a) return; const k = t.dataset.k, S = FD[a.wo] || {}, p = S.p;
+    if (k === 'ref') { fetchProj(a); return; }
+    if (!p) return;
+    const done = m => { toast(m); (B.touch || B.save)(); };
+    if (k === 'hrs') {
+      const h = String(p.ac_hours || '').trim(), c = String(p.ac_cycles || '').trim(), ch = [];
+      if (h && h !== String(a.hrs || '').trim()) { a.hrs = h; ch.push(h + ' h'); }
+      if (c && c !== String(a.cyc || '').trim()) { a.cyc = c; ch.push(c + ' cycles'); }
+      if (!ch.length) { toast('Already up to date'); return; }
+      log(a, 'Aircraft hours/cycles updated from the engineer: ' + ch.join(' · ')); done('Hours/cycles updated');
+    } else if (k === 'res') {
+      const lk = link(a, arr(p.items)), L = S.L || {}, todo = [];
+      (a.sub || []).forEach((s, i) => { const it = lk.by[i], tx = resText(it && L[it.id]); if (tx && tx !== String(s.res || '')) todo.push([s, tx]); });
+      if (!todo.length) { toast('Nothing to copy'); return; }
+      const over = todo.filter(x => String(x[0].res || '').trim()).length;
+      if (over && !confirm(over + ' Resolution cell' + (over > 1 ? 's' : '') + ' already contain text and will be replaced. Continue?')) return;
+      todo.forEach(x => { x[0].res = x[1]; });
+      log(a, 'Resolution copied from the engineer\'s Daily Update (' + todo.length + ' work item' + (todo.length > 1 ? 's' : '') + ')'); done('Resolution filled for ' + todo.length + ' work item' + (todo.length > 1 ? 's' : ''));
+    } else if (k === 'fin') {
+      const st = state(p);
+      if (!st.rts) { toast('The engineer has not sent the RTS yet', 1); return; }
+      if (a.ws === 'Finished') { toast('Already Finished'); return; }
+      a.ws = 'Finished'; if (!a.fin) a.fin = ymd(st.rtsTs || Date.now());
+      log(a, 'WO status → Finished (RTS from the engineer)'); done('WO marked Finished');
+    } else if (k === 'add') {
+      const lk = link(a, arr(p.items)), pick = t.dataset.i === 'all' ? lk.extra : lk.extra.filter(x => String(x.id) === t.dataset.i);
+      if (!pick.length) return;
+      a.wcr = a.wcr || []; let n = 0;
+      for (let i = a.wcr.length - 1; i >= 0; i--) { const c = a.wcr[i]; if (c.by === 'Engineer (inspection)' && c.w === 'F' && !c.sent) { n = i + 1; break; } }
+      if (!n) { a.wcr.push({ t: '', by: 'Engineer (inspection)', w: 'F', sent: '', recv: '' }); n = a.wcr.length; log(a, 'WCR ' + n + ' created (engineer inspection)'); }
+      const al = a.al; al.map = al.map || {}; a.sub = a.sub || [];
+      pick.forEach((it, j) => {
+        const k2 = 'k' + Date.now().toString(36) + j, d = String(it.label || '').trim();
+        a.sub.push({ w: 'F', doc: n, no: '', lh: '', hrs: '', d, res: '', why: '', dip: '', dr: 0, ins: 0, sec: 0, cti: 0, k: k2 });
+        al.map[k2] = +it.id;
+        if (al.sync && al.sync.snap && al.sync.snap.k) al.sync.snap.k[k2] = d;      // déjà chez l'engineer : « Send updates » ne doit pas le renvoyer
+      });
+      log(a, pick.length + ' work item' + (pick.length > 1 ? 's' : '') + ' added from the engineer\'s project → WCR ' + n); done(pick.length + ' subject' + (pick.length > 1 ? 's' : '') + ' added on WCR ' + n);
+    }
+  });
+
+  if (!document.getElementById('bo-fd-css')) {
+    const s = document.createElement('style'); s.id = 'bo-fd-css';
+    s.textContent = '.fd-live,.fd-hc{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;font-size:13px}.fd-hc{margin-top:10px}.fd-r{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:flex-start;padding:9px 0;border-bottom:1px solid #e5e7eb}.fd-r:last-child{border-bottom:0}.fd-l{flex:1 1 200px;min-width:0}.fd-l b{display:block;font-size:13.5px;overflow-wrap:anywhere}.fd-l small,.fd-n small{color:#64748b;font-size:12px}.fd-n{flex:2 1 240px;min-width:0;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}.fd-c{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;white-space:nowrap}.fd-c.done{background:#dcfce7;color:#14532d}.fd-c.warn{background:#fef3c7;color:#7c4a03}.fd-c.no{background:#fee2e2;color:#7f1d1d}.fd-c.run{background:#e0e7ff;color:#312e81}.fd-c.none{background:#f1f5f9;color:#475569}';
+    document.head.appendChild(s);
+  }
+  B.registerTab('field', 'Field', a => { const p = a.al && a.al.p, S = FD[a.wo]; if (p && p.pid && (!S || S.pid !== p.pid || (!S.busy && Date.now() - (S.at || 0) > 30000))) fetchProj(a); return '<div id="fd-root">' + view(a) + '</div>'; }, 'alloc');
+  B.field = { link, latest, state, txt, resText };                              // pour les tests
+})();
+
 // ══════════════════════════════════════
 //  KICKOFF — OPEN / CLOSE
 // ══════════════════════════════════════
