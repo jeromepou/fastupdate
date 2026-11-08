@@ -19576,62 +19576,108 @@ table.qt-t{width:100%;border-collapse:collapse}.qt-t th{font-size:11px;text-tran
 })();
 
 // ═══════════════════════════════════════════════════════════════════
-//  BACK OFFICE · onglet « Allocation » — Ops → projet de l'engineer (étape 2)
-//  Crée le projet dans team/<uid>/projects/<id>, prérempli depuis le dossier : l'engineer ne rescanne pas.
-//  Règles Firebase : c'est la clause « transferredFrom » de team/$uid/projects (création seulement, projet inexistant) — rien à changer.
-//  Assistants (rôle S, 2 max) : inscrits dans colleagues ; l'appli de l'engineer leur écrit elle-même leur pointeur sharedProjects à l'affichage de sa liste.
-//  Données : <assignment>.al = { p:{ id, n, pid, at, by, linked }, s:[{ id, n }], prev:[…] }
+//  BACK OFFICE · onglet « Allocation » (v2) — Ops → projet de l'engineer, création PUIS mises à jour
+//  1) « Allocate » crée le projet dans team/<uid>/projects/<id>, prérempli depuis le dossier (clause transferredFrom des règles).
+//  2) « Send updates » envoie ensuite : nouveaux work items, changements de données avion/client, assistants.
+//     Même protocole que deux collègues sur un projet : on n'écrase jamais ce que l'engineer a modifié, et on incrémente `rev`
+//     en dernier → son écran se met à jour en direct (« 🔄 … updated this job »). Demande UNE règle Firebase (voir la note de l'onglet).
+//  Données : <assignment>.al = { p:{ id, n, pid, at, by, linked }, s:[{ id, n }], map:{ clé du sujet : id de l'item }, sync:{ at, by, snap, ids, last }, prev:[…] }
 // ═══════════════════════════════════════════════════════════════════
 (function () {
   const B = window.BackOffice;
   if (!B || !B.registerTab || !B.registerAction) return;
   const esc = B.esc;
-  let TP = null, ST = {}, busy = false;
+  let TP = null, ST = {}, busy = '';
 
   const myId = () => (typeof curProfile !== 'undefined' && curProfile && curProfile.id) || (typeof auth !== 'undefined' && auth && auth.currentUser && auth.currentUser.uid) || '';
   const myName = () => (B.me ? B.me() : (typeof curProfile !== 'undefined' && curProfile && curProfile.name) || 'Ops');
   const log = (a, t) => { if (B.logIt) return B.logIt(a, t); (a.log = a.log || []).push({ at: Date.now(), by: myName(), t }); };
   const when = t => new Date(t).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  const toast = (m, bad) => { const r = document.getElementById('bo-root'); if (!r) return; const t = document.createElement('div'); t.className = 'bo-toast' + (bad ? ' bad' : ''); t.textContent = m; r.appendChild(t); setTimeout(() => t.remove(), 3500); };
+  const toast = (m, bad) => { const r = document.getElementById('bo-root'); if (!r) return; const t = document.createElement('div'); t.className = 'bo-toast' + (bad ? ' bad' : ''); t.textContent = m; r.appendChild(t); setTimeout(() => t.remove(), 4500); };
   const nkey = s => String(s || '').toLowerCase().split(/\s+/).filter(Boolean).sort().join(' ');         // « WIELAND Kevin » = « Kevin Wieland »
+  const arr = v => Array.isArray(v) ? v.slice() : Object.values(v || {});
 
   const team = async () => { if (TP) return TP; try { const s = await get(ref(db, 'teamPublic')); TP = Object.values(s.exists() ? s.val() : {}).filter(p => p && p.id && p.role === 'engineer'); } catch (e) { TP = []; } return TP; };
   const uidOf = async e => (await team()).find(p => nkey(p.name) === nkey(e.n)) || null;
   const crew = a => { const E = a.eng || []; return { P: E.find(e => e.role === 'P') || null, S: E.filter(e => e.role === 'S').slice(0, 2), extra: E.filter(e => e.role === 'S').length - 2 }; };
+
+  // ── Ce que le Back Office envoie : données avion/client, work items, assistants ──
+  const FIELDS = [['model', 'Model'], ['sn', 'S/N'], ['reg', 'Registration'], ['loc', 'Location'], ['far', 'FAR'], ['country', 'Country'], ['cmp', 'CMP'], ['payterms', 'Payment'], ['cust_company', 'Customer'], ['cust_code', 'Customer code'], ['ac_hours', 'Hours'], ['ac_cycles', 'Cycles']];
+  const lab = s => String(s.d || s.no || '').trim();
+  const fields = a => { const apt = (a.apt && a.apt[0]) || {}; return { model: a.type || '', sn: a.sn || '', reg: a.reg || '', loc: String(apt.c || '').split(' - ').pop().trim() || String(apt.l || ''), far: a.far || '', country: a.rc || '', cmp: a.cmp || '', payterms: a.pay || '', cust_company: a.op || a.acc || '', cust_code: a.cc || '', ac_hours: a.hrs ? String(a.hrs) : '', ac_cycles: a.cyc ? String(a.cyc) : '' }; };
+  const ensureKeys = a => (a.sub || []).forEach((s, i) => { if (!s.k && lab(s)) s.k = 'k' + Date.now().toString(36) + i; });
+  const snapOf = a => { const k = {}; (a.sub || []).forEach((s, i) => { if (lab(s)) k[s.k || 'new' + i] = lab(s); }); return { f: fields(a), k, col: crew(a).S.map(e => nkey(e.n)) }; };
+  const pend = a => {                                                              // ce qui a changé dans le Back Office depuis le dernier envoi
+    const al = a.al; if (!al || !al.sync || al.p.linked) return [];
+    const n = snapOf(a), l = al.sync.snap, out = [];
+    const add = Object.keys(n.k).filter(k => !(k in l.k)).length, rel = Object.keys(n.k).filter(k => k in l.k && l.k[k] !== n.k[k]).length;
+    if (add) out.push(add + ' new work item' + (add > 1 ? 's' : '')); if (rel) out.push(rel + ' work item text change' + (rel > 1 ? 's' : ''));
+    FIELDS.forEach(([f, name]) => { if (n.f[f] !== l.f[f]) out.push(name); });
+    if (JSON.stringify(n.col) !== JSON.stringify(l.col)) out.push('assistants');
+    return out;
+  };
+
+  // ── Comparaison à trois : Back Office maintenant / Back Office au dernier envoi / projet de l'engineer maintenant ──
+  const diff = (a, p, su) => {
+    const al = a.al, last = al.sync.snap, now = snapOf(a), E = arr(p.items), map = al.map || {}, out = { add: [], rel: [], conf: [], fields: {}, col: null, items: E };
+    (a.sub || []).forEach(s => {
+      const L = lab(s); if (!L) return; const id = s.k && map[s.k];
+      if (!id) { out.add.push(s); return; }
+      const it = E.find(x => x && +x.id === +id); if (!it) return;                      // supprimé par l'engineer : on ne le recrée pas
+      if (it.label === L || last.k[s.k] === L) return;                                    // identique, ou inchangé côté Back Office
+      if (it.label === last.k[s.k]) out.rel.push({ it, to: L }); else out.conf.push('Work item “' + it.label + '”: the engineer changed it, not overwritten');
+    });
+    FIELDS.forEach(([f, name]) => {
+      const bo = now.f[f], ls = last.f[f], en = String(p[f] == null ? '' : p[f]);
+      if (ls === undefined || bo === ls || bo === en) return;
+      if (en === ls || en === '') out.fields[f] = bo; else out.conf.push(name + ': the engineer has “' + en + '”, Back Office has “' + bo + '” — not overwritten');
+    });
+    const ec = arr(p.colleagues).map(c => c && c.id).filter(Boolean), bc = su.map(u => u.id), lc = al.sync.ids || [];
+    if (JSON.stringify(bc) !== JSON.stringify(lc) && JSON.stringify(bc) !== JSON.stringify(ec)) { if (JSON.stringify(ec) === JSON.stringify(lc)) out.col = bc.map(id => ({ id })); else out.conf.push('Assistants: the engineer changed them, not overwritten'); }
+    return out;
+  };
 
   // état du projet côté engineer (lecture seule : team est lisible par tout compte connecté)
   const fetchStatus = async a => {
     const p = a.al && a.al.p; if (!p || !p.pid) return;
     try {
       const s = await get(ref(db, 'team/' + p.id + '/projects/' + p.pid)), v = s.exists() ? s.val() : null;
-      ST[a.wo] = v ? { ok: true, rev: v.rev || 0, at: v.updatedAt || 0, by: v.updatedByName || '', items: (Array.isArray(v.items) ? v.items : Object.values(v.items || {})).length, upd: (Array.isArray(v.updates) ? v.updates : Object.values(v.updates || {})).length, hrs: v.ac_hours || '', cyc: v.ac_cycles || '', rts: !!v.rts, tr: !!v.transferred } : { ok: false };
-    } catch (e) { ST[a.wo] = { err: e.message }; }
+      ST[a.wo] = Object.assign(ST[a.wo] || {}, v ? { ok: true, rev: v.rev || 0, at: v.updatedAt || 0, by: v.updatedByName || '', items: arr(v.items).length, upd: arr(v.updates).length, hrs: v.ac_hours || '', cyc: v.ac_cycles || '', rts: !!v.rts, err: '' } : { ok: false, err: '' });
+    } catch (e) { ST[a.wo] = Object.assign(ST[a.wo] || {}, { err: e.message }); }
     repaint();
   };
 
   const view = a => {
-    const { P, S, extra } = crew(a), al = a.al || {}, p = al.p, st = ST[a.wo], woaF = (a.woa && a.woa.w) === 'F';
-    const sub = (a.sub || []).filter(s => s.d || s.no).length;
+    const { P, S, extra } = crew(a), al = a.al || {}, p = al.p, st = ST[a.wo] || {}, woaF = (a.woa && a.woa.w) === 'F';
+    const sub = (a.sub || []).filter(lab).length, samePrimary = !!(p && P && nkey(p.n) === nkey(P.n)), pd = samePrimary && !p.linked ? pend(a) : [];
     const row = (e, role, note) => `<div class="bo-ec"><b>${esc(e.n)}</b><span class="bo-tag">${role}</span><span style="color:var(--g600);font-size:12.5px">${note}</span></div>`;
-    const samePrimary = !!(p && P && nkey(p.n) === nkey(P.n));
     let state;
     if (!P) state = '<div class="bo-warn">No primary engineer yet — add one in the Engineers tab (role Primary).</div>';
     else if (samePrimary) state = `<div class="al-ok">✓ ${p.linked ? 'Linked to the project already in' : 'Project created for'} <b>${esc(p.n)}</b>'s list · ${when(p.at)}${p.by ? ' · by ' + esc(p.by) : ''}</div>`;
     else state = p ? `<div class="bo-warn">The project was created for <b>${esc(p.n)}</b>, but the primary is now <b>${esc(P.n)}</b>. Allocating again creates a new project for ${esc(P.n)}; ${esc(p.n)} can delete or transfer his own from the Engineer app.</div>` : '<div class="qt-mut">Not allocated yet.</div>';
-    const live = !samePrimary ? '' : !st ? '<p class="qt-mut">Reading the engineer\'s project…</p>' : st.err ? `<p class="qt-mut">Cannot read the project: ${esc(st.err)}</p>` : !st.ok ? '<p class="qt-mut">The project is no longer in the engineer\'s list (deleted or transferred).</p>'
+    const live = !samePrimary ? '' : !st.ok && st.ok !== false && !st.err ? '<p class="qt-mut">Reading the engineer\'s project…</p>' : st.ok === false ? '<p class="qt-mut">The project is no longer in the engineer\'s list (deleted or transferred).</p>'
       : `<div class="al-live"><span>Last saved <b>${st.at ? when(st.at) : '—'}</b>${st.by ? ' by ' + esc(st.by) : ''}</span><span>${st.items} work item${st.items === 1 ? '' : 's'}</span><span>${st.upd} daily update${st.upd === 1 ? '' : 's'}</span>${st.hrs || st.cyc ? `<span>${esc(st.hrs || '—')} h / ${esc(st.cyc || '—')} cyc</span>` : ''}${st.rts ? '<span><b>RTS</b></span>' : ''}</div>`;
-    const go = P ? `<button class="bo-b p" data-a="al" data-k="go"${busy ? ' disabled' : ''}>${busy ? '⏳ Allocating…' : samePrimary ? '↻ Check / link again' : '📨 Allocate to ' + esc(P.n) + (S.length ? ' + ' + S.length + ' assistant' + (S.length > 1 ? 's' : '') : '')}</button>` : '';
+    const go = P ? `<button class="bo-b p" data-a="al" data-k="go"${busy ? ' disabled' : ''}>${busy === 'go' ? '⏳ Allocating…' : samePrimary ? '↻ Check / link again' : '📨 Allocate to ' + esc(P.n) + (S.length ? ' + ' + S.length + ' assistant' + (S.length > 1 ? 's' : '') : '')}</button>` : '';
+    const lastS = al.sync && al.sync.last, ls = lastS ? [lastS.add ? '+' + lastS.add + ' work item' + (lastS.add > 1 ? 's' : '') : '', lastS.rel ? lastS.rel + ' text change' + (lastS.rel > 1 ? 's' : '') : '', (lastS.fields || []).length ? (lastS.fields || []).join(', ') : '', lastS.col ? 'assistants' : ''].filter(Boolean).join(' · ') : '';
+    const upd = !samePrimary ? '' : p.linked
+      ? `<div class="bo-card"><h3>Updates <small>not available</small></h3><p class="qt-mut">This project was already created by the engineer, so Ops cannot update it. New work items must be added by the engineer.</p></div>`
+      : `<div class="bo-card"><h3>Updates to the engineer's project <small>new work items · aircraft and customer data · assistants</small></h3>
+          ${pd.length ? `<div class="al-pend">● Not sent yet: <b>${esc(pd.join(' · '))}</b></div>` : '<div class="al-ok">✓ Up to date with the Back Office</div>'}
+          ${st.err ? `<div class="bo-warn" style="margin-top:8px">${esc(st.err)}</div>` : ''}
+          ${al.sync && al.sync.at && al.sync.last && 'add' in al.sync.last ? `<p class="qt-mut" style="margin-top:8px">Last sent ${when(al.sync.at)} by ${esc(al.sync.by || '')}${ls ? ' — ' + esc(ls) : ''}${lastS && lastS.conf && lastS.conf.length ? '<br>⚠ ' + lastS.conf.map(esc).join('<br>⚠ ') : ''}</p>` : ''}
+          <p class="qt-mut" style="margin-top:8px">The engineer sees the update live (a “🔄 … updated this job” message) if the project is open, otherwise when he opens it. What he already changed is never overwritten. Removing a work item here does not remove it from his project.</p>
+          <div class="qt-btns" style="margin-top:8px"><button class="bo-b p" data-a="al" data-k="send"${busy || !pd.length ? ' disabled' : ''}>${busy === 'send' ? '⏳ Sending…' : '📤 Send updates to ' + esc(p.n)}</button></div></div>`;
     return `<div class="bo-card"><h3>Allocation <small>creates the project in the engineer's list — no re-scan</small></h3>
       ${P ? row(P, 'Primary', a.start ? 'on this job since ' + B.fd(a.start) : '') : ''}${S.map(e => row(e, 'Assist', 'gets access when the primary opens the app')).join('')}
-      ${extra > 0 ? `<p class="qt-mut">The Engineer app has 2 assistant slots: only the first two are sent.</p>` : ''}
+      ${extra > 0 ? '<p class="qt-mut">The Engineer app has 2 assistant slots: only the first two are sent.</p>' : ''}
       ${state}${live}
       ${woaF && P && !samePrimary ? '<div class="bo-warn" style="margin-top:8px">The WOA is still FBO (not sent). You can allocate now, but the engineer should not start before the authorization.</div>' : ''}
       <p class="qt-mut" style="margin-top:10px">The engineer receives: WO, aircraft (type, S/N, registration), location, country, FAR, customer company and code, CMP, payment terms, hours and cycles when known${sub ? ', and ' + sub + ' work item' + (sub === 1 ? '' : 's') : ''}.</p>
-      <div class="qt-btns" style="margin-top:8px">${go}${samePrimary ? '<button class="bo-b" data-a="al" data-k="ref">⟳ Refresh</button>' : ''}</div></div>`;
+      <div class="qt-btns" style="margin-top:8px">${go}${samePrimary ? '<button class="bo-b" data-a="al" data-k="ref">⟳ Refresh</button>' : ''}</div></div>${upd}`;
   };
-
   const repaint = () => { const r = document.getElementById('al-root'), a = B.current(); if (r && a) r.innerHTML = view(a); };
 
+  // ── 1) Allocation : création du projet ──
   const allocate = async a => {
     const { P, S } = crew(a);
     if (!P) throw new Error('Add a Primary engineer first (Engineers tab).');
@@ -19641,46 +19687,78 @@ table.qt-t{width:100%;border-collapse:collapse}.qt-t th{font-size:11px;text-tran
     const snap = await get(ref(db, 'team/' + pu.id + '/projects')), all = snap.exists() ? snap.val() : {};
     const wo = String(a.wo || '').trim().toUpperCase();
     const match = Object.values(all).find(x => x && !x.transferred && !x.rts && String(x.wo || '').trim().toUpperCase() === wo);   // même règle anti-doublon que l'appli (doSave)
-    const now = Date.now(); let pid, linked = false;
+    const now = Date.now(); let pid, linked = false, map = {};
     if (match) { pid = match.id; linked = true; }
     else {
-      pid = 'proj_' + now;
-      const apt = (a.apt && a.apt[0]) || {}, loc = String(apt.c || '').split(' - ').pop().trim() || String(apt.l || '');
-      const rec = {
+      pid = 'proj_' + now; ensureKeys(a);
+      const items = (a.sub || []).filter(lab).map((s, i) => { map[s.k] = i + 1; return { id: i + 1, num: i + 1, label: lab(s) }; });
+      const rec = Object.assign({
         id: pid, createdAt: now, updatedAt: now, rts: false, rev: 1, updatedBy: me, updatedByName: myName(),
-        wo: a.wo || '', model: a.type || '', sn: a.sn || '', reg: a.reg || '', loc, far: a.far || '', country: a.rc || '',
-        cmp: a.cmp || '', payterms: a.pay || '', cust_company: a.op || a.acc || '', cust_code: a.cc || '',
-        items: (a.sub || []).filter(s => s.d || s.no).map((s, i) => ({ id: i + 1, num: i + 1, label: s.d || s.no })),
-        colleagues: su.map(u => ({ id: u.id })), leadEngId: pu.id,
-        transferredFrom: me, transferredFromName: myName(), transferredAt: now,                      // ← la clause des règles Firebase
-        opsAlloc: { wo: a.wo || '', proj: a.proj || '', rfs: a.rfs || '', at: now, by: myName() }
-      };
-      if (a.hrs) rec.ac_hours = String(a.hrs); if (a.cyc) rec.ac_cycles = String(a.cyc);
+        items, colleagues: su.map(u => ({ id: u.id })), leadEngId: pu.id,
+        transferredFrom: me, transferredFromName: myName(), transferredAt: now,                      // ← clause des règles Firebase (création)
+        opsAlloc: { wo: a.wo || '', proj: a.proj || '', rfs: a.rfs || '', at: now, by: myName() }      // ← marqueur : les projets alloués par Ops peuvent être mis à jour par Ops
+      }, { wo: a.wo || '' }, fields(a));
+      Object.keys(rec).forEach(k => { if (rec[k] === '' && k !== 'wo') delete rec[k]; });
       await set(ref(db, 'team/' + pu.id + '/projects/' + pid), rec);
     }
     if (a.al && a.al.p && a.al.p.id !== pu.id) (a.al.prev = a.al.prev || []).push(a.al.p);
-    a.al = Object.assign(a.al || {}, { p: { id: pu.id, n: P.n, pid, at: now, by: myName(), linked }, s: su.map(u => ({ id: u.id, n: u.name })) });
+    a.al = Object.assign(a.al || {}, { p: { id: pu.id, n: P.n, pid, at: now, by: myName(), linked }, s: su.map(u => ({ id: u.id, n: u.name })), map, sync: linked ? undefined : { at: now, by: myName(), snap: snapOf(a), ids: su.map(u => u.id), last: {} } });
     if (a.ws === 'To allocate') a.ws = 'Stand-by';
     log(a, linked ? 'Linked to ' + P.n + '\'s existing project ' + pid : 'Allocated to ' + P.n + (su.length ? ' (+ ' + su.map(u => u.name).join(', ') + ')' : '') + ' · project ' + pid);
     return { linked, miss };
   };
 
+  // ── 2) Mises à jour : on écrit les enfants utiles, puis `rev` en dernier (c'est lui que l'écran de l'engineer surveille) ──
+  const send = async a => {
+    const al = a.al; if (!al || !al.p || al.p.linked || !al.sync) throw new Error('Nothing to update: this project was not created by Ops.');
+    const me = myId(); if (!me) throw new Error('Not signed in.');
+    const base = 'team/' + al.p.id + '/projects/' + al.p.pid, snap = await get(ref(db, base));
+    if (!snap.exists()) throw new Error('The project is no longer in the engineer\'s list.');
+    const p = snap.val(); if (p.rts) throw new Error('The project is already RTS: nothing to update.');
+    ensureKeys(a);
+    const su = []; for (const e of crew(a).S) { const u = await uidOf(e); if (u && u.id !== al.p.id) su.push(u); }
+    const d = diff(a, p, su), E = d.items, map = Object.assign({}, al.map);
+    let nextId = Math.max(0, ...E.map(x => +x.id || 0)) + 1, nextNum = Math.max(0, ...E.map(x => +x.num || 0)) + 1;
+    d.rel.forEach(r => { r.it.label = r.to; });
+    d.add.forEach(s => { map[s.k] = nextId; E.push({ id: nextId++, num: nextNum++, label: lab(s) }); });
+    const n = d.add.length + d.rel.length + Object.keys(d.fields).length + (d.col ? 1 : 0);
+    const now = Date.now();
+    if (n) {
+      try {
+        if (d.add.length || d.rel.length) await set(ref(db, base + '/items'), E);
+        for (const f of Object.keys(d.fields)) await set(ref(db, base + '/' + f), d.fields[f]);
+        if (d.col) await set(ref(db, base + '/colleagues'), d.col);
+        await set(ref(db, base + '/opsAlloc/sync'), { at: now, by: myName() });
+        await set(ref(db, base + '/updatedBy'), me); await set(ref(db, base + '/updatedByName'), myName()); await set(ref(db, base + '/updatedAt'), now);
+        await runTransaction(ref(db, base + '/rev'), c => (c || 0) + 1);                                // en dernier : déclenche la mise à jour en direct chez l'engineer
+      } catch (e) { throw new Error(/PERMISSION_DENIED/i.test(e.message) ? 'Firebase refused the update. Publish the rule that lets Ops update projects allocated by Ops (one-time change in the Firebase rules), then try again.' : e.message); }
+    }
+    al.map = map; al.s = su.map(u => ({ id: u.id, n: u.name }));
+    al.sync = { at: now, by: myName(), snap: snapOf(a), ids: su.map(u => u.id), last: { add: d.add.length, rel: d.rel.length, fields: Object.keys(d.fields).map(f => (FIELDS.find(x => x[0] === f) || [f, f])[1]), col: !!d.col, conf: d.conf } };
+    log(a, n ? 'Sent updates to ' + al.p.n + ': ' + [d.add.length ? '+' + d.add.length + ' work item(s)' : '', d.rel.length ? d.rel.length + ' text change(s)' : '', Object.keys(d.fields).length ? Object.keys(d.fields).length + ' field(s)' : '', d.col ? 'assistants' : ''].filter(Boolean).join(', ') : 'Checked the engineer\'s project: nothing to send');
+    return { n, conf: d.conf };
+  };
+
   B.registerAction('al', t => {
-    const a = B.current(); if (!a) return;
-    if (t.dataset.k === 'ref') { fetchStatus(a); return; }
-    if (t.dataset.k !== 'go' || busy) return;
-    busy = true; repaint();
-    allocate(a).then(r => { busy = false; toast(r.linked ? 'Linked to the project already in the engineer\'s list' : 'Project created in the engineer\'s list' + (r.miss.length ? ' (not found in the team list: ' + r.miss.join(', ') + ')' : '')); (B.touch || B.save)(); setTimeout(() => fetchStatus(a), 300); },
-      e => { busy = false; toast(e.message || String(e), 1); repaint(); });
+    const a = B.current(); if (!a) return; const k = t.dataset.k;
+    if (k === 'ref') { fetchStatus(a); return; }
+    if ((k !== 'go' && k !== 'send') || busy) return;
+    busy = k; if (ST[a.wo]) ST[a.wo].err = ''; repaint();
+    (k === 'go' ? allocate(a) : send(a)).then(r => {
+      busy = '';
+      toast(k === 'go' ? (r.linked ? 'Linked to the project already in the engineer\'s list' : 'Project created in the engineer\'s list' + (r.miss.length ? ' (not found in the team list: ' + r.miss.join(', ') + ')' : '')) : (r.n ? 'Updates sent: the engineer\'s project is up to date' : 'Nothing to send') + (r.conf.length ? ' — ' + r.conf.length + ' item(s) left untouched (see below)' : ''));
+      (B.touch || B.save)(); setTimeout(() => fetchStatus(a), 300);
+    }, e => { busy = ''; ST[a.wo] = Object.assign(ST[a.wo] || {}, { err: e.message || String(e) }); toast(e.message || String(e), 1); repaint(); });
   });
 
+  if (B.registerAlert) B.registerAlert(a => { const p = (a.al && a.al.p && !a.al.p.linked && a.ws !== 'Finished') ? pend(a) : []; return p.length ? { lvl: 'amber', ico: '📤', tag: 'Update pending', html: '<b>Not sent to ' + esc(a.al.p.n) + ' yet:</b> ' + esc(p.join(', ')) + '. Allocation tab → Send updates.' } : null; });
   if (!document.getElementById('bo-al-css')) {
     const s = document.createElement('style'); s.id = 'bo-al-css';
-    s.textContent = '.al-ok{margin-top:8px;background:#eef2ff;border:1px solid #c7d2fe;color:#312e81;border-radius:12px;padding:9px 13px;font-size:13px}.al-live{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font-size:12.5px;color:var(--g600)}.al-live b{color:var(--g900)}';
+    s.textContent = '.al-ok{margin-top:8px;background:#eef2ff;border:1px solid #c7d2fe;color:#312e81;border-radius:12px;padding:9px 13px;font-size:13px}.al-pend{margin-top:8px;background:#fffbeb;border:1px solid #fde68a;color:#7c4a03;border-radius:12px;padding:9px 13px;font-size:13px}.al-live{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font-size:12.5px;color:var(--g600)}.al-live b{color:var(--g900)}';
     document.head.appendChild(s);
   }
   B.registerTab('alloc', 'Allocation', a => { if (a.al && a.al.p && !ST[a.wo]) fetchStatus(a); return '<div id="al-root">' + view(a) + '</div>'; }, 'engineers');
-  B.allocation = { crew, nkey };                            // pour les tests
+  B.allocation = { crew, nkey, diff, snapOf, pend };                            // pour les tests
 })();
 
 // ══════════════════════════════════════
