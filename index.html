@@ -16673,6 +16673,8 @@ Extract all standard fields normally, including country and far_certification as
   - customer_name: from the "Contact" field — the individual person's name (e.g. "Livio Cuneo"). This is NOT the Account/company name.
   - enrolled_in_cmp: the value written next to the label "Enrolled in CMP" (section "Aircraft Details"; the label may be written "Enrolled in CMP ?" or "Enrolled in CMP?"). Return exactly "Yes" or "No". If this label does not appear in the document, or has no value, return "Unknown". Never guess.
   - payment_terms: the code written next to the label "Payment Terms" (section "Billing Credit Details"), for example "ZN30", "ZN60", "ZCOD" or "ZCIA" — copy it exactly, in uppercase. If this label does not appear in the document, or has no value, return "Unknown". Do NOT take the value of a neighbouring label (Available Credit, Warranty, Overtime Approved).
+  - location: the 4-letter ICAO airport code written next to the label "Airport Dispatched To" (section "Additional Visit Aircraft Details"). That label is split over two lines in the PDF ("Airport Dispatched" ... "To"), so the code may appear right after "Airport Dispatched", before the word "To", or before the label "Support Location". Return "" if no code is written there. Never use the "Input Facility" or "Support Location" value.
+  - next_flight: the DATE written next to the label "ETD" (section "Schedule Details"), converted to DDMMMYY in uppercase: "ETD 11/11/2026 10:00 AM" gives "11NOV26". Dates in this document are MONTH/DAY/YEAR. Ignore the time. Never use the "ETA Date" value. If no ETD date is written, return "UNKWN".
 
 DOCUMENT TYPE 2 — "Work Order Detail" (header literally says "Work Order Detail", contains numbered "Item: N" sections each with "Squawk: X.Y" / "Discrepancy:" / "Status:" lines):
 
@@ -16758,6 +16760,8 @@ Reply ONLY with valid JSON, no markdown, in this exact shape:
 
     const docType = parsed.doc_type || 'RFS';
     const isFollowUp = (docType === 'WORK_ORDER_DETAIL' || docType === 'WCR');
+    // RFS : A/C Location (« Airport Dispatched To ») et Next Flight (« ETD ») lus d'abord dans le TEXTE du PDF ; la réponse de l'IA ne sert que si rien n'est trouvé.
+    if (docType === 'RFS') { const rf = acReadRfsAirportEtd(extractedText); if (rf.location) parsed.location = rf.location; if (rf.next_flight) parsed.next_flight = rf.next_flight; }
         if (scan) {                                                                // appelé par l'Ops board (scanRfsFile) : on rend le résultat, sans toucher au formulaire Engineer
       if (docType === 'RFS') {
         const _lc = s => String(s || '').trim().toLowerCase();
@@ -17021,6 +17025,25 @@ function acReadCmpPay(text, parsed, isRfs) {
   return out;
 }
 G.acReadCmpPay = acReadCmpPay;
+
+// RFS : « Airport Dispatched To » → A/C Location (ICAO) et « ETD » → Next Flight (DDMMMYY), lus d'abord DANS LE TEXTE du PDF (règle fixe) ; l'IA reste le 2e choix.
+// Le libellé « Airport Dispatched To » est coupé sur 2 lignes dans la RFS : le lecteur local met « To » APRÈS le code (« Airport Dispatched RPLL Support Location … ⏎ To »),
+// l'OCR le met avant (« Airport Dispatched ⏎ To ⏎ RPLL ») → « To » est facultatif. Les dates de la RFS sont MOIS/JOUR/ANNÉE (« 11/11/2026 10:00 AM »). Rien de lisible → '' (rien n'est écrasé).
+function acReadRfsAirportEtd(text) {
+  const t = String(text || ''), out = { location: '', next_flight: '' };
+  const am = /[Aa]irport\s+[Dd]ispatched(?:\s+[Tt]o)?[\s|:*_]*([A-Z]{4})\b/.exec(t);
+  if (am) out.location = am[1];
+  const dm = /\bETD\b(?:\s+Date)?[\s|:*_]*(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(t);
+  if (dm) {
+    let mo = +dm[1], d = +dm[2]; const y = +dm[3];
+    if (mo > 12 && d <= 12) [mo, d] = [d, mo];                       // 1er nombre > 12 : ce ne peut pas être un mois → jour/mois
+    const dt = new Date(Date.UTC(y, mo - 1, d));
+    if (mo >= 1 && mo <= 12 && dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d)
+      out.next_flight = String(d).padStart(2, '0') + ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][mo - 1] + String(y).slice(-2);
+  }
+  return out;
+}
+G.acReadRfsAirportEtd = acReadRfsAirportEtd;
 
 G.updateCmpUI = function(opts) {
   const no = acCmpValue() === 'No';
@@ -20003,6 +20026,80 @@ table.qt-t{width:100%;border-collapse:collapse}.qt-t th{font-size:11px;text-tran
     return null;
   });
   B.autosync = { run, tick, apply, started, reset: () => { last = 0; SEEN = {}; } };       // pour les tests
+})();
+
+//  BACK OFFICE · relance WOA / WCR en 1 clic (« Chase ») — à coller après le module Back Office, avant la bannière « KICKOFF — OPEN / CLOSE »
+//  Le bouton « ✉ Chase » de l'alerte « sans retour depuis 3 jours » ouvre un mail prérempli à la Business Office (adresse des ⚙ réglages, comme pour les WCR) qui liste
+//  les documents encore non retournés : WOA / WCR, date d'envoi, sujets concernés. « Send now (Gmail) » réutilise l'envoi Gmail de l'app ; après l'envoi — ou avec
+//  « Only mark as chased » pour une relance faite par téléphone — la date de relance est notée sur le document : l'alerte repart pour 3 jours.
+//  Nécessite aussi le remplacement de la ligne de l'alerte « Chase » (bouton + délai compté depuis la dernière relance).
+// ═══════════════════════════════════════════════════════════════════
+(function () {
+  const B = window.BackOffice;
+  if (!B || !B.registerAction) return;
+  const esc = B.esc;
+  let S = null;                                                           // relance en cours : { wo, docs:[-1 = WOA, sinon index de la WCR] }
+  const R = () => document.getElementById('bo-root');
+  const toast = (m, bad) => { const r = R(); if (!r) return; const t = document.createElement('div'); t.className = 'bo-toast' + (bad ? ' bad' : ''); t.textContent = m; r.appendChild(t); setTimeout(() => t.remove(), 4500); };
+  const ymd = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const days = s => Math.floor((Date.now() - new Date(s + 'T00:00')) / 864e5);
+  const base = d => d && d.w === 'A' ? (d.ch || d.sent || '') : '';             // date de référence : dernière relance, sinon envoi
+  const age = d => base(d) ? days(base(d)) : -1;
+  const due = a => [{ n: 'WOA', i: -1, d: a.woa }].concat((a.wcr || []).map((c, i) => ({ n: 'WCR ' + (i + 1), i, d: c }))).filter(x => x.d && age(x.d) >= 3);
+  const names = () => S ? S.docs.map(i => i < 0 ? 'WOA' : 'WCR ' + (i + 1)).join(', ') : '';
+  const close = () => { const m = document.getElementById('ch-modal'); if (m) m.remove(); };
+
+  const open = async a => {
+    const docs = due(a); if (!docs.length) { toast('Nothing to chase', 1); return; }
+    let to = ''; try { const s = await get(ref(db, 'backoffice/config/bo')); to = s.exists() ? String(s.val() || '') : ''; } catch (e) { }
+    try { to = to || localStorage.getItem('bo_chase_to') || ''; } catch (e) { }
+    const sn = a.sn ? ' ' + a.sn : '', many = docs.length > 1;
+    const subject = 'Reminder — ' + a.wo + sn + (a.reg ? ' (' + a.reg + ')' : '') + ': ' + docs.map(x => x.n).join(', ') + ' not returned';
+    const body = ['Hello,', '', 'Could you please chase the customer for the signed ' + (many ? 'authorizations' : 'authorization') + ' below? ' + (many ? 'They are' : 'It is') + ' still not returned:', '']
+      .concat(docs.map(x => {
+        const sq = (a.sub || []).filter(s => +s.doc === x.i + 1 && (s.d || s.no)), top = sq.slice(0, 12).map(s => '    ' + (s.no || 'SQ') + ' ' + (s.d || '')).join('\n');
+        return '• ' + x.n + ' — ' + (x.d.sent ? 'sent ' + B.fd(x.d.sent) + ' (' + days(x.d.sent) + ' days ago' : 'requested (') + (x.d.ch ? (x.d.sent ? ', ' : '') + 'chased ' + B.fd(x.d.ch) : '') + ')'
+          + (x.i >= 0 && x.d.t ? '\n    ' + x.d.t : '') + (top ? '\n' + top : '') + (sq.length > 12 ? '\n    … + ' + (sq.length - 12) + ' more' : '');
+      }))
+      .concat(['', 'The related subjects stay unapproved until the signed ' + (many ? 'documents come' : 'document comes') + ' back.', 'Thank you.']).join('\n');
+    S = { wo: a.wo, docs: docs.map(x => x.i) };
+    close();
+    R().insertAdjacentHTML('beforeend', `<div class="bo-modal" id="ch-modal"><div class="bo-dlg"><h3>✉ Chase the Business Office</h3><label>To<input id="ch_to" value="${esc(to)}" placeholder="name@company.com, …"></label><label>Subject<input id="ch_s" value="${esc(subject)}"></label><label>Message<textarea id="ch_b" rows="11">${esc(body)}</textarea></label><div class="bo-foot"><button class="bo-b" data-a="chase" data-k="close">Cancel</button><button class="bo-b" data-a="chase" data-k="mark">Only mark as chased</button><button class="bo-b" data-a="chase" data-k="app">Open in mail app</button><button class="bo-b p" data-a="chase" data-k="send">Send now (Gmail)</button></div></div></div>`);
+  };
+
+  const mark = msg => {                                                   // note la date de relance sur les documents concernés (ceux de la boîte de dialogue)
+    const a = B.current(); if (!a || !S || a.wo !== S.wo) return false;
+    const t = ymd(Date.now()); S.docs.forEach(i => { const d = i < 0 ? a.woa : (a.wcr || [])[i]; if (d) d.ch = t; });
+    B.logIt(a, msg); (B.touch || B.save)(); return true;
+  };
+
+  const send = async btn => {
+    const to = document.getElementById('ch_to').value.split(/[,;\s]+/).filter(Boolean), s = document.getElementById('ch_s').value, b = document.getElementById('ch_b').value;
+    if (!to.length || !to.every(x => /^[^\s<>",;@]+@[^\s<>",;@]+$/.test(x))) return toast('Check the recipients', 1);
+    btn.disabled = true;
+    try {                                                                 // même envoi Gmail que les autres mails du Back Office
+      if (typeof ensureGTokenAsync !== 'function' || typeof koPushRawMessage !== 'function') throw new Error('Gmail is not available here — use “Open in mail app”.');
+      if (!(gToken && Date.now() < gTokenExp) && !(await ensureGTokenAsync())) throw new Error('Google sign-in cancelled — nothing sent.');
+      const html = '<div style="line-height:1.6;white-space:pre-wrap">' + esc(b) + '</div>' + (typeof koBuildSignatureHtml === 'function' ? koBuildSignatureHtml() : '');
+      const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + gToken }, body: JSON.stringify({ raw: koPushRawMessage(to, [], s, html) }) });
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))).error || {}).message || 'Gmail error ' + res.status);
+      try { localStorage.setItem('bo_chase_to', to.join(', ')); } catch (e) { }
+      close(); toast('✅ Reminder sent to ' + to.length + (to.length > 1 ? ' people' : ' person'));
+      mark('✉ ' + s + ' → ' + to.join(', '));
+    } catch (e) { toast(e.message, 1); btn.disabled = false; }
+  };
+
+  B.registerAction('chase', t => {
+    const k = t.dataset.k, a = B.current(); if (!a) return;
+    if (k === 'open') open(a);
+    else if (k === 'close') close();
+    else if (k === 'mark') { const n = names(); if (mark('Chased (marked manually): ' + n)) { close(); toast('Marked as chased — the alert returns in 3 days'); } }
+    else if (k === 'app') {
+      location.href = 'mailto:' + document.getElementById('ch_to').value.replace(/\s/g, '') + '?subject=' + encodeURIComponent(document.getElementById('ch_s').value) + '&body=' + encodeURIComponent(document.getElementById('ch_b').value);
+      toast('Mail draft opened — press “Only mark as chased” once you have sent it');
+    } else if (k === 'send') send(t);
+  });
+  B.chase = { due, age };                                                 // pour les tests
 })();
 
 // ══════════════════════════════════════
