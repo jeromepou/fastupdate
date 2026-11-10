@@ -1,0 +1,571 @@
+{
+ "v": 1,
+ "about": "Engineers and ops-team file for the Engineer Schedule — import it from Schedule > Engineers > Import (names, phones and e-mails of the ops team are read live from the app database)",
+ "engineers": {
+  "prof_1781832236712": {
+   "n": "R. Hauser",
+   "full": "HAUSER Roger",
+   "g": "eng",
+   "reg": "Europe",
+   "base": "Basel",
+   "icao": "LFSB",
+   "fn": "FN669816",
+   "q": {
+    "G280": 3,
+    "G500": 3,
+    "G600": 3,
+    "G650": 3,
+    "G700": 3,
+    "G800": 3,
+    "GV": 2,
+    "G450": 2,
+    "G550": 2
+   },
+   "ord": 1,
+   "on": 1,
+   "iata": "BSL"
+  },
+  "prof_1781832236717": {
+   "n": "J. Gubler",
+   "full": "GUBLER Julien",
+   "g": "eng",
+   "reg": "Europe",
+   "base": "Geneva",
+   "icao": "LSGG",
+   "fn": "FN667048",
+   "q": {
+    "G280": 3,
+    "G500": 3,
+    "G600": 3,
+    "G650": 3,
+    "G700": 3,
+    "G800": 3
+   },
+   "ord": 2,
+   "on": 1,
+   "iata": "GVA"
+  },
+  "prof_1781832236702": {
+   "n": "D. Janeski",
+   "full": "JANESKI Danijel",
+   "g": "eng",
+   "reg": "Europe",
+   "base": "Geneva",
+   "icao": "LSGG",
+   "fn": "FN663777",
+   "q": {
+    "GIV": 1,
+    "G450": 1,
+    "G500": 1,
+    "G550": 1,
+    "G600": 1,
+    "G650": 1,
+    "G700": 1,
+    "G800": 1
+   },
+   "ord": 3,
+   "on": 1,
+   "iata": "GVA"
+  },
+  "prof_1793837241029": {
+   "n": "X. Santucci",
+   "full": "SANTUCCi Xavier",
+   "g": "eng",
+   "reg": "Europe",
+   "base": "Rome",
+   "icao": "LIRA",
+   "fn": "FN666833",
+   "q": {
+    "G500": 1,
+    "G600": 1,
+    "G650": 1,
+    "G700": 1,
+    "G800": 1
+   },
+   "ord": 4,
+   "on": 1
+  },
+  "prof_1781832236722": {
+   "n": "M. Ploeg",
+   "full": "PLOEG Mauritz",
+   "g": "eng",
+   "reg": "Europe",
+   "base": "Zurich",
+   "icao": "LSZH",
+   "fn": "FN671366",
+   "q": {
+    "G150": 3,
+    "G200": 3,
+    "G280": 3,
+    "G450": 3,
+    "G500": 3,
+    "G550": 3,
+    "G600": 3,
+    "G650": 3,
+    "G700": 3,
+    "G800": 3
+   },
+   "ord": 5,
+   "on": 1,
+   "iata": "ZRH"
+  },
+  "prof_1781832236721": {
+   "n": "D. Mueller",
+   "full": "MUELLER Daniel",
+   "g": "eng",
+   "reg": "Europe",
+   "base": "Zurich",
+   "icao": "LSZH",
+   "fn": "FN664475",
+   "q": {
+    "G280": 3,
+    "G500": 3,
+    "G600": 3,
+    "G650": 3,
+    "G700": 3,
+    "G800": 3,
+    "G150": 2,
+    "G200": 2
+   },
+   "ord": 6,
+   "on": 1,
+   "iata": "ZRH"
+  },
+  "prof_1781832236697": {
+   "n": "K. Wieland",
+   "full": "WIELAND Kevin",
+   "g": "eng",
+   "reg": "Europe",
+   "base": "Zurich",
+   "icao": "LSZH",
+   "fn": "FN980041",
+   "q": {
+    "G280": 3,
+    "G500": 3,
+    "G600": 3,
+    "G650": 3,
+    "G700": 3,
+    "G800": 3
+   },
+   "ord": 7,
+   "on": 1,
+   "iata": "ZRH"
+  },
+  "prof_1781832236705": {
+   "n": "B. O'Mahony",
+   "full": "OMAHONY Billy",
+   "g": "eng",
+   "reg": "Europe",
+   "base": "Paris",
+   "icao": "LFPB",
+   "fn": "FN664447",
+   "q": {
+    "G450": 3,
+    "G500": 3,
+    "G550": 3,
+    "G600": 3,
+    "G650": 3,
+    "G700": 3,
+    "G800": 3
+   },
+   "ord": 8,
+   "on": 1,
+   "iata": "LBG"
+  },
+  "prof_1781832236713": {
+   "n": "S. Rowe",
+   "full": "ROWE Stephen",
+   "g": "eng",
+   "reg": "Europe",
+   "base": "Paris",
+   "icao": "LFPB",
+   "fn": "FN980042",
+   "q": {
+    "G500": 1,
+    "G550": 1,
+    "G600": 1,
+    "G650": 1,
+    "G700": 1,
+    "G800": 1
+   },
+   "ord": 9,
+   "on": 1,
+   "iata": "LBG"
+  },
+  "prof_1781832236698": {
+   "n": "R. Patricio",
+   "full": "PATRICIO Romain",
+   "g": "eng",
+   "reg": "Europe",
+   "base": "Paris",
+   "icao": "LFPB",
+   "fn": "FN670589",
+   "q": {
+    "G650": 1,
+    "G700": 1,
+    "G800": 1
+   },
+   "ord": 10,
+   "on": 1,
+   "iata": "LBG"
+  },
+  "prof_1781832236701": {
+   "n": "A. Teygnier",
+   "full": "TEYGNIER Axel",
+   "g": "eng",
+   "reg": "Europe",
+   "base": "Lyon",
+   "icao": "LFLL",
+   "fn": "FN662958",
+   "q": {
+    "G280": 1,
+    "G450": 1,
+    "G500": 1,
+    "G600": 1,
+    "G650": 1,
+    "G700": 1,
+    "G800": 1
+   },
+   "ord": 11,
+   "on": 1,
+   "iata": "LYS"
+  },
+  "prof_1781832236703": {
+   "n": "F. Cochard",
+   "full": "COCHARD Franck",
+   "g": "eng",
+   "reg": "Europe",
+   "base": "Nice",
+   "icao": "LFMN",
+   "fn": "FN983504",
+   "q": {
+    "GIV": 3,
+    "G500": 3,
+    "G550": 3,
+    "G600": 3,
+    "G650": 3,
+    "G700": 3,
+    "G800": 3
+   },
+   "ord": 12,
+   "on": 1,
+   "iata": "NCE"
+  },
+  "prof_1781832236700": {
+   "n": "J. Couchet",
+   "full": "COUCHET Jeremy",
+   "g": "eng",
+   "reg": "Europe",
+   "base": "Nice",
+   "icao": "LFMN",
+   "fn": "FN662977",
+   "q": {
+    "GV": 1,
+    "G450": 1,
+    "G500": 1,
+    "G550": 1,
+    "G600": 1,
+    "G650": 1,
+    "G700": 1,
+    "G800": 1
+   },
+   "ord": 13,
+   "on": 1,
+   "iata": "NCE"
+  },
+  "prof_1781832236704": {
+   "n": "L. Eriksson",
+   "full": "ERIKSSON Linus",
+   "g": "eng",
+   "reg": "Europe",
+   "base": "Stockholm",
+   "icao": "ESSA",
+   "fn": "FN666957",
+   "q": {
+    "G450": 1,
+    "G500": 1,
+    "G550": 1,
+    "G600": 1,
+    "G650": 1,
+    "G700": 1,
+    "G800": 1
+   },
+   "ord": 14,
+   "on": 1,
+   "iata": "ARN"
+  },
+  "prof_1781832236716": {
+   "n": "S. Suoranta",
+   "full": "SUORANTA Samuli",
+   "g": "eng",
+   "reg": "Europe",
+   "base": "Munich",
+   "icao": "EDDM",
+   "fn": "FN667477",
+   "q": {
+    "GV": 3,
+    "G450": 3,
+    "G500": 3,
+    "G550": 3,
+    "G600": 3,
+    "G650": 3,
+    "G700": 3,
+    "G800": 3
+   },
+   "ord": 15,
+   "on": 1,
+   "iata": "MUC"
+  },
+  "prof_1781832236709": {
+   "n": "A. Alban",
+   "full": "ALBAN Alberto",
+   "g": "eng",
+   "reg": "Europe",
+   "base": "Venice",
+   "icao": "LIPZ",
+   "fn": "FN980027",
+   "q": {
+    "G450": 1,
+    "G550": 1,
+    "G500": 3,
+    "G600": 3,
+    "G650": 3,
+    "G700": 3,
+    "G800": 3
+   },
+   "ord": 16,
+   "on": 1,
+   "iata": "VCE"
+  },
+  "prof_1781832236696": {
+   "n": "E. Solovkin",
+   "full": "SOLOVKIN Evgeniy",
+   "g": "eng",
+   "reg": "Europe",
+   "base": "Madrid",
+   "icao": "LEMD",
+   "fn": "FN663000",
+   "q": {
+    "GIV": 3,
+    "G150": 3,
+    "G200": 3,
+    "G450": 3,
+    "G500": 3,
+    "G550": 3,
+    "G600": 3,
+    "G650": 3,
+    "G700": 3,
+    "G800": 3
+   },
+   "ord": 17,
+   "on": 1,
+   "iata": "MAD"
+  },
+  "prof_1781832236720": {
+   "n": "J. Jonsson",
+   "full": "JONSSON Jimmy",
+   "g": "eng",
+   "reg": "Europe",
+   "base": "Athens",
+   "icao": "LGAV",
+   "fn": "FN662954",
+   "q": {
+    "G150": 3,
+    "G200": 3,
+    "G500": 3,
+    "G600": 3,
+    "G650": 3,
+    "G700": 3,
+    "G800": 3
+   },
+   "ord": 18,
+   "on": 1,
+   "iata": "ATH"
+  },
+  "prof_1781832236711": {
+   "n": "V. Haggerty",
+   "full": "HAGGERTY Vincent",
+   "g": "eng",
+   "reg": "Asia",
+   "base": "Bangkok",
+   "icao": "VTBD",
+   "fn": "FN663319",
+   "q": {
+    "G450": 1,
+    "G500": 1,
+    "G550": 1,
+    "G600": 1,
+    "G650": 1,
+    "G700": 1,
+    "G800": 1
+   },
+   "ord": 19,
+   "on": 1,
+   "iata": "BKK"
+  },
+  "prof_1781832236710": {
+   "n": "B. Oakley",
+   "full": "OAKLEY Brian",
+   "g": "eng",
+   "reg": "Asia",
+   "base": "Bangkok",
+   "icao": "VTBD",
+   "fn": "FN668828",
+   "q": {
+    "G450": 3,
+    "G500": 3,
+    "G550": 3,
+    "G600": 3,
+    "G650": 3,
+    "G700": 3,
+    "G800": 3
+   },
+   "ord": 20,
+   "on": 1,
+   "iata": "BKK"
+  },
+  "prof_1781832236715": {
+   "n": "J. Poupinel",
+   "full": "POUPINEL Jérôme",
+   "g": "eng",
+   "reg": "Asia",
+   "base": "Bangkok",
+   "icao": "VTBD",
+   "fn": "FN666704",
+   "q": {
+    "G500": 3,
+    "G550": 3,
+    "G600": 3,
+    "G650": 3,
+    "G700": 3,
+    "G800": 3
+   },
+   "ord": 21,
+   "on": 1,
+   "iata": "BKK"
+  },
+  "prof_1781832236707": {
+   "n": "Q. Oliver",
+   "full": "OLIVER Quinton",
+   "g": "eng",
+   "reg": "Africa",
+   "base": "Johannesburg",
+   "icao": "FALA",
+   "fn": "FN980040",
+   "q": {
+    "GV": 1,
+    "G500": 1,
+    "G550": 1,
+    "G600": 1,
+    "G650": 1,
+    "G700": 1,
+    "G800": 1
+   },
+   "ord": 22,
+   "on": 1,
+   "iata": "HLA"
+  },
+  "prof_1781832236723": {
+   "n": "P. Iliakis",
+   "full": "ILIAKIS Panos",
+   "g": "ops",
+   "reg": "Europe",
+   "ord": 101,
+   "on": 1
+  },
+  "prof_1781832236706": {
+   "n": "A. Harvey-Robins",
+   "full": "HARVEY-ROBINS Abigail",
+   "g": "ops",
+   "reg": "Europe",
+   "ord": 102,
+   "on": 1,
+   "dn": "Abby Harvey-Robins"
+  },
+  "prof_1781832236714": {
+   "n": "A. Papadopoulos",
+   "full": "PAPADOPOULOS Alexis",
+   "g": "ops",
+   "reg": "Europe",
+   "ord": 103,
+   "on": 1
+  },
+  "prof_1781832236718": {
+   "n": "C. Stylianides",
+   "full": "STYLIANIDES Charis",
+   "g": "ops",
+   "reg": "Europe",
+   "ord": 104,
+   "on": 1
+  },
+  "prof_1781832236708": {
+   "n": "E. Dafflon",
+   "full": "DAFFLON Emilie",
+   "g": "ops",
+   "reg": "Europe",
+   "ord": 105,
+   "on": 1
+  },
+  "prof_1781832236719": {
+   "n": "K. Towns",
+   "full": "TOWNS Kerry",
+   "g": "ops",
+   "reg": "Europe",
+   "ord": 106,
+   "on": 1,
+   "wk": {
+    "2026-11-02": "- U U U U U -"
+   }
+  },
+  "prof_1781832236699": {
+   "n": "R. Leon",
+   "full": "LEON Rafael",
+   "g": "ops",
+   "reg": "Europe",
+   "ord": 107,
+   "on": 1,
+   "wk": {
+    "2026-11-02": "MG MG MG MG - - MG"
+   }
+  },
+  "prof_1781832236695": {
+   "n": "P. Dafflon",
+   "full": "DAFFLON Philippe",
+   "g": "ops",
+   "reg": "Europe",
+   "ord": 108,
+   "on": 1,
+   "wk": {
+    "2026-11-02": "- - - - MG MG -"
+   }
+  }
+ },
+ "config": {
+  "sched": {
+   "to": "",
+   "cc": "",
+   "subject": "10 DAY SCHEDULE – EURO-ASIA FAST ({from} – {to})",
+   "intro": "Dear All,\n\nPlease find below the 10 DAY SCHEDULE for EURO-ASIA FAST."
+  },
+  "avail": {
+   "to": "fast.update.emea@gulfstream.com, FASTteam@headstartaviation.com, Christopher.Morgan1@gulfstream.com, Olaseni.Ramos@gulfstream.com, fab.aog.fast.business.office@gulfstream.com, fab.materials@gulfstream.com, cs.scheduling.fast@gulfstream.com",
+   "cc": "",
+   "subject": "FAST AVAILABILITY STATUS – {date}",
+   "intro": "Dear All,\n\nPlease find today’s FAST Availability Status.",
+   "note": "",
+   "link": "https://surveys.gulfstream.com/s3/Aircraft-Scheduling-Request",
+   "tel": "+41 43 588 1516",
+   "am": "From 6:30 to 15:00 UTC",
+   "pm": "From 15:00 to 23:00 UTC"
+  },
+  "contacts": [
+   {
+    "role": "Service Team Manager",
+    "name": "Michael Varnham",
+    "when": "",
+    "tel": "Mobile +44 7950 886475",
+    "email": "Michael.Varnham@gulfstream.com"
+   }
+  ]
+ }
+}
