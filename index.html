@@ -845,7 +845,8 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
     <button type="button" class="u2-i" onclick="openCorridorHub()"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12h6M9 16h4"/></svg>Corridor</button>
     <button type="button" class="u2-i" onclick="ptlOpen()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-3 3-1.3-1.3-8.4 8.4a2 2 0 0 1-3-3l8.4-8.4L12 10z"/></svg>Paris Tooling</button>
     <button type="button" class="u2-i" onclick="koOpenAmmReader()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5"/><path d="M8 7h7"/></svg>AMM reader</button>
-    <button type="button" class="u2-i" onclick="openSchedule()"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Schedule</button>    
+    <button type="button" class="u2-i" data-ops-only style="display:none" onclick="openSchedule()"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Schedule</button>
+    <button type="button" class="u2-i" data-owner-only style="display:none" onclick="openExpenses()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>Expenses</button>
   </div>
 </aside>
 
@@ -18023,7 +18024,7 @@ if ('serviceWorker' in navigator) {
 //  ⚠️ ON EVERY DEPLOY: bump CURRENT_VERSION below AND the number inside
 //  version.json to the same new value. That's the only step to remember.
 // ══════════════════════════════════════
-const CURRENT_VERSION = 'v42';
+const CURRENT_VERSION = 'v43';
 
 function checkForUpdate() {
   fetch('version.json?_=' + Date.now(), { cache: 'no-store' })
@@ -19254,7 +19255,10 @@ G.koCheckWoDraft = async function(wo) {
 // ═══════════════════════════════════════════════════════════════════
 (function () {
   const OPS_EXTRA = ['prof_1781832236715'];             // même exception que dans tes règles Firebase (ton profil, pour tester). Mets [] pour n'avoir que ops + admins.
-  const allowed = () => { try { return !!(isAdmin || (curProfile && (curProfile.role === 'ops' || OPS_EXTRA.includes(curProfile.id)))); } catch (e) { return false; } };
+  const ONLY_ME = false;                                // true = SEUL ton profil (OPS_EXTRA) voit Schedule, Back Office et Ops board ; les profils Ops et les admins n'y ont alors plus accès
+  const mine = () => { try { return !!(curProfile && OPS_EXTRA.includes(curProfile.id)); } catch (e) { return false; } };
+  window.__isOwner = mine;                              // partagé avec openExpenses()
+  const allowed = () => { try { return ONLY_ME ? mine() : !!(isAdmin || (curProfile && curProfile.role === 'ops') || mine()); } catch (e) { return false; } };
   window.__opsAllowed = allowed;                        // partagé avec openOps() (Bloc 6)
   const deny = () => { try { alert('🔒 The Back Office is reserved for the Ops team.'); } catch (e) { } };
 
@@ -19271,6 +19275,7 @@ G.koCheckWoDraft = async function(wo) {
   const boardFn = () => { try { if (typeof openOps === 'function') return openOps; } catch (e) { } return window.openOps || (window.G && window.G.openOps) || null; };     // ton bouton « Ops board » existant, s'il est accessible
   const sync = () => {
     const grp = document.querySelector('.u2-side .u2-grp'), ok = allowed(), has = id => !!document.querySelector('[data-ops-nav="' + id + '"]');
+    document.querySelectorAll('[data-ops-only]').forEach(b => { b.style.display = ok ? '' : 'none'; });     // entrées du menu réservées Ops / admins / toi (Schedule)
     // anciens boutons posés dans la barre « engineer » (à côté de Signature) : jamais à cet endroit
     document.querySelectorAll('.eng-bar [onclick*="openBackOffice"], .eng-bar [onclick*="openOps("]').forEach(b => b.remove());
     if (!ok || !grp) { document.querySelectorAll('[data-ops-nav]').forEach(n => n.remove()); return; }
@@ -20436,11 +20441,25 @@ const schedSendMail = async (to, cc, subject, html, o) => {
   if (!res.ok) { if (res.status === 401) { gToken = null; updateAuthUI(false); throw new Error('Google session expired — nothing was sent. Try again.'); } throw new Error(((await res.json().catch(() => ({}))).error || {}).message || 'Gmail error ' + res.status); }
 };
 window.openSchedule = async function () {
+  if (!(window.__opsAllowed && window.__opsAllowed())) return;                          // Schedule : profils Ops, admins et ton profil seulement
   try {
     const m = await import('./ops-schedule.js');
     await m.open({ db, ref, get, set, update, remove, onValue, runTransaction, me: () => curProfile, isAdmin: () => isAdmin, ops: () => !!(window.__opsAllowed && window.__opsAllowed()), sendMail: schedSendMail, signature: () => koBuildSignatureHtml() });
   } catch (e) { alert('Schedule could not be opened: ' + (e && e.message || e)); }
 };
+
+window.openExpenses = async function () {
+  if (!(window.__isOwner && window.__isOwner())) return;                                // Expenses : ton profil seulement (comme dans Firebase)
+  try {
+    const m = await import('./expenses.js');
+    await m.open({ db, ref, get, set, update, remove, me: () => curProfile, isAdmin: () => isAdmin, ops: () => !!(window.__opsAllowed && window.__opsAllowed()) });
+  } catch (e) { alert('Expenses could not be opened: ' + (e && e.message || e)); }
+};
+// Nouveaux modules en test : les boutons marqués data-owner-only n'apparaissent que pour ton profil
+setInterval(() => {
+  const mine = !!(curProfile && curProfile.id === 'prof_1781832236715');
+  document.querySelectorAll('[data-owner-only]').forEach(b => { b.style.display = mine ? '' : 'none'; });
+}, 2000);
 
 // ══════════════════════════════════════
 //  KICKOFF — OPEN / CLOSE
