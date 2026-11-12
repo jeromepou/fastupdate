@@ -845,6 +845,7 @@ html body.u3-on[data-u3p="check"][data-u3p="check"][data-u3p="check"][data-u3p="
     <button type="button" class="u2-i" onclick="openCorridorHub()"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12h6M9 16h4"/></svg>Corridor</button>
     <button type="button" class="u2-i" onclick="ptlOpen()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-3 3-1.3-1.3-8.4 8.4a2 2 0 0 1-3-3l8.4-8.4L12 10z"/></svg>Paris Tooling</button>
     <button type="button" class="u2-i" onclick="koOpenAmmReader()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5"/><path d="M8 7h7"/></svg>AMM reader</button>
+    <button type="button" class="u2-i" onclick="openSchedule()"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Schedule</button>    
   </div>
 </aside>
 
@@ -18936,7 +18937,7 @@ G.koCheckWoDraft = async function(wo) {
     a => { const c = acOthers(a).filter(x => x.ws !== 'Finished' && a.ws !== 'Finished' && overlap(a.start, a.etd || a.start, x.start, x.etd || x.start)); return c.length ? { lvl: 'amber', ico: '📅', tag: 'Overlap', html: '<b>Same aircraft, overlapping dates:</b> ' + c.map(x => esc(x.wo) + ' (' + fd(x.start) + ' → ' + fd(x.etd || x.start) + ')').join(', ') + '.' } : null; },
     a => { const bad = a.ws === 'Finished' ? [] : (a.eng || []).map(e => ({ e, o: engClash(a, e) })).filter(x => x.o.length); return bad.length ? { lvl: 'amber', ico: '👥', tag: 'Engineer clash', html: bad.map(x => '<b>' + esc(x.e.n || x.e.i) + '</b> is also on ' + x.o.map(o => esc(o.wo)).join(', ')).join(' · ') + ' at the same time.' } : null; },
     a => { const d = a.start ? Math.round((new Date(a.start + 'T00:00') - new Date(new Date().toDateString())) / 864e5) : null; return d !== null && d >= 0 && d <= 2 && a.ws !== 'In progress' && a.ws !== 'Finished' && !(a.eng || []).some(e => e.role === 'P') ? { lvl: 'red', ico: '⏰', tag: 'No engineer', html: '<b>Starts ' + (d ? 'in ' + d + ' day' + (d > 1 ? 's' : '') : 'today') + ' and no primary engineer is allocated.</b>' } : null; },
-    a => { const base = d => d && d.w === 'A' ? (d.ch || d.sent) : '', age = d => base(d) ? Math.floor((Date.now() - new Date(base(d) + 'T00:00')) / 864e5) : -1, L = [['WOA', a.woa]].concat((a.wcr || []).map((c, i) => ['WCR ' + (i + 1), c])).filter(([, d]) => age(d) >= 3).map(([n, d]) => n + (d.ch ? ' chased ' : ' sent ') + age(d) + ' days ago'); return L.length ? { lvl: 'amber', ico: '⏳', tag: 'Chase', html: '<b>' + L.join(' · ') + '</b> — still not returned: chase the Business Office. <button class="bo-b" data-a="chase" data-k="open">✉ Chase</button>' } : null; },
+    a => { const TC = ((window.BackOffice || {}).th || {}).chase || 3, base = d => d && d.w === 'A' ? (d.ch || d.sent) : '', age = d => base(d) ? Math.floor((Date.now() - new Date(base(d) + 'T00:00')) / 864e5) : -1, L = [['WOA', a.woa]].concat((a.wcr || []).map((c, i) => ['WCR ' + (i + 1), c])).filter(([, d]) => age(d) >= TC).map(([n, d]) => n + (d.ch ? ' chased ' : ' sent ') + age(d) + ' days ago'); return L.length ? { lvl: 'amber', ico: '⏳', tag: 'Chase', html: '<b>' + L.join(' · ') + '</b> — still not returned: chase the Business Office. <button class="bo-b" data-a="chase" data-k="open">✉ Chase</button>' } : null; },
     a => { const L = hsum(a, 'lh'), B = hsum(a, 'hrs'); return L && B > L * 1.1 ? { lvl: 'blue', ico: '⏱️', tag: 'Over quote', html: '<b>Booked ' + B + ' h</b> against <b>' + L + ' h</b> estimated for the quote.' } : null; },
     a => { const p = acNotes(a).filter(n => n.pin); return p.length ? { lvl: 'blue', ico: '📌', tag: 'Aircraft notes', html: '<b>Aircraft notes</b>' + p.slice(0, 3).map(n => '<br>' + esc(n.t)).join('') } : null; }
   ];
@@ -19519,7 +19520,7 @@ G.koCheckWoDraft = async function(wo) {
   // ── Alertes (même registre que les autres : une règle par ligne) ──
   if (B.registerAlert) {
     B.registerAlert(a => { const q = a.qt || {}; return q.req && (!q.st || q.st === 'To prepare') && a.ws !== 'Finished' ? { lvl: 'amber', ico: '🧾', tag: 'Quote due', html: '<b>Quote requested by the customer</b> — not sent yet. Prepare it in the Quote tab.' } : null; });
-    B.registerAlert(a => { const q = a.qt || {}, v = (q.v || [])[(q.v || []).length - 1], d = v ? Math.floor((Date.now() - v.at) / 864e5) : 0; return q.st === 'Sent' && d >= 3 ? { lvl: 'amber', ico: '⏳', tag: 'Quote pending', html: '<b>Quote v' + v.n + ' sent ' + d + ' days ago</b> — no answer yet.' } : null; });
+    B.registerAlert(a => { const q = a.qt || {}, v = (q.v || [])[(q.v || []).length - 1], d = v ? Math.floor((Date.now() - v.at) / 864e5) : 0; return q.st === 'Sent' && d >= ((B.th || {}).chase || 3) ? { lvl: 'amber', ico: '⏳', tag: 'Quote pending', html: '<b>Quote v' + v.n + ' sent ' + d + ' days ago</b> — no answer yet.' } : null; });
   }
 
   // ── Style (même langage visuel que le reste du Back Office : indigo, pas de vert) ──
@@ -20022,7 +20023,7 @@ table.qt-t{width:100%;border-collapse:collapse}.qt-t th{font-size:11px;text-tran
       if (n) return { lvl: 'amber', ico: '🔎', tag: 'Engineer findings', html: '<b>' + n + ' work item' + (n > 1 ? 's' : '') + ' added by the engineer</b> ' + (n > 1 ? 'are' : 'is') + ' not in the file. Field tab → ＋ Add (a WCR to send to the customer is created).' };
     }
     const t = fd.rts && a.ws === 'Finished' && a.fin ? new Date(a.fin + 'T00:00').getTime() : 0;
-    if (t && Date.now() - t < 7 * 864e5) { const m = (a.sub || []).filter(s => (s.d || s.no) && !String(s.res || '').trim()).length; if (m) return { lvl: 'amber', ico: '📝', tag: 'Resolution', html: '<b>RTS received</b> — ' + m + ' subject' + (m > 1 ? 's' : '') + ' still without Resolution.' }; }
+    if (t && Date.now() - t < ((B.th || {}).rts || 7) * 864e5) { const m = (a.sub || []).filter(s => (s.d || s.no) && !String(s.res || '').trim()).length; if (m) return { lvl: 'amber', ico: '📝', tag: 'Resolution', html: '<b>RTS received</b> — ' + m + ' subject' + (m > 1 ? 's' : '') + ' still without Resolution.' }; }
     return null;
   });
   B.autosync = { run, tick, apply, started, reset: () => { last = 0; SEEN = {}; } };       // pour les tests
@@ -20045,7 +20046,7 @@ table.qt-t{width:100%;border-collapse:collapse}.qt-t th{font-size:11px;text-tran
   const days = s => Math.floor((Date.now() - new Date(s + 'T00:00')) / 864e5);
   const base = d => d && d.w === 'A' ? (d.ch || d.sent || '') : '';             // date de référence : dernière relance, sinon envoi
   const age = d => base(d) ? days(base(d)) : -1;
-  const due = a => [{ n: 'WOA', i: -1, d: a.woa }].concat((a.wcr || []).map((c, i) => ({ n: 'WCR ' + (i + 1), i, d: c }))).filter(x => x.d && age(x.d) >= 3);
+  const due = a => [{ n: 'WOA', i: -1, d: a.woa }].concat((a.wcr || []).map((c, i) => ({ n: 'WCR ' + (i + 1), i, d: c }))).filter(x => x.d && age(x.d) >= ((B.th || {}).chase || 3));
   const names = () => S ? S.docs.map(i => i < 0 ? 'WOA' : 'WCR ' + (i + 1)).join(', ') : '';
   const close = () => { const m = document.getElementById('ch-modal'); if (m) m.remove(); };
 
@@ -20093,7 +20094,7 @@ table.qt-t{width:100%;border-collapse:collapse}.qt-t th{font-size:11px;text-tran
     const k = t.dataset.k, a = B.current(); if (!a) return;
     if (k === 'open') open(a);
     else if (k === 'close') close();
-    else if (k === 'mark') { const n = names(); if (mark('Chased (marked manually): ' + n)) { close(); toast('Marked as chased — the alert returns in 3 days'); } }
+    else if (k === 'mark') { const n = names(); if (mark('Chased (marked manually): ' + n)) { close(); toast('Marked as chased — the alert returns in ' + ((B.th || {}).chase || 3) + ' days'); } }
     else if (k === 'app') {
       location.href = 'mailto:' + document.getElementById('ch_to').value.replace(/\s/g, '') + '?subject=' + encodeURIComponent(document.getElementById('ch_s').value) + '&body=' + encodeURIComponent(document.getElementById('ch_b').value);
       toast('Mail draft opened — press “Only mark as chased” once you have sent it');
@@ -20101,6 +20102,345 @@ table.qt-t{width:100%;border-collapse:collapse}.qt-t th{font-size:11px;text-tran
   });
   B.chase = { due, age };                                                 // pour les tests
 })();
+
+//  BACK OFFICE · vue « Today » — les priorités du jour, avec la RAISON et l'action (à coller après le module Back Office, avant la bannière « KICKOFF — OPEN / CLOSE »)
+//  Bouton « ☀ Today » dans la barre du haut (badge = jobs à traiter). Le panneau classe les dossiers en 4 blocs :
+//    Do now (rouge : bloqué ou sur le point de démarrer) · Today (ambre) · Coming up (délai réglable dans ⚙) · Waiting on others (rien à faire).
+//  Chaque ligne dit POURQUOI et ouvre le dossier directement sur le bon onglet. Lecture seule : rien n'est modifié, tout est recalculé en direct.
+// ═══════════════════════════════════════════════════════════════════
+(function () {
+  const B = window.BackOffice;
+  if (!B || !B.registerAction) return;
+  const esc = B.esc;
+  let RAW = {}, off = null, tmr = 0, lastMin = 0;
+
+  const OK = w => w === 'F' || w === 'A' || w === 'R' ? w : '';
+  const WSM = { 'In Progress': 'In progress', Pending: 'Stand-by', Completed: 'Finished' }, wsOf = a => WSM[a.ws] || a.ws || 'To allocate';          // mêmes libellés hérités que le Back Office
+  const iso = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '') ? s : '';
+  const mid = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const dIn = (s, T0) => iso(s) ? Math.round((new Date(s + 'T00:00').getTime() - T0) / 864e5) : null;          // jours entre aujourd'hui et la date (négatif = passé)
+  const ago = s => Math.floor((Date.now() - new Date(s + 'T00:00').getTime()) / 864e5);
+  const pl = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+  const startTxt = n => n < 0 ? 'Start date passed ' + pl(-n, 'day') + ' ago' : n === 0 ? 'Starts today' : n === 1 ? 'Starts tomorrow' : 'Starts in ' + pl(n, 'day');
+  const TABN = { alloc: 'Allocation', subjects: 'Authorizations', quote: 'Quote', field: 'Field', general: 'General' };
+  const tabOf = t => ({ alloc: !B.allocation, field: !B.field, quote: !B.quote })[t] ? 'general' : t;          // onglet d'un module non collé : on ouvre General plutôt que de casser l'écran
+
+  // ── les règles : sev 3 = Do now · 2 = Today · 1 = Coming up (wait = rien à faire) ──
+  const plan = (a, T0) => {
+    const rs = [], R = (sev, t, tab, wait) => rs.push({ sev, t, tab, wait: !!wait });
+    const prog = wsOf(a) === 'In progress', fin = wsOf(a) === 'Finished', sIn = dIn(a.start, T0), eIn = dIn(a.etd, T0), woa = a.woa || {}, woaW = OK(woa.w) || 'F';
+    const noPri = !(a.eng || []).some(e => e && e.role === 'P'), aog = !!(a.flags && a.flags.aog), fd = a.fd || {}, q = a.qt || {};
+    if (!fin) {
+      const hot = aog || (!prog && sIn !== null && sIn <= 1), lead = aog ? 'AOG' : sIn !== null ? startTxt(sIn) : '';
+      if (noPri && (hot || (!prog && sIn !== null && sIn <= ((B.th || {}).soon || 10)))) R(hot ? 3 : 1, lead + ' — no primary engineer' + (hot ? '' : ' yet'), 'alloc');
+      if (hot && woaW !== 'R') R(3, lead + ' — WOA ' + (woaW === 'A' ? 'sent, not received' : 'not sent'), 'subjects');
+      else if (!prog && woaW === 'F' && sIn !== null && sIn <= ((B.th || {}).soon || 10)) R(1, startTxt(sIn) + ' — WOA not sent yet', 'subjects');
+      else if (prog && woaW === 'F') R(3, 'In progress — WOA not sent', 'subjects');
+      const docs = [['WOA', woa]].concat((a.wcr || []).map((c, i) => ['WCR ' + (i + 1), c])).filter(x => x[1] && OK(x[1].w) === 'A' && (x[1].ch || x[1].sent));
+      const lab = x => x[0] + (x[1].ch ? ' chased ' : ' sent ') + (ago(x[1].ch || x[1].sent) > 0 ? pl(ago(x[1].ch || x[1].sent), 'day') + ' ago' : 'today');
+      const tc = (B.th || {}).chase || 3, old = docs.filter(x => ago(x[1].ch || x[1].sent) >= tc), fresh = docs.filter(x => ago(x[1].ch || x[1].sent) < tc);
+      if (old.length) R(2, 'Chase the Business Office — ' + old.map(lab).join(' · '), 'subjects');
+      if (fresh.length) R(1, 'Waiting for the customer — ' + fresh.map(lab).join(' · '), 'subjects', true);
+      (a.wcr || []).forEach((c, i) => {
+        const n = (a.sub || []).filter(s => (s.d || s.no) && +s.doc === i + 1).length, eng = c && c.by === 'Engineer (inspection)';
+        if (c && (OK(c.w) || 'F') === 'F' && n) R(prog && eng ? 3 : 2, 'WCR ' + (i + 1) + ' to send to the Business Office (' + pl(n, 'item') + ')' + (eng ? ' — found by the engineer' : ''), 'subjects');
+      });
+      if (q.req && (!q.st || q.st === 'To prepare')) R(2, 'Quote requested by the customer — to prepare', 'quote');
+      const v = (q.v || [])[(q.v || []).length - 1];
+      if (q.st === 'Sent' && v && v.at && Math.floor((Date.now() - v.at) / 864e5) >= ((B.th || {}).chase || 3)) R(2, 'Quote v' + v.n + ' sent ' + pl(Math.floor((Date.now() - v.at) / 864e5), 'day') + ' ago — no answer yet', 'quote');
+      const mapped = new Set(Object.values((a.al && a.al.map) || {}).map(Number)), nEx = (fd.exi || []).filter(id => !mapped.has(+id)).length;
+      if (nEx) R(2, 'The engineer added ' + pl(nEx, 'work item') + ' — add them to the file', 'field');
+      if (B.allocation && a.al && a.al.p && !a.al.p.linked && a.al.sync) {
+        let p = []; try { p = B.allocation.pend(a) || []; } catch (e) { }
+        if (p.length) R(2, 'Changes not sent to ' + (a.al.p.n || 'the engineer') + ' — ' + p.slice(0, 2).join(', ') + (p.length > 2 ? '…' : ''), 'alloc');
+      }
+      if (!noPri && !prog && !(a.al && a.al.p && a.al.p.pid) && sIn !== null && sIn <= ((B.th || {}).soon || 10)) R(sIn <= 1 ? 3 : 2, 'Primary engineer set — the job is not allocated yet (the engineer does not have the project)', 'alloc');
+      if (prog && eIn !== null) {
+        if (eIn < 0) R(2, 'Planned return passed ' + pl(-eIn, 'day') + ' ago — update the ETD or close the job', 'general');
+        else if (eIn <= 1) R(1, 'Planned return ' + (eIn ? 'tomorrow' : 'today') + ' — confirm the date', 'general');
+      }
+    } else {
+      const t = fd.rts && a.fin ? new Date(a.fin + 'T00:00').getTime() : 0;
+      if (t && Date.now() - t < ((B.th || {}).rts || 7) * 864e5) { const m = (a.sub || []).filter(s => (s.d || s.no) && !String(s.res || '').trim()).length; if (m) R(2, 'RTS received — ' + pl(m, 'subject') + ' still without Resolution', 'subjects'); }
+    }
+    return rs;
+  };
+
+  const compute = () => {
+    const T0 = mid(), out = { now: [], today: [], soon: [], wait: [], ok: 0 };
+    Object.keys(RAW).forEach(k => {
+      let a; try { a = JSON.parse(RAW[k].json); } catch (e) { return; }
+      if (!a || !a.wo) return;
+      const rs = plan(a, T0); if (!rs.length) { if (wsOf(a) !== 'Finished') out.ok++; return; }
+      rs.sort((x, y) => y.sev - x.sev);
+      out[rs[0].sev === 3 ? 'now' : rs[0].sev === 2 ? 'today' : rs.some(r => !r.wait) ? 'soon' : 'wait'].push({ k, a, rs, s: iso(a.start) || '9999' });
+    });
+    ['now', 'today', 'soon', 'wait'].forEach(s => out[s].sort((x, y) => x.s.localeCompare(y.s) || String(x.a.wo).localeCompare(String(y.a.wo))));
+    return out;
+  };
+
+  const SECS = [['now', 'Do now', 'blocked or about to start'], ['today', 'Today', 'to do today'], ['soon', 'Coming up', 'starting soon'], ['wait', 'Waiting on others', 'nothing to do yet']];
+  const card = it => {
+    const a = it.a, ap = (a.apt || [])[0] || {}, tb = r => tabOf(r.tab);
+    const eng = (a.eng || []).filter(e => e && (e.i || e.n)).map(e => esc(String(e.i || e.n).slice(0, 6)) + (e.role ? ' <small>(' + esc(e.role) + ')</small>' : '')).join(' · ');
+    const meta = [a.type, a.reg, ap.l || ap.c, wsOf(a) === 'In progress' ? (a.start ? 'since ' + B.fd(a.start) : 'in progress') : a.start ? 'starts ' + B.fd(a.start) : ''].filter(Boolean).map(esc).join(' · ');
+    return `<div class="td-c"><div class="td-h"><button class="td-wo" data-a="open" data-k="${esc(it.k)}" data-t="${tb(it.rs[0])}">${esc(a.wo)}</button>${a.flags && a.flags.aog ? '<span class="td-aog">AOG</span>' : ''}<span class="td-m">${meta}</span>${eng ? '<span class="td-e">' + eng + '</span>' : ''}</div>`
+      + it.rs.map(r => `<button class="td-r s${r.sev}" data-a="open" data-k="${esc(it.k)}" data-t="${tb(r)}"><i></i><span>${esc(r.t)}</span><em>${TABN[tb(r)] || ''} ›</em></button>`).join('') + '</div>';
+  };
+  const render = () => {
+    const root = document.getElementById('td-root'); if (!root) return;
+    const P = compute(), n = s => P[s].length, old = root.querySelector('.td-body'), y = old ? old.scrollTop : 0;
+    root.innerHTML = `<div class="td-top"><div><h2>☀ Today</h2><small>${esc(new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }))} · ${n('now')} do now · ${n('today')} today · ${n('soon')} coming up · ${n('wait')} waiting${P.ok ? ' · ' + P.ok + ' on track' : ''}</small></div><button class="bo-b" data-a="today" data-k="close">✕</button></div>`
+      + '<div class="td-body">' + (SECS.map(s => n(s[0]) ? `<section class="td-s ${s[0]}"><h3>${s[1]} <b>${n(s[0])}</b> <small>${s[2]}</small></h3>${P[s[0]].map(card).join('')}</section>` : '').join('') || '<p class="td-ok">✅ Nothing urgent — every job is on track.</p>') + '</div>';
+    const b = root.querySelector('.td-body'); if (b) b.scrollTop = y;
+  };
+  const closePanel = () => { const e = document.getElementById('td-root'); if (e) e.remove(); };
+  const openPanel = () => { const r = document.getElementById('bo-root'); if (!r || document.getElementById('td-root')) return; r.insertAdjacentHTML('beforeend', '<div id="td-root"></div>'); render(); };
+  B.registerAction('today', t => { if (t.dataset.k === 'close') closePanel(); else openPanel(); });
+  document.addEventListener('click', e => { if (e.target.closest && e.target.closest('#td-root [data-a="open"]')) setTimeout(closePanel, 0); }, true);       // ouvrir un dossier ferme le panneau
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+
+  const badge = () => {
+    const b = document.getElementById('td-btn'), el = b && b.querySelector('.td-n'); if (!el) return;
+    const P = compute(), c = P.now.length + P.today.length;
+    el.textContent = c; el.hidden = !c; el.className = 'td-n' + (P.now.length ? '' : ' a');
+  };
+  const inject = () => {
+    const top = document.querySelector('#bo-root .bo-top'); if (!top || document.getElementById('td-btn')) return;
+    const b = document.createElement('button'); b.className = 'bo-b'; b.id = 'td-btn'; b.dataset.a = 'today'; b.dataset.k = 'open'; b.title = 'What needs your attention today';
+    b.innerHTML = '☀ Today <b class="td-n" hidden></b>';
+    top.insertBefore(b, top.querySelector('.bo-tog') || top.querySelector('[data-a="add"]')); badge();
+  };
+  const tick = () => {
+    if (!document.getElementById('bo-root')) return;
+    if (!off) { try { off = onValue(ref(db, 'backoffice/assignments'), s => { RAW = s.exists() ? s.val() : {}; clearTimeout(tmr); tmr = setTimeout(() => { badge(); render(); }, 250); }, () => { }); } catch (e) { return; } }
+    inject();
+    const m = Math.floor(Date.now() / 60000); if (m !== lastMin) { lastMin = m; badge(); render(); }          // à minuit les dates changent : on recalcule
+  };
+  setInterval(tick, 700);
+
+  if (!document.getElementById('td-css')) {
+    const s = document.createElement('style'); s.id = 'td-css';
+    s.textContent = '#td-root{position:fixed;inset:0;z-index:15;background:#f5f4ff;overflow:auto;padding-bottom:40px;font:14px system-ui,-apple-system,sans-serif;color:#1e1b4b}.td-top{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px;background:linear-gradient(120deg,#1e1b4b,#312e81 60%,#4338ca);color:#fff}.td-top h2{margin:0;font-size:19px}.td-top small{display:block;opacity:.85;margin-top:2px;font-size:12.5px}.td-body{padding:14px 14px 0;max-width:900px;margin:0 auto}.td-s{margin-bottom:18px}.td-s h3{margin:0 0 8px;font-size:14px;display:flex;align-items:center;gap:8px}.td-s h3 b{background:#e0e7ff;color:#312e81;border-radius:999px;padding:0 8px;font-size:12px}.td-s h3 small{font-weight:400;opacity:.65}.td-s.now h3{color:#991b1b}.td-s.today h3{color:#92400e}.td-c{background:#fff;border:1px solid #e0e7ff;border-radius:14px;padding:10px 12px;margin-bottom:8px;box-shadow:0 1px 2px rgba(49,46,129,.06)}.td-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-bottom:4px}.td-wo{border:0;background:none;padding:0;font:700 15px system-ui,-apple-system,sans-serif;color:#312e81;cursor:pointer;text-decoration:underline;text-decoration-color:#a5b4fc}.td-aog{background:#dc2626;color:#fff;border-radius:6px;padding:0 6px;font-size:11px;font-weight:700}.td-m,.td-e{font-size:12.5px;color:#64748b}.td-r{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0;background:none;padding:6px 4px;border-radius:8px;cursor:pointer;font:inherit;color:inherit}.td-r:hover{background:#f5f3ff}.td-r i{width:10px;height:10px;border-radius:50%;flex:none;background:#818cf8}.td-r.s3 i{background:#dc2626}.td-r.s2 i{background:#f59e0b}.td-r span{flex:1}.td-r em{font-style:normal;font-size:12px;color:#6366f1;white-space:nowrap}.td-ok{padding:30px 10px;text-align:center;color:#4338ca;font-weight:600}.td-n{margin-left:6px;background:#dc2626;color:#fff;border-radius:999px;padding:0 7px;font-size:11px}.td-n.a{background:#d97706}';
+    document.head.appendChild(s);
+  }
+  B.today = { plan, compute };                                              // pour les tests
+})();
+
+//  BACK OFFICE · Planning des engineers en frise (« 📅 Planning ») — allouer sans conflit (à coller après le module Back Office, avant la bannière « KICKOFF — OPEN / CLOSE »)
+//  Bouton « 📅 Planning » dans la barre du haut. Une ligne par engineer (liste d'équipe), une colonne par jour (10 jours par défaut, ◀ ▶ pour avancer, 10 / 21 / 42 j).
+//  Les barres sont les dossiers non terminés où l'engineer figure (rôle P / S / Prep / CTI, mêmes dates et même règle de chevauchement que l'onglet Engineers) ;
+//  deux barres qui se chevauchent sont encadrées en rouge. En haut : les jobs encore à allouer, avec les engineers LIBRES sur leurs dates — un clic sur une pastille
+//  l'ajoute comme engineer principal (même format que « Insert a new engineer » ; l'allocation du projet se fait ensuite dans l'onglet Allocation).
+// ═══════════════════════════════════════════════════════════════════
+(function () {
+  const B = window.BackOffice;
+  if (!B || !B.registerAction) return;
+  const esc = B.esc;
+  let RAW = {}, off = null, tmr = 0, ROST = null;
+  const S = { from: 0, span: 10 };                                         // décalage de la fenêtre (jours depuis aujourd'hui) et nombre de jours affichés
+
+  const pad = n => String(n).padStart(2, '0');
+  const ymd = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const today = () => ymd(new Date());
+  const addDays = (s, n) => { const d = new Date(s + 'T00:00'); d.setDate(d.getDate() + n); return ymd(d); };
+  const diff = (a, b) => Math.round((new Date(b + 'T00:00') - new Date(a + 'T00:00')) / 864e5);
+  const iso = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '') ? s : '';
+  const short = s => iso(s) ? new Date(s + 'T00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
+  const overlap = (s1, e1, s2, e2) => !!(s1 && s2 && s1 <= (e2 || s2) && s2 <= (e1 || s1));          // même règle que le Back Office
+  const ini = n => { const w = String(n || '').split(/\s+/).filter(Boolean), up = w.filter(x => x.length > 1 && x === x.toUpperCase()), gv = w.filter(x => !up.includes(x)); return ((gv[0] || w[0] || '')[0] || '') + ((up[0] || w[1] || w[0] || '')[0] || ''); };
+  const WSM = { 'In Progress': 'In progress', Pending: 'Stand-by', Completed: 'Finished' }, wsOf = a => WSM[a.ws] || a.ws || 'To allocate';
+  const R = () => document.getElementById('bo-root');
+  const toast = (m, bad) => { const r = R(); if (!r) return; const t = document.createElement('div'); t.className = 'bo-toast' + (bad ? ' bad' : ''); t.textContent = m; r.appendChild(t); setTimeout(() => t.remove(), 5000); };
+
+  const roster = async () => {
+    if (ROST) return ROST;
+    try { const s = await get(ref(db, 'teamPublic')); ROST = Object.values(s.exists() ? s.val() : {}).filter(p => p && p.role === 'engineer').map(p => ({ i: ini(p.name), n: p.name, t: p.team || '' })).sort((x, y) => String(x.n).localeCompare(String(y.n))); } catch (e) { ROST = []; }
+    return ROST;
+  };
+  const jobs = () => Object.keys(RAW).map(k => { let a; try { a = JSON.parse(RAW[k].json); } catch (e) { return null; } return a && a.wo && wsOf(a) !== 'Finished' ? { k, a } : null; }).filter(Boolean);
+  const span = (a, e) => { const s = iso(e && e.from) || iso(a.start), t = iso(e && e.to) || iso(a.etd) || iso(a.start); return s ? [s, t && t >= s ? t : s] : null; };
+  const busyOf = (J, a, i) => {                                            // autres dossiers où cet engineer est déjà pris pendant les dates de « a »
+    const s = iso(a.start), t = iso(a.etd) || s, out = [];
+    J.forEach(o => { if (o.a.wo === a.wo) return; (o.a.eng || []).forEach(y => { if (y && y.i === i) { const r = span(o.a, y); if (r && overlap(s, t, r[0], r[1])) out.push({ wo: o.a.wo, s: r[0], t: r[1] }); } }); });
+    return out;
+  };
+
+  const model = () => {
+    const J = jobs(), W0 = addDays(today(), S.from), W1 = addDays(W0, S.span - 1), by = {};
+    J.forEach(({ k, a }) => (a.eng || []).forEach(e => {
+      if (!e || !e.i) return; const r = span(a, e); if (!r) return;
+      (by[e.i] = by[e.i] || { i: e.i, n: e.n || e.i, t: '', bars: [] }).bars.push({ k, wo: a.wo, reg: a.reg || a.type || '', role: e.role || 'S', s: r[0], t: r[1] });
+    }));
+    const rows = (ROST || []).map(r => { const x = by[r.i] || { i: r.i, bars: [] }; delete by[r.i]; return Object.assign(x, { n: r.n, t: r.t }); })
+      .concat(Object.keys(by).map(i => by[i]).sort((x, y) => String(x.n).localeCompare(String(y.n))));
+    let pairs = 0;
+    rows.forEach(r => {
+      r.bars.sort((x, y) => x.s.localeCompare(y.s) || x.wo.localeCompare(y.wo)); r.x = new Set(); r.pairs = 0;
+      for (let p = 0; p < r.bars.length; p++) for (let q = p + 1; q < r.bars.length; q++) {
+        const A = r.bars[p], C = r.bars[q];
+        if (overlap(A.s, A.t, C.s, C.t)) { const lo = A.s > C.s ? A.s : C.s, hi = A.t < C.t ? A.t : C.t; if (hi >= W0 && lo <= W1) { r.x.add(p); r.x.add(q); r.pairs++; } }
+      }
+      pairs += r.pairs;
+    });
+    const needs = J.filter(({ a }) => wsOf(a) !== 'In progress' && (!(a.eng || []).some(e => e && e.role === 'P') || !(a.al && a.al.p && a.al.p.pid)) && (!iso(a.start) || iso(a.start) <= W1))
+      .sort((x, y) => (iso(x.a.start) || '9999').localeCompare(iso(y.a.start) || '9999') || String(x.a.wo).localeCompare(String(y.a.wo)));
+    return { J, W0, W1, rows, pairs, needs };
+  };
+
+  const needCard = (M, it) => {
+    const a = it.a, k = it.k, pri = (a.eng || []).find(e => e && e.role === 'P'), s = iso(a.start), t = iso(a.etd) || s, ap = (a.apt || [])[0] || {};
+    const meta = [a.type, a.reg, ap.l || ap.c].filter(Boolean).map(esc).join(' · '), when = s ? short(s) + (t && t !== s ? ' → ' + short(t) : '') : 'no start date';
+    let body;
+    if (pri) body = `<div class="pl-st">Primary engineer set: <b>${esc(pri.n || pri.i)}</b> — the job is not allocated yet (the engineer does not have the project).</div><button class="bo-b p" data-a="open" data-k="${esc(k)}" data-t="${B.allocation ? 'alloc' : 'engineers'}">Allocate ›</button>`;
+    else if (!s) body = `<div class="pl-st">Set the start date (and the ETD) to see who is free.</div><button class="bo-b" data-a="open" data-k="${esc(k)}" data-t="general">Open ›</button>`;
+    else {
+      const ch = (ROST || []).map((r, ri) => ({ r, ri, bz: busyOf(M.J, a, r.i) }));
+      const free = ch.filter(x => !x.bz.length).map(x => `<button class="pl-ch f" data-a="plan" data-k="assign" data-j="${esc(k)}" data-r="${x.ri}" title="${esc(x.r.n + ' — free on these dates: set as primary')}">${esc(x.r.i)} ✓</button>`).join('');
+      const busy = ch.filter(x => x.bz.length).map(x => `<button class="pl-ch b" data-a="plan" data-k="assign" data-j="${esc(k)}" data-r="${x.ri}" title="${esc(x.r.n + ' is busy: ' + x.bz.map(z => z.wo + ' ' + short(z.s) + '–' + short(z.t)).join(', '))}">${esc(x.r.i)} <small>busy</small></button>`).join('');
+      body = `<div class="pl-st">Needs a primary engineer — <b>free</b> on these dates:</div><div>${free || '<span class="pl-no">nobody is free</span>'}</div>${busy ? '<div class="pl-st">Busy (click to assign anyway):</div><div>' + busy + '</div>' : ''}`;
+    }
+    return `<div class="pl-need"><div class="pl-nh"><button class="pl-wo" data-a="open" data-k="${esc(k)}" data-t="general">${esc(a.wo)}</button><span class="pl-m">${meta}</span><span class="pl-m"><b>${esc(when)}</b></span><span class="pl-m">${esc(wsOf(a))}</span></div>${body}</div>`;
+  };
+
+  const grid = M => {
+    const N = S.span, td = today(), days = Array.from({ length: N }, (_, d) => addDays(M.W0, d)), wk = d => new Date(d + 'T00:00').getDay() % 6 === 0;
+    const head = days.map((d, c) => { const dt = new Date(d + 'T00:00'); return `<div class="pl-dl${wk(d) ? ' w' : ''}${d === td ? ' t' : ''}"><small>${c === 0 || dt.getDate() === 1 ? dt.toLocaleDateString('en-GB', { month: 'short' }) : ''}</small><span>${dt.toLocaleDateString('en-GB', { weekday: 'short' })}</span><b>${dt.getDate()}</b></div>`; }).join('');
+    const row = r => {
+      const vis = r.bars.map((b, idx) => Object.assign({ idx }, b)).filter(b => b.t >= M.W0 && b.s <= M.W1), lanes = [];
+      vis.forEach(b => { let l = lanes.findIndex(end => end < b.s); if (l < 0) { l = lanes.length; lanes.push(''); } lanes[l] = b.t; b.lane = l; });
+      const L = Math.max(1, lanes.length);
+      const cells = days.map((d, c) => `<i class="pl-c${wk(d) ? ' w' : ''}${d === td ? ' t' : ''}" style="grid-column:${c + 1};grid-row:1/span ${L}"></i>`).join('');
+      const bars = vis.map(b => {
+        const d0 = diff(M.W0, b.s), d1 = diff(M.W0, b.t), c0 = Math.max(0, d0), c1 = Math.min(N - 1, d1);
+        return `<button class="pl-b ${esc(b.role)}${r.x.has(b.idx) ? ' x' : ''}${d0 < 0 ? ' cl' : ''}${d1 > N - 1 ? ' cr' : ''}" style="grid-column:${c0 + 1}/${c1 + 2};grid-row:${b.lane + 1}" data-a="open" data-k="${esc(b.k)}" data-t="engineers" title="${esc(b.wo + ' · ' + b.role + ' · ' + short(b.s) + ' → ' + short(b.t))}">${esc(b.wo)}${b.reg ? ' <small>' + esc(b.reg) + '</small>' : ''}</button>`;
+      }).join('');
+      return `<div class="pl-r"><div class="pl-n"><b>${esc(r.n || r.i)}</b><small>${esc(r.i)}${r.t ? ' · ' + esc(r.t) : ''} · ${vis.length ? vis.length + ' job' + (vis.length > 1 ? 's' : '') : 'free'}</small>${r.pairs ? '<em>⚠ ' + r.pairs + ' overlap' + (r.pairs > 1 ? 's' : '') + '</em>' : ''}</div><div class="pl-g" style="grid-template-columns:repeat(${N},minmax(40px,1fr))">${cells}${bars}</div></div>`;
+    };
+    return `<div class="pl-scroll"><div class="pl-grid" style="--n:${N}"><div class="pl-hd"><div class="pl-n"></div><div class="pl-g" style="grid-template-columns:repeat(${N},minmax(40px,1fr))">${head}</div></div>${M.rows.map(row).join('') || '<p class="pl-no" style="padding:14px">No engineer in the team list yet.</p>'}</div></div>`;
+  };
+
+  const render = () => {
+    const root = document.getElementById('pl-root'); if (!root) return;
+    const M = model(), sc = root.querySelector('.pl-scroll'), x = sc ? sc.scrollLeft : 0, y = root.scrollTop;
+    root.innerHTML = `<div class="pl-top"><div><h2>📅 Planning</h2><small>${short(M.W0)} → ${short(M.W1)} · ${M.rows.length} engineers · ${M.pairs} overlap${M.pairs === 1 ? '' : 's'} · ${M.needs.length} job${M.needs.length === 1 ? '' : 's'} to allocate</small></div>`
+      + `<div class="pl-ctl"><button class="bo-b" data-a="plan" data-k="prev">◀</button><button class="bo-b" data-a="plan" data-k="today">Today</button><button class="bo-b" data-a="plan" data-k="next">▶</button>${[10, 21, 42].map(n => `<button class="bo-b${S.span === n ? ' p' : ''}" data-a="plan" data-k="span" data-v="${n}">${n} d</button>`).join('')}<button class="bo-b" data-a="plan" data-k="close">✕</button></div></div>`
+      + `<div class="pl-body">${M.needs.length ? `<h3 class="pl-h3">To allocate <b>${M.needs.length}</b></h3>${M.needs.map(it => needCard(M, it)).join('')}` : ''}<h3 class="pl-h3" style="margin-top:16px">Engineers <small>indigo = primary · light = secondary · grey = Prep / CTI · red outline = overlap</small></h3>${grid(M)}</div>`;
+    const sc2 = root.querySelector('.pl-scroll'); if (sc2) sc2.scrollLeft = x; root.scrollTop = y;
+  };
+
+  // ── affectation en 1 clic : même objet que « Insert a new engineer » (onglet Engineers) ──
+  const assign = (k, ri) => {
+    const raw = RAW[k], r = (ROST || [])[ri]; if (!raw || !r) return toast('Job or engineer not found', 1);
+    let a; try { a = JSON.parse(raw.json); } catch (e) { return toast('Job unreadable', 1); }
+    if ((a.eng || []).some(e => e && e.i === r.i)) return toast(r.n + ' is already on this assignment', 1);
+    if ((a.eng || []).some(e => e && e.role === 'P')) return toast('There is already a primary engineer', 1);
+    const bz = busyOf(jobs(), a, r.i);
+    if (bz.length && !confirm(r.n + ' is already busy on these dates:\n' + bz.map(z => '• ' + z.wo + ' (' + short(z.s) + ' → ' + short(z.t) + ')').join('\n') + '\n\nAssign anyway?')) return;
+    const t = today();
+    (a.eng = a.eng || []).push({ i: r.i, n: r.n, role: 'P', from: iso(a.start) && a.start > t ? a.start : t, to: iso(a.etd) || '' });
+    B.logIt(a, 'Allocated ' + r.n + ' (P)'); B.save(a, k);
+    RAW[k] = { json: JSON.stringify(a), at: a.upd || Date.now(), by: 'Planning' };
+    toast('✅ ' + r.n + ' set as primary on ' + a.wo + ' — now allocate the job (Allocation tab)'); render();
+  };
+
+  const close = () => { const e = document.getElementById('pl-root'); if (e) e.remove(); };
+  const openP = async () => { const r = R(); if (!r || document.getElementById('pl-root')) return; if (!S.init) { S.init = 1; S.span = (B.th || {}).win || 10; } r.insertAdjacentHTML('beforeend', '<div id="pl-root"><p class="pl-no" style="padding:20px">Loading…</p></div>'); await roster(); render(); };
+  B.registerAction('plan', t => {
+    const k = t.dataset.k, step = Math.max(1, Math.floor(S.span / 2));
+    if (k === 'open') openP(); else if (k === 'close') close();
+    else if (k === 'prev') { S.from -= step; render(); } else if (k === 'next') { S.from += step; render(); } else if (k === 'today') { S.from = 0; render(); }
+    else if (k === 'span') { S.span = +t.dataset.v || 10; render(); } else if (k === 'assign') assign(t.dataset.j, +t.dataset.r);
+  });
+  document.addEventListener('click', e => { if (e.target.closest && e.target.closest('#pl-root [data-a="open"]')) setTimeout(close, 0); }, true);       // ouvrir un dossier ferme le planning
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+  const inject = () => {
+    const top = document.querySelector('#bo-root .bo-top'); if (!top || document.getElementById('pl-btn')) return;
+    const b = document.createElement('button'); b.className = 'bo-b'; b.id = 'pl-btn'; b.dataset.a = 'plan'; b.dataset.k = 'open'; b.title = 'Who is where, and who is free';
+    b.innerHTML = '📅 Planning';
+    top.insertBefore(b, document.getElementById('td-btn') || top.querySelector('.bo-tog') || top.querySelector('[data-a="add"]'));
+  };
+  const tick = () => {
+    if (!document.getElementById('bo-root')) return;
+    if (!off) { try { off = onValue(ref(db, 'backoffice/assignments'), s => { RAW = s.exists() ? s.val() : {}; clearTimeout(tmr); tmr = setTimeout(render, 250); }, () => { }); } catch (e) { return; } }
+    inject();
+  };
+  setInterval(tick, 700);
+
+  if (!document.getElementById('pl-css')) {
+    const s = document.createElement('style'); s.id = 'pl-css';
+    s.textContent = '#pl-root{position:fixed;inset:0;z-index:15;background:#f5f4ff;overflow:auto;padding-bottom:40px;font:14px system-ui,-apple-system,sans-serif;color:#1e1b4b}.pl-top{position:sticky;top:0;left:0;z-index:6;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 12px;padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px;background:linear-gradient(120deg,#1e1b4b,#312e81 60%,#4338ca);color:#fff}.pl-top h2{margin:0;font-size:19px}.pl-top small{display:block;opacity:.85;margin-top:2px;font-size:12.5px}.pl-ctl{display:flex;flex-wrap:wrap;gap:6px}.pl-body{padding:14px;max-width:1400px;margin:0 auto}.pl-h3{margin:0 0 8px;font-size:14px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}.pl-h3 b{background:#e0e7ff;color:#312e81;border-radius:999px;padding:0 8px;font-size:12px}.pl-h3 small{font-weight:400;opacity:.65}.pl-need{background:#fff;border:1px solid #e0e7ff;border-radius:14px;padding:10px 12px;margin-bottom:8px}.pl-nh{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}.pl-wo{border:0;background:none;padding:0;font:700 15px system-ui,-apple-system,sans-serif;color:#312e81;cursor:pointer;text-decoration:underline;text-decoration-color:#a5b4fc}.pl-m{font-size:12.5px;color:#64748b}.pl-st{font-size:13px;margin:6px 0 2px}.pl-no{color:#64748b;font-size:13px}.pl-ch{border:1px solid #a5b4fc;background:#eef2ff;color:#312e81;border-radius:999px;padding:3px 10px;margin:2px 4px 2px 0;font:600 12.5px system-ui,-apple-system,sans-serif;cursor:pointer}.pl-ch.b{border-color:#cbd5e1;background:#f1f5f9;color:#64748b;font-weight:500}.pl-ch small{opacity:.8;margin-left:3px}.pl-scroll{overflow-x:auto;background:#fff;border:1px solid #e0e7ff;border-radius:14px}.pl-grid{min-width:calc(150px + var(--n) * 40px)}.pl-hd,.pl-r{display:grid;grid-template-columns:150px minmax(0,1fr);border-bottom:1px solid #eef2ff}.pl-r:last-child{border-bottom:0}.pl-n{position:sticky;left:0;z-index:3;background:#fff;border-right:1px solid #e0e7ff;padding:6px 8px;display:flex;flex-direction:column;justify-content:center;min-height:34px}.pl-n b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pl-n small{font-size:11px;color:#64748b}.pl-n em{font-style:normal;color:#b91c1c;font-size:11.5px;font-weight:700}.pl-g{display:grid;grid-auto-rows:30px;position:relative}.pl-hd .pl-g{grid-auto-rows:auto}.pl-dl{text-align:center;font-size:11px;padding:3px 0;border-left:1px solid #eef2ff;color:#64748b}.pl-dl b{display:block;font-size:13px;color:#1e1b4b}.pl-dl small{display:block;height:11px;font-size:10px;color:#6366f1;font-weight:700}.pl-dl.w{background:#f8fafc}.pl-dl.t{background:#eef2ff}.pl-c{border-left:1px solid #eef2ff}.pl-c.w{background:#f8fafc}.pl-c.t{background:#eef2ff;border-left:2px solid #6366f1}.pl-b{align-self:center;margin:2px 1px;padding:2px 6px;border:0;border-radius:7px;font:600 12px system-ui,-apple-system,sans-serif;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;z-index:1;min-height:24px}.pl-b small{font-weight:400;opacity:.85}.pl-b.P{background:#4338ca;color:#fff}.pl-b.S{background:#c7d2fe;color:#312e81}.pl-b.Prep,.pl-b.CTI{background:#e2e8f0;color:#334155}.pl-b.x{outline:2px solid #dc2626;outline-offset:-1px}.pl-b.cl{border-top-left-radius:0;border-bottom-left-radius:0}.pl-b.cr{border-top-right-radius:0;border-bottom-right-radius:0}';
+    document.head.appendChild(s);
+  }
+  B.planning = { model, busyOf, assign, reset: () => { ROST = null; S.from = 0; S.span = 10; } };          // pour les tests
+})();
+
+//  BACK OFFICE · délais réglables dans ⚙ Settings (relance, « Coming up », suivi RTS, fenêtre du planning)
+//  Ajoute une section « Reminders & views » à la fenêtre ⚙ — le même bouton Save enregistre tout. Valeurs partagées par l'équipe Ops, stockées dans
+//  backoffice/thresholds (nœud séparé : le Save de ⚙ réécrit backoffice/config en entier). Lues par les alertes, Today, Chase et Planning via BackOffice.th ;
+//  sans ce bloc, chacun garde ses valeurs par défaut : relance 3 j · Coming up 10 j · suivi RTS 7 j · fenêtre du planning 10 j.
+// ═══════════════════════════════════════════════════════════════════
+(function () {
+  const B = window.BackOffice;
+  if (!B) return;
+  const DEF = { chase: 3, soon: 10, rts: 7, win: 10 }, LIM = { chase: [1, 30], soon: [2, 60], rts: [1, 60], win: [5, 60] };
+  B.th = Object.assign({}, DEF);
+  let off = null;
+  const clamp = (v, k) => { const n = Math.round(+v); return String(v).trim() !== '' && Number.isFinite(n) ? Math.min(LIM[k][1], Math.max(LIM[k][0], n)) : DEF[k]; };
+  const toast = (m, bad) => { const r = document.getElementById('bo-root'); if (!r) return; const t = document.createElement('div'); t.className = 'bo-toast' + (bad ? ' bad' : ''); t.textContent = m; r.appendChild(t); setTimeout(() => t.remove(), 5000); };
+  const redraw = () => {                                                  // recalcule les alertes de la liste (jamais pendant qu'un dossier est ouvert : elles se mettront à jour au prochain affichage)
+    if (document.querySelector('#bo-root [data-a="tab"]')) return;
+    const on = document.querySelector('#bo-root .bo-tog button.on'); if (on) on.click();
+  };
+  const apply = v => {
+    let ch = false;
+    Object.keys(DEF).forEach(k => { const n = clamp(v && v[k] != null ? v[k] : DEF[k], k); if (B.th[k] !== n) { B.th[k] = n; ch = true; } });
+    if (ch) redraw();
+  };
+
+  const inject = () => {
+    const dlg = document.querySelector('#bo-root .bo-modal .bo-dlg');
+    if (!dlg || !dlg.querySelector('#cf_bo') || dlg.querySelector('#th-sec')) return;
+    const f = dlg.querySelector('.bo-foot'); if (!f) return;
+    const L = (k, t, n) => `<label>${t} <small>${n}</small><input id="th_${k}" type="number" min="${LIM[k][0]}" max="${LIM[k][1]}" value="${B.th[k]}"></label>`;
+    f.insertAdjacentHTML('beforebegin', `<div id="th-sec"><h4 style="margin:16px 0 2px;font-size:13px">Reminders &amp; views <small>days — shared by the Ops team</small></h4>`
+      + L('chase', 'Chase the Business Office after', 'days without an answer (WOA, WCR, quote)')
+      + L('soon', '“Coming up” horizon', 'days ahead (Today view)')
+      + L('rts', 'RTS follow-up window', 'days after the RTS to complete the Resolutions')
+      + L('win', 'Planning window', 'days shown by default') + '</div>');
+  };
+  const tick = () => {
+    if (!document.getElementById('bo-root')) return;
+    if (!off) { try { off = onValue(ref(db, 'backoffice/thresholds'), s => apply(s.exists() ? s.val() : {}), () => { }); } catch (e) { return; } }
+  };
+  setInterval(tick, 700); setInterval(inject, 250);
+
+  document.addEventListener('click', e => {                               // le bouton Save de ⚙ enregistre aussi les délais
+    const b = e.target.closest && e.target.closest('[data-a="cfgsave"]');
+    if (!b || !document.getElementById('th_chase')) return;
+    const v = {}; Object.keys(DEF).forEach(k => { v[k] = clamp(document.getElementById('th_' + k).value, k); });
+    apply(v);
+    Promise.resolve().then(() => set(ref(db, 'backoffice/thresholds'), Object.assign({ at: Date.now(), by: B.me ? String(B.me()) : '' }, v))).catch(x => toast('Delays not saved: ' + (x && x.message || x), 1));
+  }, true);
+  B.thresholds = { DEF, LIM, clamp };                                      // pour les tests
+})();
+
+// ══════════════════════════════════════
+//  ENGINEER SCHEDULE — le module vit dans ops-schedule.js (chargé à la demande)
+// ══════════════════════════════════════
+const schedSendMail = async (to, cc, subject, html, o) => {
+  if (!(gToken && Date.now() < gTokenExp) && !(await ensureGTokenAsync())) throw new Error('Google sign-in cancelled — nothing sent.');
+  const raw = koPushRawMessage(to, cc || [], subject, html), draft = !!(o && o.draft);
+  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/' + (draft ? 'drafts' : 'messages/send'), { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + gToken }, body: JSON.stringify(draft ? { message: { raw } } : { raw }) });
+  if (!res.ok) { if (res.status === 401) { gToken = null; updateAuthUI(false); throw new Error('Google session expired — nothing was sent. Try again.'); } throw new Error(((await res.json().catch(() => ({}))).error || {}).message || 'Gmail error ' + res.status); }
+};
+window.openSchedule = async function () {
+  try {
+    const m = await import('./ops-schedule.js');
+    await m.open({ db, ref, get, set, update, remove, onValue, runTransaction, me: () => curProfile, isAdmin: () => isAdmin, ops: () => !!(window.__opsAllowed && window.__opsAllowed()), sendMail: schedSendMail, signature: () => koBuildSignatureHtml() });
+  } catch (e) { alert('Schedule could not be opened: ' + (e && e.message || e)); }
+};
 
 // ══════════════════════════════════════
 //  KICKOFF — OPEN / CLOSE
