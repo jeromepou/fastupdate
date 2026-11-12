@@ -1,5 +1,5 @@
 const CACHE_NAME = 'fast-update-shell-v42';
-const APP_SHELL = ['./', './index.html', './ops-board.html', './ops-launcher.js'];
+const APP_SHELL = ['./', './index.html', './ops-board.html', './ops-launcher.js', './ops-schedule.js'];
 
 self.addEventListener('install', event => {
   event.waitUntil(
