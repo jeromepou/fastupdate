@@ -22,7 +22,7 @@ const TPL = { 'Default': '{x}', 'Home': 'HOME-{x}-HOME', 'Hotel to Assignment': 
 const RATE0 = { value: 0.95, currency: 'USD' };      // valeur au km par défaut tant que expenseConfig/kmRate n'existe pas
 const PER = 20, MAXPH = 8;
 const OWNERS = ['prof_1781832236715'];               // module en test : utilisable seulement par ces profils (mets null pour l'ouvrir à tous)
-const HEAD = ['kind', 'etype', 'wo', 'model', 'sn', 'reg', 'loc', 'icao', 'country', 'dateStart', 'dateEnd', 'category'];
+const HEAD = ['kind', 'etype', 'wo', 'model', 'sn', 'reg', 'loc', 'icao', 'country', 'dateStart', 'dateEnd', 'category', 'locs'];
 
 let D, root, S, TRIP;
 const A = {};
@@ -44,6 +44,8 @@ const title = r => r.kind === 'ewt' ? 'EWT · ' + r.etype : (r.wo || 'No work or
 const lines = r => Object.values(r.lines || {}).sort((a, b) => (a.date || '').localeCompare(b.date || '') || String(a.id).localeCompare(String(b.id)));
 const totals = ls => { const t = {}; ls.forEach(l => { t[l.currency] = (t[l.currency] || 0) + num(l.amount); }); const e = Object.entries(t); return e.length ? e.map(([c, v]) => money(v, c)).join('  ·  ') : '—'; };
 const dates = r => r.dateStart ? fmtD(r.dateStart) + (r.dateEnd ? ' → ' + fmtD(r.dateEnd) : '') : '—';
+const locsOf = r => [{ loc: r.loc, icao: r.icao, country: r.country }].concat(r.locs || []);   // lieu 1 + jusqu'à 4 lieux supplémentaires
+const locTxt = r => (r.loc || '—') + ((r.locs || []).length ? ' +' + r.locs.length : '');
 const mk = o => ({ id: 'exp_' + Date.now(), status: 'draft', ver: 0, createdAt: Date.now(), updatedAt: Date.now(), lines: {}, ...o });
 
 const toast = (m, bad) => {
@@ -127,8 +129,8 @@ const lineRows = (ls, edit) => {
 const homeV = () => {
   const all = Object.values(S.reports), f = S.flt;
   const has = (v, k) => !f[k] || String(v || '').toLowerCase().includes(f[k].toLowerCase());
-  const ok = r => has(title(r), 'wo') && has(r.category, 'cat') && has(r.sn, 'sn') && has(r.reg, 'reg') && has(r.model, 'model') && has(r.loc, 'loc') && has(r.icao, 'icao') && has(r.country, 'country') &&
-    (!f.q || [title(r), r.sn, r.reg, r.model, r.loc, r.category].join(' ').toLowerCase().includes(f.q.toLowerCase())) &&
+  const ok = r => has(title(r), 'wo') && has(r.category, 'cat') && has(r.sn, 'sn') && has(r.reg, 'reg') && has(r.model, 'model') && ['loc', 'icao', 'country'].every(k => !f[k] || locsOf(r).some(x => String(x[k] || '').toLowerCase().includes(f[k].toLowerCase()))) &&
+    (!f.q || [title(r), r.sn, r.reg, r.model, locsOf(r).map(x => x.loc).join(' '), r.category].join(' ').toLowerCase().includes(f.q.toLowerCase())) &&
     (!f.from || (r.dateEnd || r.dateStart || '') >= f.from) && (!f.to || (r.dateStart || r.dateEnd || '9999') <= f.to);
   const dr = all.filter(r => r.status !== 'submitted').sort((a, b) => b.updatedAt - a.updatedAt);
   const sb = all.filter(r => r.status === 'submitted' && ok(r)).sort((a, b) => b.submittedAt - a.submittedAt);
@@ -138,11 +140,11 @@ const homeV = () => {
   const sty = '--c:1.3fr 1fr 1fr 1.3fr .8fr 230px';
   return '<div class="xp-h"><div><h1>Expenses</h1><div class="xp-m">Drafts to finish and everything you have submitted</div></div><button class="xp-btn xp-pri" data-a="new">+ New expense</button></div>' +
     '<section class="xp-c"><h2>To send · ' + dr.length + '</h2>' + (dr.length ? '<div class="xp-t hd" style="' + sty + '"><span>Work order</span><span>Aircraft</span><span>Location</span><span>Dates</span><span>Status</span><span></span></div>' +
-      dr.map(r => '<div class="xp-t" style="' + sty + '"><b>' + esc(title(r)) + '</b><span>' + esc([r.model, r.sn].filter(Boolean).join(' · ') || '—') + '</span><span>' + esc(r.loc || '—') + '</span><span>' + dates(r) + '</span><span><span class="xp-chip2">Draft</span></span><span class="xp-ac"><button class="xp-lk" data-a="open" data-id="' + r.id + '">Edit</button><button class="xp-btn xp-pri" data-a="send" data-id="' + r.id + '">Send</button><button class="xp-lk" data-a="delr" data-id="' + r.id + '">Delete</button></span></div>').join('') : '<div class="xp-m">Nothing waiting. Use “+ New expense” to start a report.</div>') + '</section>' +
+      dr.map(r => '<div class="xp-t" style="' + sty + '"><b>' + esc(title(r)) + '</b><span>' + esc([r.model, r.sn].filter(Boolean).join(' · ') || '—') + '</span><span>' + esc(locTxt(r)) + '</span><span>' + dates(r) + '</span><span><span class="xp-chip2">Draft</span></span><span class="xp-ac"><button class="xp-lk" data-a="open" data-id="' + r.id + '">Edit</button><button class="xp-btn xp-pri" data-a="send" data-id="' + r.id + '">Send</button><button class="xp-lk" data-a="delr" data-id="' + r.id + '">Delete</button></span></div>').join('') : '<div class="xp-m">Nothing waiting. Use “+ New expense” to start a report.</div>') + '</section>' +
     '<section class="xp-c xp-flt"><div class="xp-h"><h2 style="margin:0">Submitted · ' + sb.length + '</h2><span><input id="fq" placeholder="Search work order, serial, registration…" value="' + esc(f.q) + '" style="width:280px"> <button class="xp-btn" data-a="filter">Search</button> <button class="xp-lk" data-a="clear">Clear</button></span></div>' +
     '<details' + open + '><summary>All filters</summary><div class="xp-r4">' + fi('f_wo', 'Work order', f.wo) + fi('f_cat', 'Category', f.cat) + fi('f_sn', 'Serial number', f.sn) + fi('f_reg', 'Registration', f.reg) + fi('f_model', 'Aircraft type', f.model) + fi('f_loc', 'Location', f.loc) + fi('f_icao', 'Airport (ICAO)', f.icao) + fi('f_country', 'Country', f.country) + fi('f_from', 'Work completed after', f.from, 'date') + fi('f_to', 'Work started before', f.to, 'date') + '</div></details>' +
     (sb.length ? '<div class="xp-t hd" style="' + sty + '"><span>Work order</span><span>Aircraft</span><span>Location</span><span>Dates</span><span>Sent</span><span></span></div>' +
-      sb.slice(pg * PER, pg * PER + PER).map(r => '<div class="xp-t" style="' + sty + '"><b>' + esc(title(r)) + (r.category ? '<br><span class="xp-m">' + esc(r.category) + '</span>' : '') + '</b><span>' + esc([r.model, r.sn].filter(Boolean).join(' · ') || '—') + '</span><span>' + esc(r.loc || '—') + '</span><span>' + dates(r) + '</span><span>' + esc(new Date(r.submittedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })) + ' · v' + (r.ver || 1) + '</span><span class="xp-ac"><button class="xp-lk" data-a="det" data-id="' + r.id + '">Details</button><button class="xp-lk" data-a="reopen" data-id="' + r.id + '">Back to edit</button></span></div>').join('') +
+      sb.slice(pg * PER, pg * PER + PER).map(r => '<div class="xp-t" style="' + sty + '"><b>' + esc(title(r)) + (r.category ? '<br><span class="xp-m">' + esc(r.category) + '</span>' : '') + '</b><span>' + esc([r.model, r.sn].filter(Boolean).join(' · ') || '—') + '</span><span>' + esc(locTxt(r)) + '</span><span>' + dates(r) + '</span><span>' + esc(new Date(r.submittedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })) + ' · v' + (r.ver || 1) + '</span><span class="xp-ac"><button class="xp-lk" data-a="det" data-id="' + r.id + '">Details</button><button class="xp-lk" data-a="reopen" data-id="' + r.id + '">Back to edit</button></span></div>').join('') +
       '<div class="xp-h" style="margin:12px 0 0"><span class="xp-m">' + (pg * PER + 1) + '–' + Math.min(sb.length, pg * PER + PER) + ' of ' + sb.length + '</span><span><button class="xp-lk" data-a="pg" data-d="-1"' + (pg ? '' : ' disabled') + '>‹ Previous</button><button class="xp-lk" data-a="pg" data-d="1"' + (pg < pages - 1 ? '' : ' disabled') + '>Next ›</button></span></div>' : '<div class="xp-m" style="margin-top:12px">No submitted report matches.</div>') + '</section>';
 };
 
@@ -154,6 +156,12 @@ const newV = () =>
   '<section class="xp-c"><h2>Other expenses (no Trip Form)</h2><div class="xp-tiles">' + EWT.map(t => '<button class="xp-tile" data-a="newEwt" data-t="' + esc(t) + '">' + esc(t) + '</button>').join('') + '</div>' +
   '<div class="xp-row" style="margin-top:12px"><label for="n_cat">Category</label><input id="n_cat" placeholder="e.g. ' + monthCat() + ' — month or free text"></div></section>';
 
+const locBlock = (r, sub) => {
+  const ls = r.locs || [], inp = (i, f, lab, v) => '<div class="xp-f"><label>' + lab + '</label><input data-li="' + i + '" data-lf="' + f + '" value="' + esc(v) + '"' + (sub ? ' disabled' : '') + '></div>';
+  return (ls.length ? '<div class="xp-m" style="margin:6px 0">Additional locations</div>' + ls.map((x, i) => '<div class="xp-r4">' + inp(i, 'loc', 'Location ' + (i + 2), x.loc) + inp(i, 'icao', 'Airport (ICAO)', x.icao) + inp(i, 'country', 'Country', x.country) + (sub ? '' : '<div class="xp-f"><label>&nbsp;</label><button class="xp-lk" data-a="locDel" data-i="' + i + '">Remove</button></div>') + '</div>').join('') : '') +
+    (!sub && ls.length < 4 ? '<button class="xp-lk" data-a="locAdd">+ Add a location</button>' : '');
+};
+
 const repV = () => {
   const r = S.reports[S.rid], ls = lines(r), sub = r.status === 'submitted', ro = sub ? ' disabled' : '';
   const inp = (k, lab, type = 'text') => '<div class="xp-f"><label>' + lab + '</label><input type="' + type + '" data-r="' + k + '" value="' + esc(r[k]) + '"' + ro + '></div>';
@@ -162,7 +170,7 @@ const repV = () => {
   const tabs = r.kind === 'ewt' || !TRIP ? '' : '<nav class="xp-tabs">' + [['exp', 'Expenses · ' + ls.length], ['trip', 'Trip Form'], ['itin', 'Itinerary and per diem']].map(([k, v]) => '<button class="xp-tab' + (tab === k ? ' on' : '') + '" data-a="tab" data-v="' + k + '">' + v + '</button>').join('') + '</nav>';
   return '<div class="xp-h"><div><h1>' + esc(title(r)) + ' <span class="xp-chip2' + (sub ? ' ok' : '') + '">' + (sub ? 'Sent · v' + r.ver : 'Draft') + '</span></h1></div><span>' +
     (sub ? '<button class="xp-btn" data-a="reopen" data-id="' + r.id + '">Back to edit</button>' : '<button class="xp-btn xp-pri" data-a="send" data-id="' + r.id + '"' + (ls.length ? '' : ' disabled') + '>Send</button>') + '</span></div>' +
-    '<section class="xp-c"><div class="xp-r4">' + (r.kind === 'ewt' ? '<div class="xp-f"><label>Type</label><b>' + esc(r.etype) + '</b></div>' + inp('category', 'Category') : inp('wo', 'Work order') + inp('model', 'Aircraft type') + inp('sn', 'Serial number') + inp('reg', 'Registration') + inp('loc', 'Location') + inp('icao', 'Airport (ICAO)') + inp('country', 'Country')) + inp('dateStart', 'Date started', 'date') + inp('dateEnd', 'Date completed', 'date') + '</div></section>' +
+    '<section class="xp-c"><div class="xp-r4">' + (r.kind === 'ewt' ? '<div class="xp-f"><label>Type</label><b>' + esc(r.etype) + '</b></div>' + inp('category', 'Category') : inp('wo', 'Work order') + inp('model', 'Aircraft type') + inp('sn', 'Serial number') + inp('reg', 'Registration') + inp('loc', 'Location') + inp('icao', 'Airport (ICAO)') + inp('country', 'Country')) + inp('dateStart', 'Date started', 'date') + inp('dateEnd', 'Date completed', 'date') + '</div>' + (r.kind === 'wo' ? locBlock(r, sub) : '') + '</section>' +
     tabs + (tab === 'trip' ? TRIP.tripV(r, sub) : tab === 'itin' ? TRIP.itinV(r, sub) : '<section class="xp-c"><div class="xp-h"><h2 style="margin:0">Expenses · ' + ls.length + '</h2>' + (sub ? '' : '<button class="xp-btn xp-pri" data-a="addLine">+ Add expense</button>') + '</div>' +
     (ls.length ? lineRows(ls, !sub) : '<div class="xp-m">No expense yet.</div>') + '</section>') +
     '<section class="xp-c"><h2>Before sending</h2><div class="xp-ck"><span class="xp-chip2' + (ls.length ? ' ok' : ' warn') + '">' + (ls.length ? 'OK' : 'To do') + '</span> ' + ls.length + ' expense(s)</div><div class="xp-ck"><span class="xp-chip2' + (noRc ? ' warn' : ' ok') + '">' + (noRc ? 'To check' : 'OK') + '</span> ' + (noRc ? noRc + ' expense(s) without a receipt photo' : 'every expense has a receipt') + '</div>' + (r.kind === 'wo' && TRIP ? TRIP.checks(r) : '') + '</section>';
@@ -206,7 +214,7 @@ const detV = () => {
   return '<div class="xp-h"><div><h1>' + esc(title(h)) + '</h1><div class="xp-m">Sent ' + esc(new Date(v.at).toLocaleString('en-GB')) + (v.by ? ' by ' + esc(v.by) : '') + (v.note ? ' · Note: ' + esc(v.note) : '') + '</div></div><span>' +
     (ks.length > 1 ? '<select id="d_ver">' + ks.map(k => '<option value="' + k.slice(1) + '"' + (k === key ? ' selected' : '') + '>Version ' + k.slice(1) + '</option>').join('') + '</select> ' : '') +
     (r.status === 'submitted' ? '<button class="xp-btn" data-a="reopen" data-id="' + r.id + '">Back to edit</button>' : '') + '</span></div>' +
-    '<section class="xp-c"><div class="xp-r4">' + row('Work order', title(h)) + row('Aircraft type', h.model) + row('Serial number', h.sn) + row('Registration', h.reg) + row('Location', h.loc) + row('Airport (ICAO)', h.icao) + row('Country', h.country) + row('Category', h.category) + row('Date started', fmtD(h.dateStart)) + row('Date completed', fmtD(h.dateEnd)) + '</div></section>' +
+    '<section class="xp-c"><div class="xp-r4">' + row('Work order', title(h)) + row('Aircraft type', h.model) + row('Serial number', h.sn) + row('Registration', h.reg) + row('Location', h.loc) + row('Airport (ICAO)', h.icao) + row('Country', h.country) + row('Category', h.category) + row('Additional locations', (h.locs || []).map(x => [x.loc, x.icao, x.country].filter(Boolean).join(' / ')).join(' · ')) + row('Date started', fmtD(h.dateStart)) + row('Date completed', fmtD(h.dateEnd)) + '</div></section>' +
     '<section class="xp-c"><h2>Expenses · ' + ls.length + '</h2>' + lineRows(ls, false) + '</section>' + (TRIP && h.kind !== 'ewt' ? TRIP.tripV(v, true) + TRIP.itinV(v, true) : '');
 };
 
@@ -228,6 +236,8 @@ A.close = () => { if (root) { root.remove(); root = null; } };
 A.back = () => { if (S.view === 'home') return A.close(); S.view = S.view === 'exp' ? 'rep' : 'home'; render(); };
 A.new = () => { S.view = 'new'; render(); };
 A.open = d => { S.rid = d.id; S.tab = 'exp'; S.view = 'rep'; render(); };
+A.locAdd = async () => { const r = S.reports[S.rid]; (r.locs = r.locs || []).push({ loc: '', icao: '', country: '' }); await save(r); render(); };
+A.locDel = async d => { const r = S.reports[S.rid]; r.locs.splice(+d.i, 1); await save(r); render(); };
 A.tab = d => {
   S.tab = d.v; const r = S.reports[S.rid];
   if (d.v === 'trip' && TRIP && r.status !== 'submitted') { TRIP.syncDays(r); save(r).catch(fail); }   // crée les jours d'après les dates du rapport
@@ -330,7 +340,7 @@ A.rate = async () => {                                                // réserv
 };
 
 // ── Style (injecté une seule fois, tout est préfixé xp-) ──────────────────────
-const CSS = `
+export const CSS = `
 .xp{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;background:#f4f6fb;color:#1b2430;font:14px/1.45 system-ui,-apple-system,'Segoe UI',sans-serif}
 .xp *{box-sizing:border-box}
 .xp-top{flex:none;display:flex;align-items:center;gap:8px;padding:calc(9px + env(safe-area-inset-top,0px)) 14px 9px;color:#fff;background:linear-gradient(120deg,#1e1b4b,#312e81 58%,#4338ca)}
@@ -394,6 +404,7 @@ export async function open(deps) {
   root.addEventListener('change', e => {
     const t = e.target;
     if (t.dataset && t.dataset.r) { const r = S.reports[S.rid]; r[t.dataset.r] = t.value; if (TRIP && r.kind === 'wo' && (t.dataset.r === 'dateStart' || t.dataset.r === 'dateEnd')) TRIP.syncDays(r); save(r).catch(fail); }
+    else if (t.dataset && t.dataset.li != null && t.dataset.li !== '') { const r = S.reports[S.rid]; r.locs[+t.dataset.li][t.dataset.lf] = t.value; save(r).catch(fail); }
     else if (t.id === 'l_file') addPh(t.files).catch(fail);
     else if (t.id === 'd_ver') { S.vv = +t.value; render(); }
   });
